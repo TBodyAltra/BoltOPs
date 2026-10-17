@@ -4,6 +4,8 @@
 import triton
 import triton.language as tl
 
+from boltops.utility.fp8_scale import decode_fp8_scale
+
 from boltops.gemm.triton.kernel_repr import make_kernel_repr
 from boltops.gemm.triton.pid_preprocessing import pid_grid, remap_xcd
 from boltops.gemm.triton.gemm_config_utils import get_gemm_config
@@ -176,8 +178,8 @@ def _gemm_a8w8_blockscale_kernel(
                     b_ptrs, mask=offs_k[:, None] < K - k * BLOCK_SIZE_K, other=0.0
                 )
 
-            a_scale = tl.load(a_scale_ptrs)
-            b_scale = tl.load(b_scale_ptrs)
+            a_scale = decode_fp8_scale(tl.load(a_scale_ptrs), a_ptr.dtype.element_ty.is_fp8())
+            b_scale = decode_fp8_scale(tl.load(b_scale_ptrs), b_ptr.dtype.element_ty.is_fp8())
 
             # Perform dot operation and apply scale
             accumulator += tl.dot(a, b) * a_scale[:, None] * b_scale[None, :]
@@ -367,8 +369,8 @@ def _gemm_a8w8_blockscale_preshuffle_kernel(
 
         for k in range(pid_k * num_k_iter, (pid_k + 1) * num_k_iter):
             # Load the per-K-tile block scales up-front
-            a_scale = tl.load(a_scale_ptrs)
-            b_scale = tl.load(b_scale_ptrs)
+            a_scale = decode_fp8_scale(tl.load(a_scale_ptrs), a_ptr.dtype.element_ty.is_fp8())
+            b_scale = decode_fp8_scale(tl.load(b_scale_ptrs), b_ptr.dtype.element_ty.is_fp8())
 
             # Load the next block of A and B, generate a mask by checking the K dimension.
             # If it is out of bounds, set it to 0.

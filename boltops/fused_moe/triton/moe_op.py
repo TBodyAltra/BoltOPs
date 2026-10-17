@@ -6,6 +6,8 @@ import os
 import torch
 import triton
 import triton.language as tl
+
+from boltops.utility.fp8_scale import decode_fp8_scale
 from typing import Any, Dict, Optional, List
 from boltops.utility import logger
 import boltops.utility.arch_info as arch_info
@@ -1506,9 +1508,9 @@ def fused_moe_kernel(
         a = tl.load(a_ptrs, mask=a_mask, other=0)
         if use_int8_w8a8:
             scale_row = offs_token_id if a_sorted else source_token
-            a_scale = tl.load(
+            a_scale = decode_fp8_scale(tl.load(
                 a_scale_ptr + scale_row * stride_asm, mask=token_mask, other=0.0
-            )
+            ), use_fp8_w8a8)
         if MUL_ROUTED_WEIGHT or (ADD_BIAS and SCALE_BIAS_WITH_ROUTED_WEIGHT):
             if ck_sorting:
                 route_weight = tl.load(
@@ -1546,10 +1548,10 @@ def fused_moe_kernel(
                 # Preserve rounding order: block scales precede routing weight;
                 # channel scales follow it. Do not reassociate the scale products.
                 if use_int8_w8a8 and group_k > 0 and group_n > 0:
-                    b_scale = tl.load(
+                    b_scale = decode_fp8_scale(tl.load(
                         b_scale_ptr + off_experts * stride_bse
                         + (offs_bn // group_n) * stride_bsn
-                    )
+                    ), use_fp8_w8a8)
                     acc = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), tl.float32)
                     if BLOCK_SIZE_N > group_n:
                         acc += tl.dot(a, b) * a_scale[:, None] * b_scale[None, :]
@@ -1561,10 +1563,10 @@ def fused_moe_kernel(
                 if MUL_ROUTED_WEIGHT:
                     acc = acc * route_weight[:, None]
                 if use_int8_w8a8 and per_channel_quant and group_k == 0 and group_n == 0:
-                    b_scale = tl.load(
+                    b_scale = decode_fp8_scale(tl.load(
                         b_scale_ptr + off_experts * stride_bse
                         + offs_bn[None, :] * stride_bsn
-                    )
+                    ), use_fp8_w8a8)
                     acc = acc * a_scale[:, None] * b_scale
 
                 # Convert before adding bias, then mask both padding rows and N tails.
@@ -1623,7 +1625,7 @@ def fused_moe_kernel(
     if use_int8_w8a16:
         b_scale_ptrs = b_scale_ptr + off_experts * stride_bse + offs_bn[
             None, :] * stride_bsn
-        b_scale = tl.load(b_scale_ptrs)
+        b_scale = decode_fp8_scale(tl.load(b_scale_ptrs), use_fp8_w8a8)
 
     if use_fp8_w8a8 or use_int8_w8a8:
         # block-wise
@@ -1646,18 +1648,18 @@ def fused_moe_kernel(
         elif per_channel_quant:
             b_scale_ptrs = b_scale_ptr + off_experts * stride_bse + offs_bn[
                 None, :] * stride_bsn
-            b_scale = tl.load(b_scale_ptrs)
+            b_scale = decode_fp8_scale(tl.load(b_scale_ptrs), use_fp8_w8a8)
             # Load per-token scale for activations
             if a_sorted:  # top_k is 1 and A is laid out in expert-sorted order
                 a_scale_ptrs = a_scale_ptr + offs_token_id * stride_asm
             else:
                 a_scale_ptrs = a_scale_ptr + source_token * stride_asm
-            a_scale = tl.load(a_scale_ptrs, mask=token_mask, other=0.0)[:,
+            a_scale = decode_fp8_scale(tl.load(a_scale_ptrs, mask=token_mask, other=0.0), use_fp8_w8a8)[:,
                                                                         None]
         # tensor-wise
         else:
-            a_scale = tl.load(a_scale_ptr)
-            b_scale = tl.load(b_scale_ptr + off_experts)
+            a_scale = decode_fp8_scale(tl.load(a_scale_ptr), use_fp8_w8a8)
+            b_scale = decode_fp8_scale(tl.load(b_scale_ptr + off_experts), use_fp8_w8a8)
 
     # -----------------------------------------------------------
     # Iterate to compute a block of the C matrix.
@@ -1702,10 +1704,10 @@ def fused_moe_kernel(
                 if group_k > 0 and group_n > 0:
                     k_start = k * BLOCK_SIZE_K
                     offs_ks = k_start // group_k + tl.arange(0, 2)
-                    a_scale = tl.load(a_scale_ptrs + offs_ks[None, :] * stride_ask,
+                    a_scale = decode_fp8_scale(tl.load(a_scale_ptrs + offs_ks[None, :] * stride_ask,
                                     mask=a_scale_mask[:, None],
-                                    other=0.0)
-                    b_scale = tl.load(b_scale_ptrs + offs_ks[None, :] * stride_bsk)
+                                    other=0.0), use_fp8_w8a8)
+                    b_scale = decode_fp8_scale(tl.load(b_scale_ptrs + offs_ks[None, :] * stride_bsk), use_fp8_w8a8)
                     a_scale_0, a_scale_1 = tl.split(a_scale)
                     b_scale_0, b_scale_1 = tl.split(b_scale)
 
@@ -1807,10 +1809,10 @@ def fused_moe_kernel(
                 if group_k > 0 and group_n > 0:
                     k_start = k * BLOCK_SIZE_K
                     offs_ks = k_start // group_k
-                    a_scale = tl.load(a_scale_ptrs + offs_ks * stride_ask,
+                    a_scale = decode_fp8_scale(tl.load(a_scale_ptrs + offs_ks * stride_ask,
                                       mask=token_mask,
-                                      other=0.0)
-                    b_scale = tl.load(b_scale_ptrs + offs_ks * stride_bsk)
+                                      other=0.0), use_fp8_w8a8)
+                    b_scale = decode_fp8_scale(tl.load(b_scale_ptrs + offs_ks * stride_bsk), use_fp8_w8a8)
 
                     if BLOCK_SIZE_N > group_n:
                         accumulator += tl.dot(a, b) * a_scale[:, None] * b_scale[None, :]
@@ -2570,7 +2572,7 @@ def fused_moe_persistent_kernel(
             if use_int8_w8a16:
                 b_scale_ptrs = b_scale_ptr + off_experts * stride_bse + offs_bn[
                     None, :] * stride_bsn
-                b_scale = tl.load(b_scale_ptrs)
+                b_scale = decode_fp8_scale(tl.load(b_scale_ptrs), use_fp8_w8a8)
 
             if use_fp8_w8a8 or use_int8_w8a8:
                 # block-wise
@@ -2593,18 +2595,18 @@ def fused_moe_persistent_kernel(
                 elif per_channel_quant:
                     b_scale_ptrs = b_scale_ptr + off_experts * stride_bse + offs_bn[
                         None, :] * stride_bsn
-                    b_scale = tl.load(b_scale_ptrs)
+                    b_scale = decode_fp8_scale(tl.load(b_scale_ptrs), use_fp8_w8a8)
                     # Load per-token scale for activations
                     if a_sorted:  # top_k is 1 and A is laid out in expert-sorted order
                         a_scale_ptrs = a_scale_ptr + offs_token_id * stride_asm
                     else:
                         a_scale_ptrs = a_scale_ptr + source_token * stride_asm
-                    a_scale = tl.load(a_scale_ptrs, mask=token_mask, other=0.0)[:,
+                    a_scale = decode_fp8_scale(tl.load(a_scale_ptrs, mask=token_mask, other=0.0), use_fp8_w8a8)[:,
                                                                                 None]
                 # tensor-wise
                 else:
-                    a_scale = tl.load(a_scale_ptr)
-                    b_scale = tl.load(b_scale_ptr + off_experts)
+                    a_scale = decode_fp8_scale(tl.load(a_scale_ptr), use_fp8_w8a8)
+                    b_scale = decode_fp8_scale(tl.load(b_scale_ptr + off_experts), use_fp8_w8a8)
 
             # -----------------------------------------------------------
             # Iterate to compute a block of the C matrix.
@@ -2642,10 +2644,10 @@ def fused_moe_persistent_kernel(
                         if group_k > 0 and group_n > 0:
                             k_start = k * BLOCK_SIZE_K
                             offs_ks = k_start // group_k + tl.arange(0, 2)
-                            a_scale = tl.load(a_scale_ptrs + offs_ks[None, :] * stride_ask,
+                            a_scale = decode_fp8_scale(tl.load(a_scale_ptrs + offs_ks[None, :] * stride_ask,
                                             mask=token_mask[:, None],
-                                            other=0.0)
-                            b_scale = tl.load(b_scale_ptrs + offs_ks[None, :] * stride_bsk)
+                                            other=0.0), use_fp8_w8a8)
+                            b_scale = decode_fp8_scale(tl.load(b_scale_ptrs + offs_ks[None, :] * stride_bsk), use_fp8_w8a8)
                             a_scale_0, a_scale_1 = tl.split(a_scale)
                             b_scale_0, b_scale_1 = tl.split(b_scale)
 
@@ -2743,10 +2745,10 @@ def fused_moe_persistent_kernel(
                         if group_k > 0 and group_n > 0:
                             k_start = k * BLOCK_SIZE_K
                             offs_ks = k_start // group_k
-                            a_scale = tl.load(a_scale_ptrs + offs_ks * stride_ask,
+                            a_scale = decode_fp8_scale(tl.load(a_scale_ptrs + offs_ks * stride_ask,
                                             mask=token_mask,
-                                            other=0.0)
-                            b_scale = tl.load(b_scale_ptrs + offs_ks * stride_bsk)
+                                            other=0.0), use_fp8_w8a8)
+                            b_scale = decode_fp8_scale(tl.load(b_scale_ptrs + offs_ks * stride_bsk), use_fp8_w8a8)
 
                             if BLOCK_SIZE_N > group_n:
                                 accumulator += tl.dot(a, b) * a_scale[:, None] * b_scale[None, :]
@@ -3045,8 +3047,13 @@ def fused_moe(
         config = config.copy()
         BLOCK_SIZE_K = config.pop("BLOCK_SIZE_K")
         if block_shape is not None:
-            BLOCK_SIZE_K = min(BLOCK_SIZE_K, min(block_shape[0],
-                                                 block_shape[1]))
+            if use_fp8_w8a8:
+                # N scale grouping does not constrain the K reduction tile.
+                # Per-channel FP8 weights use group_n=1 with group_k=128.
+                BLOCK_SIZE_K = min(BLOCK_SIZE_K, block_shape[1])
+            else:
+                BLOCK_SIZE_K = min(BLOCK_SIZE_K, min(block_shape[0],
+                                                     block_shape[1]))
 
         if n_tiles_per_cta == 2:
             reason = _n_tile_reuse_error({

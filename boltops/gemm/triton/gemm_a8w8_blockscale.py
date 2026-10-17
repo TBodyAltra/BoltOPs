@@ -41,10 +41,12 @@ def gemm_a8w8_blockscale(
     """
     Computes 8 bit matrix multiplication Y = X @ W^T using block-wise quantization scales.
     Each block along K and N dimensions has independent scale factors for fine-grained quantization.
+    For FP8 operands, uint8 scales hold OCP E8M0 exponent codes (255 is NaN);
+    floating scales retain their numeric values. INT8 scale handling is unchanged.
 
     Args:
-        x (torch.Tensor): INT8 input matrix with shape (M, K).
-        w (torch.Tensor): INT8 weight matrix with shape (N, K), internally transposed.
+        x (torch.Tensor): INT8 or FP8 input matrix with shape (M, K).
+        w (torch.Tensor): INT8 or FP8 weight matrix with shape (N, K), internally transposed.
         x_scale (torch.Tensor): Block-wise scale for x with shape (M, scale_k).
             scale_k = ceil(K / scale_block_size_k).
         w_scale (torch.Tensor): Block-wise scale for w with shape (scale_n, scale_k).
@@ -204,10 +206,12 @@ def gemm_a8w8_blockscale_preshuffle(
     """
     Computes 8 bit matrix multiplication Y = X @ W^T using block-wise quantization scales.
     Each block along K and N dimensions has independent scale factors for fine-grained quantization.
+    For FP8 operands, uint8 scales hold OCP E8M0 exponent codes (255 is NaN);
+    floating scales retain their numeric values. INT8 scale handling is unchanged.
 
     Args:
-        x (torch.Tensor): INT8 input matrix with shape (M, K).
-        w (torch.Tensor): INT8 weight matrix with shape (N, K), internally transposed.
+        x (torch.Tensor): INT8 or FP8 input matrix with shape (M, K).
+        w (torch.Tensor): INT8 or FP8 weight matrix with shape (N, K), internally transposed.
         x_scale (torch.Tensor): Block-wise scale for x with shape (M, scale_k).
             scale_k = ceil(K / scale_block_size_k).
         w_scale (torch.Tensor): Block-wise scale for w with shape (scale_n, scale_k).

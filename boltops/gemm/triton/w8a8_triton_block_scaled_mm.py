@@ -14,6 +14,8 @@ import torch
 import triton
 import triton.language as tl
 
+from boltops.utility.fp8_scale import decode_fp8_scale
+
 _CONFIG_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "configs",
@@ -99,8 +101,8 @@ def _w8a8_triton_block_scaled_mm(
 
         k_start = k * BLOCK_SIZE_K
         offs_ks = k_start // group_k
-        a_s = tl.load(As_ptrs + offs_ks * stride_As_k)
-        b_s = tl.load(Bs_ptrs + offs_ks * stride_Bs_k)
+        a_s = decode_fp8_scale(tl.load(As_ptrs + offs_ks * stride_As_k), A.dtype.element_ty.is_fp8())
+        b_s = decode_fp8_scale(tl.load(Bs_ptrs + offs_ks * stride_Bs_k), B.dtype.element_ty.is_fp8())
 
         accumulator += tl.dot(a, b) * a_s[:, None] * b_s[None, :]
         a_ptrs += BLOCK_SIZE_K * stride_ak
@@ -133,8 +135,9 @@ def w8a8_triton_block_scaled_mm(
     Args:
         A: activation, e.g. ``[..., K]`` FP8
         B: weight ``[N, K]`` FP8
-        As: per-token-group scale for ``A``
-        Bs: per-block scale for ``B`` ``[ceil(N/block_n), ceil(K/block_k)]``
+        As: per-token-group scale for ``A`` (floating values or uint8 E8M0)
+        Bs: per-block scale for ``B`` ``[ceil(N/block_n), ceil(K/block_k)]``;
+            uint8 storage is decoded as E8M0 for FP8 operands
         block_size: ``[block_n, block_k]``, e.g. ``[128, 128]``
         output_dtype: FP16 / BF16 / FP32
     """
