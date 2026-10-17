@@ -15,6 +15,8 @@
 | `triton_scaled_mm` | INT8 / FP8 + scale | `C = (A @ B) * sa * sb`（NN） | vLLM | per-tensor / per-channel scale |
 | `awq_gemm_triton` | W4A16（AWQ packed） | int4 `qweight` | vLLM | HCU JSON：`K100_AI` / `BW200` |
 | `gemm_a8w8_blockscale` | A8W8 block-scale | `Y = X @ W^T` | aiter | |
+| `gemm_a8wfp4` | FP8 E4M3 × FP4 E2M1 | packed W[N,ceil(K/2)] | boltOps，参考 aiter 布局 | K32 分组普通 dot 后乘 scale |
+| `grouped_gemm_a8wfp4` | FP8 E4M3 × FP4 E2M1 grouped | 等长 / ragged 专家分组 | boltOps | 支持空专家 |
 | `gemm_afp4wfp4` | MXFP4 | `Y = X @ W^T` | aiter | 需 `is_fp4_avail()` |
 | `batched_gemm_a16wfp4` | A16WFP4 batched | `Y[i] = X[i] @ W[i]^T` | aiter | 需 FP4 |
 | `batched_gemm_bf16` | BF16 / FP16 batched | `Y[i] = X[i] @ W[i]^T`，`W[B,N,K]` | aiter | HCU JSON：`K100_AI` / `BW200` |
@@ -397,3 +399,39 @@ HCU JSON：`triton/configs/w8a8_block_int8_matmul/`（`BW200` / `gfx938`，来�
 `block_w8a8`）。
 
 实现：`triton/w8a8_block_int8_matmul.py`。溯源：SGLang `int8_kernel.py`。
+
+
+## FP8 × FP4：gemm_a8wfp4 / grouped_gemm_a8wfp4
+
+```python
+from boltops.gemm import gemm_a8wfp4, grouped_gemm_a8wfp4
+
+# x[M,K], w[N,ceil(K/2)]
+y = gemm_a8wfp4(x, w, x_scales, w_scales, activation_group_size=128)
+# x[E,M,K], w[E,N,ceil(K/2)]
+y = grouped_gemm_a8wfp4(x, w, x_scales, w_scales, activation_group_size=32)
+# 按专家连续排列的 x[T,K]；offsets[E+1] 是 GPU 上的专家行边界
+y = grouped_gemm_a8wfp4(x, w, x_scales, w_scales,
+                        expert_offsets=offsets, activation_group_size=128)
+```
+
+激活为 E4M3 FN。权重为 uint8 打包的 E2M1，低 nibble 表示偶数 K，
+高 nibble 表示奇数 K；支持 K 尾部、N/M 尾部及非连续正 stride。
+激活 scale 的最后一维为 ceil(K/G)，G 可为 32 或 128；权重 scale 为 ceil(K/32)。
+等长分组的 scale 分别为 [E,M,ceil(K/G)]、[E,N,ceil(K/32)]；
+ragged 激活 scale 为 [T,ceil(K/G)]，权重 scale 布局不变。
+uint8 scale 按原始 E8M0 指数解码；FP32/FP16/BF16 scale 按浮点数值使用。
+输出 dtype 支持 BF16（默认）、FP16、FP32，可传入预分配 y。
+
+ragged 的 offsets 必须是连续 int32/int64 GPU tensor，非递减、首项为 0、
+末项为 T；允许空专家。接口要求输入已按专家分组，offsets 内容由调用方保证。
+这里提供 grouped GEMM 单阶段计算，完整路由、激活和 MoE 两阶段融合由调用方组织。
+
+实现会在 kernel 内把 E2M1 精确扩展为 E4M3，每个 K32 分组执行普通 tl.dot，
+再乘对应的 A/B scale 并以 FP32 累加。无需主机反量化，也不调用 tl.dot_scaled。
+这是精度优先的接口支持，尚无性能调优结论。
+config 支持 BLOCK_SIZE_M、BLOCK_SIZE_N（2 的幂且 ≥16）、num_warps。
+默认 16×32、4 warps，K 固定按 scale 边界 32 迭代。
+
+实现：triton/gemm_a8wfp4.py。参考来源和实测记录：
+[FP8×FP4 实测](../gemm/FP8_FP4_20261017.md)。

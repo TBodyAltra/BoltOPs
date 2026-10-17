@@ -273,3 +273,9 @@ optest --display                                            # HTML report from l
 1. Create `boltops/<op>/` with `triton/` and `tilelang/` impls; put correctness in `test/test_<op>.py` and model-size benches under `@pytest.mark.bench`, then use `--bench` to pick the winner.
 2. Prefer public signatures aligned with vLLM / SGLang (or HIPC / CUDA C); wire ship-time backend selection in `boltops/<op>/__init__.py` and export.
 3. Re-export from `boltops/__init__.py` and add `docs/ops/`.
+
+## FP8 × FP4 interface validation (2026-10-17)
+
+| Environment | Scope | Result | Evidence |
+| --- | --- | --- | --- |
+| node60 / PMD gfx946 / Triton release/3.6.x | FP8 E4M3 × packed E2M1, dense and grouped | 15/15 regression PASS; 34/34 requirements compile PASS; full precision validation running | [API and validation](docs/gemm/FP8_FP4_20261017.md) |

@@ -28,3 +28,14 @@ Configs (on disk, HCU only where available)
 Note: hygon aiter `awq_w4a16/` tables target aiter `gemm_a16w4` (different
 schema) and are **not** wired to `awq_gemm_triton`. Other kernels use
 `builtin_gemm_configs.py`. Gluon not vendored.
+
+FP8 x FP4 block-scaled GEMM — public
+- gemm_a8wfp4.py: boltOps implementation, ordinary FP8 tl.dot per K32 then
+  A/B scale multiplication; dense and expert-grouped/ragged entry points.
+- E2M1 nibble order and value mapping checked against ROCm/aiter commit
+  5c9f6431ecc34f28a2ab0acfbe248e31922e7c05, aiter/utility/fp4_utils.py.
+- Reference native Triton kernels and grouping conventions:
+  https://github.com/ROCm/aiter/blob/5c9f6431ecc34f28a2ab0acfbe248e31922e7c05/aiter/ops/triton/_triton_kernels/gemm/basic/gemm_a8wfp4.py
+  https://github.com/ROCm/aiter/blob/5c9f6431ecc34f28a2ab0acfbe248e31922e7c05/aiter/ops/triton/_triton_kernels/moe/moe_op_gemm_a8w4.py
+- Native aiter dot_scaled is not used: this API also accepts numeric FP32
+  activation scales per K32/K128, matching boltOps requirements G472–G505.

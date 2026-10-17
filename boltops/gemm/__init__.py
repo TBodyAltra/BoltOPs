@@ -18,6 +18,8 @@ Public operators:
 * ``triton_scaled_mm``
 * ``awq_gemm_triton``
 * ``gemm_a8w8_blockscale``
+* ``gemm_a8wfp4``
+* ``grouped_gemm_a8wfp4``
 * ``gemm_afp4wfp4``
 * ``batched_gemm_a16wfp4``
 * ``batched_gemm_bf16``
@@ -259,8 +261,31 @@ __all__ = [
     "gemm_a16w16",
     "gemm_a8w8_blockscale",
     "gemm_afp4wfp4",
+    "gemm_a8wfp4",
+    "grouped_gemm_a8wfp4",
     "matmul_persistent",
     "triton_scaled_mm",
     "w8a8_block_int8_matmul",
     "w8a8_triton_block_scaled_mm",
 ]
+
+
+def gemm_a8wfp4(
+    x, w, x_scales, w_scales, *, activation_group_size=128,
+    dtype=torch.bfloat16, y=None, config=None,
+):
+    """FP8 x packed E2M1 GEMM; see docs/ops/gemm.md for layouts."""
+    from boltops.gemm.triton.gemm_a8wfp4 import gemm_a8wfp4 as impl
+    return impl(x, w, x_scales, w_scales, activation_group_size=activation_group_size,
+                dtype=dtype, y=y, config=config)
+
+
+def grouped_gemm_a8wfp4(
+    x, w, x_scales, w_scales, *, expert_offsets=None,
+    activation_group_size=128, dtype=torch.bfloat16, y=None, config=None,
+):
+    """Dense or ragged expert-grouped FP8 x packed E2M1 GEMM."""
+    from boltops.gemm.triton.gemm_a8wfp4 import grouped_gemm_a8wfp4 as impl
+    return impl(x, w, x_scales, w_scales, expert_offsets=expert_offsets,
+                activation_group_size=activation_group_size, dtype=dtype, y=y,
+                config=config)
