@@ -8,7 +8,6 @@ uint8 E8M0 不能直接转成整数数值：code 127 应为 1.0；code 0 为 2^-
 
 解码及相关回归 24/24 PASS，包含 256 个编码逐位检查。G034（6×128×6144，A E8M0/K128、W FP32/K128）从 767/768 mismatch 修复为 0，max_abs=0。grouped FP8 的 BK 只能受 scale K 粒度限制，不能被 N 粒度 1 裁成 BK=1；不新增 grouped split-K 支持。证据：产物仓库 `triton_gemm_asm/requirements/20261017-fp8-e8m0-fix/`。
 
-前两个 dense FP8 接口另已支持 A `[M,1]` 整行 scale 与 W 按 K128 独立分组；32/32 smoke PASS，第三接口 14/14 兼容 PASS。证据：`fp8-dense-smoke-20261020/final-results.json/csv`。不能把这些回归升级成全部需求尺寸通过。
 
 ## S03 FP32 精度
 
