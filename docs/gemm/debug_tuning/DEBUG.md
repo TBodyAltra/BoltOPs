@@ -14,26 +14,15 @@ uint8 E8M0 不能直接转成整数数值：code 127 应为 1.0；code 0 为 2^-
 
 `matmul_persistent` FP32 64³ 曾有 max_abs=0.5782、2906/4096 元素超限。保留 `AccelerateHCUMatmul.cpp` 对 f32/f64 的 16×16×4 强制 LEGACY 补丁；该补丁属于当前 Triton 基线。修复后相对 FP64 golden max_abs≈1.05e-7、mismatch=0；最新 WDRA 编译器回归也再次通过。证据：`fp8-live-records-20261018/blocked-diagnosis-20261018/s03-after-relink/S03/result.json`。
 
-## native FP4 与 HIPC 构建修复
+## native FP4 构建修复
 
-| 项目 | 根因 / 修复 | 验收与边界 |
-| --- | --- | --- |
-| S34–S37 native FP4 | LLVM IR 转换遇到 `rocdl.ds.scale.copy.ds2buf`；链接的 ROCDL translation archive 陈旧，已有 lowering / intrinsic / 指令实现未进入库。重编私有 translation 对象并重链接 | 4 项小尺寸 PASS，原生 MMAC / scale-copy 汇编已确认；不是用软件替代缺指令 |
-| S39 HIPC 扩展 | 外部头文件软链失效、native 架构探测被日志污染、硬编码 `/opt/dtk/lib` | 外部 include overlay、hipcc wrapper 显式 gfx946、LIBRARY_PATH 指向实际 ROCm lib、扩展缓存放仓库外；未改业务源码或数值算法，S39 PASS |
+S34–S37 的 LLVM IR 转换遇到 `rocdl.ds.scale.copy.ds2buf`：链接的 ROCDL translation archive 陈旧，已有 lowering / intrinsic / 指令实现未进入库。重编私有 translation 对象并重链接后，4 项小尺寸 PASS，原生 MMAC / scale-copy 汇编已确认；没有用软件替代缺失指令。
 
-证据：`fp8-live-records-20261018/blocked-diagnosis-20261018/REPORT.md` 与 `final-results.json/csv`。
+证据：`fp8-live-records-20261018/blocked-diagnosis-20261018/REPORT.md` 与 `final-results.json/csv` 中的 S34–S37。
 
-## 环境能力缺口：S38 不能计 PASS
+## PMD 指令能力边界
 
-原始 `fused_experts` FP8→BF16 在线量化在 `boltops/fused_moe/triton/quant.py` 的 `value.to(float8_e4m3fn)` 触发：
-
-```
-Encountered unimplemented GCN3 instruction: s_setreg_imm32_b32
-```
-
-汇编写入 `hwreg(HW_REG_MODE2,0,3),7`，PMD 未实现 HW_REG_MODE2 写入。判定 **BLOCKED_PMD_UNSUPPORTED**；影响使用该在线量化转换的完整 MoE 流程，不据此否定已预量化输入的单次 grouped GEMM。
-
-软件 `soft_fp8` / `retry_soft_quant` 绕法已停用，相关 PASS 撤销。严格原始路径的 6 项诊断最终为 5 PASS、1 环境限制。证据同上。不同编译器构建中已修好的 translation 缺口与 PMD 未实现指令必须分开记录。
+在线 FP8 转换 `value.to(float8_e4m3fn)` 曾生成写入 `hwreg(HW_REG_MODE2,0,3),7` 的 `s_setreg_imm32_b32`，PMD 报 `Encountered unimplemented GCN3 instruction: s_setreg_imm32_b32`。这属于环境缺指令；禁止软件替代后计 PASS。grouped GEMM 使用调用方提供的预量化输入和 scale，不执行在线量化，不把该转换的失败作为 grouped GEMM 的验收结果。
 
 ## WDRA48 post-dot scale 调度修复
 
