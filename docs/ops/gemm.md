@@ -3,7 +3,7 @@
 `boltops.gemm` 公开 Triton GEMM 族（布局对齐 vLLM / aiter / SGLang 调用侧）。
 实现位于 `boltops/gemm/triton/`；维护人 Triton @xukang。
 
-调优与支持跟踪见 [GEMM 优化记录](../gemm/OPTIMIZATION.md)，历史 WASP/WDRA 性能见 [RESULTS](../gemm/RESULTS.md)，寄存器策略见 [VGPR](../gemm/VGPR.md)。
+当前验收状态见 [GEMM 总体支持能力](../gemm/README.md)，需求见 [少伯 BU 支持需求](../gemm/SHAOBO_BU_REQUIREMENTS.md)，关键调优与资源约束见 [调优记录](../gemm/debug_tuning/TUNING.md)。
 
 ## 当前支持一览
 
@@ -434,4 +434,4 @@ config 支持 BLOCK_SIZE_M、BLOCK_SIZE_N（2 的幂且 ≥16）、num_warps。
 默认 16×32、4 warps，K 固定按 scale 边界 32 迭代。
 
 实现：triton/gemm_a8wfp4.py。参考来源和实测记录：
-[FP8×FP4 实测](../gemm/FP8_FP4_20261017.md)。
+[FP8×FP4 支持与验证](../gemm/README.md)。

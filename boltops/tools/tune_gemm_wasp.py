@@ -571,7 +571,7 @@ def _promote(csv_path: Path, notes: str) -> Path:
         "N": int(best["N"]),
         "K": int(best["K"]),
         # TT: A K-major + B N-major; TN: A K-major + B K-major.
-        # See docs/gemm/RESULTS.md / --ab-layout.
+        # See docs/gemm/debug_tuning/TUNING.md / --ab-layout.
         "ab_layout": _normalize_ab_layout(str(best.get("ab_layout") or "TT")),
         "use_mls": bool(int(best.get("use_mls") or 0)),
         "use_matrix_store": bool(int(best.get("use_matrix_store") or 0)),

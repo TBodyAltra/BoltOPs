@@ -1,10 +1,10 @@
-# GEMM 支持需求清单
+# 少伯 BU GEMM 支持需求
 
 来源：`/xukang/GEMM支持清单.html`（生成日期 2026-10-12）。按算子类型及输入、输出精度分为 9 张表，完整保留 511 行需求和 2504 条算子实例。
 
 原 HTML SHA256：`187673895b820bfb89d6b2890ffb35fa378a183e8922238a8f96df2ff738d11c`。
 
-本清单用于逐项记录支持和优化进度。状态已按截至 2026-10-20 的接口 smoke 证据更新，见 [smoke 验证依据](#smoke-evidence)。**“接口 smoke 通过”表示该算子族 / dtype 接口已有小尺寸 PASS，不表示本行完整 M/N/K、batch/experts、scale 和路由已逐项运行，也不表示性能已调优。** 实验详情与记录规范见 [OPTIMIZATION.md](OPTIMIZATION.md)。
+本清单用于逐项记录支持和优化进度。状态已按截至 2026-10-20 的接口 smoke 证据更新，见 [smoke 验证依据](#smoke-evidence)。**“接口 smoke 通过”表示该算子族 / dtype 接口已有小尺寸 PASS，不表示本行完整 M/N/K、batch/experts、scale 和路由已逐项运行，也不表示性能已调优。** 实验详情与记录规范见 [调优记录](debug_tuning/TUNING.md)。
 
 ## 记录口径
 
@@ -14,7 +14,7 @@
 - 有量化的表保留 scale 原始信息；在整张表全空或不适用的列直接省略。含推断值的条目接入模型时需核实。
 - 状态分为接口级「接口 smoke 通过」「待 grouped GEMM smoke」「接口 smoke 受阻」与需求尺寸级「待验证」「编译通过」「完整尺寸正确性通过」「已调优」；不得把接口 smoke 或编译通过升级为本行完整尺寸 PASS。
 - BoltOps 函数列链接实际源码定义；它表示当前可对接的接口 / 路径，不替代模型布局、量化格式与分组寻址适配。表 7–9 只关注单次 grouped GEMM，输入量化值、scale 和分组索引由测试预先准备；不把在线量化、路由生成、激活或结果合并纳入验收，也不以完整 MoE 测试结果代替 grouped GEMM smoke。
-- ResNet50 INT8 隐式 GEMM 卷积 24 类和末端 FC 不在这 511 行中，仍以原 HTML 及优化记录中的说明为准。
+- ResNet50 INT8 隐式 GEMM 卷积 24 类和末端 FC 不在这 511 行中，仍以原 HTML 及当前支持说明为准。
 
 模型 / 配置列使用 [C 编号](#model-config-index) 引用文末的完整组合，缩短主表宽度；点击编号可查看模型、精度及序列/规模配置。
 
@@ -55,7 +55,7 @@
 - S24/S05/S06/S18/S28/S31：`fp8-live-records-20261018/smoke-acceptance-20261018/results.json`；复用项的原路径和 SHA256 均记录在对应 evidence 中。
 - S03 当前证据：`fp8-live-records-20261018/blocked-diagnosis-20261018/s03-after-relink/S03/result.json`，不是旧 smoke 总表中的 FAIL。
 - 历史 S38/S39 完整 MoE 记录仍保留在 `fp8-live-records-20261018/blocked-diagnosis-20261018/final-results.json`；它们不属于本清单的独立 grouped GEMM 验收依据，本次不据其结果推断表 7/9 的 PASS 或 BLOCKED。
-- FP8 两个接口：`fp8-dense-smoke-20261020/final-results.json/csv`，实现对应候选 `0cc243e`（统一分支中等价重放为 `be858e0`）；汇总见 [统一状态](OPTIMIZATION_STATUS.md)。FP8 流水探针的编译受阻是另一个优化问题，不覆盖或撤销这里普通路径的接口 smoke。
+- FP8 两个接口：`fp8-dense-smoke-20261020/final-results.json/csv`，实现对应候选 `0cc243e`（统一分支中等价重放为 `be858e0`）；汇总见 [当前支持能力](README.md)。可选流水优化及资源限制另见 [调优记录](debug_tuning/TUNING.md)，不覆盖或撤销这里普通路径的接口 smoke。
 
 <a id="table-1"></a>
 
