@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | BMM，BF16×BF16→BF16 | `batched_gemm_bf16` | S24 PASS；权重布局 `[batch,N,K]`，需匹配 stride |
 | dense，FP16/BF16×同精度→FP16/BF16/FP32 | `gemm_a16w16` | BF16→BF16 S05、BF16→FP32 S06 PASS；FP16 另有流水及成本配对测试；尚无全尺寸验收 |
-| dense，FP32×FP32→FP32 | `matmul_persistent` | S03 修复后 PASS，64³ max_abs≈1.05e-7；依赖编译器 S03 LEGACY 补丁 |
+| dense，FP32×FP32→FP32 | `matmul_persistent` | S03 修复后 PASS，64³ max_abs≈1.05e-7；已修正编译器 FP32 布局选择，真实 LTS 路径通过 |
 | dense，FP8×FP8→BF16/FP16/FP32 | 下表三个接口 | 46/46 smoke PASS，max_abs=0、mismatch=0；需求表 2 只映射前两个接口 |
 | dense，BF16×INT4→BF16 | `awq_gemm_triton` | S18 PASS；仅验证对应 AWQ 打包、scale/zero-point，不能泛化所有 INT4 格式 |
 | dense / grouped，FP8×FP4→BF16/FP16/FP32 | `gemm_a8wfp4` / `grouped_gemm_a8wfp4` | 15/15 回归及 9/9 接口 smoke PASS（含复用）；等长、ragged、空组、尾块和 stride 已有覆盖；34/34 完整需求仅编译通过，精度队列暂停 |

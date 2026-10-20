@@ -11,7 +11,11 @@ uint8 E8M0 不能直接转成整数数值：code 127 应为 1.0；code 0 为 2^-
 
 ## S03 FP32 精度
 
-`matmul_persistent` FP32 64³ 曾有 max_abs=0.5782、2906/4096 元素超限。保留 `AccelerateHCUMatmul.cpp` 对 f32/f64 的 16×16×4 强制 LEGACY 补丁；该补丁属于当前 Triton 基线。修复后相对 FP64 golden max_abs≈1.05e-7、mismatch=0；最新 WDRA 编译器回归也再次通过。证据：`fp8-live-records-20261018/blocked-diagnosis-20261018/s03-after-relink/S03/result.json`。
+`matmul_persistent` FP32 64³ 曾有 max_abs=0.5782、2906/4096 元素超限。原先强制 LEGACY 只是临时回退，现已撤掉 FP32 部分；保留原 FP64 保护。
+
+实际根因是 FP32 `16×16×4` intrinsic 只有 LTS 标志、没有 LIT 标志，但默认选择 INTERLEAVE 编码，导致寄存器映射与指令不一致。仅撤掉 LEGACY 回退仍复现原错误；将该指令的 INTERLEAVE / INTERLEAVE_TRANSPOSE 选择合法化为 TRANSPOSE 后，汇编生成真实 `v_mmac_16x16x4_f32 ... lts`，S03 相对 FP64 golden max_abs≈1.05e-7、4096 元素无超限。FP32 支持 LTS，不能把此前失败解释为硬件不支持。
+
+Triton 修复提交 `fdcee56d677ee4ffa806c6ee3d16b85352a09270`；6 项布局选择 FileCheck 通过，显式 LEGACY 仍保留。产物位于 `fp32-lts-20261020/`，原始输入、JIT kernel 和精度门限未改；私有库不覆盖原全局库。
 
 ## native FP4 构建修复
 
@@ -82,10 +86,11 @@ IR/LLIR/汇编确认真实warp_specialize、WDRA初始化、MMAC和abarrier，�
 | 项目 | 当前值 |
 | --- | --- |
 | Triton 基线 | release/3.6.x `46f0bed3561364b63ba4046d9c8c0cb70380ea30` |
-| S03 基线提交 | `7378080a3`，保留 LEGACY 补丁 |
+| 原 S03 临时提交（历史） | `7378080a3`；其中 FP32 LEGACY 回退已撤销 |
 | WDRA 修复提交 | `e33b79cf13535e983c1f0daacc48e092495410a8`，`perf/gemm-optimization` |
-| 已验证私有库 | `wdra48-fix-20261020/libtriton.with-wdra-fix.so` |
-| 私有库 SHA256 | `494cd198a4f62b73821df1dcbacaaa3776948f87708f543ff77e388a5f8df3af` |
+| 当前编译器提交 | `fdcee56d677ee4ffa806c6ee3d16b85352a09270`，保留 WDRA 修复并修正 FP32 LTS 选择 |
+| 已验证私有库 | `fp32-lts-20261020/libtriton.fp32-lts.so` |
+| 私有库 SHA256 | `a2708832770238e3ba0f929fa27408da23a592f162cf4d27dbf53beff632ebd8` |
 | 原库 SHA256（未覆盖） | `169f9640add95d07a540ad1b20275bbec7fc66ffe5d85f0fbcd83a1efc5f033e` |
 | 统一环境 | `gemm-optimization-20261020/env.sh`，选择独立 Python overlay 与缓存 |
 | WDRA 完整证据 | `wdra48-fix-20261020/REPORT.md`、`final-results.json/csv`、`source-version.json`、`active-import-verification.json` |
