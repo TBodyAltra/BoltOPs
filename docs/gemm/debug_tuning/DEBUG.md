@@ -1,6 +1,6 @@
 # GEMM 关键 debug 结论
 
-截至 2026-10-20；当前支持入口见 [README](../README.md)。这里只保留可复用的根因、修复与验收边界。所有下列相对产物路径均以仓库外 `/xukang/code/pmd-triton-sessions/` 为前缀。
+截至 2026-10-21；当前支持入口见 [README](../README.md)。这里只保留可复用的根因、修复与验收边界。所有下列相对产物路径均以仓库外 `/xukang/code/pmd-triton-sessions/` 为前缀。
 
 ## FP8 scale 解码与分组
 
@@ -100,7 +100,7 @@ IR/LLIR/汇编确认真实warp_specialize、WDRA初始化、MMAC和abarrier，�
 
 ## PMD诊断警告
 
-G184的E8M0 A scale、BK64 LTS基线出现 `v_pk_fma_f32 ... read vgpr ... before writing` 检查警告；相同警告已见于数值容差通过的8CTA基线。BK128 dot提前候选未见该警告。当前完整G184仍在运行，尚不把完整点记PASS；不屏蔽、不替换实现。它不同于 `unimplemented GCN3 instruction` 的致命不支持。保留原文和计数，最终以完整精度校验及PMD诊断调查为准，不能仅凭pilot将警告定性为误报。仓库外 `overnight-gemm-20261020/pmd-warning-audit.json` 记录了样例与依据。
+G184的E8M0 A scale、BK64 LTS基线出现 `v_pk_fma_f32 ... read vgpr ... before writing` 检查警告；完整精度max_abs=2、mismatch=1226、全部有限且超限0，正式计时完成。BK128 dot提前候选逐元素一致、无该警告。两项完整日志均无 `unimplemented GCN3 instruction`。未屏蔽警告、初始化寄存器绕过或替换实现。匹配汇编源对为`v[163:164]`并带`op_sel_hi:[0,1,1]`，当前PMD包不含源码，仅据精度通过和操作数选择信息不能证明检查警告是误报。仓库外 `overnight-gemm-20261020/pmd-warning-audit.json` 保留完整日志的计数/样例，`G184-warning-assembly-evidence.json`记录汇编行号；原始日志全部在Git外。
 
 ## 编译器与复现入口
 
@@ -125,3 +125,5 @@ G184的E8M0 A scale、BK64 LTS基线出现 `v_pk_fma_f32 ... read vgpr ... befor
 - wheel 曾漏打包 23 份 gfx946 调优 JSON；package-data 已补齐，安装产物的 CPU 配置检查通过，不代表实机执行通过。
 - 历史 PMD 的 LLVM `043b33c45cfa` 在 256×256×4096 WDRA48/MLS 上导致 153781→157267 cycles（+2.27%），两版正确性均 PASS；4 个 nop 可恢复周期，具体调度机制未定。证据 `/xukang/code/pmd_perf_before_043b33c4/`、`pmd_perf_after_043b33c4/`。
 - 同一历史 reproducer 移除 matrix-store 地址 bit exchange 后 153779→157167 cycles，waitLgkm 933→1458；实际写回映射相同，不能直接归因为地址布局错误。`s_nop 6` 未恢复，具体后端修复仍开放。证据 `/xukang/code/perf_bit_exchange_ab/`、`/xukang/code/m5out_b_rebuilt_32x16_256/`。这些历史版本数据不能冒充当前编译器基线。
+
+补充环境快照区分系统pip分发元数据与实际模块：系统pip仍显示Triton3.2.0+git3c566042，当前私有overlay源码及已完成kernel编译元数据均为3.6.0；实际库路径与SHA是判定依据，不用pip版本代替加载版本。容器/image身份、Python/Torch构建版本见仓库外 `overnight-gemm-20261020/container-identity.json`、`runtime-versions.json`。

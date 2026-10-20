@@ -1,6 +1,6 @@
 # GEMM 关键调优记录
 
-截至 2026-10-20；支持范围见 [README](../README.md)，形状与 scale 见 [少伯 BU 支持需求](../SHAOBO_BU_REQUIREMENTS.md)。生产 kernel、默认 config 与 `builtin_gemm_configs.py` 不随实验修改。PMD 只校准与打磨少量流水候选，真实卡再做 autotune。
+截至 2026-10-21；支持范围见 [README](../README.md)，形状与 scale 见 [少伯 BU 支持需求](../SHAOBO_BU_REQUIREMENTS.md)。生产 kernel、默认 config 与 `builtin_gemm_configs.py` 不随实验修改。PMD 只校准与打磨少量流水候选，真实卡再做 autotune。
 
 ## Die 模式与性能记录
 
@@ -143,11 +143,28 @@ G081（80×512×7168，A/B E8M0/K128）完成同副本受控对照：
 
 全部逐元素一致、无scratch。BN减半减少10.50% cycles；固定tile改WASP44再减少22.24%，合计30.40%。64×64将M padding从96增到128，实际MMOP增加1/3，表现更差。原source与dot提前副本的32×128普通流水仅差0.26%，不能把此例总收益归到source顺序。
 
-G184（完整shape5120×4096×8192）的8CTA派生pilot中，原BK64 LTS为403812.67 cycles，dot提前BK128 LTS为271596，减少32.74%；后者三次波动0.027%，逐元素一致、无scratch。G171三项全部PASS后，完整G184已通过预算和资源门槛并启动BK64 LTS / BK128 LTS dot提前两项对照；完整结果尚待收集，pilot不冒充完整需求结果。
+第二接口对应副本复用32×64/BK128/stages2：普通流水107146 cycles，WASP44为80298，固定tile减少25.06%；两项均三次测量、逐元素一致、无scratch，波动分别0.511%/0.578%。相对其旧32×128普通流水143063.33，tile与流水组合减少43.87%。同WASP44配置的第一接口为79736.33，第二接口高约0.70%；仅三次样本，不作普遍接口优劣判断。新增两点的测量HEAD为ffafaa8（仅文档前进，kernel与840d基线无差异），逐点记录保留实际commit。
+
+### 完整 G184：E8M0 A scale
+
+M5120/N4096/K8192、E1、自然640CTA；输入E4M3×E4M3、输出BF16，A E8M0/K128，B离线N1/K128、实验存储E8M0。两项均BM128/BN256、stages2、WDRA48(4,4,4)、quota104/200/200、LTS与优化epilogue；同一编译器/代码基线，各一次精度预热、一次正式计时。
+
+| 外部副本配置 | cycles | LDS bytes | 实际分区VGPR | max_abs / mismatch / 超限 |
+| --- | ---: | ---: | --- | --- |
+| 原顺序，BK64 | 5480083 | 49920 | 69/165/165 | 2 / 1226 / 0 |
+| dot提前，BK128 | 3699477 | 99072 | 102/190/190 | 0 / 0 / 0 |
+
+两项均PASS、全部输出有限且无scratch。候选组合降低32.49% cycles（1.481倍），不是单独BK或调度收益。正式计时各一次，不宣称重复性；hostSeconds分别16160.8/12480.75，仅作预算。正式MMOP均20971520，按原生16×16×32算量核对等于2MNK=343597383680 FLOP，未缩grid或跳过仿真。8CTA派生pilot曾减少32.74%，完整尺寸结果单独保存，不能相互替代。
+
+BK64基线有packed-FMA未写先读检查警告，完整精度零超限仍不能证明警告误报；候选无该警告。完整文本与计数在仓库外保留，见debug记录。本轮共91个配置点，80个通过、11个因VGPR/barrier资源未编译通过；这不是接口验收通过率。逐点环境/版本/配置/数值/指标完整性审计通过，不改写原始结果。
 
 ## 下一步与证据位置
 
 优先将已验证候选带到实际卡上复测，并补未覆盖的scale类型、尾块和两die代表shape。小tile保留普通流水、WDRA44/WASP44、async；BPP只保留实际匹配域内候选。按 A FP32/K128、E8M0/K128、整行 scale 分别验收；补尾块、W 浮点 scale 和跨 CTA 验证后，再形成上卡 autotune 家族。第三个 FP8 接口仅维持兼容性 smoke；暂不扩大 split-K 或完整需求扫描。
+
+上卡建议最小集：两个性能接口各测G036、G081、G171、G184；另补129×257×1000尾块、A整行scale一项、B FP32 scale一项。尾块先用可编译的小tile普通/WASP路径，不能强推已触及资源墙的大tile。第二die优先复核四个真实shape及实际频率、容量、CU/映射，再决定是否复用单die选择规则。全部属于后续待验证项，不提前标PASS。
+
+当前生产第一接口与实验副本调用`remap_xcd(pid, GRID_MN)`时未接收返回值，helper本身返回新pid；本轮不宣称启用了8XCD重排，也不据此解释收益。该静态问题及大tile M子块方案在仓库外`STATIC-FOLLOWUP.md`单列，未改生产源码或创建新编译器补丁。
 
 全部路径以前缀 `/xukang/code/pmd-triton-sessions/` 为准：
 
@@ -162,8 +179,9 @@ G184（完整shape5120×4096×8192）的8CTA派生pilot中，原BK64 LTS为40381
 | 完整G171三项对照 | `overnight-gemm-20261020/full-G171-results.json`、`FULL-G171.md` |
 | 单CTA受控归因 | `overnight-gemm-20261020/controlled-pipeline-decomposition.json`、`CONTROLLED-DECOMPOSITION.md` |
 | G036七次重复性 | `overnight-gemm-G036-repeatability-20261020/REPORT-repeatability.md` |
+| G081第二接口迁移 | `overnight-gemm-vllm-G081-transfer-20261020/REPORT-transfer.md` |
 | G081同副本tile/流水对照 | `overnight-gemm-G081-occupancy-20261020/REPORT-controlled.md` |
-| G184完整运行状态 | `overnight-gemm-20261020/G184-current-status.json`、`G184-launch-runtime-proof.json` |
+| 完整G184两项对照 | `overnight-gemm-20261020/full-G184-results.json`、`FULL-G184.md`、`G184-terminal-status.json` |
 | 全部点的环境/代码/编译/数值/指标索引 | `overnight-gemm-20261020/record-index.csv`、`records/` |
 
 Git 只保留关键结论和证据索引，不接收原始日志、StatLog、输入输出、IR、汇编、HSACO 或快照。后续关键记录至少含环境/commit、对齐配置、精度阈值及误差、建模周期与重复次数、资源限制和外部证据路径。
