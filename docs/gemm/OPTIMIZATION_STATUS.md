@@ -73,9 +73,10 @@ FP16 两个配对点与 BF16 相差 -0.0432% / +0.2587%。未运行 split-K 或�
 
 当前改为先修通少量流水候选，再上卡autotune。已完成27个单CTA精度/性能点；
 小tile async有可复现候选，BK64 BPP在aiter副本中实际生效，但尚非跨BK最快。
-实际scaled-loop的WDRA48/44、WASP44触发编译器分区依赖断言，尚未修通；
-不能把纯dot编译对照当作支持PASS。详细结论与证据入口见
-[流水候选与阻塞](FP8_PIPELINE_20261020.md)。生产kernel和默认配置未改。
+首轮scaled-loop的分区依赖断言已在Triton同名分支e33b79cf1修复，
+统一GEMM环境采用已验证的私有编译库。34项runtime检查通过，同BK普通流水配对4/4完全一致；
+较大tile仍有LDS/VGPR限制，详见[修复记录](WDRA48_FIX_20261020.md)。
+首轮基线数据保留在[流水候选与阻塞](FP8_PIPELINE_20261020.md)。生产kernel和默认配置未改。
 
 ## 环境、证据与存储边界
 
@@ -103,8 +104,8 @@ PMD 不支持的指令必须如实标记环境能力缺失，不能软件绕过�
 
 先修通关键流水，再上真实卡做autotune，不在PMD展开207个shape的全量配置搜索。
 大tile优先WDRA48；较小tile保留普通流水、WDRA44/WASP44及async候选，BPP仅在匹配器
-允许的tile/BK域内尝试。当前优先定位post-dot scale的跨分区stage依赖断言；
-先以BK64和BK128各一条小复现验证修复，再补容量与数值检查，不删断言或绕过scale。
+允许的tile/BK域内尝试。post-dot scale的跨分区stage依赖断言已修复；接下来分析合法WDRA48配置的流水成本，
+再优化scale中转/布局及较大tile的容量和VGPR需求，不删资源校验或绕过scale。
 
 目前生产aiter内核仍要求GROUP_K==BK。仓库外副本的BK64使用正确的K128 scale索引，
 已完成有限测试，尚未晋升公开接口或默认配置。A FP32/K128、E8M0/K128与整行scale
