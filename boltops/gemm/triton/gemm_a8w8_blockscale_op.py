@@ -75,6 +75,7 @@ def _gemm_a8w8_blockscale_kernel(
     GRID_MN: tl.constexpr,
     cache_modifier: tl.constexpr,
     num_stages: tl.constexpr,
+    A_SCALE_PER_ROW: tl.constexpr = False,
 ):
     """
     Note: this is Triton jited function and not meant to be called directly. Call gemm_a8w8_blockscale function
@@ -149,7 +150,8 @@ def _gemm_a8w8_blockscale_kernel(
         # Create pointers for the scales
         offs_k_scale = (pid_k * SPLITK_BLOCK_SIZE) // GROUP_K
         a_scale_ptrs = (
-            a_scale_ptr + offs_am * stride_ascale_m + offs_k_scale * stride_ascale_k
+            a_scale_ptr + offs_am * stride_ascale_m
+            + (0 if A_SCALE_PER_ROW else offs_k_scale) * stride_ascale_k
         )
         offs_b_scale_n = offs_bn // GROUP_N
         b_scale_ptrs = (
@@ -188,7 +190,8 @@ def _gemm_a8w8_blockscale_kernel(
             a_ptrs += BLOCK_SIZE_K * stride_ak
             b_ptrs += BLOCK_SIZE_K * stride_bk
 
-            a_scale_ptrs += offs_ks_step * stride_ascale_k
+            if not A_SCALE_PER_ROW:
+                a_scale_ptrs += offs_ks_step * stride_ascale_k
             b_scale_ptrs += offs_ks_step * stride_bscale_k
 
         c = accumulator.to(c_ptr.type.element_ty)

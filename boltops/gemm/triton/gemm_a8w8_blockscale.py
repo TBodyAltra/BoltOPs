@@ -48,7 +48,7 @@ def gemm_a8w8_blockscale(
         x (torch.Tensor): INT8 or FP8 input matrix with shape (M, K).
         w (torch.Tensor): INT8 or FP8 weight matrix with shape (N, K), internally transposed.
         x_scale (torch.Tensor): Block-wise scale for x with shape (M, scale_k).
-            scale_k = ceil(K / scale_block_size_k).
+            scale_k = ceil(K / scale_block_size_k), or 1 for one scale per row.
         w_scale (torch.Tensor): Block-wise scale for w with shape (scale_n, scale_k).
             scale_n = ceil(N / scale_block_size_n).
         dtype (Optional[torch.dtype]): Output datatype (BF16 or FP16).
@@ -65,6 +65,11 @@ def gemm_a8w8_blockscale(
 
     # Check constraints.
     assert x.shape[1] == w.shape[1], "Incompatible dimensions!!!"
+
+    assert x_scale.ndim == 2 and x_scale.shape[0] == M
+    assert w_scale.ndim == 2
+    assert x_scale.shape[1] in (1, w_scale.shape[1]), "A scale must be per-row or per-K-group"
+    a_scale_per_row = x_scale.shape[1] == 1
 
     # Transpose w and w_scale
     w = w.T  # (K, N)
@@ -151,6 +156,7 @@ def gemm_a8w8_blockscale(
         x_scale.stride(1),
         w_scale.stride(0),
         w_scale.stride(1),
+        A_SCALE_PER_ROW=a_scale_per_row,
         **config,
     )
 

@@ -73,6 +73,7 @@ def _w8a8_triton_block_scaled_mm(
     BLOCK_SIZE_N: tl.constexpr,
     BLOCK_SIZE_K: tl.constexpr,
     GROUP_SIZE_M: tl.constexpr,
+    A_SCALE_PER_ROW: tl.constexpr = False,
 ):
     pid = tl.program_id(axis=0)
     num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
@@ -101,7 +102,8 @@ def _w8a8_triton_block_scaled_mm(
 
         k_start = k * BLOCK_SIZE_K
         offs_ks = k_start // group_k
-        a_s = decode_fp8_scale(tl.load(As_ptrs + offs_ks * stride_As_k), A.dtype.element_ty.is_fp8())
+        a_scale_k = 0 if A_SCALE_PER_ROW else offs_ks
+        a_s = decode_fp8_scale(tl.load(As_ptrs + a_scale_k * stride_As_k), A.dtype.element_ty.is_fp8())
         b_s = decode_fp8_scale(tl.load(Bs_ptrs + offs_ks * stride_Bs_k), B.dtype.element_ty.is_fp8())
 
         accumulator += tl.dot(a, b) * a_s[:, None] * b_s[None, :]
@@ -135,7 +137,8 @@ def w8a8_triton_block_scaled_mm(
     Args:
         A: activation, e.g. ``[..., K]`` FP8
         B: weight ``[N, K]`` FP8
-        As: per-token-group scale for ``A`` (floating values or uint8 E8M0)
+        As: ``[..., ceil(K/block_k)]`` per-token-group scale, or ``[..., 1]``
+            for one scale per token (floating values or uint8 E8M0)
         Bs: per-block scale for ``B`` ``[ceil(N/block_n), ceil(K/block_k)]``;
             uint8 storage is decoded as E8M0 for FP8 operands
         block_size: ``[block_n, block_k]``, e.g. ``[128, 128]``
@@ -146,7 +149,8 @@ def w8a8_triton_block_scaled_mm(
 
     assert A.shape[-1] == B.shape[-1]
     assert A.shape[:-1] == As.shape[:-1] and A.is_contiguous()
-    assert triton.cdiv(A.shape[-1], block_k) == As.shape[-1]
+    assert As.shape[-1] in (1, triton.cdiv(A.shape[-1], block_k))
+    a_scale_per_row = As.shape[-1] == 1
     M = A.numel() // A.shape[-1]
 
     assert B.ndim == 2 and Bs.ndim == 2
@@ -196,6 +200,7 @@ def w8a8_triton_block_scaled_mm(
         As.stride(-1),
         Bs.stride(1),
         Bs.stride(0),
+        A_SCALE_PER_ROW=a_scale_per_row,
         **config,
     )
     return C
