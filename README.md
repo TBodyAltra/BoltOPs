@@ -274,8 +274,13 @@ optest --display                                            # HTML report from l
 2. Prefer public signatures aligned with vLLM / SGLang (or HIPC / CUDA C); wire ship-time backend selection in `boltops/<op>/__init__.py` and export.
 3. Re-export from `boltops/__init__.py` and add `docs/ops/`.
 
+## GEMM 支持与优化
+
+统一开发分支：[`perf/gemm-optimization`](http://42.228.13.241:10068/dcutoolkit/deeplearing/BoltOPs/-/tree/perf/gemm-optimization)。
+当前支持、46 项 FP8 smoke 和 Track A/B 调优状态见 [统一记录](docs/gemm/OPTIMIZATION_STATUS.md)。原始实验产物留在仓库外。
+
 ## FP8 × FP4 interface validation (2026-10-17)
 
 | Environment | Scope | Result | Evidence |
 | --- | --- | --- | --- |
-| node60 / PMD gfx946 / Triton release/3.6.x | FP8 E4M3 × packed E2M1, dense and grouped | 15/15 regression PASS; 34/34 requirements compile PASS; full precision validation running | [API and validation](docs/gemm/FP8_FP4_20261017.md) |
+| node60 / PMD gfx946 / Triton release/3.6.x | FP8 E4M3 × packed E2M1, dense and grouped | 15/15 regression PASS; 34/34 requirements compile PASS; full-size precision validation paused; see current GEMM status | [API and validation](docs/gemm/FP8_FP4_20261017.md) |
