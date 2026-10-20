@@ -2,6 +2,23 @@
 
 截至 2026-10-20；支持范围见 [README](../README.md)，形状与 scale 见 [少伯 BU 支持需求](../SHAOBO_BU_REQUIREMENTS.md)。生产 kernel、默认 config 与 `builtin_gemm_configs.py` 不随实验修改。PMD 只校准与打磨少量流水候选，真实卡再做 autotune。
 
+## Die 模式与性能记录
+
+少伯支持 1/2/4 die，每 die 48 CU，对应总计 48/96/192 CU。当前 PMD 只能测试 1 die 和 4 die；后续优化重点为 1 die 和 2 die，现阶段优先在 1 die（48 CU）上调优。2 die 暂记待实测，不从 4 die 结果推断已验证。Die 数与 XCD 数分别记录，不能直接等同；每波 CTA 数仍需按实际配置测量。
+
+每次性能测量均在仓库外保存环境 manifest，并在结果行中引用其路径或 ID；配置变化必须生成新的 manifest：
+
+| 必填项 | 记录内容 |
+| --- | --- |
+| 执行环境 | PMD / 实卡、arch、die 数、每 die CU 数、总 CU 数；XCD 拓扑及证据来源 |
+| 频率 | 实际使用的 GPU/CU 时钟及单位；PMD clock domain 与配置值；其他影响结果的时钟单独记录 |
+| 软件版本 | Triton、BoltOps 完整 commit ID 和工作区状态；PMD/工具链版本，私有编译器库路径及 SHA256 |
+| 编译与运行参数 | 完整有效 config、constexpr、launch grid、warps/stages、WASP/WDRA/BPP/async 等开关，以及编译命令和目标架构选项 |
+| 环境变量 | 会影响编译、缓存、选路、仿真或计时的变量有效值，包括相关 TRITON/HCU/HIP/PMD 设置；缓存及私有库的实际选择 |
+| 测量口径 | shape、dtype、scale、stride、warmup/重复次数、cycles 统计来源、hostSeconds、指令/资源统计及精度结果 |
+
+默认值也须记录解析后的有效值；未知项明确标记 unknown 并附原因，不补猜值。现有历史数据缺 die/频率证据时标记未核实，不用于新口径下的性能排名。仅在 die 数、频率、软件与有效配置对齐后计算直接性能收益；不同 die 的结果分别汇报。
+
 ## 比较口径
 
 - 必须对齐 M/N/K、dtype、scale 粒度/存储、stride、tile、warps、stages、split-K、编译器和 PMD 配置。先 warmup 编译、执行预热，计时不含 JIT。
