@@ -1,6 +1,6 @@
 # 少伯 BU GEMM 支持需求
 
-来源：`/xukang/GEMM支持清单.html`（生成日期 2026-10-12）。按算子类型及输入、输出精度分为 9 张表，保留 511 行需求和 2504 条算子实例；表 7–9 从来源抽取为单次 grouped GEMM 需求，保留 M/N/K、分组数、dtype 和 scale。
+来源：`/xukang/GEMM支持清单.html`（生成日期 2026-10-12）。当前范围为 7 张表、469 行需求和 2424 条算子实例；保留来源表 1–6、表 8 的编号，G 编号不重排。表 8 记录单次 grouped FP8×FP4 GEMM 的 M/N/K、分组数、dtype 和 scale。
 
 原 HTML SHA256：`187673895b820bfb89d6b2890ffb35fa378a183e8922238a8f96df2ff738d11c`。
 
@@ -13,8 +13,8 @@
 - 输出精度指写回显存的精度，与累加精度分开验证。
 - 有量化的表保留 scale 原始信息；在整张表全空或不适用的列直接省略。含推断值的条目接入模型时需核实。
 - 状态分为接口级「接口 smoke 通过」「待 grouped GEMM smoke」「接口 smoke 受阻」与需求尺寸级「待验证」「编译通过」「完整尺寸正确性通过」「已调优」；不得把接口 smoke 或编译通过升级为本行完整尺寸 PASS。
-- BoltOps 函数 / 实现列链接实际源码定义；它表示当前可对接的接口或内部 kernel，不替代模型布局、量化格式与分组寻址适配。表 7–9 只关注单次 grouped GEMM，输入量化值、scale 和分组索引由测试预先准备；不把在线量化、路由生成、激活或结果合并纳入验收。
-- ResNet50 INT8 隐式 GEMM 卷积 24 类和末端 FC 不在这 511 行中，仍以原 HTML 及当前支持说明为准。
+- BoltOps 函数 / 实现列链接实际源码定义；它表示当前可对接的接口，不替代模型布局、量化格式与分组寻址适配。表 8 只关注单次 grouped GEMM，输入量化值、scale 和分组索引由测试预先准备；不把在线量化、路由生成、激活或结果合并纳入验收。
+- ResNet50 INT8 隐式 GEMM 卷积 24 类和末端 FC 不在这 469 行中，仍以原 HTML 及当前支持说明为准。
 
 模型 / 配置列使用 [C 编号](#model-config-index) 引用文末的完整组合，缩短主表宽度；点击编号可查看模型、精度及序列/规模配置。
 
@@ -28,15 +28,13 @@
 | [表 4](#table-4) | linear | FP32 × FP32 → FP32 | 35 | 218 |
 | [表 5](#table-5) | linear | BF16 × BF16 → FP32 | 27 | 172 |
 | [表 6](#table-6) | linear | BF16 × INT4 → BF16 | 4 | 4 |
-| [表 7](#table-7) | grouped_gemm | FP8E4M3 × FP8E4M3 → BF16 | 36 | 70 |
 | [表 8](#table-8) | grouped_gemm | FP8E4M3 × FP4E2M1 → BF16 | 34 | 304 |
-| [表 9](#table-9) | grouped_gemm | BF16 × INT4 → BF16 | 6 | 10 |
 
 <a id="smoke-evidence"></a>
 
 ## Smoke 验证依据（2026-10-20）
 
-实测环境为 node60 / PMD gfx946 / Triton release/3.6.x。按“每接口一个小 size”的验收口径记录；同一证据会被同族多条需求引用，**469 行显示接口 smoke 通过不代表执行了 469 个需求尺寸测试**。表 7 的 36 行、表 9 的 6 行尚待直接 grouped GEMM smoke。原有完整尺寸任务保持暂停，本次只整理既有记录。
+实测环境为 node60 / PMD gfx946 / Triton release/3.6.x。按“每接口一个小 size”的验收口径记录；同一证据会被同族多条需求引用，**469 行显示接口 smoke 通过不代表执行了 469 个需求尺寸测试**。原有完整尺寸任务保持暂停，本次只整理既有记录。
 
 | 证据 | 接口与实际测试范围 | 最终结果 / 条件 |
 | --- | --- | --- |
@@ -46,9 +44,7 @@
 | <a id="smoke-fp32"></a>S03 修复后 | `matmul_persistent`，FP32→FP32，64×64×64 | PASS，4096 元素 mismatch=0；相对 FP64 golden 的 max_abs≈1.05e-7。依赖 S03 LEGACY 补丁；旧结果的 2906/4096 FAIL 已被此结果替代 |
 | <a id="smoke-bf16-fp32"></a>S06 | `gemm_a16w16`，BF16→FP32，64×128×64 | PASS，max_abs≈5.96e-8、mismatch=0 |
 | <a id="smoke-awq"></a>S18 | `awq_gemm_triton`，BF16×INT4→BF16，16×64×64 | PASS，max_abs=0、mismatch=0；仅验证该测试的 AWQ 打包及 scale/zero-point 配置 |
-| <a id="smoke-grouped-fp8"></a>grouped FP8 | 单次 FP8×FP8 grouped GEMM；预先准备 FP8 A、权重、scale 及分组寻址元数据 | 待直接 smoke；接口适配及 A/W scale 组合需单独验证 |
 | <a id="smoke-fp8fp4"></a>S28 / S31 | `grouped_gemm_a8wfp4`，FP8×FP4→BF16；等长 E×M×N×K=3×5×35×130，ragged E=4/T=57/N=35/K=97、含空组 | PASS，复用已审计的原回归；K32/K128 与浮点/E8M0 scale 组合见原 15 项回归。FP16/FP32 输出另有 S29/S30/S32/S33 PASS |
-| <a id="smoke-grouped-int4"></a>grouped INT4 | 单次 BF16×INT4 grouped GEMM；预先准备打包权重、scale/zero-point 及分组寻址元数据 | 待直接 smoke；打包格式、分组粒度和寻址需单独验证 |
 
 原始记录均在 Git 工作区之外，统一前缀为 `/xukang/code/pmd-triton-sessions/`：
 
@@ -557,53 +553,6 @@
 | G434 | 4 × 24576 × 7168 | decode | 1 | 离线 per-group | [C003](#c003) | [awq_gemm_triton][fn-awq] | 接口 smoke 通过 | [S18](#smoke-awq) |
 | G435 | 4 × 24576 × 14336 | decode | 1 | 离线 per-group | [C003](#c003) | [awq_gemm_triton][fn-awq] | 接口 smoke 通过 | [S18](#smoke-awq) |
 
-<a id="table-7"></a>
-
-## 表 7：grouped_gemm · FP8E4M3 × FP8E4M3 → BF16
-
-36 行需求，累计 70 条实例。编号在本清单中全局唯一。
-
-本表抽取单次 FP8×FP8 grouped GEMM 的 M/N/K、分组数 E、A/W scale 需求。实现列只链接现有内部 grouped kernel，尚无已验证的独立公开包装接口；测试需直接提供预量化 A/W、scale 与 sorted-token 等固定分组寻址元数据。A 整行 scale / W K128 等组合仍待适配与直接 smoke，状态不变。
-
-| 编号 | M × N × K | 分组数 E | 阶段 | 频次 | 激活 scale | 权重 scale | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 | 验证 / 优化记录 |
-| --- | --- | ---: | --- | ---: | --- | --- | --- | --- | --- | --- |
-| G436 | 3 × 1024 × 2048 | 221 | decode | 2 | FP32@1×128 | 离线 1×128 | [C013](#c013) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G437 | 3 × 2048 × 512 | 221 | decode | 2 | FP32@1×128 | 离线 1×128 | [C013](#c013) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G438 | 3 × 3072 × 4096 | 11 | decode | 1 | FP32@1×4096 | 离线 1×128 | [C011](#c011) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G439 | 3 × 4096 × 1536 | 11 | decode | 1 | FP32@1×1536 | 离线 1×128 | [C011](#c011) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G440 | 4 × 2048 × 4096 | 63 | decode | 1 | FP32@1×128 | 离线 1×128 | [C012](#c012) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G441 | 4 × 4096 × 1024 | 63 | decode | 1 | FP32@1×128 | 离线 1×128 | [C012](#c012) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G442 | 4 × 4096 × 6144 | 15 | decode | 1 | FP32@1×128 | 离线 1×128 | [C001](#c001) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G443 | 4 × 6144 × 2048 | 15 | decode | 1 | FP32@1×128 | 离线 1×128 | [C001](#c001) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G444 | 6 × 4096 × 6144 | 16 | decode | 1 | FP32@1×128 | 离线 1×128 | [C002](#c002) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G445 | 6 × 6144 × 2048 | 16 | decode | 1 | FP32@1×128 | 离线 1×128 | [C002](#c002) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G446 | 11 × 3072 × 4096 | 12 | decode | 1 | FP32@1×4096 | 离线 1×128 | [C011](#c011) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G447 | 11 × 4096 × 1536 | 12 | decode | 1 | FP32@1×1536 | 离线 1×128 | [C011](#c011) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G448 | 12 × 4096 × 6144 | 16 | decode | 1 | FP32@1×128 | 离线 1×128 | [C001](#c001) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G449 | 12 × 6144 × 2048 | 16 | decode | 1 | FP32@1×128 | 离线 1×128 | [C001](#c001) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G450 | 15 × 2048 × 4096 | 64 | decode | 2 | FP32@1×128 | 离线 1×128 | [C012](#c012) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G451 | 15 × 4096 × 1024 | 64 | decode | 2 | FP32@1×128 | 离线 1×128 | [C012](#c012) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G452 | 24 × 4096 × 6144 | 16 | decode | 1 | FP32@1×128 | 离线 1×128 | [C002](#c002) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G453 | 24 × 6144 × 2048 | 16 | decode | 1 | FP32@1×128 | 离线 1×128 | [C002](#c002) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G454 | 80 × 1024 × 2048 | 256 | prefill | 2 | FP32@1×128 | 离线 1×128 | [C013](#c013) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G455 | 80 × 2048 × 512 | 256 | prefill | 2 | FP32@1×128 | 离线 1×128 | [C013](#c013) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G456 | 171 × 3072 × 4096 | 24 | prefill | 2 | FP32@1×4096 | 离线 1×128 | [C011](#c011) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G457 | 171 × 4096 × 1536 | 24 | prefill | 2 | FP32@1×1536 | 离线 1×128 | [C011](#c011) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G458 | 208 × 1024 × 2048 | 256 | prefill | 2 | FP32@1×128 | 离线 1×128 | [C013](#c013) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G459 | 208 × 2048 × 512 | 256 | prefill | 2 | FP32@1×128 | 离线 1×128 | [C013](#c013) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G460 | 560 × 2048 × 4096 | 64 | prefill | 4 | FP32@1×128 | 离线 1×128 | [C012](#c012) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G461 | 560 × 4096 × 1024 | 64 | prefill | 4 | FP32@1×128 | 离线 1×128 | [C012](#c012) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G462 | 640 × 4096 × 6144 | 32 | prefill | 2 | FP32@1×128 | 离线 1×128 | [C002](#c002) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G463 | 640 × 6144 × 2048 | 32 | prefill | 2 | FP32@1×128 | 离线 1×128 | [C002](#c002) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G464 | 1040 × 2048 × 4096 | 64 | prefill | 4 | FP32@1×128 | 离线 1×128 | [C012](#c012) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G465 | 1040 × 4096 × 1024 | 64 | prefill | 4 | FP32@1×128 | 离线 1×128 | [C012](#c012) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G466 | 1152 × 4096 × 6144 | 32 | prefill | 2 | FP32@1×128 | 离线 1×128 | [C001](#c001) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G467 | 1152 × 6144 × 2048 | 32 | prefill | 2 | FP32@1×128 | 离线 1×128 | [C001](#c001) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G468 | 1664 × 4096 × 6144 | 32 | prefill | 4 | FP32@1×128 | 离线 1×128 | [C009](#c009) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G469 | 1664 × 6144 × 2048 | 32 | prefill | 4 | FP32@1×128 | 离线 1×128 | [C009](#c009) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G470 | 2219 × 3072 × 4096 | 24 | prefill | 2 | FP32@1×4096 | 离线 1×128 | [C011](#c011) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-| G471 | 2219 × 4096 × 1536 | 24 | prefill | 2 | FP32@1×1536 | 离线 1×128 | [C011](#c011) | [FP8 grouped kernel（内部）][fn-grouped-fp8-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-fp8) |
-
 <a id="table-8"></a>
 
 ## 表 8：grouped_gemm · FP8E4M3 × FP4E2M1 → BF16
@@ -648,23 +597,6 @@
 | G503 | 960 × 4096 × 4096 | 32 | prefill | 16 | FP8E8M0@1×128 | 离线 1×32 (MXFP4) | [C008](#c008) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 | [S28、S31](#smoke-fp8fp4) |
 | G504 | 1248 × 4096 × 2048 | 32 | prefill | 32 | FP32@1×128 | 离线 1×32 (MXFP4) | [C016](#c016) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 | [S28、S31](#smoke-fp8fp4) |
 | G505 | 1248 × 4096 × 4096 | 32 | prefill | 32 | FP8E8M0@1×128 | 离线 1×32 (MXFP4) | [C016](#c016) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 | [S28、S31](#smoke-fp8fp4) |
-
-<a id="table-9"></a>
-
-## 表 9：grouped_gemm · BF16 × INT4 → BF16
-
-6 行需求，累计 10 条实例。编号在本清单中全局唯一。
-
-本表抽取单次 BF16×INT4 grouped GEMM 的 M/N/K、分组数 E 和权重 scale 需求。实现列链接内部 W4A16 grouped kernel；独立接口与 smoke 待补。打包权重、scale/zero-point 与固定分组寻址元数据由调用方提供，来源未明确的 per-group 粒度、打包格式不得推断为已支持。
-
-| 编号 | M × N × K | 分组数 E | 阶段 | 频次 | 权重 scale | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 | 验证 / 优化记录 |
-| --- | --- | ---: | --- | ---: | --- | --- | --- | --- | --- |
-| G506 | 6 × 4096 × 7168 | 24 | decode | 1 | 离线 per-group | [C003](#c003) | [W4A16 grouped kernel（内部）][fn-grouped-int4-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-int4) |
-| G507 | 6 × 7168 × 2048 | 24 | decode | 1 | 离线 per-group | [C003](#c003) | [W4A16 grouped kernel（内部）][fn-grouped-int4-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-int4) |
-| G508 | 854 × 4096 × 7168 | 48 | prefill | 2 | 离线 per-group | [C003](#c003) | [W4A16 grouped kernel（内部）][fn-grouped-int4-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-int4) |
-| G509 | 854 × 7168 × 2048 | 48 | prefill | 2 | 离线 per-group | [C003](#c003) | [W4A16 grouped kernel（内部）][fn-grouped-int4-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-int4) |
-| G510 | 1110 × 4096 × 7168 | 48 | prefill | 2 | 离线 per-group | [C003](#c003) | [W4A16 grouped kernel（内部）][fn-grouped-int4-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-int4) |
-| G511 | 1110 × 7168 × 2048 | 48 | prefill | 2 | 离线 per-group | [C003](#c003) | [W4A16 grouped kernel（内部）][fn-grouped-int4-kernel] | 待 grouped GEMM smoke | [独立 grouped 待验证](#smoke-grouped-int4) |
 
 <a id="model-config-index"></a>
 
@@ -756,5 +688,3 @@ Qwen3.5-35B-A3B/FP8[4k/1k/s150]; Qwen3.5-35B-A3B/MXFP4[128k/1k/s150]
 [fn-fp8-vllm]: ../../boltops/gemm/triton/w8a8_triton_block_scaled_mm.py#L127
 [fn-awq]: ../../boltops/gemm/triton/awq_gemm_triton.py#L351
 [fn-fp8fp4]: ../../boltops/gemm/triton/gemm_a8wfp4.py#L83
-[fn-grouped-fp8-kernel]: ../../boltops/fused_moe/triton/moe_op.py#L1292
-[fn-grouped-int4-kernel]: ../../boltops/fused_moe/triton/moe_op.py#L307

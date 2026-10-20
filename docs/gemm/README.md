@@ -14,13 +14,11 @@
 | dense，FP8×FP8→BF16/FP16/FP32 | 下表三个接口 | 46/46 smoke PASS，max_abs=0、mismatch=0；需求表 2 只映射前两个接口 |
 | dense，BF16×INT4→BF16 | `awq_gemm_triton` | S18 PASS；仅验证对应 AWQ 打包、scale/zero-point，不能泛化所有 INT4 格式 |
 | dense / grouped，FP8×FP4→BF16/FP16/FP32 | `gemm_a8wfp4` / `grouped_gemm_a8wfp4` | 15/15 回归及 9/9 接口 smoke PASS（含复用）；等长、ragged、空组、尾块和 stride 已有覆盖；34/34 完整需求仅编译通过，精度队列暂停 |
-| grouped，FP8×FP8→BF16 | [FP8 grouped kernel](../../boltops/fused_moe/triton/moe_op.py#L1292)（内部实现） | 需求表 7 待独立 grouped smoke；独立公开包装接口及部分 scale 组合仍需适配 |
-| grouped，BF16×INT4→BF16 | [W4A16 grouped kernel](../../boltops/fused_moe/triton/moe_op.py#L307)（内部实现） | 需求表 9 待独立 grouped smoke；需确认 packed 格式、scale/zero-point 与分组寻址 |
 | native FP4×FP4；batched FP16/BF16×FP4 | `gemm_afp4wfp4` / `batched_gemm_a16wfp4` | S34–S37 原生路径小尺寸 PASS；需要已修复的 ROCDL translation 构建环境 |
 
-表 7–9 统一作为 grouped GEMM 需求：保留原 M/N/K、分组数 E、dtype、A/W scale、阶段及频次；E 对应来源中的 experts，不改变数值。不从来源 M 推断所有组等长，变长各组 M 与偏移须另行提供。上层路由、在线量化、激活和结果合并均不在本目录验收范围。FP8 / W4A16 的实现链接指向现有内部 kernel，并不表示已经新增同名 grouped 公共接口。
+表 8 作为 grouped FP8×FP4 GEMM 需求：保留原 M/N/K、分组数 E、dtype、A/W scale、阶段及频次；E 对应来源中的 experts，不改变数值。不从来源 M 推断所有组等长，变长各组 M 与偏移须另行提供。上层路由、在线量化、激活和结果合并均不在本目录验收范围。
 
-少伯 BU 清单含 9 张表、511 行 / 2504 实例：表 1 BMM、表 2–6 dense、表 7–9 grouped。469 行“接口 smoke 通过”是复用接口证据，表 7/9 共 42 行仍待直接 smoke。INT8 隐式 GEMM 卷积与末端 FC 不在该 511 行中，未在此宣称支持。
+少伯 BU 清单当前含 7 张表、469 行 / 2424 实例：表 1 BMM、表 2–6 dense、表 8 grouped FP8×FP4。保留来源表号及 G 编号，不重排。469 行“接口 smoke 通过”是复用接口证据，不是 469 个完整需求尺寸 PASS。INT8 隐式 GEMM 卷积与末端 FC 不在该清单中，未在此宣称支持。
 
 ## FP8 接口与 scale
 
