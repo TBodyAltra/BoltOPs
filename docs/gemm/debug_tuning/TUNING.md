@@ -100,11 +100,54 @@ PMD 已实测建模软件流水：Track B 校准中 stages3 快约 16.3%，LGKM 
 
 布局必须记录 stride：TT 指 A K-major、B N-major；TN 指 A/B 均 K-major。历史 FP16 256×256×64 的 TT `ds_read_m32x16_fp16` 可用 quota 112/196/196；TN `ds_read2_b64` 不能直接照搬，需要 BK32 或 MLS 路径再验证。旧胜出配置仍保存在 [gfx946 JSON](../../../boltops/gemm/triton/configs/gemm_fp16/gfx946/)，版本变化后必须复测，旧 TOPS 不作为当前基线。
 
-新 WDRA48 已执行 128×128/BK32（LDS 50432）和 128×64/BK64（42112）；128×128/BK64（66816）与 BK128（99584）超当前 65536-byte 容量，未执行。不以编译通过代替资源可运行性或精度 PASS。
+首轮按 arch_info 的64KiB门槛排除部分配置；后续确认PMD实际LDS为128KiB，HIP报告256KiB。128×128/BK64、BK128及128×256/BK128已有在实际PMD容量内的运行结果；生产容量表未改。不以编译通过代替资源可运行性或精度PASS。
+
+## 当前实测配置（单die）
+
+本轮代码基线：Triton `9fab6e70ed511f9de6a52cd4dd95eb60a3b74916`、BoltOps `840d816b671983527e5b1acc831c5e67618fe981`；私有库及构建溯源见debug记录。单die48CU，请求GPU2.2GHz，实际455ps/周期。
+
+完整表二G171：4608×3072×6144、E1、自然432CTA；BM128/BN256、stages2、WDRA48(4,4,4)、GROUP_SIZE_M1、NUM_KSPLIT1，FP8 E4M3×E4M3→BF16；A FP32/K128，B选uint8/E8M0、N1/K128。相对本轮手动WDRA48 BK64基线；第一接口kernel外部副本，未改生产默认配置。每配置一次独立精度/预热与一次正式计时，JIT和CPU参考不计入cycles。
+
+| 配置 | quota（producer/consumer） | cycles | LDS bytes | 精度 |
+| --- | --- | ---: | ---: | --- |
+| BK64，自动LIT，无epilogue优化 | 120/192/192 | 3256644 | 116224 | max_abs0.125，超限0 |
+| BK64，仅重分配quota | 64/220/220 | 3255478 | 116224 | max_abs0.125，超限0 |
+| BK128，LTS，优化epilogue | 104/200/200 | 1748203 | 99840 | max_abs0，mismatch0 |
+
+三项均PASS、无scratch。quota单独仅减少0.0358%，没有实质收益；BK/layout/epilogue/quota组合减少46.32%（1.863倍），不是layout单因素结论。MMOP均10616832，VALU减少72.99%；VMEM指令增加41.79%，TCC请求仅增加1.95%，不能把VMEM指令数当作A/B加载字节数。正式完整尺寸每配置仅一次，不声称完整尺寸抖动区间。
+
+### 单CTA受控对照
+
+单die48CU，请求GPU2.2GHz，实际455ps/周期（约2.197802GHz）。以下是单CTA自然shape128×256×6144、BK128、WDRA48、LTS、stages2、优化epilogue、quota104/200/200的三次均值；不能代替完整需求shape结论。使用外部副本，未改生产kernel或默认config。 第一接口指 `gemm_a8w8_blockscale`，第二接口指 `w8a8_triton_block_scaled_mm`；本轮输入为E4M3×E4M3、输出BF16。B scale选uint8/E8M0作实验存储，需求只规定离线N1/K128，不据此推断B scale dtype。
+
+| 对照 | 基线cycles | 候选cycles | 下降 | 精度 |
+| --- | ---: | ---: | ---: | --- |
+| 第一接口：dot提前到scale读取前 | 199843 | 189052 | 5.40% | max_abs0，mismatch0 |
+| 第二接口：K改constexpr，保留K mask | 208286.67 | 199947 | 4.00% | max_abs0，mismatch0 |
+| 第二接口：在静态K基础上dot提前 | 199947 | 187831 | 6.06% | max_abs0，mismatch0 |
+
+三个候选对照均无private scratch，重复波动小于0.5%。dot提前不改变乘法/加法关联、scale helper或量化实现；MMAC/LDS/访存指令数不变，主要收益指向调度顺序。原E8M0 A/B大tile BK128 LTS因分区预算524>504失败；dot提前后actual102/190/190，已通过数值验证。
+
+容量/性能负例：stages4需要32个abarrier ID，超过16容量；LIT布局的大tile BK128仍受VGPR限制；紧凑E8解码虽逐bit等价但未改善资源且变慢，不采用。async/BPP按实际生成路径和相同shape对照选用，没有普遍加速结论。
+
+完整G171的LTS项使用原始外部副本，不包含后续dot提前。单CTA dot提前的5.4%收益不能直接叠加到完整G171的46.32%。第二接口的K constexpr对照以group_n/group_k已为constexpr的副本为基线，未改生产kernel。G036第一接口16×128/BK128 WASP44、dot提前完成7次测量，36683.86 cycles，波动1.524%，逐元素一致且无scratch；第二接口相同流水36507.29 cycles但波动2.397%，暂不标稳定，两接口均值差小于噪声。
+
+G081（80×512×7168，A/B E8M0/K128）完成同副本受控对照：
+
+| tile / 流水 | 自然CTA数 | cycles（三次均值） | 波动 |
+| --- | ---: | ---: | ---: |
+| 32×128/BK128 普通4warps | 12 | 114570.67 | 0.601% |
+| 32×64/BK128 普通4warps | 24 | 102543.33 | 0.403% |
+| 32×64/BK128 WASP44 | 24 | 79736.33 | 0.143% |
+| 64×64/BK128 普通4warps | 16 | 135223.33 | 0.168% |
+
+全部逐元素一致、无scratch。BN减半减少10.50% cycles；固定tile改WASP44再减少22.24%，合计30.40%。64×64将M padding从96增到128，实际MMOP增加1/3，表现更差。原source与dot提前副本的32×128普通流水仅差0.26%，不能把此例总收益归到source顺序。
+
+G184（完整shape5120×4096×8192）的8CTA派生pilot中，原BK64 LTS为403812.67 cycles，dot提前BK128 LTS为271596，减少32.74%；后者三次波动0.027%，逐元素一致、无scratch。G171三项全部PASS后，完整G184已通过预算和资源门槛并启动BK64 LTS / BK128 LTS dot提前两项对照；完整结果尚待收集，pilot不冒充完整需求结果。
 
 ## 下一步与证据位置
 
-优先测合法 WDRA48 配置的流水成本，分析 scale 中转/布局、LDS 与 producer VGPR。小 tile 保留普通流水、WDRA44/WASP44、async；BPP 只保留实际匹配域内候选。按 A FP32/K128、E8M0/K128、整行 scale 分别验收；补尾块、W 浮点 scale 和跨 CTA 验证后，再形成上卡 autotune 家族。第三个 FP8 接口仅维持兼容性 smoke；暂不扩大 split-K 或完整需求扫描。
+优先将已验证候选带到实际卡上复测，并补未覆盖的scale类型、尾块和两die代表shape。小tile保留普通流水、WDRA44/WASP44、async；BPP只保留实际匹配域内候选。按 A FP32/K128、E8M0/K128、整行 scale 分别验收；补尾块、W 浮点 scale 和跨 CTA 验证后，再形成上卡 autotune 家族。第三个 FP8 接口仅维持兼容性 smoke；暂不扩大 split-K 或完整需求扫描。
 
 全部路径以前缀 `/xukang/code/pmd-triton-sessions/` 为准：
 
@@ -116,5 +159,11 @@ PMD 已实测建模软件流水：Track B 校准中 stages3 快约 16.3%，LGKM 
 | Track A stages | `perf-trackA-stages-20261019/measurements.json/csv`、`equivalence.json`、`REPORT.md` |
 | Track B 校准 / 成本 | `perf-trackB-20261018/REPORT-calibration-20261018.md`、`cost-model.csv`、`cost-model-metrics.csv`、`REPORT.md` |
 | WDRA48 新编译器验证 | `wdra48-fix-20261020/final-results.json/csv`、`REPORT.md` |
+| 完整G171三项对照 | `overnight-gemm-20261020/full-G171-results.json`、`FULL-G171.md` |
+| 单CTA受控归因 | `overnight-gemm-20261020/controlled-pipeline-decomposition.json`、`CONTROLLED-DECOMPOSITION.md` |
+| G036七次重复性 | `overnight-gemm-G036-repeatability-20261020/REPORT-repeatability.md` |
+| G081同副本tile/流水对照 | `overnight-gemm-G081-occupancy-20261020/REPORT-controlled.md` |
+| G184完整运行状态 | `overnight-gemm-20261020/G184-current-status.json`、`G184-launch-runtime-proof.json` |
+| 全部点的环境/代码/编译/数值/指标索引 | `overnight-gemm-20261020/record-index.csv`、`records/` |
 
 Git 只保留关键结论和证据索引，不接收原始日志、StatLog、输入输出、IR、汇编、HSACO 或快照。后续关键记录至少含环境/commit、对齐配置、精度阈值及误差、建模周期与重复次数、资源限制和外部证据路径。

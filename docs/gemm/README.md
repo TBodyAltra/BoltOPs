@@ -4,7 +4,7 @@
 
 ## 支持与验证边界
 
-实测环境为 node60 / PMD gfx946，48 CU、LDS 65536 bytes，Triton release/3.6.x。下表 PASS 均为小尺寸正确性证据，**不表示完整需求尺寸或真实性能已验收**。本目录只记录 dense、BMM 与单次 grouped GEMM；dense 性能范围固定 E=1，不做 E 维度调优。grouped GEMM 的输入、scale 和分组寻址元数据由调用方预先准备。
+实测环境为 node60 / PMD gfx946，单die48CU、实际PMD LDS128KiB（HIP报256KiB，arch_info报64KiB）；请求GPU2.2GHz，实际455ps/周期。容量差异和编译器版本见[关键debug记录](debug_tuning/DEBUG.md)。下表 PASS 均为小尺寸正确性证据，**不表示生产接口的完整需求尺寸或实际卡性能已验收**。外部副本的G171完整shape及G036/G081等调优结果单列于[调优记录](debug_tuning/TUNING.md)，不据此宣称全部需求已验收。本目录只记录 dense、BMM 与单次 grouped GEMM；dense 性能范围固定 E=1，不做 E 维度调优。grouped GEMM 的输入、scale 和分组寻址元数据由调用方预先准备。
 
 | 算子族 / dtype | 当前接口 | 已有证据与限制 |
 | --- | --- | --- |
