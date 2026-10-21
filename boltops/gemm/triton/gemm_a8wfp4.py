@@ -1,8 +1,8 @@
 """FP8 E4M3 x packed E2M1 GEMM with post-dot block scales.
 
 Packing follows ROCm/aiter utility/fp4_utils.py: low nibble is even K.
-Unlike aiter's native dot_scaled kernel, this implementation decodes E2M1
-exactly to E4M3 and applies scales after each ordinary K=32 dot product.
+Native mixed-format MMAC consumes FP8 activations and packed E2M1 weights.
+Each K=32 dot produces FP32 and is scaled before the FP32 outer accumulation.
 """
 
 import torch
@@ -10,18 +10,6 @@ import triton
 import triton.language as tl
 
 from boltops.utility.fp8_scale import decode_fp8_scale
-
-
-@triton.jit
-def _decode_e2m1(code, FP8_T: tl.constexpr):
-    mag = code & 7
-    # Every E2M1 value has an exact E4M3 representation. Construct those bits
-    # directly, avoiding float arithmetic and scaled float-to-FP8 conversion.
-    bits = tl.where(mag == 0, 0,
-                    tl.where(mag == 1, 0x30,
-                             ((mag // 2 + 6) << 3) + ((mag & 1) << 2)))
-    bits = bits | ((code & 8) << 4)
-    return bits.to(tl.uint8).to(FP8_T, bitcast=True)
 
 
 @triton.jit
@@ -64,18 +52,17 @@ def _gemm_a8wfp4_kernel(
         a = tl.load(X + expert * XE + (start + rm[:, None]) * XM
                     + kk[None, :] * XK,
                     (rm[:, None] < rows) & (kk[None, :] < K), other=0.0)
-        packed = tl.load(W + expert * WE + rn[None, :] * WN
-                         + (kk[:, None] // 2) * WK,
-                         (rn[None, :] < N) & (kk[:, None] < K), other=0)
-        code = (packed >> ((kk[:, None] & 1) * 4)) & 15
-        b = _decode_e2m1(code, X.dtype.element_ty)
+        kp = block * 16 + tl.arange(0, 16)
+        b = tl.load(W + expert * WE + rn[None, :] * WN
+                    + kp[:, None] * WK,
+                    (rn[None, :] < N) & (kp[:, None] * 2 < K), other=0)
         sa = decode_fp8_scale(tl.load(
             XS + expert * SE + (start + rm) * SM + (block * 32 // GROUP_K) * SK,
             rm < rows, other=0), True).to(tl.float32)
         sb = decode_fp8_scale(tl.load(
             WS + expert * VE + rn * VN + block * VK,
             rn < N, other=0), True).to(tl.float32)
-        acc += tl.dot(a, b).to(tl.float32) * sa[:, None] * sb[None, :]
+        acc += tl.dot_scaled(a, None, "e4m3", b, None, "e2m1") * sa[:, None] * sb[None, :]
     tl.store(Y + expert * YE + (start + rm[:, None]) * YM + rn[None, :] * YN,
              acc, (rm[:, None] < rows) & (rn[None, :] < N))
 
@@ -95,7 +82,7 @@ def grouped_gemm_a8wfp4(
     G is 32 or 128. Weight scales are always per 32 logical K elements.
     Packed weights use low nibble for even K, high nibble for odd K.
     All tensors may have noncontiguous positive strides; y must not overlap
-    inputs. No host dequantization or dot_scaled dependency is used.
+    inputs. No host dequantization is used; native dot_scaled lowering is required.
     """
     if activation_group_size not in (32, 128):
         raise ValueError("activation_group_size must be 32 or 128")

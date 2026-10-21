@@ -1,10 +1,7 @@
 import pytest
 import torch
-import triton
-import triton.language as tl
 
 from boltops.gemm import gemm_a8wfp4, grouped_gemm_a8wfp4
-from boltops.gemm.triton.gemm_a8wfp4 import _decode_e2m1
 
 
 VALUES = torch.tensor([0., .5, 1., 1.5, 2., 3., 4., 6.,
@@ -76,21 +73,40 @@ def test_invalid_scale_shape():
         grouped_gemm_a8wfp4(*args)
 
 
-@triton.jit
-def _decode_codes(CODES, OUT, DTYPE: tl.constexpr):
-    from_decoder = tl.load(CODES + tl.arange(0, 16))
-    decoded = _decode_e2m1(from_decoder, DTYPE)
-    tl.store(OUT + tl.arange(0, 16), decoded.to(tl.uint8, bitcast=True))
+def test_all_e2m1_codes_native_gemm():
+    # Every column contains one FP4 code in both nibble positions. Native MMAC
+    # must interpret all 16 codes, rather than treating raw codes as FP8 bytes.
+    a = torch.ones((16, 32)).to(torch.float8_e4m3fn).cuda()
+    codes = torch.arange(16, dtype=torch.uint8)
+    packed = (codes | (codes << 4))[:, None].expand(16, 16).contiguous().cuda()
+    sa = torch.ones((16, 1), device='cuda')
+    sb = torch.full((16, 1), 127, dtype=torch.uint8, device='cuda')
+    got = gemm_a8wfp4(a, packed, sa, sb, activation_group_size=32,
+                      dtype=torch.float32)
+    expected = (VALUES * 32)[None, :].expand(16, 16)
+    torch.testing.assert_close(got.cpu(), expected, atol=0, rtol=0)
 
 
-@pytest.mark.parametrize("dtype,tl_dtype", [
-    (torch.float8_e4m3fn, tl.float8e4nv),
-])
-def test_all_e2m1_codes(dtype, tl_dtype):
-    codes = torch.arange(16, dtype=torch.uint8, device="cuda")
-    got = torch.empty_like(codes)
-    _decode_codes[(1,)](codes, got, tl_dtype, num_warps=4)
-    expected = VALUES.to(dtype).view(torch.uint8)
+@pytest.mark.parametrize('group', [32, 128])
+@pytest.mark.parametrize('a8', [False, True])
+def test_each_k32_scale_applied_before_accumulation(group, a8):
+    # Four weight scales inside one K128 span must each scale their own K32 dot.
+    # A single scale after a K128 dot gives a different answer for every column.
+    m, n, k = 5, 19, 128
+    a = torch.ones((m, k)).to(torch.float8_e4m3fn).cuda()
+    w = torch.full((n, k // 2), 0x22, dtype=torch.uint8, device='cuda')
+    kg = k // group
+    if a8:
+        sa_cpu = (torch.arange(kg)[None, :].expand(m, kg) + 126).to(torch.uint8)
+        fa = torch.pow(2., sa_cpu.float() - 127)
+    else:
+        sa_cpu = (torch.arange(kg)[None, :].expand(m, kg).float() + 2) / 4
+        fa = sa_cpu
+    sb_cpu = (torch.arange(4)[None, :].expand(n, 4) + 123).to(torch.uint8)
+    fb = torch.pow(2., sb_cpu.float() - 127)
+    got = gemm_a8wfp4(a, w, sa_cpu.cuda(), sb_cpu.cuda(), activation_group_size=group)
+    expected = (32 * (fa.repeat_interleave(group // 32, -1)[:, None, :]
+                      * fb[None, :, :]).sum(-1)).bfloat16()
     torch.testing.assert_close(got.cpu(), expected, atol=0, rtol=0)
 
 

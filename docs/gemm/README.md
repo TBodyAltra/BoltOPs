@@ -30,7 +30,7 @@
 
 前两个接口按 K 分组执行 `dot` 后乘 A/W scale 再累加，不要求 `tl.dot_scaled`。uint8 scale 解码为 E8M0，浮点 scale 保持数值；A/W 可独立选择。需求中未明确的 W scale dtype 不补写为 E8M0。
 
-FP8×FP4 接口使用预量化 A 与低/高半字节打包的 E2M1 W（偶数 K 取低半字节）；A scale 按 K32 或 K128，W 按 N1/K32。kernel 位映射 E2M1→E4M3、每 K32 普通 dot 后缩放，FP32 累加。它不等同于原生混合 FP8×FP4 指令验收，也不包含在线量化或路由生成。
+FP8×FP4 接口使用预量化 A 与低/高半字节打包的 E2M1 W（偶数 K 取低半字节）；A scale 按 K32 或 K128，W 按 N1/K32。当前实现以 `tl.dot_scaled(a, None, "e4m3", b, None, "e2m1")` 执行每 K32 的原生 F32 混合 MMAC，再乘 A/W scale 并以 FP32 累加，按输出 dtype 写回。gfx946 需要配套的 Triton K-packed FP4 布局/寄存器格式修复；2026-10-21 PMD 验证为 19/19 接口回归及 10/10 新旧实现对照通过，尚不代表完整需求尺寸或实卡验收。实现、环境依赖及证据见 [原生 FP8×FP4 K32 修复](debug_tuning/FP8FP4_NATIVE_K32.md)。不包含在线量化或路由生成。
 
 ## 优化状态与后续范围
 
