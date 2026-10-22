@@ -1,0 +1,705 @@
+{
+  "environment": {
+    "arch": "gfx946/sb",
+    "dies": 1,
+    "CUs": 48,
+    "clock_period_ps": 455,
+    "clock_GHz": 2.197802197802198,
+    "triton_commit": "9fab6e70ed511f9de6a52cd4dd95eb60a3b74916",
+    "boltops_commit": "b23492fbf1e34d1cdcea2da4f180c96005a8d9ce",
+    "details": "Per-case environment.json and launch.sh capture flags and library hashes"
+  },
+  "shape": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "BM": 128,
+    "BN": 256,
+    "BK": 128,
+    "stages": 2,
+    "grid": [
+      1,
+      1,
+      1
+    ],
+    "partition_warps": [
+      4,
+      4,
+      4
+    ],
+    "partition_regs": [
+      8,
+      248,
+      248
+    ],
+    "A": "FP8 E4M3, FP32 scale per row/K128",
+    "B": "FP8 E4M3, E8M0 scale per N/K128",
+    "output": "BF16",
+    "seed": 20
+  },
+  "aggregate": [
+    {
+      "case": "control",
+      "independent_processes": 2,
+      "samples": [
+        96833.0,
+        96246.0,
+        96523.0,
+        96054.0,
+        96013.0,
+        96288.0
+      ],
+      "cycles": 96326.16666666667,
+      "jitter_range_pct": 0.8512744027669877
+    },
+    {
+      "case": "scale-product",
+      "independent_processes": 2,
+      "samples": [
+        95325.0,
+        96014.0,
+        95439.0,
+        95210.0,
+        98679.0,
+        96122.0
+      ],
+      "cycles": 96131.5,
+      "jitter_range_pct": 3.6085986383235467
+    },
+    {
+      "case": "rotate-A",
+      "independent_processes": 1,
+      "samples": [
+        105699.0,
+        106027.0,
+        105311.0
+      ],
+      "cycles": 105679.0,
+      "jitter_range_pct": 0.6775234436359163
+    },
+    {
+      "case": "rotate-AB",
+      "independent_processes": 1,
+      "samples": [
+        106080.0,
+        106559.0,
+        106212.0
+      ],
+      "cycles": 106283.66666666667,
+      "jitter_range_pct": 0.4506807254799263
+    }
+  ],
+  "perf": {
+    "variant": "scale-product",
+    "files": [
+      {
+        "container": "/xukang/code/pmd-triton-sessions/fp8-G171-native-ideas-20261022/best-profile/m5out/0/0/134522_python3.10.perf",
+        "host": "/home/hygon/xukang/code/pmd-triton-sessions/fp8-G171-native-ideas-20261022/best-profile/m5out/0/0/134522_python3.10.perf",
+        "bytes": 91972,
+        "sha256": "a24151c347b5b547baed94bdeaae5999a3fb2fd61e9e8109218159640bb6c3a1"
+      },
+      {
+        "container": "/xukang/code/pmd-triton-sessions/fp8-G171-native-ideas-20261022/best-profile/m5out/0/1/134522_python3.10.perf",
+        "host": "/home/hygon/xukang/code/pmd-triton-sessions/fp8-G171-native-ideas-20261022/best-profile/m5out/0/1/134522_python3.10.perf",
+        "bytes": 91604,
+        "sha256": "c9de6c8c933607b577fa40157b131decd7ebf0c869eb3941f9e306daf439ab3f"
+      }
+    ],
+    "dispatches": "index0 warmup/cold; index1 timed/warm"
+  },
+  "notes": [
+    "Packed scale mul/FMA already present in control, not a newly enabled feature",
+    "Scale-product IR reassociates (dot*A)*B+acc to dot*(A*B)+acc; tested seed20 outputs bitwise identical; not a proof for all possible scales/underflow/NaN",
+    "Rotation uses explicit native register banks and two-iteration unroll, normal native assembler; no software GEMM fallback",
+    "Initial rotation missed raw A bank live-out consumed by epilogue. Failed artifacts preserved in *numerical-attempt-1; corrected exits restore both raw A and loop-carried A. Debug relocation initial compile failures retained in *build-attempt-1",
+    "All timings exclude JIT: one warmup followed by three independent launches; hostSeconds budget only; cycles primary",
+    "Single-TG trimmed shape, no full requirement-sized launch, no old verification queue resumed"
+  ],
+  "inspiration": {
+    "repository": "gemmPerf",
+    "commit": "54bf03f5ce53a98c54d7fc800d52ae008c205aa2",
+    "kernel": "Cijk_Alik_Bljk_F8HS_BH_SABB_UserArgs_MT128x128x128_SN_K1_TT8_8_WG16_16_3_946_ori.s"
+  },
+  "conclusion": "No stable speedup established: scale-product two-process 6-sample mean is approximately 0.2% faster with >3% repeat jitter; register rotation correct but slower than original control.",
+  "rows": [
+    {
+      "case": "control",
+      "status": "PASS",
+      "cycles": 96534.0,
+      "cycle_samples": [
+        96833.0,
+        96246.0,
+        96523.0
+      ],
+      "jitter_pct": 0.6080759110779621,
+      "VALU": 39232.0,
+      "MMOP": 24576.0,
+      "LDS": 10008.0,
+      "VMEM": 2336.0,
+      "SCA": 31914.0,
+      "totalTCCRequests": 54274.0,
+      "hitTCCRequests": 54273.666666666664,
+      "waitLgkmCounter": 1508.3336666666667,
+      "waitVmCounter": 0.0,
+      "hostSeconds": 10.266666666666666,
+      "wall_seconds": 50.37566354696173,
+      "spill": 0,
+      "lds_bytes": 101376,
+      "highest_explicit_vgpr": 189,
+      "dynamic_wdra_vgpr_allocations": [
+        8,
+        248,
+        248
+      ],
+      "max_abs": 0.0,
+      "mismatch": 0,
+      "violations": 0,
+      "versus_control": {
+        "max_abs": 0.0,
+        "mismatch": 0
+      },
+      "executed_hsaco_sha256": "0b40593855446c5c0571667e6b2895ceb8ea87241a1b47a39b934dcd5e7c2f2b",
+      "actual_kernel_source_sha256": "bfc80e2e19d06ca54001cdb2e1058147032d5b8861dc117827e4b832db8407ae",
+      "effective_launch_options": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_stages": 2,
+        "num_warps": 4,
+        "A_SCALE_PER_ROW": false,
+        "WARP_SPECIALIZE": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_wdra": true,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "optimize_epilogue": true,
+        "mmac_layout_force": 3,
+        "GROUP_K": 128,
+        "GROUP_N": 1,
+        "NUM_KSPLIT": 1,
+        "SPLITK_BLOCK_SIZE": 6144,
+        "cache_modifier": ""
+      }
+    },
+    {
+      "case": "scale-product",
+      "status": "PASS",
+      "cycles": 95592.66666666667,
+      "cycle_samples": [
+        95325.0,
+        96014.0,
+        95439.0
+      ],
+      "jitter_pct": 0.7207665860003207,
+      "VALU": 39232.0,
+      "MMOP": 24576.0,
+      "LDS": 10008.0,
+      "VMEM": 2336.0,
+      "SCA": 31914.0,
+      "totalTCCRequests": 54274.0,
+      "hitTCCRequests": 54273.666666666664,
+      "waitLgkmCounter": 1266.444,
+      "waitVmCounter": 0.0,
+      "hostSeconds": 10.21,
+      "wall_seconds": 49.80509572697338,
+      "spill": 0,
+      "lds_bytes": 101376,
+      "highest_explicit_vgpr": 199,
+      "dynamic_wdra_vgpr_allocations": [
+        8,
+        248,
+        248
+      ],
+      "max_abs": 0.0,
+      "mismatch": 0,
+      "violations": 0,
+      "versus_control": {
+        "max_abs": 0.0,
+        "mismatch": 0
+      },
+      "executed_hsaco_sha256": "2a746134efbd006517db72ae0a391ba7ddedda12de6d091dd18600316b41f131",
+      "actual_kernel_source_sha256": "23d9da82e4fbf6f5e56ff213ddfa619202cbacd9997c28f13c026f707701d01a",
+      "effective_launch_options": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_stages": 2,
+        "num_warps": 4,
+        "A_SCALE_PER_ROW": false,
+        "WARP_SPECIALIZE": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_wdra": true,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "optimize_epilogue": true,
+        "mmac_layout_force": 3,
+        "GROUP_K": 128,
+        "GROUP_N": 1,
+        "NUM_KSPLIT": 1,
+        "SPLITK_BLOCK_SIZE": 6144,
+        "cache_modifier": ""
+      }
+    },
+    {
+      "case": "prefetch-reference",
+      "status": "PASS",
+      "cycles": 106778.66666666667,
+      "cycle_samples": [
+        106774.0,
+        107060.0,
+        106502.0
+      ],
+      "jitter_pct": 0.5225762948903651,
+      "VALU": 46728.0,
+      "MMOP": 24576.0,
+      "LDS": 10008.0,
+      "VMEM": 2336.0,
+      "SCA": 32210.0,
+      "totalTCCRequests": 54274.0,
+      "hitTCCRequests": 54273.666666666664,
+      "waitLgkmCounter": 1613.6663333333333,
+      "waitVmCounter": 0.0,
+      "hostSeconds": 10.253333333333334,
+      "wall_seconds": 50.47106880904175,
+      "spill": 0,
+      "lds_bytes": 101376,
+      "highest_explicit_vgpr": 209,
+      "dynamic_wdra_vgpr_allocations": [
+        8,
+        248,
+        248
+      ],
+      "max_abs": 0.0,
+      "mismatch": 0,
+      "violations": 0,
+      "versus_control": {
+        "max_abs": 0.0,
+        "mismatch": 0
+      },
+      "executed_hsaco_sha256": "6cd2922f51416f6a1a6c4c2e17e5bb049d991f1358b680604c6643dd2e9f25aa",
+      "actual_kernel_source_sha256": "548e8941e7648d203f854f9c0231d3e8f72e7af2b7fe9e2ec7f27c7fbdc8b6eb",
+      "effective_launch_options": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_stages": 2,
+        "num_warps": 4,
+        "A_SCALE_PER_ROW": false,
+        "WARP_SPECIALIZE": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_wdra": true,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "optimize_epilogue": true,
+        "mmac_layout_force": 3,
+        "GROUP_K": 128,
+        "GROUP_N": 1,
+        "NUM_KSPLIT": 1,
+        "SPLITK_BLOCK_SIZE": 6144,
+        "cache_modifier": ""
+      }
+    },
+    {
+      "case": "rotate-A",
+      "status": "PASS",
+      "cycles": 105679.0,
+      "cycle_samples": [
+        105699.0,
+        106027.0,
+        105311.0
+      ],
+      "jitter_pct": 0.6775234436359163,
+      "VALU": 40968.0,
+      "MMOP": 24576.0,
+      "LDS": 10008.0,
+      "VMEM": 2336.0,
+      "SCA": 32210.0,
+      "totalTCCRequests": 54274.0,
+      "hitTCCRequests": 54273.666666666664,
+      "waitLgkmCounter": 2083.0,
+      "waitVmCounter": 0.0,
+      "hostSeconds": 10.173333333333334,
+      "wall_seconds": 48.708870999049395,
+      "spill": 0,
+      "lds_bytes": 101376,
+      "highest_explicit_vgpr": 225,
+      "dynamic_wdra_vgpr_allocations": [
+        8,
+        248,
+        248
+      ],
+      "max_abs": 0.0,
+      "mismatch": 0,
+      "violations": 0,
+      "versus_control": {
+        "max_abs": 0.0,
+        "mismatch": 0
+      },
+      "executed_hsaco_sha256": "68263d49f4d28d7d2ecce2fa23eec88c4098c89ae010c9763aed96d9a303e56c",
+      "actual_kernel_source_sha256": "548e8941e7648d203f854f9c0231d3e8f72e7af2b7fe9e2ec7f27c7fbdc8b6eb",
+      "effective_launch_options": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_stages": 2,
+        "num_warps": 4,
+        "A_SCALE_PER_ROW": false,
+        "WARP_SPECIALIZE": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_wdra": true,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "optimize_epilogue": true,
+        "mmac_layout_force": 3,
+        "GROUP_K": 128,
+        "GROUP_N": 1,
+        "NUM_KSPLIT": 1,
+        "SPLITK_BLOCK_SIZE": 6144,
+        "cache_modifier": ""
+      }
+    },
+    {
+      "case": "rotate-AB",
+      "status": "PASS",
+      "cycles": 106283.66666666667,
+      "cycle_samples": [
+        106080.0,
+        106559.0,
+        106212.0
+      ],
+      "jitter_pct": 0.4506807254799263,
+      "VALU": 39464.0,
+      "MMOP": 24576.0,
+      "LDS": 10008.0,
+      "VMEM": 2336.0,
+      "SCA": 32210.0,
+      "totalTCCRequests": 54274.0,
+      "hitTCCRequests": 54273.666666666664,
+      "waitLgkmCounter": 1646.3336666666667,
+      "waitVmCounter": 0.0,
+      "hostSeconds": 10.15,
+      "wall_seconds": 48.52431032201275,
+      "spill": 0,
+      "lds_bytes": 101376,
+      "highest_explicit_vgpr": 226,
+      "dynamic_wdra_vgpr_allocations": [
+        8,
+        248,
+        248
+      ],
+      "max_abs": 0.0,
+      "mismatch": 0,
+      "violations": 0,
+      "versus_control": {
+        "max_abs": 0.0,
+        "mismatch": 0
+      },
+      "executed_hsaco_sha256": "de00f3f98be897c7e2bf1f1891d87e3fb4099e48b929d549af8a5b2ab906a302",
+      "actual_kernel_source_sha256": "548e8941e7648d203f854f9c0231d3e8f72e7af2b7fe9e2ec7f27c7fbdc8b6eb",
+      "effective_launch_options": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_stages": 2,
+        "num_warps": 4,
+        "A_SCALE_PER_ROW": false,
+        "WARP_SPECIALIZE": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_wdra": true,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "optimize_epilogue": true,
+        "mmac_layout_force": 3,
+        "GROUP_K": 128,
+        "GROUP_N": 1,
+        "NUM_KSPLIT": 1,
+        "SPLITK_BLOCK_SIZE": 6144,
+        "cache_modifier": ""
+      }
+    },
+    {
+      "case": "control-repeat",
+      "status": "PASS",
+      "cycles": 96118.33333333333,
+      "cycle_samples": [
+        96054.0,
+        96013.0,
+        96288.0
+      ],
+      "jitter_pct": 0.28610566836018103,
+      "VALU": 39232.0,
+      "MMOP": 24576.0,
+      "LDS": 10008.0,
+      "VMEM": 2336.0,
+      "SCA": 31914.0,
+      "totalTCCRequests": 54274.0,
+      "hitTCCRequests": 54273.666666666664,
+      "waitLgkmCounter": 1415.222,
+      "waitVmCounter": 0.0,
+      "hostSeconds": 10.183333333333334,
+      "wall_seconds": 48.63363749696873,
+      "spill": 0,
+      "lds_bytes": 101376,
+      "highest_explicit_vgpr": 189,
+      "dynamic_wdra_vgpr_allocations": [
+        8,
+        248,
+        248
+      ],
+      "max_abs": 0.0,
+      "mismatch": 0,
+      "violations": 0,
+      "versus_control": {
+        "max_abs": 0.0,
+        "mismatch": 0
+      },
+      "executed_hsaco_sha256": "0b40593855446c5c0571667e6b2895ceb8ea87241a1b47a39b934dcd5e7c2f2b",
+      "actual_kernel_source_sha256": "bfc80e2e19d06ca54001cdb2e1058147032d5b8861dc117827e4b832db8407ae",
+      "effective_launch_options": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_stages": 2,
+        "num_warps": 4,
+        "A_SCALE_PER_ROW": false,
+        "WARP_SPECIALIZE": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_wdra": true,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "optimize_epilogue": true,
+        "mmac_layout_force": 3,
+        "GROUP_K": 128,
+        "GROUP_N": 1,
+        "NUM_KSPLIT": 1,
+        "SPLITK_BLOCK_SIZE": 6144,
+        "cache_modifier": ""
+      }
+    },
+    {
+      "case": "scale-product-repeat",
+      "status": "PASS",
+      "cycles": 96670.33333333333,
+      "cycle_samples": [
+        95210.0,
+        98679.0,
+        96122.0
+      ],
+      "jitter_pct": 3.5884845747230276,
+      "VALU": 39232.0,
+      "MMOP": 24576.0,
+      "LDS": 10008.0,
+      "VMEM": 2336.0,
+      "SCA": 31914.0,
+      "totalTCCRequests": 54274.0,
+      "hitTCCRequests": 54273.666666666664,
+      "waitLgkmCounter": 1414.0003333333332,
+      "waitVmCounter": 0.0,
+      "hostSeconds": 10.2,
+      "wall_seconds": 48.844541083904915,
+      "spill": 0,
+      "lds_bytes": 101376,
+      "highest_explicit_vgpr": 199,
+      "dynamic_wdra_vgpr_allocations": [
+        8,
+        248,
+        248
+      ],
+      "max_abs": 0.0,
+      "mismatch": 0,
+      "violations": 0,
+      "versus_control": {
+        "max_abs": 0.0,
+        "mismatch": 0
+      },
+      "executed_hsaco_sha256": "2a746134efbd006517db72ae0a391ba7ddedda12de6d091dd18600316b41f131",
+      "actual_kernel_source_sha256": "23d9da82e4fbf6f5e56ff213ddfa619202cbacd9997c28f13c026f707701d01a",
+      "effective_launch_options": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_stages": 2,
+        "num_warps": 4,
+        "A_SCALE_PER_ROW": false,
+        "WARP_SPECIALIZE": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_wdra": true,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "optimize_epilogue": true,
+        "mmac_layout_force": 3,
+        "GROUP_K": 128,
+        "GROUP_N": 1,
+        "NUM_KSPLIT": 1,
+        "SPLITK_BLOCK_SIZE": 6144,
+        "cache_modifier": ""
+      }
+    },
+    {
+      "case": "best-profile",
+      "status": "PASS",
+      "cycles": 99106.0,
+      "cycle_samples": [
+        99106.0
+      ],
+      "jitter_pct": 0.0,
+      "VALU": 39232.0,
+      "MMOP": 24576.0,
+      "LDS": 10008.0,
+      "VMEM": 2336.0,
+      "SCA": 31914.0,
+      "totalTCCRequests": 54274.0,
+      "hitTCCRequests": 54274.0,
+      "waitLgkmCounter": 1531.0009999999997,
+      "waitVmCounter": 0.0,
+      "hostSeconds": 10.81,
+      "wall_seconds": 29.766307629062794,
+      "spill": 0,
+      "lds_bytes": 101376,
+      "highest_explicit_vgpr": 199,
+      "dynamic_wdra_vgpr_allocations": [
+        8,
+        248,
+        248
+      ],
+      "max_abs": 0.0,
+      "mismatch": 0,
+      "violations": 0,
+      "versus_control": {
+        "max_abs": 0.0,
+        "mismatch": 0
+      },
+      "executed_hsaco_sha256": "2a746134efbd006517db72ae0a391ba7ddedda12de6d091dd18600316b41f131",
+      "actual_kernel_source_sha256": "23d9da82e4fbf6f5e56ff213ddfa619202cbacd9997c28f13c026f707701d01a",
+      "effective_launch_options": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_stages": 2,
+        "num_warps": 4,
+        "A_SCALE_PER_ROW": false,
+        "WARP_SPECIALIZE": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_wdra": true,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "optimize_epilogue": true,
+        "mmac_layout_force": 3,
+        "GROUP_K": 128,
+        "GROUP_N": 1,
+        "NUM_KSPLIT": 1,
+        "SPLITK_BLOCK_SIZE": 6144,
+        "cache_modifier": ""
+      }
+    }
+  ],
+  "safety": {
+    "tag": "final native optimization experiments verified",
+    "remote_epoch": 1792660066.416202,
+    "protected": [
+      {
+        "pid": 61399,
+        "state": "T",
+        "cpu_ticks": 3189924
+      },
+      {
+        "pid": 63997,
+        "state": "T",
+        "cpu_ticks": 195118
+      },
+      {
+        "pid": 31138,
+        "state": "T",
+        "cpu_ticks": 1784
+      },
+      {
+        "pid": 54355,
+        "state": "T",
+        "cpu_ticks": 568
+      },
+      {
+        "pid": 31159,
+        "state": "T",
+        "cpu_ticks": 145
+      }
+    ],
+    "git_statuses": {
+      "gemm-optimization-20261020/bolt_ops": "",
+      "wdra48-fix-20261020/triton": "",
+      "fp8fp4-support-20261017/bolt_ops": "",
+      "fp8-e8m0-fix-20261017/bolt_ops": "",
+      "fp8-support-20261017/triton_gemm_asm": ""
+    },
+    "passed": true
+  },
+  "external_root": "/xukang/code/pmd-triton-sessions/fp8-G171-native-ideas-20261022",
+  "archive": {
+    "container": "/xukang/code/pmd-triton-sessions/fp8-G171-native-ideas-20261022/key-artifacts.tar.gz",
+    "bytes": 465158,
+    "sha256": "5a867fee4c8fe414cfda71159614c8266a9f159fc49ba20c84b98892a4f89f31"
+  }
+}

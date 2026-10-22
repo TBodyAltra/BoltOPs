@@ -1,0 +1,88 @@
+{
+  "source_url": "http://10.65.42.70:9080/ROCm/gemmPerf",
+  "branch": "main",
+  "commit": "54bf03f5ce53a98c54d7fc800d52ae008c205aa2",
+  "binary": "/xukang/code/pmd-triton-sessions/gemmperf-run-20261022/gemmPerf/gemmHIP/gemmHIP",
+  "header_repairs": {
+    "type": "external compile-time HIP header overlay only",
+    "changes": [
+      {
+        "missing_sdk_path": "/opt/rocm/include/hip/amd_detail/amd_hip_atomic.h",
+        "broken_target": "/opt/rocm-6.3.3/llvm/lib/clang/18/include/hip/amd_detail/amd_hip_atomic.h",
+        "replacement": "/xukang/code/pmd-triton-sessions/wdra48-fix-20261020/triton/third_party/amd/backend/include/hip/amd_detail/amd_hip_atomic.h",
+        "sha256": "6f3d55c6fda28ce63614e0cb43a70318a573f2b40078b6e0cef481e627685f0c"
+      },
+      {
+        "missing_sdk_path": "/opt/rocm/include/hip/amd_detail/amd_hip_unsafe_atomics.h",
+        "broken_target": "/opt/rocm-6.3.3/llvm/lib/clang/18/include/hip/amd_detail/amd_hip_atomic.h",
+        "replacement": "/xukang/code/pmd-triton-sessions/wdra48-fix-20261020/triton/third_party/amd/backend/include/hip/amd_detail/amd_hip_unsafe_atomics.h",
+        "sha256": "b5eaaa01260176b641e9c8c25a0a8fc9527318dcd11cc4754e0bd1482ddedd97"
+      }
+    ],
+    "no_system_files_modified": true,
+    "no_kernel_math_changed": true
+  },
+  "runtime_repair": "OMP_TOOL=disabled avoids libarcher OMPT startup null call in CPU golden; TSAN_OPTIONS=ignore_noninstrumented_modules=1. Original kernel and CPU golden unchanged.",
+  "die_count": 1,
+  "CU": 48,
+  "clock_ps": 455,
+  "clock_GHz": 2.197802197802198,
+  "triton_commit": "9fab6e70ed511f9de6a52cd4dd95eb60a3b74916",
+  "boltops_commit": "b23492fbf1e34d1cdcea2da4f180c96005a8d9ce",
+  "limitations": [
+    "Natural single CTA, not full-device peak throughput",
+    "FP8 E4M3 x FP8 E4M3 -> FP16; A FP32 scale per128M/128K, B FP32 scale per1N/128K; differs from G171 E8M0 scale semantics",
+    "Original CPU accuracy criterion dice <= 0.003; not bitwise equality",
+    "Standalone handwritten native assembly kernel; installed rocBLAS gfx946 missing kernel library remains unresolved"
+  ],
+  "cases": [
+    {
+      "M": 128,
+      "N": 128,
+      "K": 1024,
+      "result": "PASS",
+      "cpu_checks": 3,
+      "dice": [
+        "0.000001",
+        "0.000001",
+        "0.000001"
+      ],
+      "dice_bound": 0.003,
+      "console_TFLOPS": 2.965933,
+      "wall_seconds": 8.897242176928557,
+      "cycles": 24873.666666666668,
+      "cycle_samples": [
+        24827.0,
+        25115.0,
+        24679.0
+      ]
+    },
+    {
+      "M": 128,
+      "N": 128,
+      "K": 4096,
+      "result": "PASS",
+      "cpu_checks": 3,
+      "dice": [
+        "0.000000",
+        "0.000000",
+        "0.000000"
+      ],
+      "dice_bound": 0.003,
+      "console_TFLOPS": 5.478324,
+      "wall_seconds": 19.1775822089985,
+      "cycles": 53854.666666666664,
+      "cycle_samples": [
+        53694.0,
+        54183.0,
+        53687.0
+      ]
+    }
+  ],
+  "profile": {
+    "container": "/xukang/code/pmd-triton-sessions/gemmperf-run-20261022/fp8-w8-ori-k4096-profile/m5out/0/0/133123_gemmHIP.perf",
+    "host": "/home/hygon/xukang/code/pmd-triton-sessions/gemmperf-run-20261022/fp8-w8-ori-k4096-profile/m5out/0/0/133123_gemmHIP.perf",
+    "bytes": 24346,
+    "sha256": "6d7edce6a56627a55f30078165b82ebe961350281cad67079472a2987ad84b29"
+  }
+}

@@ -158,6 +158,48 @@ M5120/N4096/K8192、E1、自然640CTA；输入E4M3×E4M3、输出BF16，A E8M0/K
 
 BK64基线有packed-FMA未写先读检查警告，完整精度零超限仍不能证明警告误报；候选无该警告。完整文本与计数在仓库外保留，见debug记录。本轮共91个配置点，80个通过、11个因VGPR/barrier资源未编译通过；这不是接口验收通过率。逐点环境/版本/配置/数值/指标完整性审计通过，不改写原始结果。
 
+## G171：原生汇编经验迁移实验（2026-10-22）
+
+本轮未确认稳定收益，保留原基线。实验代码和精简数据见 [`g171_native_20261022/`](g171_native_20261022/)，不接入生产 dispatch、不修改默认 config。生成的 IR、汇编、日志、StatLog、PERF、输入输出和快照均留在仓库外。
+
+环境为 node60 / `kxu_pmd_8569_fp8_20261017`，gfx946/sb，单 die、48 CU，建模周期 455 ps（约 2.198 GHz）。测量 BoltOps 为 `b23492fbf1e34d1cdcea2da4f180c96005a8d9ce`，Triton 源码 HEAD 为 `9fab6e70ed511f9de6a52cd4dd95eb60a3b74916`；实际私有编译器库 SHA、环境变量、编译/launch 选项在 `manifest.json`、`results.json` 及外部逐点 `environment.json` 中记录。发布分支随后前进不改变测量版本。
+
+G171 派生自然单 TG：M128/N256/K6144，BM128/BN256/BK128，stages2，WDRA48 分区 (4,4,4)、VGPR 配额 (8,248,248)，LTS；A/B 输入 E4M3，输出 BF16；A scale FP32、每行/K128，B scale E8M0、每 N/K128。每点先编译、一次精度预热，再正式计时；JIT 不计入 cycles，hostSeconds 仅作预算。
+
+| 实验 | 样本数 | 平均 modeled cycles | VALU / TG | 实际最高显式 VGPR 数 | 结论 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 原基线 | 2 进程共 6 次 | 96326.17 | 39232 | 190 | 保留 |
+| 先合并 A/B scale | 2 进程共 6 次 | 96131.50 | 39232 | 200 | 仅快约 0.20%，波动 3.61%，无稳定收益 |
+| 原 scale 预取版 | 3 次 | 106778.67 | 46728 | 210 | 慢于原基线 |
+| A scale 寄存器轮换 | 3 次 | 105679.00 | 40968 | 226 | 去搬运仍未胜过基线 |
+| A/B 均去搬运 | 3 次 | 106283.67 | 39464 | 227 | VALU 降低未转化为收益 |
+
+修正后本次 seed20 的上述版本均与 CPU 参考及原基线逐元素一致，max_abs=0、mismatch=0、全部有限、spill=0；LDS 均为 101376 bytes，MMOP=24576、LDS 指令数=10008。此处的逐元素一致只针对已测输入，不能推出极端 scale、下溢、NaN/Inf 的普遍等价。原基线已使用 `v_pk_mul_f32`/`v_pk_fma_f32`，packed 运算并非本轮新增。先合并 scale 改变 FP32 运算关联，但没有减少本次布局的乘法/FMA 数。
+
+轮换副本将循环展开两轮，交替 A scale VGPR 84:99 与 210:225；B 版本在消费完当前 raw B 后才发出下一轮读取，地址使用 v226。原有硬件 wait/barrier 全部保留。第一版遗漏 epilogue 对 raw A 68:83 的 live-out，数值失败即停止计时；最终版在奇/偶退出边恢复所需状态，已重新验证。错误版与首次 debug relocation 编译错误保留于外部目录，不作为 PASS。单独两轮展开的诊断也逐元素一致。实验结果说明“增加预取但去掉搬运”仍不足以解决当前流水瓶颈。
+
+复现工具只准备新外部目录，不启动进程或队列；要求使用 manifest 固定的外部 IR 和 PMD 环境：
+
+```bash
+python docs/gemm/debug_tuning/g171_native_20261022/prepare.py \
+  --evidence-root /xukang/code/pmd-triton-sessions/fp8-G171-native-ideas-20261022 \
+  --output-root /xukang/code/pmd-triton-sessions/g171-native-replay
+# 需要执行时显式逐 case 运行；本次发布未重跑：
+# bash /xukang/code/pmd-triton-sessions/g171-native-replay/control/launch.sh --measure
+```
+
+`native-transform.py` 保留正确的两个轮换分支与 unroll-only 诊断；`scale_product.py` 保留 scale 关联改写；`bench-worker.py` 为已测驱动原样副本，依赖 manifest 中的 node60 历史私有环境。准备阶段校验输入 SHA256，输出目录必须是会话根下的新目录且位于 Git 外。离线检查确认提交的转换输出与实际执行汇编/IR 相同；不宣称重新完成 GPU/PMD 验证。
+
+外部证据根为 `/xukang/code/pmd-triton-sessions/fp8-G171-native-ideas-20261022/`。合并 scale 的 warm PERF 为宿主机绝对路径：
+
+```text
+/home/hygon/xukang/code/pmd-triton-sessions/fp8-G171-native-ideas-20261022/best-profile/m5out/0/1/134522_python3.10.perf
+```
+
+PERF 开启后的独立 warm launch 为 99106 cycles，单列诊断，不混入上表未开启 PERF 的均值。关键快照 SHA256 为 `5a867fee4c8fe414cfda71159614c8266a9f159fc49ba20c84b98892a4f89f31`，仅引用，不把快照或 PERF 提交到 Git。
+
+作为流水参考，gemmPerf `main@54bf03f5ce53a98c54d7fc800d52ae008c205aa2` 已在同环境编译，原生 128×128 tile 的 K1024/K4096 单 TG 工具 CPU dice 检查各 3/3 PASS，平均 modeled cycles 为 24873.67/53854.67。但其 A scale 为 FP32/128M×128K、B 为 FP32/1N×128K，且输出 FP16，不能与 G171 作同规格性能比较。构建使用仓库外头文件 overlay 修复两处 SDK 失效链接，并以 `OMP_TOOL=disabled` 避开 CPU golden 的 libarcher 启动崩溃；未替换计算实现。独立 gemmPerf kernel 跑通不代表已修复安装版 rocBLAS 缺 gfx946 kernel library 的环境限制。详细版本、修复与数据保留于 `gemmperf-run-20261022/summary.json`。
+
 ## 下一步与证据位置
 
 优先将已验证候选带到实际卡上复测，并补未覆盖的scale类型、尾块和两die代表shape。小tile保留普通流水、WDRA44/WASP44、async；BPP只保留实际匹配域内候选。按 A FP32/K128、E8M0/K128、整行 scale 分别验收；补尾块、W 浮点 scale 和跨 CTA 验证后，再形成上卡 autotune 家族。第三个 FP8 接口仅维持兼容性 smoke；暂不扩大 split-K 或完整需求扫描。
