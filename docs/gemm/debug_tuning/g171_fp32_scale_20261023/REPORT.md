@@ -2,6 +2,8 @@
 
 日期：2026-10-23。采用 Excel 优先、缺失字段按公开模型补齐的口径；B FP32/N128/K128 的来源见 [需求核对](../requirements_audit_20261023/REPORT.md)。本轮只验证第一接口内部 kernel 的单 TG；没有运行完整需求尺寸或第二接口迁移。
 
+**同日增量实验的最新候选：普通abarrier MMAC turn，6次均值106722 cycles；详见末节。前面的表保留初次筛选结果。**
+
 **最佳源代码候选：WDRA48 + aligned 普通加载、dot 后读 scale，149862.7 cycles，独立复测 149797.0；两次共 6 launch 均值 149829.8，较无 spill 的生产 8-warp 基线少 24.69% cycles（约 1.328×）。** 不修改生产 kernel、默认 config、编译器或 libtriton。
 
 ## 固定条件
@@ -193,3 +195,58 @@ empty_arrive(A, B, AS, BS)
 ```
 
 本轮6个独立case均完成；原始IR、汇编、HSACO、StatLog、输入输出和PERF仍全部在仓库外。复现：prepare到全新外部目录，先P01建立seed20生产基线，再逐点P50/P51/P52；种子21先P90再P54。P52/P53/P54/PF使用worker_group_read.py/validate中的显式原生等待细化，不能只用TTGIR声称已得到分批等待。生产/default config及编译器库未改，5个暂停进程保持T且CPU ticks不变，5个测量工作区干净。仅验证该对齐单TG及两个随机输入，未跑完整需求尺寸、多CTA、双die或实卡。
+
+## 普通abarrier管理MMAC ping-pong（2026-10-23）
+
+**此前方案已迁移到当前FP32/N128 scale及四组LDS提前读取版本。** 两个独立进程共6次计时均值 **106722.0 cycles**，较新跑的ebarrier分批等待基线128096.3减少 **16.69%**；比仅合并A/B同步的125854.7再少15.20%。源kernel/default config与编译器库均未改，仍为仓库外IR实验。
+
+本轮保持单TG M128/N256/K6144、tile128×256×128、stages2、WDRA48(4,4,4)、单die48CU/455ps；FP8 E4M3矩阵、A FP32/M1/K128及B FP32/N128/K128 scale、BF16输出，全局scale存储/stride、LDS布局/容量和浮点顺序不变。软件commit、实际私有库指纹与编译/运行选项仍按前文environment及逐点effective_options记录。
+
+### 同步协议
+
+- 数据同步：A/B共用0..3两个stage的ready/empty，物理A/B LDS仍分别分配。empty计数8，producer每wave预到达2；ready计数4。producer等待一次empty，一次seq覆盖两组MLS，B传输发出后每wave发布一次ready；consumer两组LDS读取完成后每wave释放一次empty。没有将到达次数翻倍。scale继续使用8..15。
+- MMAC turn：新增4/5，均计数4；producer初始每wave向4到达1，授予ping首轮，5初始pending。ping按k&1等待4，发射MMAC簇后向5普通arrive；pong等待5，发射后向4普通arrive。**turn不使用abarrier_seq**；seq只保留在数据传输。普通arrive交接指令簇发射权，不充当硬件MMAC完成计数。
+- 移除consumer ebarrier1的两个对称会合点、pong初始偏移以及最后一轮特殊会合条件；保留已有启动/退出join。两组都在scale VALU之前交接turn，因而无需等待另一组VALU结束。两个消费者循环均覆盖48个K-group；turn在现有退出join后失效。
+- 使用14个abarrier ID：0..5、8..15；6/7空闲。输入张量的读取形状及次数、LDS分配没有变化；实际L2请求统计见表。
+
+### 编译器原生分批等待
+
+**新turn版本直接使用编译器生成的ASM/HSACO，没有手工修改等待。** 去掉consumer ebarrier1后，后端按MMAC实际寄存器依赖自动发出lgkmcnt(14/13/11/10)，允许后续A/B片段及scale读取在途；MMAC后编译器仍在turn arrive前发出lgkmcnt(0)，确保所有LDS读取完成，再通知复用及执行scale math。该版本不是把旧lgkmcnt10硬套到新汇编。
+
+两个静态MMAC簇各64条（上一版有第三个剥离簇），动态MMOP仍24576，不能把静态指令少一簇解释为少算。初始化ID/count、每个turn wait/arrive的位置和原生等待见 [abarrier-turn-native-proof.json](abarrier-turn-native-proof.json)；转换和资源证明见 [abarrier-turn-verification.json](abarrier-turn-verification.json)，工具为 [abarrier_turn.py](abarrier_turn.py)。
+
+### 精度与周期
+
+| 点 | 方案 | modeled cycles（3次） | 抖动 % | spill |
+| --- | --- | ---: | ---: | ---: |
+| P60-abarrier-ebarrier-control | 独立A/B同步、ebarrier、已有分批等待 | 128096.3 | 0.330 | 0 |
+| P61-abarrier-merged-AB | 仅合并A/B，仍用ebarrier | 125854.7 | 0.160 | 0 |
+| P62-abarrier-MMAC-turn | 合并A/B＋普通abarrier turn | 106602.7 | 0.297 | 0 |
+| P63-abarrier-MMAC-turn-repeat | turn独立进程复测 | 106841.3 | 0.624 | 0 |
+
+仅合并A/B相对新基线少1.75%。turn两次均值差0.224%；seed20/21均与CPU golden及对应生产输出逐元素一致，max_abs=0、mismatch=0。每个性能点先编译并做精度/预热，再计3次，不含JIT；hostSeconds仅作仿真预算。
+
+| PMD统计 | 新ebarrier基线 | 仅合并AB | 普通turn |
+| --- | ---: | ---: | ---: |
+| VALU | 30148.000 | 30148.000 | 30144.000 |
+| MMOP | 24576.000 | 24576.000 | 24576.000 |
+| LDS | 10008.000 | 10008.000 | 10008.000 |
+| VMEM | 2336.000 | 2336.000 | 2336.000 |
+| SCA | 43464.000 | 39172.000 | 39714.000 |
+| MISC | 1000.000 | 984.000 | 996.000 |
+| totalTCCRequests | 45154.000 | 45154.000 | 45154.000 |
+| waitVmCounter | 6859.333 | 6657.334 | 2184.111 |
+| waitLgkmCounter | 4148.889 | 4094.333 | 496.555 |
+| hostSeconds | 9.887 | 9.817 | 9.850 |
+
+所有点实际VGPR配额(8,248,248)、压力(4,189,189)、spill0、LDS101376 bytes。turn同时改变了原生等待和最后一轮控制流，收益属于这一完整同步方案，不能全部当成单条barrier的成本。LGKM等聚合统计不是wall time分解；本轮没有单独计算MMAC利用率。
+
+真实PERF独立预热后计时 **106962 cycles**，HYGPERF magic/大小/SHA已核验，见 [abarrier-turn-perf-manifest.json](abarrier-turn-perf-manifest.json)。node60宿主机绝对路径：
+
+```text
+/home/hygon/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/PF-abarrier-MMAC-turn/m5out/0/1/154748_python3.10.perf
+```
+
+一次SSH客户端连接中断后，只读恢复确认P62原case已PASS、remote returncode0，未重启或重复启动case。全部6项已完成；5个暂停进程及其线程保持T、CPU ticks不变，5个测量工作区干净。原始日志/IR/ASM/HSACO/StatLog/PERF仍全部在仓库外；Git仅留关键代码和汇总。没有新验证队列、完整尺寸、多CTA、双die或实卡测试。
+
+复现：prepare到新的仓库外目录，先P01建立seed20生产基线，再显式逐点P60/P61/P62；种子21先P90再P64。P60/P61仍使用旧细化等待作为对照；P62/P63/P64/PF的fine_group_wait=False，使用原生编译结果。

@@ -247,3 +247,5 @@ MLS未稳定胜过匹配的普通加载；A/B下一轮LDS预取相对重编IR对
 2026-10-23 追加：A/B MLS + FP32 scale 原生buffer load LDS已在仓库外副本通过两个随机种子的逐元素校验，实际指令及PERF已核实；同shape三次均值149649.3 cycles。原映射MLS对照171701.3，单改scale producer线程布局的普通加载146387.3，故直传比该布局对照慢2.23%，不能把总体12.84%收益全归给直传。分配配额(8,248,248)、无spill、LDS101376 bytes。详见[追加数据和PERF](g171_fp32_scale_20261023/REPORT.md)。生产kernel/default config不变。
 
 2026-10-23 LDS调度追加：同一K轮A/B及A/B scale四组读取集中提前，MMAC前lgkmcnt10、scale使用/slot释放前lgkmcnt0，最佳6次均值128298.5 cycles，较原顺序新对照少14.34%。两个随机种子逐元素一致，consumer VGPR压力189、配额(8,248,248)、零spill、LDS101376 B。分批等待为经过指令/寄存器证明的外部原生汇编实验，尚未改生产或编译器；实际序列、对照和PERF见[记录](g171_fp32_scale_20261023/REPORT.md)。
+
+2026-10-23 MMAC turn追加：合并AB数据同步释放ID4/5，以普通abarrier交接MMAC发射权（不使用seq），移除consumer ebarrier1。最佳6次均值106722.0 cycles，较新ebarrier分批等待基线128096.3少16.69%，较仅合并AB再少15.20%。当前编译器自然生成lgkmcnt14/13/11/10及MMAC后wait0，turn版不再手改汇编。两个随机种子逐元素一致，无spill，VGPR/LDS不变；实际协议、对照和PERF见[记录](g171_fp32_scale_20261023/REPORT.md)。生产/default config不变。
