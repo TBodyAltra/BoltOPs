@@ -1,6 +1,6 @@
 # GEMM 当前支持能力
 
-更新：2026-10-20。统一开发分支为 `perf/gemm-optimization`。本页汇总当前接口能力与限制；完整形状、scale、模型映射和逐行状态见 [少伯 BU 支持需求](SHAOBO_BU_REQUIREMENTS.md)。接口细节与调用示例见 [GEMM API](../ops/gemm.md)。
+接口状态更新：2026-10-20；需求来源核对：2026-10-23。统一开发分支为 `perf/gemm-optimization`。本页汇总当前接口能力与限制；完整形状、scale、模型映射和逐行状态见 [少伯 BU 支持需求](SHAOBO_BU_REQUIREMENTS.md)。接口细节与调用示例见 [GEMM API](../ops/gemm.md)。
 
 ## 支持与验证边界
 
@@ -18,17 +18,17 @@
 
 表 8 作为 grouped FP8×FP4 GEMM 需求：保留原 M/N/K、分组数 E、dtype、A/W scale、阶段及频次；E 对应来源中的 experts，不改变数值。不从来源 M 推断所有组等长，变长各组 M 与偏移须另行提供。上层路由、在线量化、激活和结果合并均不在本目录验收范围。
 
-少伯 BU 清单当前含 7 张表、469 行 / 2424 实例：表 1 BMM、表 2–6 dense、表 8 grouped FP8×FP4。保留来源表号及 G 编号，不重排。469 行“接口 smoke 通过”是复用接口证据，不是 469 个完整需求尺寸 PASS。INT8 隐式 GEMM 卷积与末端 FC 不在该清单中，未在此宣称支持。
+少伯 BU 清单当前含 7 张表、469 行 / 2424 实例：表 1 BMM、表 2–6 dense、表 8 grouped FP8×FP4。保留来源表号及 G 编号，不重排。469 行“接口 smoke 通过”是复用接口证据，不是 469 个完整需求尺寸 PASS。原始 Excel 另有 42 个 grouped shape 尚未纳入编号表，现作为待范围确认的覆盖缺口补列，未增加支持或 PASS 声明。INT8 隐式 GEMM 卷积与末端 FC 不在该清单中，未在此宣称支持。
 
 ## FP8 接口与 scale
 
 | 接口 | scale 语义与用途 |
 | --- | --- |
-| `gemm_a8w8_blockscale` | A 每行按 K128 分组或整行一个 scale；W 每输出通道 N1、按 K128 分组。15/15 smoke PASS，性能调优对象 |
-| `w8a8_triton_block_scaled_mm` | 同上，另接收 `block_size` 并展开 A 的前导维。17/17 PASS，性能调优对象 |
-| `triton_scaled_mm` | scalar / per-row / per-column 的 K 不变 scale。14/14 PASS，仅保留兼容性；不满足需求的 W 按 K128 分组 |
+| `gemm_a8w8_blockscale` | A 按 K 分组或整行 scale；W 的 N/K 分组由 scale shape 推导，包含 N128/K128 的表达能力。15/15 为旧 smoke，新增需求组合待验证，性能调优对象 |
+| `w8a8_triton_block_scaled_mm` | 另接收 `block_size=[block_n,block_k]`（例如 `[128,128]`）并展开 A 前导维。17/17 为旧 smoke，新增需求组合待验证，性能调优对象 |
+| `triton_scaled_mm` | scalar / per-row / per-column 的 K 不变 scale。14/14 为旧 smoke；可表达 Hy3 公开 scalar scale 语义，不能表达 K 分组 scale；BU 路径仍待确认 |
 
-前两个接口按 K 分组执行 `dot` 后乘 A/W scale 再累加，不要求 `tl.dot_scaled`。uint8 scale 解码为 E8M0，浮点 scale 保持数值；A/W 可独立选择。需求中未明确的 W scale dtype 不补写为 E8M0。
+前两个接口按 K 分组执行 `dot` 后乘 A/W scale 再累加，不要求 `tl.dot_scaled`。uint8 scale 解码为 E8M0，浮点 scale 保持数值；A/W 可独立选择。需求中未明确的 W scale dtype 不补写为 E8M0。2026-10-23 核对发现，GLM/Qwen/DeepSeek 的公开 block-FP8 权重为 N128/K128，Hy3 为 per-tensor，不能统一解释成 N1/K128。checkpoint dtype 与框架转换路径分开记录，详见 [模型配置与冲突](SHAOBO_BU_REQUIREMENTS.md#requirements-cross-check)。此前 G171 的 FP32 A + E8M0/N1 B 性能结果只适用于该实验组合。
 
 FP8×FP4 接口使用预量化 A 与低/高半字节打包的 E2M1 W（偶数 K 取低半字节）；A scale 按 K32 或 K128，W 按 N1/K32。当前实现以 `tl.dot_scaled(a, None, "e4m3", b, None, "e2m1")` 执行每 K32 的原生 F32 混合 MMAC，再乘 A/W scale 并以 FP32 累加，按输出 dtype 写回。gfx946 需要配套的 Triton K-packed FP4 布局/寄存器格式修复；2026-10-21 PMD 验证为 19/19 接口回归及 10/10 新旧实现对照通过，尚不代表完整需求尺寸或实卡验收。实现、环境依赖及证据见 [原生 FP8×FP4 K32 修复](debug_tuning/FP8FP4_NATIVE_K32.md)。不包含在线量化或路由生成。
 

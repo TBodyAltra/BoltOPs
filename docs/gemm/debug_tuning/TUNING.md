@@ -234,3 +234,5 @@ Git 只保留关键结论和证据索引，不接收原始日志、StatLog、输
 [实测代码、配置与结果](fp8_scale_wasp_20261022/README.md)：G048 派生单 TG 的 native E8M0 decode 在两个接口均约降低 22.5% cycles；G081 小规模自然 grid 的 tile + WASP22 组合约降低 10%。256×256×64 仍受 VGPR 配额或 spill 限制，G171 未找到可靠的新收益。原生硬件 scale 指令已在最小及 stages1 实验执行，但较大点更慢，流水路径存在固定编译器缺口，暂不采用。全部是单 die 小规模实验，未更改生产 dispatch/default config，不等于完整需求或双 die 验收。
 
 表 2 已按 scale dtype 与 block size 分组，见 [少伯 BU 需求](../SHAOBO_BU_REQUIREMENTS.md#table-2)。源需求中 B scale dtype 未注明，实测采用的 E8M0 配置不能反推为所有需求的确定 dtype；选取后续调优代表点时须保留这一边界。
+
+2026-10-23 原始需求复核：此前 G171/G036 等 N1 B scale 实验只证明所测组合，不能作为 GLM 公开 FP32/N128/K128 scale 的验收；Qwen checkpoint scale 为 BF16，DeepSeek dense 为 E8M0/N128/K128，Hy3 为 scalar。后续应先绑定 BU checkpoint/运行时转换并对齐 scale，再继续性能比较。完整来源与冲突见 [需求核对](requirements_audit_20261023/REPORT.md)。历史数据不改写，不将新确认配置标成已测。
