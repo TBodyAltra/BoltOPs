@@ -1,0 +1,67 @@
+{
+  "repos": {
+    "triton": {
+      "commit": "46f0bed3561364b63ba4046d9c8c0cb70380ea30",
+      "status": "?? third_party/hcu/backend/_cy_utils.cpython-310-x86_64-linux-gnu.so"
+    },
+    "bolt_ops": {
+      "commit": "840d816b671983527e5b1acc831c5e67618fe981",
+      "status": "M boltops/gemm/triton/gemm_fp16.py",
+      "tracked_diff_sha256": "f4571ddde4d60e179673d8a42c09eeb5a20d20189553a13ffe82a1c9de954ea6"
+    }
+  },
+  "host": "c45e31c9b3d9",
+  "execution": "PMD",
+  "arch": "gfx946",
+  "die_count": "unknown until config evidence",
+  "cu_per_die": 48,
+  "xcd_topology": "read per-run m5out config; do not equate XCD with die",
+  "clock_source": "per-dispatch gcFrequency in GHz; no driver clock substitution",
+  "statistics": "system.gcSimCycles per dispatch, warmup excluded, median of 3",
+  "hashes": {
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/unroll-experiment/deps/pmd/libgem5.so": "99f62ef95c65577499b5d75c8dce916e7dbd25371ea883980e5db5672deeab73",
+    "/opt/rocm/llvm/bin/clang-18": "164f067ce20f44049ad6d1486c057bd51e59ac110c782859f0ea38e586fe8684",
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/unroll-experiment/worker.py": "4ce0e2567797cb0e64d4f2179143894edcf8152a205ab0ff394fe5d47a4d0fe7",
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/unroll-experiment/scan.py": "c7da60162258d9453ea115f646965bebbf570b5cbe5e13a087f8117139b876ce",
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/unroll-experiment/env.sh": "551bba45bf4082da9ef7200a2491e6d1dab85be45de762dc4562d7a910c27459",
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/unroll-experiment/triton/python/triton/_C/libtriton.so": "ed8f0352a379e4cf7d37372f6df47e89cafd554a4a25e0eaa5fd850d12c6b568"
+  },
+  "env": {
+    "AMDGCN_USE_BUFFER_OPS": "1",
+    "GPU_CHIP": "sb",
+    "GPU_DFLAGS": "['StatLog']",
+    "HCU_PIPELINE_ENV_REV": "2",
+    "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+    "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/gemm-wdra48-release-3.6.x/llvm-build",
+    "OMP_NUM_THREADS": "8",
+    "OPENBLAS_NUM_THREADS": "8",
+    "PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/llvm/bin:/xukang/code/pmd-triton-sessions/fp16-map-20261020/venv/bin:/opt/hyhal/bin:/opt/rocm/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+    "PYTHONPATH": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/unroll-experiment/triton/python:/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/unroll-experiment/bolt_ops",
+    "TRITON_BACKENDS_IN_TREE": "1",
+    "TRITON_BUILD_DIR": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/unroll-experiment/build",
+    "TRITON_BUILD_PROTON": "OFF",
+    "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/unroll-experiment/cache/kernels",
+    "TRITON_HIP_CLANG_PATH": "/opt/rocm/llvm/bin/clang-18",
+    "TRITON_HIP_LLD_PATH": "/opt/rocm/llvm/bin/ld.lld",
+    "TRITON_HOME": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/unroll-experiment/cache/home",
+    "TRITON_OFFLINE_BUILD": "1"
+  },
+  "benchmark": "Fixed-block single-TG software-unroll study",
+  "kernel_contract": "Exact M=BM/N=BN, runtime K divisible by BK; software unroll factors 1/2/4/8, unchanged dot order and logical BK",
+  "grid": [
+    1
+  ],
+  "pipeline_loop_counts": [
+    16,
+    32,
+    64
+  ],
+  "excluded_block": [
+    128,
+    128,
+    128
+  ],
+  "driver_sha256": "14fe2778fa1be9838a2765203e86c539c5c566de10d5b8fd203ef5385fe40a0e",
+  "analysis_sha256": "30b710301dd173c9e09317784099accba029fcdc331f7a2a01e95d0c227c3311"
+}
