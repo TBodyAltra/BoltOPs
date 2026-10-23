@@ -245,3 +245,5 @@ Git 只保留关键结论和证据索引，不接收原始日志、StatLog、输
 MLS未稳定胜过匹配的普通加载；A/B下一轮LDS预取相对重编IR对照约少4.1%，仍慢于上述最佳。普通加载预取分支受VGPR预算限制，没有绕过守卫。生产与最佳的真实PERF已采集，绝对路径及SHA见记录；未计算本次MMAC利用率。未改生产kernel/default config，未跑完整G171、双die、第二接口迁移或尾块。历史E8M0/N1结果继续保留原口径，不能用作本次FP32/N128需求验收。
 
 2026-10-23 追加：A/B MLS + FP32 scale 原生buffer load LDS已在仓库外副本通过两个随机种子的逐元素校验，实际指令及PERF已核实；同shape三次均值149649.3 cycles。原映射MLS对照171701.3，单改scale producer线程布局的普通加载146387.3，故直传比该布局对照慢2.23%，不能把总体12.84%收益全归给直传。分配配额(8,248,248)、无spill、LDS101376 bytes。详见[追加数据和PERF](g171_fp32_scale_20261023/REPORT.md)。生产kernel/default config不变。
+
+2026-10-23 LDS调度追加：同一K轮A/B及A/B scale四组读取集中提前，MMAC前lgkmcnt10、scale使用/slot释放前lgkmcnt0，最佳6次均值128298.5 cycles，较原顺序新对照少14.34%。两个随机种子逐元素一致，consumer VGPR压力189、配额(8,248,248)、零spill、LDS101376 B。分批等待为经过指令/寄存器证明的外部原生汇编实验，尚未改生产或编译器；实际序列、对照和PERF见[记录](g171_fp32_scale_20261023/REPORT.md)。

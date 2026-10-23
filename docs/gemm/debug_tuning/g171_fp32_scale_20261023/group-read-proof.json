@@ -1,0 +1,38 @@
+{
+  "source": "/home/kxu/fp8-G171-fp32-blockscale-20261023/P33-MLS-scale-buffer-LDS/ir/kernel.ttgir",
+  "source_sha256": "414940e424a3c1c4d6809aa84f5c78c36a9f7e10b4253c0d765e738b92a567ae",
+  "control_sha256": "010d8050ff9ec45fa4e90001a2f0b466ca03b4ee008b3568e0f905b4b1f0f395",
+  "candidate_sha256": "2265c9326a9c3b0ec78f37e12dafe33e62c2e5ba02582e5841f2b859987ae9c4",
+  "consumers": [
+    {
+      "consumer": 0,
+      "ready_waits": 4,
+      "read_order": [
+        "A",
+        "B",
+        "A_scale",
+        "B_scale"
+      ],
+      "all_ready_waits_before_reads": true,
+      "slot_releases": "all four after current MMAC/handoff, before scale arithmetic; compiler must wait for LDS completion",
+      "original_math_statements_and_order_preserved": true,
+      "across_iteration_prefetch": false,
+      "extra_LDS_allocation": 0
+    },
+    {
+      "consumer": 1,
+      "ready_waits": 4,
+      "read_order": [
+        "A",
+        "B",
+        "A_scale",
+        "B_scale"
+      ],
+      "all_ready_waits_before_reads": true,
+      "slot_releases": "all four after current MMAC/handoff, before scale arithmetic; compiler must wait for LDS completion",
+      "original_math_statements_and_order_preserved": true,
+      "across_iteration_prefetch": false,
+      "extra_LDS_allocation": 0
+    }
+  ]
+}

@@ -474,5 +474,118 @@
     },
     "worker": "worker_async_scale_ir.py",
     "ir_source": "mls-scale-buffer-LDS.ttgir"
+  },
+  "P50-group-read-control": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "stages": 2,
+    "seed": 20,
+    "repeats": 3,
+    "name": "P50-group-read-control",
+    "wdra": true,
+    "module": "trial_mls_class_aligned_dotfirst",
+    "compiler_options": {
+      "optimize_epilogue": true,
+      "mmac_layout_force": 3,
+      "use_async_copy": true
+    },
+    "worker": "worker_async_scale_ir.py",
+    "ir_source": "group-read-control.ttgir"
+  },
+  "P51-group-read-late-release": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "stages": 2,
+    "seed": 20,
+    "repeats": 3,
+    "name": "P51-group-read-late-release",
+    "wdra": true,
+    "module": "trial_mls_class_aligned_dotfirst",
+    "compiler_options": {
+      "optimize_epilogue": true,
+      "mmac_layout_force": 3,
+      "use_async_copy": true
+    },
+    "worker": "worker_async_scale_ir.py",
+    "ir_source": "group-read-late-release.ttgir"
+  },
+  "P52-group-read-fine-wait": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "stages": 2,
+    "seed": 20,
+    "repeats": 3,
+    "name": "P52-group-read-fine-wait",
+    "wdra": true,
+    "module": "trial_mls_class_aligned_dotfirst",
+    "compiler_options": {
+      "optimize_epilogue": true,
+      "mmac_layout_force": 3,
+      "use_async_copy": true
+    },
+    "worker": "worker_group_read.py",
+    "ir_source": "group-read-late-release.ttgir",
+    "fine_group_wait": true
+  },
+  "P53-group-read-fine-repeat": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "stages": 2,
+    "seed": 20,
+    "repeats": 3,
+    "name": "P53-group-read-fine-repeat",
+    "wdra": true,
+    "module": "trial_mls_class_aligned_dotfirst",
+    "compiler_options": {
+      "optimize_epilogue": true,
+      "mmac_layout_force": 3,
+      "use_async_copy": true
+    },
+    "worker": "worker_group_read.py",
+    "ir_source": "group-read-late-release.ttgir",
+    "fine_group_wait": true
+  },
+  "P54-group-read-fine-seed21": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "stages": 2,
+    "seed": 21,
+    "repeats": 3,
+    "name": "P54-group-read-fine-seed21",
+    "wdra": true,
+    "module": "trial_mls_class_aligned_dotfirst",
+    "compiler_options": {
+      "optimize_epilogue": true,
+      "mmac_layout_force": 3,
+      "use_async_copy": true
+    },
+    "worker": "worker_group_read_validate.py",
+    "ir_source": "group-read-late-release.ttgir",
+    "fine_group_wait": true,
+    "accuracy_only": true
+  },
+  "PF-group-read-fine": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "stages": 2,
+    "seed": 20,
+    "repeats": 1,
+    "name": "PF-group-read-fine",
+    "wdra": true,
+    "module": "trial_mls_class_aligned_dotfirst",
+    "compiler_options": {
+      "optimize_epilogue": true,
+      "mmac_layout_force": 3,
+      "use_async_copy": true
+    },
+    "worker": "worker_group_read.py",
+    "ir_source": "group-read-late-release.ttgir",
+    "fine_group_wait": true
   }
 }

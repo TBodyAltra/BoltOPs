@@ -70,7 +70,7 @@
     },
     "plan.json": {
       "location": "repository",
-      "sha256": "a9fe6d60b6a5f4bcc8da04357a99963b1d16a2fea8eb2728adcfa8114669dc03"
+      "sha256": "4391f5c5761c974cc1266d724ca6c0905033ffe86f4c674de0828b4f023df122"
     },
     "aligned-load-prefetch-v3.ttgir": {
       "location": "external",
@@ -123,6 +123,34 @@
     "mls-scale-layout-control-v2.ttgir": {
       "location": "external",
       "sha256": "7b0ffcd6659f8a5546ee2e86de1281b7d5e18ff7b796ea5059c9aa3e26057345"
+    },
+    "group_lds_reads.py": {
+      "location": "repository",
+      "sha256": "1f8a681dff2be365b96954a6db1be0484849de430381a0b19fad589984a18894"
+    },
+    "refine_group_wait.py": {
+      "location": "repository",
+      "sha256": "8fd7c9f47c93cccf6d13996b0fe1ba6e4f8c0a4e4ed00fea48738c3c107fa055"
+    },
+    "worker_group_read.py": {
+      "location": "repository",
+      "sha256": "c8ab6ec6921e71a4b651348bd69417becdf6d2d56e50a62af6325cefe4b9c518"
+    },
+    "worker_group_read_validate.py": {
+      "location": "repository",
+      "sha256": "5c8ded539d6bf02ecb33245281582336fc78cbde29116f6a8e597135c2d9aff4"
+    },
+    "group-read-source.ttgir": {
+      "location": "external",
+      "sha256": "414940e424a3c1c4d6809aa84f5c78c36a9f7e10b4253c0d765e738b92a567ae"
+    },
+    "group-read-control.ttgir": {
+      "location": "external",
+      "sha256": "010d8050ff9ec45fa4e90001a2f0b466ca03b4ee008b3568e0f905b4b1f0f395"
+    },
+    "group-read-late-release.ttgir": {
+      "location": "external",
+      "sha256": "2265c9326a9c3b0ec78f37e12dafe33e62c2e5ba02582e5841f2b859987ae9c4"
     }
   },
   "notes": [
@@ -132,6 +160,7 @@
     "Prototype preparation errors are retained in results and external logs; their obsolete configurations are omitted from the replay plan.",
     "Seed21 is accuracy-only; PERF points use 1 timed launch and remain separate from unprofiled 3-launch means.",
     "Published guard.py only normalizes its final newline; kernel snapshots remain byte-identical to measured modules.",
-    "2026-10-23 extension: A/B native MLS + FP32 A/B scale native buffer-to-LDS, with same-IR/layout controls. P32 preparation error is preserved externally; corrected replay uses P32r."
+    "2026-10-23 extension: A/B native MLS + FP32 A/B scale native buffer-to-LDS, with same-IR/layout controls. P32 preparation error is preserved externally; corrected replay uses P32r.",
+    "2026-10-23 grouped current-iteration LDS reads: P51 batches reads with full wait; P52/P53/P54/PF refine native waits after ordinary quota-checked compilation. No non-wait native instruction or register/LDS declaration changes."
   ]
 }

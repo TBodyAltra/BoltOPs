@@ -134,3 +134,62 @@ PERF独立计时 149716 cycles，预热后文件已核验HYGPERF magic、大小�
 只设`use_async_copy=True`的P30未选中scale直传，执行前拦下，不能误报成已启用。已验证的是生成器显式原生IR，不是自动选路修复。布局对照P32第一版遗漏同步buffer_load结果encoding而触发MLIR类型校验，未执行；修正外部类型后P32r通过，原始错误及IR保留在仓库外。没有软件替代实现、指令模拟或环境能力伪装。
 
 复现仍用上面的prepare.py，在全新仓库外目录准备后先跑P01生产基线，再显式逐点选P31、P32r或P33；没有队列调度。原生转换工具 [scale_buffer_lds.py](scale_buffer_lds.py) 和 [转换证明](scale-buffer-LDS-proof.json) 随记录保存；原始IR、日志、统计、HSACO和PERF继续只留仓库外。5个暂停进程保持T且CPU ticks不变，测量Git工作区干净。
+
+## 四组LDS读取集中提前与分批等待（2026-10-23）
+
+**同一K轮集中发射A/B/A scale/B scale，再分两批等待，已在PMD执行通过。** 最佳两次独立进程共6次计时均值 **128298.5 cycles**，比新跑的原顺序对照149772.3少 **14.34%**。单TG M128/N256/K6144、tile128×256×128、WDRA48/stages2、单die48CU/455ps；A/B FP8 E4M3、A FP32/M1/K128 scale、B FP32/N128/K128 scale、BF16输出，版本和有效配置保持前文口径。
+
+### 当前实现
+
+四个ready等待先完成，再发出16条A/B matrix LDS read和10条FP32 scale LDS read。所有empty释放通知延到MMAC之后；scale读完后才通知producer复用buffer。原有ping-pong交接、phase、producer MLS/scale buffer-load-LDS、浮点运算及其顺序均保留。没有新增LDS分配，也没有跨K轮预取第二份完整A/B tile。
+
+```text
+ready_wait(A, B, AS, BS)
+ds_read_matrix(A) ×8 + ds_read_matrix(B) ×8
+ds_read2(AS) ×8 + ds_read2(BS) ×2
+s_waitcnt lgkmcnt(10)     # 前16条A/B读取完成，允许最多10条后发scale读取仍在途
+原ping-pong同步 / MMAC / 原交接
+s_waitcnt lgkmcnt(0)      # scale读取完成
+empty_arrive(A, B, AS, BS)
+原scale乘法/FMA
+```
+
+原生编译器对集中发射版本仍在MMAC前发出lgkmcnt(0)。分批版本是在外部汇编副本上细化该等待，并在MMAC后、任何empty通知或scale使用前补wait0，使用原后端组装为原生HSACO；没有修改生产源码、编译器pass或库。包含最终剥离块在内的3个静态MMAC段均处理。
+
+转换器逐段核验：16条matrix read先于10条scale read；窗口内无额外SMEM/VMEM/写入或分支；scale目标VGPR与全部64条MMAC的输入/输出寄存器不相交；全部非wait原生指令及其顺序、寄存器/LDS声明保持不变。阈值10仅适用于这份实际发射序列，其他tile必须重新推导，不能作为通用常量。转换证明见 [group-read-verification.json](group-read-verification.json)，工具为 [group_lds_reads.py](group_lds_reads.py) 和 [refine_group_wait.py](refine_group_wait.py)。
+
+### 数值与建模周期
+
+| 点 | 调度 | cycles（3次均值） | 抖动 % | VGPR压力P/C0/C1 | spill |
+| --- | --- | ---: | ---: | --- | ---: |
+| P50-group-read-control | 原顺序，新进程对照 | 149772.3 | 0.236 | (4, 169, 169) | 0 |
+| P51-group-read-late-release | 四组提前发射，MMAC前全量等待 | 137286.0 | 0.469 | (4, 189, 189) | 0 |
+| P52-group-read-fine-wait | 四组提前发射，分批等待 | 128306.7 | 0.293 | (4, 189, 189) | 0 |
+| P53-group-read-fine-repeat | 分批版独立复测 | 128290.3 | 0.525 | (4, 189, 189) | 0 |
+
+集中发射本身比原顺序少8.34% cycles；在完全相同非wait机器指令基础上，分批等待再比全量等待少6.54%。最佳两个进程均值差0.013%。seed20及seed21均与CPU golden和对应生产输出逐元素一致：max_abs=0、mismatch=0。
+
+所有点先编译、执行一次精度/预热，再计3次，JIT不计入cycles；PERF另测不混入均值。VGPR配额保持(8,248,248)，consumer压力169→189，无spill，LDS101376 bytes不变。
+
+| PMD统计 | 原顺序 | 集中发射/全量等待 | 分批等待 |
+| --- | ---: | ---: | ---: |
+| VALU | 30516.000 | 30148.000 | 30148.000 |
+| MMOP | 24576.000 | 24576.000 | 24576.000 |
+| LDS | 10008.000 | 10008.000 | 10008.000 |
+| VMEM | 2336.000 | 2336.000 | 2336.000 |
+| SCA | 43464.000 | 43464.000 | 43464.000 |
+| MISC | 1000.000 | 1000.000 | 1000.000 |
+| totalTCCRequests | 45154.000 | 45154.000 | 45154.000 |
+| waitVmCounter | 1065.333 | 7819.111 | 6875.555 |
+| waitLgkmCounter | 12388.667 | 8660.223 | 4253.222 |
+| hostSeconds | 9.850 | 9.867 | 9.857 |
+
+集中发射也改变了编译器的地址/寄存器调度，VALU略减；分批版与集中发射版的非wait机器指令完全相同。LGKM等待为跨SIMD的聚合统计，不能直接当作wall time分解或MMAC利用率。
+
+新PERF独立计时 **128684 cycles**，预热后文件已核验HYGPERF magic和SHA，见 [group-read-perf-manifest.json](group-read-perf-manifest.json)。node60宿主机绝对路径：
+
+```text
+/home/hygon/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/PF-group-read-fine/m5out/0/1/153844_python3.10.perf
+```
+
+本轮6个独立case均完成；原始IR、汇编、HSACO、StatLog、输入输出和PERF仍全部在仓库外。复现：prepare到全新外部目录，先P01建立seed20生产基线，再逐点P50/P51/P52；种子21先P90再P54。P52/P53/P54/PF使用worker_group_read.py/validate中的显式原生等待细化，不能只用TTGIR声称已得到分批等待。生产/default config及编译器库未改，5个暂停进程保持T且CPU ticks不变，5个测量工作区干净。仅验证该对齐单TG及两个随机输入，未跑完整需求尺寸、多CTA、双die或实卡。
