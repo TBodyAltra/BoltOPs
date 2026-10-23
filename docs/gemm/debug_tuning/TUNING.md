@@ -243,3 +243,5 @@ Git 只保留关键结论和证据索引，不接收原始日志、StatLog、输
 [配置、关键代码与数据](g171_fp32_scale_20261023/REPORT.md)：采用 A FP32/M1/K128、B FP32/N128/K128，B scale 物理紧凑存储；自然单 TG 为 M128/N256/K6144、tile128×256×128、stages2。最佳 WDRA48 aligned 普通加载/dot-first 副本两进程共6次均值149829.8 cycles，较无 spill 的生产8warp基线198953.7少24.69%；两个随机种子均与CPU/生产输出逐元素一致，spill=0。实际动态VGPR配额(112,196,196)，LDS101376 bytes。环境固定单die48CU、455ps，完整commit/库指纹/编译参数随记录保留。
 
 MLS未稳定胜过匹配的普通加载；A/B下一轮LDS预取相对重编IR对照约少4.1%，仍慢于上述最佳。普通加载预取分支受VGPR预算限制，没有绕过守卫。生产与最佳的真实PERF已采集，绝对路径及SHA见记录；未计算本次MMAC利用率。未改生产kernel/default config，未跑完整G171、双die、第二接口迁移或尾块。历史E8M0/N1结果继续保留原口径，不能用作本次FP32/N128需求验收。
+
+2026-10-23 追加：A/B MLS + FP32 scale 原生buffer load LDS已在仓库外副本通过两个随机种子的逐元素校验，实际指令及PERF已核实；同shape三次均值149649.3 cycles。原映射MLS对照171701.3，单改scale producer线程布局的普通加载146387.3，故直传比该布局对照慢2.23%，不能把总体12.84%收益全归给直传。分配配额(8,248,248)、无spill、LDS101376 bytes。详见[追加数据和PERF](g171_fp32_scale_20261023/REPORT.md)。生产kernel/default config不变。

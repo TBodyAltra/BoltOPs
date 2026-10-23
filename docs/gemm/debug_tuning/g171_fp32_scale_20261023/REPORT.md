@@ -91,3 +91,46 @@ python /xukang/code/pmd-triton-sessions/g171-fp32-replay/run_one.py P11-aligned-
 下一步最小验证建议：同 scale 的自然4CTA小 shape（256×512×6144）检查生产/候选；第二 FP8 wrapper 对应的 N128/K128 FP32 scale 迁移；129×257×1000 的小 tile普通路径检查尾块。最佳副本只允许 EVEN_MN/EVEN_K，不能用于尾块。真实卡再验证完整 G171、频率与双 die，最后形成 autotune 家族；本轮不做全量尺寸或生产 dispatch 修改。
 
 外部证据根：`/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/`。代码/IR输入SHA与复现文件表：[manifest.json](manifest.json)。
+
+## A/B MLS + FP32 scale buffer load LDS 追加（2026-10-23）
+
+**用户指定路径已实现并执行通过，仍为仓库外 IR 实验副本。** M128/N256/K6144、tile128×256×128、WDRA48/stages2、单die48CU/455ps，以及全部dtype、scale存储和软件版本保持上述条件。生产kernel、默认config、编译器库没有修改。
+
+- A/B 的 IR 各为 `amdg.matrix_load_to_local`；汇编共8条静态 `matrix_load_128x16_b8 … lds`，保留MLS原有同步。
+- A/B scale 各为 `amdg.buffer_load_to_local`，汇编各一条 `buffer_load_dword … offen lds`。payload直接进入LDS；地址仍使用VGPR。当前每份copy提交后wait0，再通过原有ready abarrier发布，不声称跨copy充分overlap。
+- A scale的producer从MFMA slice映射改为一维blocked（sizePerThread1/64线程/4warps），consumer布局、scale索引与所有浮点运算顺序不变。B原有producer已为blocked。
+- 全局A scale仍`[128,48]`、B仍物理紧凑`[2,48]`，K方向连续，没有转置输入。为对齐加载方式，本轮保留原有B在LDS中按256输出通道重复值的暂存，不采用compact-B LDS变体；这不改变全局N128/K128粒度。
+
+| 点 | scale producer / 加载 | cycles（3次） | 抖动 % | 实际VGPR配额 | LDS bytes | spill |
+| --- | --- | ---: | ---: | --- | ---: | ---: |
+| P31-MLS-scale-IR-control | 原映射/普通加载（同IR重编对照） | 171701.3 | 0.309 | (88, 208, 208) | 101376 | 0 |
+| P32r-MLS-scale-layout-control | blocked/普通加载 | 146387.3 | 0.320 | (8, 248, 248) | 101376 | 0 |
+| P33-MLS-scale-buffer-LDS | blocked/原生LDS直传 | 149649.3 | 0.206 | (8, 248, 248) | 101376 | 0 |
+
+目标直传路径较原映射对照少 12.84% cycles；**但比同blocked布局的普通scale加载慢 2.23%**。主要收益来自producer所有权调整，不能全部归功于LDS直传。和前述普通A/B加载最佳约149830 cycles的差距不足0.2%，不据此宣称额外性能收益。当前保留用户要求的直传路径用于继续看PERF；没有替换生产dispatch。
+
+| PMD动态统计 | 原映射对照 | blocked普通加载 | blocked原生直传 |
+| --- | ---: | ---: | ---: |
+| VALU | 37140.000 | 30808.000 | 30516.000 |
+| MMOP | 24576.000 | 24576.000 | 24576.000 |
+| LDS | 13272.000 | 10392.000 | 10008.000 |
+| VMEM | 8384.000 | 2432.000 | 2336.000 |
+| SCA | 40880.000 | 40880.000 | 43464.000 |
+| totalTCCRequests | 45136.667 | 45655.333 | 45154.000 |
+| waitVmCounter | 1653.333 | 1056.444 | 1011.000 |
+| waitLgkmCounter | 17026.889 | 12353.000 | 12359.111 |
+| hostSeconds | 10.600 | 9.973 | 9.860 |
+
+直传相对blocked普通加载减少LDS/部分VALU，但SCA从40880增至43464，静态ebarrier35→37。每份copy独立commit/wait是当前保守同步方式，需后续配对实验才能判断其具体耗时贡献；本轮不继续扩大调优范围。旧static_instructions字段名`ASYNC_MLS`实际正则统计buffer-load-LDS，不能当作MLS数量；新增`load_path`单独核验两种原生操作。
+
+数值：目标路径seed20和seed21均与CPU golden及对应生产输出逐元素一致，max_abs=0、mismatch=0；无spill，VGPR压力需求(4,169,169)，分配配额(8,248,248)，LDS101376 bytes。数值、三次计时与PERF使用同一HSACO，指纹见 [scale-buffer-LDS-verification.json](scale-buffer-LDS-verification.json)。
+
+PERF独立计时 149716 cycles，预热后文件已核验HYGPERF magic、大小和SHA，见 [scale-buffer-LDS-perf-manifest.json](scale-buffer-LDS-perf-manifest.json)。node60宿主机绝对路径：
+
+```text
+/home/hygon/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/PF-MLS-scale-buffer-LDS/m5out/0/1/152939_python3.10.perf
+```
+
+只设`use_async_copy=True`的P30未选中scale直传，执行前拦下，不能误报成已启用。已验证的是生成器显式原生IR，不是自动选路修复。布局对照P32第一版遗漏同步buffer_load结果encoding而触发MLIR类型校验，未执行；修正外部类型后P32r通过，原始错误及IR保留在仓库外。没有软件替代实现、指令模拟或环境能力伪装。
+
+复现仍用上面的prepare.py，在全新仓库外目录准备后先跑P01生产基线，再显式逐点选P31、P32r或P33；没有队列调度。原生转换工具 [scale_buffer_lds.py](scale_buffer_lds.py) 和 [转换证明](scale-buffer-LDS-proof.json) 随记录保存；原始IR、日志、统计、HSACO和PERF继续只留仓库外。5个暂停进程保持T且CPU ticks不变，测量Git工作区干净。

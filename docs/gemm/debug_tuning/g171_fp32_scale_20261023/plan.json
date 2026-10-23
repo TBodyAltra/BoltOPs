@@ -366,5 +366,113 @@
       "optimize_epilogue": true,
       "mmac_layout_force": 3
     }
+  },
+  "P30-MLS-scale-async": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "stages": 2,
+    "seed": 20,
+    "repeats": 3,
+    "name": "P30-MLS-scale-async",
+    "wdra": true,
+    "module": "trial_mls_class_aligned_dotfirst",
+    "compiler_options": {
+      "optimize_epilogue": true,
+      "mmac_layout_force": 3,
+      "use_async_copy": true
+    },
+    "worker": "worker_async_scale.py"
+  },
+  "P31-MLS-scale-IR-control": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "stages": 2,
+    "seed": 20,
+    "repeats": 3,
+    "name": "P31-MLS-scale-IR-control",
+    "wdra": true,
+    "module": "trial_mls_class_aligned_dotfirst",
+    "compiler_options": {
+      "optimize_epilogue": true,
+      "mmac_layout_force": 3,
+      "use_async_copy": true
+    },
+    "worker": "worker_ir.py",
+    "ir_source": "mls-scale-IR-control.ttgir"
+  },
+  "P32r-MLS-scale-layout-control": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "stages": 2,
+    "seed": 20,
+    "repeats": 3,
+    "name": "P32r-MLS-scale-layout-control",
+    "wdra": true,
+    "module": "trial_mls_class_aligned_dotfirst",
+    "compiler_options": {
+      "optimize_epilogue": true,
+      "mmac_layout_force": 3,
+      "use_async_copy": true
+    },
+    "worker": "worker_ir.py",
+    "ir_source": "mls-scale-layout-control-v2.ttgir"
+  },
+  "P33-MLS-scale-buffer-LDS": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "stages": 2,
+    "seed": 20,
+    "repeats": 3,
+    "name": "P33-MLS-scale-buffer-LDS",
+    "wdra": true,
+    "module": "trial_mls_class_aligned_dotfirst",
+    "compiler_options": {
+      "optimize_epilogue": true,
+      "mmac_layout_force": 3,
+      "use_async_copy": true
+    },
+    "worker": "worker_async_scale_ir.py",
+    "ir_source": "mls-scale-buffer-LDS.ttgir"
+  },
+  "P34-MLS-scale-buffer-LDS-seed21": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "stages": 2,
+    "seed": 21,
+    "repeats": 3,
+    "name": "P34-MLS-scale-buffer-LDS-seed21",
+    "wdra": true,
+    "module": "trial_mls_class_aligned_dotfirst",
+    "compiler_options": {
+      "optimize_epilogue": true,
+      "mmac_layout_force": 3,
+      "use_async_copy": true
+    },
+    "worker": "worker_async_scale_ir_validate.py",
+    "ir_source": "mls-scale-buffer-LDS.ttgir",
+    "accuracy_only": true
+  },
+  "PF-MLS-scale-buffer-LDS": {
+    "M": 128,
+    "N": 256,
+    "K": 6144,
+    "stages": 2,
+    "seed": 20,
+    "repeats": 1,
+    "name": "PF-MLS-scale-buffer-LDS",
+    "wdra": true,
+    "module": "trial_mls_class_aligned_dotfirst",
+    "compiler_options": {
+      "optimize_epilogue": true,
+      "mmac_layout_force": 3,
+      "use_async_copy": true
+    },
+    "worker": "worker_async_scale_ir.py",
+    "ir_source": "mls-scale-buffer-LDS.ttgir"
   }
 }
