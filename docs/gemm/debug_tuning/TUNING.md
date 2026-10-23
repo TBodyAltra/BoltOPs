@@ -235,4 +235,4 @@ Git 只保留关键结论和证据索引，不接收原始日志、StatLog、输
 
 表 2 已按 scale dtype 与 block size 分组，见 [少伯 BU 需求](../SHAOBO_BU_REQUIREMENTS.md#table-2)。源需求中 B scale dtype 未注明，实测采用的 E8M0 配置不能反推为所有需求的确定 dtype；选取后续调优代表点时须保留这一边界。
 
-2026-10-23 原始需求复核：此前 G171/G036 等 N1 B scale 实验只证明所测组合，不能作为 GLM 公开 FP32/N128/K128 scale 的验收；Qwen checkpoint scale 为 BF16，DeepSeek dense 为 E8M0/N128/K128，Hy3 为 scalar。后续应先绑定 BU checkpoint/运行时转换并对齐 scale，再继续性能比较。完整来源与冲突见 [需求核对](requirements_audit_20261023/REPORT.md)。历史数据不改写，不将新确认配置标成已测。
+2026-10-23 原始需求复核：此前 G171/G036 等 N1 B scale 实验只证明所测组合，不能作为 GLM 公开 FP32/N128/K128 scale 的验收；Qwen checkpoint scale 为 BF16，DeepSeek dense 为 E8M0/N128/K128，Hy3 为 scalar。后续先按 Excel 明确字段优先、缺失项采用公开配置补齐的口径对齐 scale，再继续性能比较；部署版本绑定另作上线复核。完整来源与冲突见 [需求核对](requirements_audit_20261023/REPORT.md)。历史数据不改写，不将新确认配置标成已测。

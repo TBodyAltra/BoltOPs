@@ -11,7 +11,7 @@
 - M/N/K 沿用 HTML 中的激活行数、输出通道数和规约维，不据此推断矩阵 stride。
 - batch / 分组数 E 的有效值沿用源数据；bmm 表使用 batch 列，grouped_gemm 表将原 experts 列记为分组数 E，linear 表原本全空的该列省略。M/N/K 原值不变，不以 M×E 替换 M，也不据来源 M 假定各组等长；ragged 各组 M 与 offsets 须由调用方提供。
 - 输出精度指写回显存的精度，与累加精度分开验证。
-- 有量化的表分别记录 Excel 激活 scale 与公开 checkpoint 的权重 scale；缺失值记“未给出”，不能从 FP8/MXFP4 总称或“离线”推断 dtype。公开补充项未与 BU checkpoint/框架 commit/启动参数绑定前，不升级为 BU 已确认配置。
+- 有量化的表分别记录 Excel 激活 scale 与公开 checkpoint 的权重 scale；缺失值记“未给出”，不能从 FP8/MXFP4 总称或“离线”推断 dtype。验收字段按 Excel 优先、缺失项网补采用；“网补”须标来源/参考版本，不表示 BU 实测或已通过验证。网上未查到相同对象的信息时仍保留缺失，不能跨模型或 draft 套填。
 - “频次 / 实例数”是 Excel 算子记录出现次数，不是 `layer_count` 展开后的 kernel launch 次数；例如 G171 频次为 1，其来源 `layer_count=3`，两者不冲突。
 - 状态分为接口级「接口 smoke 通过」「待 grouped GEMM smoke」「接口 smoke 受阻」与需求尺寸级「待验证」「编译通过」「完整尺寸正确性通过」「已调优」；不得把接口 smoke 或编译通过升级为本行完整尺寸 PASS。
 - BoltOps 函数 / 实现列链接实际源码定义；它表示当前可对接的接口，不替代模型布局、量化格式与分组寻址适配。表 8 只关注单次 grouped GEMM，输入量化值、scale 和分组索引由测试预先准备；不把在线量化、路由生成、激活或结果合并纳入验收。
@@ -77,122 +77,136 @@
 
 207 行需求，累计 1206 条 Excel 记录；G 编号不变。
 
-A scale 优先由同一 sheet/stage/module、形状一致的前序量化输出 dtype 和 scale shape 推导；没有对应输出的项记为“未给出”；`indexer_wk` 只能找到同形状 `quantize_qkv_a` 输出，仍记为候选、连线待确认，不把形状匹配升级为确定需求。量化输出与 GEMM 未给出 tensor ID，来源关联及原始单元格见 [逐行映射](debug_tuning/requirements_audit_20261023/case-provenance.csv)。
+**验收口径：Excel 明确的信息优先；Excel 缺失的信息采用公开模型配置或框架实现补齐。** 行内“网补”表示缺失字段的补充值，参与后续测试配置；不表示已在 BU 实际部署中核实或已有测试 PASS。存在多个公开版本时，仅采用文末注明的参考版本及字段，不能覆盖 Excel 的明确值。
 
-**B scale 列新增的是对应公开 checkpoint 的信息，不代表 BU 使用了该 checkpoint 或未经转换的布局。** Excel 的 linear 输入没有列出 B scale；旧版全写“离线 1×128”缺少依据，现撤销。checkpoint dtype、框架加载后的 dtype、BU 实际 kernel 输入须分别确认。N/K 二维 block 统一按逻辑权重 `[N,K]` 解释，与 Excel 的 `[K,N]` 显示顺序及 kernel BM/BN/BK 区分。
+A scale：有对应量化输出的 dtype、shape 及 K 分组保持 Excel 值；缺失的 GLM `indexer_wk` / Qwen `o_proj` 按公开 block-FP8 与 SGLang 默认路径补为 FP32/K128，缺失的 Hy3 `o_proj` 按官方 `input_scale` 补为 FP32 scalar。它们均标为“网补”，不伪称 Excel 有该量化连线。来源及有效配置见 [逐行映射](debug_tuning/requirements_audit_20261023/case-provenance.csv)。
 
-前两个接口源码支持按 N/K 分块的 B scale，但此前性能实验常用 `GROUP_N=1`。补全需求不代表 128×128 scale、checkpoint BF16 scale 或 Hy3 scalar 路径已新增 smoke PASS；状态列保留旧接口证据，不升级完整组合验收。模型差异与冲突见 [本次核对](#requirements-cross-check)。
+B scale：Excel 未列出对应参数，采用公开 checkpoint 补齐：GLM 为 FP32/N128/K128，DeepSeek dense 为 E8M0/N128/K128，Qwen FP8 为 checkpoint BF16/N128/K128（框架可转 FP32），Hy3 原始每个 projection 为 BF16 scalar（Q/K/V 或 gate/up 融合时保留各段 scale，不合并成一个）。N/K 按逻辑权重 `[N,K]` 解释。checkpoint dtype 与框架转换后的 dtype 分开记录，不使用旧版无来源的统一“离线 1×128”。
+
+Hy3 已列出的 `[M,1]` FP32 A scale 保留；框架可将静态 scalar 复制为 `[M,1]`，仅凭 shape 不能判定静态/动态冲突。Q35 MXFP4 grouped 的 A dtype 以 Excel 的 FP8 为准，不采用 AMD 参考 checkpoint 的 FP4 activation。
+
+补齐需求不新增任何 smoke 或性能 PASS。前两个接口具备 N128/K128 scale 的表达能力，但此前 N1 实验不能替代新组合的数值/性能验证。
 
 ### 按 A scale dtype 与 block size 分组
 
-B scale 必须再按模型细分，不能由本组 A dtype 推断。整行 `1×K` 的具体 K 值保留在行内。明确记录 `1×128` 的条目即使 K=128 也仍留在 K128 组。
+B scale 按各行模型补充；A scale 的 per-row `1×K` 与单个 per-tensor scalar 分组区分。原 G 编号不变，混合来源按频次保留各组合。
 
 | 分组 | A scale dtype | A scale block size | B scale | 需求行数 | Excel 记录数 |
 | --- | --- | --- | --- | ---: | ---: |
-| [2.1](#table-2-scale-1) | FP32 | 1×128 | 按模型，见各行 / 核对表 | 90 | 186 |
-| [2.2](#table-2-scale-2) | E8M0 | 1×128 | 按模型，见各行 / 核对表 | 79 | 888 |
-| [2.3](#table-2-scale-3) | FP32 | 1×K | 按模型，见各行 / 核对表 | 22 | 33 |
-| [2.4](#table-2-scale-4) | 候选 / 未给出 | 候选 K128 / 未给出 | 按模型，见各行 / 核对表 | 10 | 29 |
-| [2.5](#table-2-scale-5) | 混合 | 逐来源确认 | 按模型，见各行 / 核对表 | 6 | 70 |
+| [2.1](#table-2-scale-1) | FP32 | 1×128 | 按各行模型补充 | 100 | 214 |
+| [2.2](#table-2-scale-2) | E8M0 | 1×128 | 按各行模型补充 | 79 | 888 |
+| [2.3](#table-2-scale-3) | FP32 | 1×K | 按各行模型补充 | 22 | 33 |
+| [2.4](#table-2-scale-4) | FP32 | per-tensor | 按各行模型补充 | 3 | 7 |
+| [2.5](#table-2-scale-5) | 混合 | 逐来源组合 | 按各行模型补充 | 3 | 64 |
 
 <a id="table-2-scale-1"></a>
 
 ### 2.1 A scale FP32，block size 1×128
 
-90 行需求，累计 186 条 Excel 记录。
+100 行需求，累计 214 条 Excel 记录。
 
-| 编号 | M × N × K | 阶段 | 频次 | 激活 scale（Excel） | 权重 scale（公开 checkpoint 补充） | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 |
+| 编号 | M × N × K | 阶段 | 频次 | 激活 scale（Excel 优先 / 网补） | 权重 scale（网补） | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 |
 | --- | --- | --- | ---: | --- | --- | --- | --- | --- |
-| G035 | 6 × 2624 × 6144 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G036 | 6 × 4096 × 2048 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G037 | 6 × 4096 × 6144 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G038 | 6 × 6144 × 2048 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G039 | 6 × 6144 × 16384 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G040 | 6 × 16384 × 2048 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G042 | 12 × 2624 × 6144 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G043 | 12 × 4096 × 2048 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G044 | 12 × 4096 × 6144 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G045 | 12 × 6144 × 2048 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G046 | 12 × 6144 × 16384 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G047 | 12 × 16384 × 2048 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G055 | 24 × 2624 × 6144 | decode | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G056 | 24 × 4096 × 2048 | decode | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G057 | 24 × 4096 × 6144 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G058 | 24 × 6144 × 2048 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G059 | 24 × 6144 × 12288 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G060 | 24 × 6144 × 16384 | decode | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G061 | 24 × 16384 × 2048 | decode | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G062 | 24 × 24576 × 6144 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G064 | 48 × 2048 × 4096 | decode | 1 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G065 | 48 × 2624 × 6144 | decode | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G066 | 48 × 4096 × 1024 | decode | 1 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G067 | 48 × 4096 × 2048 | decode | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G068 | 48 × 4096 × 4096 | decode | 1 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G069 | 48 × 4096 × 6144 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G070 | 48 × 6144 × 2048 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G071 | 48 × 6144 × 12288 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G072 | 48 × 6144 × 16384 | decode | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G073 | 48 × 8704 × 4096 | decode | 1 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G074 | 48 × 16384 × 2048 | decode | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G075 | 48 × 24576 × 6144 | decode | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G076 | 64 × 1024 × 2048 | decode | 2 | FP32@1×128 | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G077 | 64 × 2048 × 512 | decode | 2 | FP32@1×128 | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G079 | 64 × 9216 × 2048 | decode | 1 | FP32@1×128 | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G080 | 64 × 12288 × 2048 | decode | 1 | FP32@1×128 | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G102 | 192 × 2048 × 4096 | decode | 2 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G103 | 192 × 4096 × 1024 | decode | 2 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G108 | 192 × 8704 × 4096 | decode | 1 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G109 | 192 × 10240 × 4096 | decode | 1 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G131 | 2560 × 512 × 6144 | prefill | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G134 | 2560 × 1024 × 2048 | prefill | 2 | FP32@1×128 | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G136 | 2560 × 2048 × 512 | prefill | 2 | FP32@1×128 | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G138 | 2560 × 2624 × 6144 | prefill | 4 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G139 | 2560 × 3072 × 6144 | prefill | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G140 | 2560 × 4096 × 2048 | prefill | 4 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G141 | 2560 × 6144 × 256 | prefill | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G142 | 2560 × 6144 × 1536 | prefill | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G143 | 2560 × 6144 × 16384 | prefill | 4 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G148 | 2560 × 9216 × 2048 | prefill | 1 | FP32@1×128 | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G149 | 2560 × 12288 × 2048 | prefill | 1 | FP32@1×128 | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G150 | 2560 × 16384 × 2048 | prefill | 4 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G153 | 3584 × 256 × 4096 | prefill | 4 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G156 | 3584 × 4096 × 128 | prefill | 4 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G160 | 3584 × 17408 × 4096 | prefill | 2 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G161 | 3584 × 20480 × 4096 | prefill | 1 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G166 | 4608 × 512 × 6144 | prefill | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G170 | 4608 × 2624 × 6144 | prefill | 4 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G171 | 4608 × 3072 × 6144 | prefill | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G172 | 4608 × 4096 × 2048 | prefill | 4 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G173 | 4608 × 6144 × 256 | prefill | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G174 | 4608 × 6144 × 1536 | prefill | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G175 | 4608 × 6144 × 16384 | prefill | 4 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G179 | 4608 × 16384 × 2048 | prefill | 4 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G188 | 6656 × 256 × 4096 | prefill | 4 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G191 | 6656 × 512 × 6144 | prefill | 4 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G194 | 6656 × 1024 × 2048 | prefill | 2 | FP32@1×128 | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G197 | 6656 × 2048 × 512 | prefill | 2 | FP32@1×128 | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G199 | 6656 × 2624 × 6144 | prefill | 8 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G200 | 6656 × 3072 × 6144 | prefill | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G202 | 6656 × 4096 × 128 | prefill | 4 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G206 | 6656 × 4096 × 2048 | prefill | 8 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G208 | 6656 × 6144 × 256 | prefill | 4 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G209 | 6656 × 6144 × 1536 | prefill | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G210 | 6656 × 6144 × 16384 | prefill | 8 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G216 | 6656 × 9216 × 2048 | prefill | 1 | FP32@1×128 | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G218 | 6656 × 12288 × 2048 | prefill | 1 | FP32@1×128 | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G219 | 6656 × 16384 × 2048 | prefill | 8 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G220 | 6656 × 17408 × 4096 | prefill | 2 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G221 | 6656 × 20480 × 4096 | prefill | 1 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G225 | 20480 × 3072 × 6144 | prefill | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G226 | 20480 × 6144 × 1536 | prefill | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G227 | 28672 × 2560 × 4096 | prefill | 1 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G228 | 28672 × 4096 × 1024 | prefill | 1 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G229 | 36864 × 3072 × 6144 | prefill | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G230 | 36864 × 6144 × 1536 | prefill | 1 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G231 | 53248 × 2560 × 4096 | prefill | 1 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G232 | 53248 × 3072 × 6144 | prefill | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G234 | 53248 × 4096 × 1024 | prefill | 1 | FP32@1×128 | 公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G236 | 53248 × 6144 × 1536 | prefill | 2 | FP32@1×128 | 公开 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G035 | 6 × 2624 × 6144 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G036 | 6 × 4096 × 2048 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G037 | 6 × 4096 × 6144 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G038 | 6 × 6144 × 2048 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G039 | 6 × 6144 × 16384 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G040 | 6 × 16384 × 2048 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G042 | 12 × 2624 × 6144 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G043 | 12 × 4096 × 2048 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G044 | 12 × 4096 × 6144 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G045 | 12 × 6144 × 2048 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G046 | 12 × 6144 × 16384 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G047 | 12 × 16384 × 2048 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G055 | 24 × 2624 × 6144 | decode | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G056 | 24 × 4096 × 2048 | decode | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G057 | 24 × 4096 × 6144 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G058 | 24 × 6144 × 2048 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G059 | 24 × 6144 × 12288 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G060 | 24 × 6144 × 16384 | decode | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G061 | 24 × 16384 × 2048 | decode | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G062 | 24 × 24576 × 6144 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G064 | 48 × 2048 × 4096 | decode | 1 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G065 | 48 × 2624 × 6144 | decode | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G066 | 48 × 4096 × 1024 | decode | 1 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G067 | 48 × 4096 × 2048 | decode | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G068 | 48 × 4096 × 4096 | decode | 1 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G069 | 48 × 4096 × 6144 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G070 | 48 × 6144 × 2048 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G071 | 48 × 6144 × 12288 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G072 | 48 × 6144 × 16384 | decode | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G073 | 48 × 8704 × 4096 | decode | 1 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G074 | 48 × 16384 × 2048 | decode | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G075 | 48 × 24576 × 6144 | decode | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G076 | 64 × 1024 × 2048 | decode | 2 | FP32@1×128 | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G077 | 64 × 2048 × 512 | decode | 2 | FP32@1×128 | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G079 | 64 × 9216 × 2048 | decode | 1 | FP32@1×128 | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G080 | 64 × 12288 × 2048 | decode | 1 | FP32@1×128 | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G102 | 192 × 2048 × 4096 | decode | 2 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G103 | 192 × 4096 × 1024 | decode | 2 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G108 | 192 × 8704 × 4096 | decode | 1 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G109 | 192 × 10240 × 4096 | decode | 1 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G131 | 2560 × 512 × 6144 | prefill | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G134 | 2560 × 1024 × 2048 | prefill | 2 | FP32@1×128 | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G136 | 2560 × 2048 × 512 | prefill | 2 | FP32@1×128 | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G138 | 2560 × 2624 × 6144 | prefill | 4 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G139 | 2560 × 3072 × 6144 | prefill | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G140 | 2560 × 4096 × 2048 | prefill | 4 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G141 | 2560 × 6144 × 256 | prefill | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G142 | 2560 × 6144 × 1536 | prefill | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G143 | 2560 × 6144 × 16384 | prefill | 4 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G148 | 2560 × 9216 × 2048 | prefill | 1 | FP32@1×128 | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G149 | 2560 × 12288 × 2048 | prefill | 1 | FP32@1×128 | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G150 | 2560 × 16384 × 2048 | prefill | 4 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G153 | 3584 × 256 × 4096 | prefill | 4 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G156 | 3584 × 4096 × 128 | prefill | 4 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G160 | 3584 × 17408 × 4096 | prefill | 2 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G161 | 3584 × 20480 × 4096 | prefill | 1 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G166 | 4608 × 512 × 6144 | prefill | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G170 | 4608 × 2624 × 6144 | prefill | 4 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G171 | 4608 × 3072 × 6144 | prefill | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G172 | 4608 × 4096 × 2048 | prefill | 4 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G173 | 4608 × 6144 × 256 | prefill | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G174 | 4608 × 6144 × 1536 | prefill | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G175 | 4608 × 6144 × 16384 | prefill | 4 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G179 | 4608 × 16384 × 2048 | prefill | 4 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G188 | 6656 × 256 × 4096 | prefill | 4 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G191 | 6656 × 512 × 6144 | prefill | 4 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G194 | 6656 × 1024 × 2048 | prefill | 2 | FP32@1×128 | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G197 | 6656 × 2048 × 512 | prefill | 2 | FP32@1×128 | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G199 | 6656 × 2624 × 6144 | prefill | 8 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G200 | 6656 × 3072 × 6144 | prefill | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G202 | 6656 × 4096 × 128 | prefill | 4 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G206 | 6656 × 4096 × 2048 | prefill | 8 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G208 | 6656 × 6144 × 256 | prefill | 4 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G209 | 6656 × 6144 × 1536 | prefill | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G210 | 6656 × 6144 × 16384 | prefill | 8 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G216 | 6656 × 9216 × 2048 | prefill | 1 | FP32@1×128 | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G218 | 6656 × 12288 × 2048 | prefill | 1 | FP32@1×128 | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G219 | 6656 × 16384 × 2048 | prefill | 8 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G220 | 6656 × 17408 × 4096 | prefill | 2 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G221 | 6656 × 20480 × 4096 | prefill | 1 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G225 | 20480 × 3072 × 6144 | prefill | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G226 | 20480 × 6144 × 1536 | prefill | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G227 | 28672 × 2560 × 4096 | prefill | 1 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G228 | 28672 × 4096 × 1024 | prefill | 1 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G229 | 36864 × 3072 × 6144 | prefill | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G230 | 36864 × 6144 × 1536 | prefill | 1 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G231 | 53248 × 2560 × 4096 | prefill | 1 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G232 | 53248 × 3072 × 6144 | prefill | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G234 | 53248 × 4096 × 1024 | prefill | 1 | FP32@1×128 | 网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C012](#c012) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G236 | 53248 × 6144 × 1536 | prefill | 2 | FP32@1×128 | 网补 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G034 | 6 × 128 × 6144 | decode | 1 | FP32@1×128（网补） | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G041 | 12 × 128 × 6144 | decode | 1 | FP32@1×128（网补） | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G054 | 24 × 128 × 6144 | decode | 2 | FP32@1×128（网补） | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G063 | 48 × 128 × 6144 | decode | 2 | FP32@1×128（网补） | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G130 | 2560 × 128 × 6144 | prefill | 4 | FP32@1×128（网补） | 网补 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G165 | 4608 × 128 × 6144 | prefill | 4 | FP32@1×128（网补） | 网补 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G187 | 6656 × 128 × 6144 | prefill | 8 | FP32@1×128（网补） | 网补 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G078 | 64 × 2048 × 4096 | decode | 2 | FP32@1×128（Excel 1 / 网补 1） | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G137 | 2560 × 2048 × 4096 | prefill | 2 | FP32@1×128（Excel 1 / 网补 1） | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G198 | 6656 × 2048 × 4096 | prefill | 2 | FP32@1×128（Excel 1 / 网补 1） | 网补 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
 
 <a id="table-2-scale-2"></a>
 
@@ -200,152 +214,142 @@ B scale 必须再按模型细分，不能由本组 A dtype 推断。整行 `1×K
 
 79 行需求，累计 888 条 Excel 记录。
 
-| 编号 | M × N × K | 阶段 | 频次 | 激活 scale（Excel） | 权重 scale（公开 checkpoint 补充） | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 |
+| 编号 | M × N × K | 阶段 | 频次 | 激活 scale（Excel 优先 / 网补） | 权重 scale（网补） | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 |
 | --- | --- | --- | ---: | --- | --- | --- | --- | --- |
-| G081 | 80 × 512 × 7168 | decode | 6 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G082 | 80 × 1536 × 7168 | decode | 6 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G083 | 80 × 6144 × 7168 | decode | 6 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G084 | 80 × 7168 × 3072 | decode | 6 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G085 | 80 × 7168 × 16384 | decode | 6 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G086 | 80 × 65536 × 1536 | decode | 6 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G087 | 96 × 512 × 7168 | decode | 8 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G088 | 96 × 1536 × 7168 | decode | 8 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G089 | 96 × 6144 × 7168 | decode | 8 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G090 | 96 × 7168 × 3072 | decode | 8 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G091 | 96 × 7168 × 16384 | decode | 8 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G092 | 96 × 8192 × 1536 | decode | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G093 | 96 × 65536 × 1536 | decode | 8 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G094 | 160 × 512 × 4096 | decode | 3 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G095 | 160 × 1024 × 4096 | decode | 3 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G096 | 160 × 4096 × 2048 | decode | 3 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G097 | 160 × 4096 × 4096 | decode | 3 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G098 | 160 × 4096 × 8192 | decode | 3 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G099 | 160 × 32768 × 1024 | decode | 3 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G100 | 192 × 512 × 4096 | decode | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G101 | 192 × 1024 × 4096 | decode | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G104 | 192 × 4096 × 2048 | decode | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G106 | 192 × 4096 × 8192 | decode | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G107 | 192 × 8192 × 1024 | decode | 2 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G110 | 192 × 32768 × 1024 | decode | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G111 | 240 × 512 × 4096 | decode | 9 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G112 | 240 × 1024 × 4096 | decode | 9 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G113 | 240 × 4096 × 2048 | decode | 9 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G114 | 240 × 4096 × 4096 | decode | 9 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G115 | 240 × 4096 × 8192 | decode | 9 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G116 | 240 × 32768 × 1024 | decode | 9 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G117 | 288 × 512 × 4096 | decode | 12 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G118 | 288 × 1024 × 4096 | decode | 12 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G119 | 288 × 4096 × 2048 | decode | 12 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G120 | 288 × 4096 × 4096 | decode | 12 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G121 | 288 × 4096 × 8192 | decode | 12 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G122 | 288 × 8192 × 1024 | decode | 6 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G123 | 288 × 32768 × 1024 | decode | 12 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G132 | 2560 × 512 × 7168 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G133 | 2560 × 768 × 7168 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G135 | 2560 × 1536 × 7168 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G144 | 2560 × 7168 × 384 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G145 | 2560 × 7168 × 8192 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G146 | 2560 × 7168 × 16384 | prefill | 12 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G147 | 2560 × 8192 × 1536 | prefill | 8 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G151 | 2560 × 32768 × 1536 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G152 | 2560 × 65536 × 1536 | prefill | 12 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G154 | 3584 × 512 × 4096 | prefill | 32 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C007](#c007) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G155 | 3584 × 1024 × 4096 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C007](#c007) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G157 | 3584 × 4096 × 256 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C007](#c007) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G159 | 3584 × 8192 × 1024 | prefill | 8 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C007](#c007) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G162 | 3584 × 32768 × 1024 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C007](#c007) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G167 | 4608 × 512 × 7168 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G168 | 4608 × 768 × 7168 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G169 | 4608 × 1536 × 7168 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G176 | 4608 × 7168 × 384 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G177 | 4608 × 7168 × 16384 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G178 | 4608 × 8192 × 1536 | prefill | 2 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G180 | 4608 × 65536 × 1536 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G181 | 5120 × 512 × 4096 | prefill | 32 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C008](#c008) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G182 | 5120 × 1024 × 4096 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C008](#c008) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G183 | 5120 × 4096 × 256 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C008](#c008) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G184 | 5120 × 4096 × 8192 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C008](#c008) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G185 | 5120 × 8192 × 1024 | prefill | 8 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C008](#c008) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G186 | 5120 × 32768 × 1024 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C008](#c008) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G190 | 6656 × 512 × 4096 | prefill | 64 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C016](#c016) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G192 | 6656 × 512 × 7168 | prefill | 20 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G193 | 6656 × 768 × 7168 | prefill | 20 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G195 | 6656 × 1024 × 4096 | prefill | 32 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C016](#c016) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G196 | 6656 × 1536 × 7168 | prefill | 20 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G204 | 6656 × 4096 × 256 | prefill | 32 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C016](#c016) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G211 | 6656 × 7168 × 384 | prefill | 20 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G212 | 6656 × 7168 × 8192 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G213 | 6656 × 7168 × 16384 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G214 | 6656 × 8192 × 1024 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C016](#c016) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G215 | 6656 × 8192 × 1536 | prefill | 10 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G222 | 6656 × 32768 × 1024 | prefill | 32 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Flash](#quant-flash)） | [C016](#c016) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G223 | 6656 × 32768 × 1536 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G224 | 6656 × 65536 × 1536 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G081 | 80 × 512 × 7168 | decode | 6 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G082 | 80 × 1536 × 7168 | decode | 6 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G083 | 80 × 6144 × 7168 | decode | 6 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G084 | 80 × 7168 × 3072 | decode | 6 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G085 | 80 × 7168 × 16384 | decode | 6 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G086 | 80 × 65536 × 1536 | decode | 6 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G087 | 96 × 512 × 7168 | decode | 8 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G088 | 96 × 1536 × 7168 | decode | 8 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G089 | 96 × 6144 × 7168 | decode | 8 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G090 | 96 × 7168 × 3072 | decode | 8 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G091 | 96 × 7168 × 16384 | decode | 8 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G092 | 96 × 8192 × 1536 | decode | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G093 | 96 × 65536 × 1536 | decode | 8 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G094 | 160 × 512 × 4096 | decode | 3 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G095 | 160 × 1024 × 4096 | decode | 3 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G096 | 160 × 4096 × 2048 | decode | 3 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G097 | 160 × 4096 × 4096 | decode | 3 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G098 | 160 × 4096 × 8192 | decode | 3 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G099 | 160 × 32768 × 1024 | decode | 3 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G100 | 192 × 512 × 4096 | decode | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G101 | 192 × 1024 × 4096 | decode | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G104 | 192 × 4096 × 2048 | decode | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G106 | 192 × 4096 × 8192 | decode | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G107 | 192 × 8192 × 1024 | decode | 2 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G110 | 192 × 32768 × 1024 | decode | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C005](#c005) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G111 | 240 × 512 × 4096 | decode | 9 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G112 | 240 × 1024 × 4096 | decode | 9 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G113 | 240 × 4096 × 2048 | decode | 9 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G114 | 240 × 4096 × 4096 | decode | 9 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G115 | 240 × 4096 × 8192 | decode | 9 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G116 | 240 × 32768 × 1024 | decode | 9 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G117 | 288 × 512 × 4096 | decode | 12 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G118 | 288 × 1024 × 4096 | decode | 12 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G119 | 288 × 4096 × 2048 | decode | 12 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G120 | 288 × 4096 × 4096 | decode | 12 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G121 | 288 × 4096 × 8192 | decode | 12 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G122 | 288 × 8192 × 1024 | decode | 6 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G123 | 288 × 32768 × 1024 | decode | 12 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C006](#c006) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G132 | 2560 × 512 × 7168 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G133 | 2560 × 768 × 7168 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G135 | 2560 × 1536 × 7168 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G144 | 2560 × 7168 × 384 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G145 | 2560 × 7168 × 8192 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G146 | 2560 × 7168 × 16384 | prefill | 12 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G147 | 2560 × 8192 × 1536 | prefill | 8 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G151 | 2560 × 32768 × 1536 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G152 | 2560 × 65536 × 1536 | prefill | 12 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G154 | 3584 × 512 × 4096 | prefill | 32 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C007](#c007) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G155 | 3584 × 1024 × 4096 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C007](#c007) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G157 | 3584 × 4096 × 256 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C007](#c007) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G159 | 3584 × 8192 × 1024 | prefill | 8 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C007](#c007) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G162 | 3584 × 32768 × 1024 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C007](#c007) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G167 | 4608 × 512 × 7168 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G168 | 4608 × 768 × 7168 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G169 | 4608 × 1536 × 7168 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G176 | 4608 × 7168 × 384 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G177 | 4608 × 7168 × 16384 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G178 | 4608 × 8192 × 1536 | prefill | 2 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G180 | 4608 × 65536 × 1536 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G181 | 5120 × 512 × 4096 | prefill | 32 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C008](#c008) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G182 | 5120 × 1024 × 4096 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C008](#c008) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G183 | 5120 × 4096 × 256 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C008](#c008) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G184 | 5120 × 4096 × 8192 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C008](#c008) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G185 | 5120 × 8192 × 1024 | prefill | 8 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C008](#c008) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G186 | 5120 × 32768 × 1024 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C008](#c008) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G190 | 6656 × 512 × 4096 | prefill | 64 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C016](#c016) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G192 | 6656 × 512 × 7168 | prefill | 20 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G193 | 6656 × 768 × 7168 | prefill | 20 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G195 | 6656 × 1024 × 4096 | prefill | 32 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C016](#c016) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G196 | 6656 × 1536 × 7168 | prefill | 20 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G204 | 6656 × 4096 × 256 | prefill | 32 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C016](#c016) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G211 | 6656 × 7168 × 384 | prefill | 20 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G212 | 6656 × 7168 × 8192 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G213 | 6656 × 7168 × 16384 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G214 | 6656 × 8192 × 1024 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C016](#c016) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G215 | 6656 × 8192 × 1536 | prefill | 10 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G222 | 6656 × 32768 × 1024 | prefill | 32 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Flash](#quant-flash)） | [C016](#c016) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G223 | 6656 × 32768 × 1536 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G224 | 6656 × 65536 × 1536 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@128×128（[DS-Pro](#quant-pro)） | [C004](#c004) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
 
 <a id="table-2-scale-3"></a>
 
-### 2.3 A scale FP32，block size 1×K（整行）
+### 2.3 A scale FP32，block size 1×K（每行）
 
 22 行需求，累计 33 条 Excel 记录。
 
-| 编号 | M × N × K | 阶段 | 频次 | 激活 scale（Excel） | 权重 scale（公开 checkpoint 补充） | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 |
+| 编号 | M × N × K | 阶段 | 频次 | 激活 scale（Excel 优先 / 网补） | 权重 scale（网补） | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 |
 | --- | --- | --- | ---: | --- | --- | --- | --- | --- |
-| G030 | 4 × 3072 × 4096 | decode | 1 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G031 | 4 × 4096 × 1536 | decode | 1 | FP32@1×1536 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G033 | 4 × 10240 × 4096 | decode | 1 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G048 | 16 × 3072 × 4096 | decode | 1 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G049 | 16 × 4096 × 1536 | decode | 1 | FP32@1×1536 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G051 | 16 × 4096 × 13312 | decode | 1 | FP32@1×13312 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G052 | 16 × 10240 × 4096 | decode | 2 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G053 | 16 × 26624 × 4096 | decode | 1 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G124 | 512 × 384 × 4096 | prefill | 2 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G125 | 512 × 3328 × 4096 | prefill | 1 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G126 | 512 × 4096 × 192 | prefill | 2 | FP32@1×192 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G127 | 512 × 4096 × 1664 | prefill | 1 | FP32@1×1664 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G129 | 512 × 10240 × 4096 | prefill | 4 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G163 | 4096 × 3328 × 4096 | prefill | 1 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G164 | 4096 × 4096 × 1664 | prefill | 1 | FP32@1×1664 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G189 | 6656 × 384 × 4096 | prefill | 2 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G201 | 6656 × 3328 × 4096 | prefill | 1 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G203 | 6656 × 4096 × 192 | prefill | 2 | FP32@1×192 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G205 | 6656 × 4096 × 1664 | prefill | 1 | FP32@1×1664 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G217 | 6656 × 10240 × 4096 | prefill | 4 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G233 | 53248 × 3328 × 4096 | prefill | 1 | FP32@1×4096 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G235 | 53248 × 4096 × 1664 | prefill | 1 | FP32@1×1664 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G030 | 4 × 3072 × 4096 | decode | 1 | FP32@1×4096 | 网补 BF16：gate/up 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G031 | 4 × 4096 × 1536 | decode | 1 | FP32@1×1536 | 网补 BF16@per-tensor（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G033 | 4 × 10240 × 4096 | decode | 1 | FP32@1×4096 | 网补 BF16：Q/K/V 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G048 | 16 × 3072 × 4096 | decode | 1 | FP32@1×4096 | 网补 BF16：gate/up 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G049 | 16 × 4096 × 1536 | decode | 1 | FP32@1×1536 | 网补 BF16@per-tensor（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G051 | 16 × 4096 × 13312 | decode | 1 | FP32@1×13312 | 网补 BF16@per-tensor（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G052 | 16 × 10240 × 4096 | decode | 2 | FP32@1×4096 | 网补 BF16：Q/K/V 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G053 | 16 × 26624 × 4096 | decode | 1 | FP32@1×4096 | 网补 BF16：gate/up 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G124 | 512 × 384 × 4096 | prefill | 2 | FP32@1×4096 | 网补 BF16：gate/up 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G125 | 512 × 3328 × 4096 | prefill | 1 | FP32@1×4096 | 网补 BF16：gate/up 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G126 | 512 × 4096 × 192 | prefill | 2 | FP32@1×192 | 网补 BF16@per-tensor（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G127 | 512 × 4096 × 1664 | prefill | 1 | FP32@1×1664 | 网补 BF16@per-tensor（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G129 | 512 × 10240 × 4096 | prefill | 4 | FP32@1×4096 | 网补 BF16：Q/K/V 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G163 | 4096 × 3328 × 4096 | prefill | 1 | FP32@1×4096 | 网补 BF16：gate/up 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G164 | 4096 × 4096 × 1664 | prefill | 1 | FP32@1×1664 | 网补 BF16@per-tensor（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G189 | 6656 × 384 × 4096 | prefill | 2 | FP32@1×4096 | 网补 BF16：gate/up 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G201 | 6656 × 3328 × 4096 | prefill | 1 | FP32@1×4096 | 网补 BF16：gate/up 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G203 | 6656 × 4096 × 192 | prefill | 2 | FP32@1×192 | 网补 BF16@per-tensor（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G205 | 6656 × 4096 × 1664 | prefill | 1 | FP32@1×1664 | 网补 BF16@per-tensor（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G217 | 6656 × 10240 × 4096 | prefill | 4 | FP32@1×4096 | 网补 BF16：Q/K/V 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G233 | 53248 × 3328 × 4096 | prefill | 1 | FP32@1×4096 | 网补 BF16：gate/up 各自 scalar；融合后沿 N 分段常量（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G235 | 53248 × 4096 × 1664 | prefill | 1 | FP32@1×1664 | 网补 BF16@per-tensor（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
 
 <a id="table-2-scale-4"></a>
 
-### 2.4 A scale 候选 / 未给出，待确认
+### 2.4 A scale FP32，per-tensor scalar（网补）
 
-10 行需求，累计 29 条 Excel 记录。
+3 行需求，累计 7 条 Excel 记录。
 
-| 编号 | M × N × K | 阶段 | 频次 | 激活 scale（Excel） | 权重 scale（公开 checkpoint 补充） | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 |
+| 编号 | M × N × K | 阶段 | 频次 | 激活 scale（Excel 优先 / 网补） | 权重 scale（网补） | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 |
 | --- | --- | --- | ---: | --- | --- | --- | --- | --- |
-| G032 | 4 × 4096 × 8192 | decode | 1 | 未给出 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G034 | 6 × 128 × 6144 | decode | 1 | FP32@1×128（候选，连线待确认） | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G041 | 12 × 128 × 6144 | decode | 1 | FP32@1×128（候选，连线待确认） | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G050 | 16 × 4096 × 8192 | decode | 2 | 未给出 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G054 | 24 × 128 × 6144 | decode | 2 | FP32@1×128（候选，连线待确认） | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G063 | 48 × 128 × 6144 | decode | 2 | FP32@1×128（候选，连线待确认） | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G128 | 512 × 4096 × 8192 | prefill | 4 | 未给出 | 公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G130 | 2560 × 128 × 6144 | prefill | 4 | FP32@1×128（候选，连线待确认） | 公开 FP32@128×128（[GLM](#quant-glm)） | [C002](#c002) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G165 | 4608 × 128 × 6144 | prefill | 4 | FP32@1×128（候选，连线待确认） | 公开 FP32@128×128（[GLM](#quant-glm)） | [C001](#c001) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G187 | 6656 × 128 × 6144 | prefill | 8 | FP32@1×128（候选，连线待确认） | 公开 FP32@128×128（[GLM](#quant-glm)） | [C009](#c009) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G032 | 4 × 4096 × 8192 | decode | 1 | FP32@per-tensor（网补） | 网补 BF16@per-tensor（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G050 | 16 × 4096 × 8192 | decode | 2 | FP32@per-tensor（网补） | 网补 BF16@per-tensor（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G128 | 512 × 4096 × 8192 | prefill | 4 | FP32@per-tensor（网补） | 网补 BF16@per-tensor（[Hy3](#quant-hy3)） | [C011](#c011) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
 
 <a id="table-2-scale-5"></a>
 
-### 2.5 同一编号含多种 A scale / 来源缺失
+### 2.5 同一编号含多种 A scale
 
-6 行需求，累计 70 条 Excel 记录。
+3 行需求，累计 64 条 Excel 记录。
 
-| 编号 | M × N × K | 阶段 | 频次 | 激活 scale（Excel） | 权重 scale（公开 checkpoint 补充） | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 |
+| 编号 | M × N × K | 阶段 | 频次 | 激活 scale（Excel 优先 / 网补） | 权重 scale（网补） | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 |
 | --- | --- | --- | ---: | --- | --- | --- | --- | --- |
-| G078 | 64 × 2048 × 4096 | decode | 2 | FP32@1×128(1) / 未给出(1) | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G105 | 192 × 4096 × 4096 | decode | 6 | FP32@1×128(2) / FP8E8M0@1×128(4) | 公开 E8M0@128×128（[DS-Flash](#quant-flash)）<br>公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C014](#c014) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G137 | 2560 × 2048 × 4096 | prefill | 2 | FP32@1×128(1) / 未给出(1) | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G158 | 3584 × 4096 × 8192 | prefill | 19 | FP32@1×128(1) / FP8E8M0@1×128(16) / 未给出(2) | 公开 E8M0@128×128（[DS-Flash](#quant-flash)）<br>公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C015](#c015) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G198 | 6656 × 2048 × 4096 | prefill | 2 | FP32@1×128(1) / 未给出(1) | 公开 BF16@128×128（[Q35](#quant-q35)；框架可转 FP32） | [C013](#c013) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
-| G207 | 6656 × 4096 × 8192 | prefill | 39 | FP32@1×128(1) / FP8E8M0@1×128(32) / 未给出(6) | 公开 E8M0@128×128（[DS-Flash](#quant-flash)）<br>公开 BF16@per-tensor（[Hy3](#quant-hy3)；BU 待确认）<br>公开 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C017](#c017) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G105 | 192 × 4096 × 4096 | decode | 6 | FP32@1×128(2) / FP8E8M0@1×128(4) | 网补 E8M0@128×128（[DS-Flash](#quant-flash)）<br>网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C014](#c014) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G158 | 3584 × 4096 × 8192 | prefill | 19 | FP32@1×128(3)（Excel 1 / 网补 2） / FP8E8M0@1×128(16) | 网补 E8M0@128×128（[DS-Flash](#quant-flash)）<br>网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C015](#c015) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
+| G207 | 6656 × 4096 × 8192 | prefill | 39 | FP32@1×128(3)（Excel 1 / 网补 2） / FP32@per-tensor(4)（网补） / FP8E8M0@1×128(32) | 网补 E8M0@128×128（[DS-Flash](#quant-flash)）<br>网补 BF16@per-tensor（[Hy3](#quant-hy3)）<br>网补 BF16@128×128（[Q397](#quant-q397)；框架可转 FP32） | [C017](#c017) | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm] | 接口 smoke 通过 |
 
 <a id="table-3"></a>
 
@@ -596,48 +600,50 @@ B scale 必须再按模型细分，不能由本组 A dtype 推断。整行 `1×K
 
 34 行需求，累计 304 条实例。编号在本清单中全局唯一。
 
-`grouped_gemm_a8wfp4` 支持等长及 ragged（含空组）；A scale 可为 K32/K128，W scale 为 K32。原完整需求的 34/34 编译通过不等于 34/34 精度通过；状态仍为旧接口 smoke 证据。W 的 E8M0/K32 由公开 DeepSeek-V4 / AMD MXFP4 配置与权重 header 补充；BU 实际文件需绑定。Q35 MXFP4 的公开 AMD 版本使用 FP4 activation，而 Excel 要求 FP8 activation，属于版本/路径冲突，不将其直接合并。
+`grouped_gemm_a8wfp4` 支持等长及 ragged（含空组）；A scale 可为 K32/K128，W scale 为 K32。原完整需求的 34/34 编译通过不等于 34/34 精度通过；状态仍为旧接口 smoke 证据。W 的 E8M0/K32 由公开 DeepSeek-V4 / AMD MXFP4 配置与权重 header 补齐，作为当前验收参数。Q35 MXFP4 的 A 采用 Excel 明确要求的 FP8；AMD 参考版本的 FP4 activation 不采用。
 
 | 编号 | M × N × K | 分组数 E | 阶段 | 频次 | 激活 scale | 权重 scale | 模型 / 配置 | BoltOps 函数 / 实现 | 状态 |
 | --- | --- | ---: | --- | ---: | --- | --- | --- | --- | --- |
-| G472 | 2 × 1024 × 2048 | 80 | decode | 2 | FP8E8M0@1×32 | 公开 E8M0@1×32（AMD Q35；BU 激活路径不同） | [C018](#c018) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G473 | 2 × 2048 × 512 | 80 | decode | 2 | FP32@1×32 | 公开 E8M0@1×32（AMD Q35；BU 激活路径不同） | [C018](#c018) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G474 | 20 × 6144 × 7168 | 24 | decode | 6 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G475 | 20 × 7168 × 3072 | 24 | decode | 6 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G476 | 24 × 6144 × 7168 | 24 | decode | 8 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G477 | 24 × 7168 × 3072 | 24 | decode | 8 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G478 | 30 × 4096 × 2048 | 32 | decode | 3 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C005](#c005) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G479 | 30 × 4096 × 4096 | 32 | decode | 3 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C005](#c005) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G480 | 36 × 4096 × 2048 | 32 | decode | 4 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C005](#c005) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G481 | 36 × 4096 × 4096 | 32 | decode | 4 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C005](#c005) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G482 | 45 × 4096 × 2048 | 32 | decode | 9 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C006](#c006) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G483 | 45 × 4096 × 4096 | 32 | decode | 9 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C006](#c006) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G484 | 54 × 4096 × 2048 | 32 | decode | 12 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C006](#c006) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G485 | 54 × 4096 × 4096 | 32 | decode | 12 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C006](#c006) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G486 | 64 × 1024 × 2048 | 256 | prefill | 2 | FP8E8M0@1×32 | 公开 E8M0@1×32（AMD Q35；BU 激活路径不同） | [C018](#c018) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G487 | 64 × 2048 × 512 | 256 | prefill | 2 | FP32@1×32 | 公开 E8M0@1×32（AMD Q35；BU 激活路径不同） | [C018](#c018) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G488 | 160 × 6144 × 7168 | 48 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G489 | 160 × 7168 × 3072 | 48 | prefill | 4 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G490 | 208 × 1024 × 2048 | 256 | prefill | 2 | FP8E8M0@1×32 | 公开 E8M0@1×32（AMD Q35；BU 激活路径不同） | [C018](#c018) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G491 | 208 × 2048 × 512 | 256 | prefill | 2 | FP32@1×32 | 公开 E8M0@1×32（AMD Q35；BU 激活路径不同） | [C018](#c018) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G492 | 320 × 6144 × 7168 | 48 | prefill | 12 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G493 | 320 × 7168 × 3072 | 48 | prefill | 12 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G494 | 416 × 6144 × 7168 | 48 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G495 | 416 × 7168 × 3072 | 48 | prefill | 4 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G496 | 576 × 6144 × 7168 | 48 | prefill | 4 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G497 | 576 × 7168 × 3072 | 48 | prefill | 4 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G498 | 672 × 4096 × 2048 | 32 | prefill | 16 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C007](#c007) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G499 | 672 × 4096 × 4096 | 32 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C007](#c007) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G500 | 832 × 6144 × 7168 | 48 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G501 | 832 × 7168 × 3072 | 48 | prefill | 16 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G502 | 960 × 4096 × 2048 | 32 | prefill | 16 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C008](#c008) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G503 | 960 × 4096 × 4096 | 32 | prefill | 16 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C008](#c008) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G504 | 1248 × 4096 × 2048 | 32 | prefill | 32 | FP32@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C016](#c016) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
-| G505 | 1248 × 4096 × 4096 | 32 | prefill | 32 | FP8E8M0@1×128 | 公开 E8M0@1×32（DS-V4 MXFP4） | [C016](#c016) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G472 | 2 × 1024 × 2048 | 80 | decode | 2 | FP8E8M0@1×32 | 网补 E8M0@1×32（AMD Q35；A 按 Excel FP8） | [C018](#c018) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G473 | 2 × 2048 × 512 | 80 | decode | 2 | FP32@1×32 | 网补 E8M0@1×32（AMD Q35；A 按 Excel FP8） | [C018](#c018) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G474 | 20 × 6144 × 7168 | 24 | decode | 6 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G475 | 20 × 7168 × 3072 | 24 | decode | 6 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G476 | 24 × 6144 × 7168 | 24 | decode | 8 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G477 | 24 × 7168 × 3072 | 24 | decode | 8 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G478 | 30 × 4096 × 2048 | 32 | decode | 3 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C005](#c005) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G479 | 30 × 4096 × 4096 | 32 | decode | 3 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C005](#c005) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G480 | 36 × 4096 × 2048 | 32 | decode | 4 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C005](#c005) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G481 | 36 × 4096 × 4096 | 32 | decode | 4 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C005](#c005) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G482 | 45 × 4096 × 2048 | 32 | decode | 9 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C006](#c006) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G483 | 45 × 4096 × 4096 | 32 | decode | 9 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C006](#c006) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G484 | 54 × 4096 × 2048 | 32 | decode | 12 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C006](#c006) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G485 | 54 × 4096 × 4096 | 32 | decode | 12 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C006](#c006) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G486 | 64 × 1024 × 2048 | 256 | prefill | 2 | FP8E8M0@1×32 | 网补 E8M0@1×32（AMD Q35；A 按 Excel FP8） | [C018](#c018) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G487 | 64 × 2048 × 512 | 256 | prefill | 2 | FP32@1×32 | 网补 E8M0@1×32（AMD Q35；A 按 Excel FP8） | [C018](#c018) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G488 | 160 × 6144 × 7168 | 48 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G489 | 160 × 7168 × 3072 | 48 | prefill | 4 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G490 | 208 × 1024 × 2048 | 256 | prefill | 2 | FP8E8M0@1×32 | 网补 E8M0@1×32（AMD Q35；A 按 Excel FP8） | [C018](#c018) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G491 | 208 × 2048 × 512 | 256 | prefill | 2 | FP32@1×32 | 网补 E8M0@1×32（AMD Q35；A 按 Excel FP8） | [C018](#c018) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G492 | 320 × 6144 × 7168 | 48 | prefill | 12 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G493 | 320 × 7168 × 3072 | 48 | prefill | 12 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G494 | 416 × 6144 × 7168 | 48 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G495 | 416 × 7168 × 3072 | 48 | prefill | 4 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G496 | 576 × 6144 × 7168 | 48 | prefill | 4 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G497 | 576 × 7168 × 3072 | 48 | prefill | 4 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G498 | 672 × 4096 × 2048 | 32 | prefill | 16 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C007](#c007) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G499 | 672 × 4096 × 4096 | 32 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C007](#c007) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G500 | 832 × 6144 × 7168 | 48 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G501 | 832 × 7168 × 3072 | 48 | prefill | 16 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C004](#c004) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G502 | 960 × 4096 × 2048 | 32 | prefill | 16 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C008](#c008) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G503 | 960 × 4096 × 4096 | 32 | prefill | 16 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C008](#c008) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G504 | 1248 × 4096 × 2048 | 32 | prefill | 32 | FP32@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C016](#c016) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
+| G505 | 1248 × 4096 × 4096 | 32 | prefill | 32 | FP8E8M0@1×128 | 网补 E8M0@1×32（DS-V4 MXFP4） | [C016](#c016) | [grouped_gemm_a8wfp4][fn-fp8fp4] | 接口 smoke 通过 |
 
 <a id="requirements-cross-check"></a>
 
 ## 原始需求与公开模型核对（2026-10-23）
+
+**采用规则：Excel 已明确的字段直接采用；缺失字段使用本节列出的公开配置/实现补齐，标注“网补”。公开来源与 Excel 不同时采用 Excel；本节保留差异作为来源说明，不再将已明确的 Excel 字段挂起等待确认。**
 
 13 份 XLSX 共提取 2504 条 linear / BMM / 单次 grouped GEMM 记录。现有 469 行全部能按算子族、M/N/K、batch/E、输入与输出 dtype 匹配，频次合计仍为 2424；没有发现现有编号行的 shape/dtype/频次抄录冲突。其余 80 条记录归并为下文 42 个 grouped shape。对齐 Excel 不等于原始模型运行 trace 正确，也不等于任何精度/性能验收。
 
@@ -647,18 +653,18 @@ B scale 必须再按模型细分，不能由本组 A dtype 推断。整行 `1×K
 | --- | --- | --- | --- |
 | <a id="quant-flash"></a>[DeepSeek-V4-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash/blob/main/config.json) | E8M0/K128；grouped down 为 FP32/K128 | dense：E8M0，N128/K128；grouped FP4：E8M0，N1/K32 | 模型是混合精度，不能把文件名 FP4 套到 dense FP8 权重。 |
 | <a id="quant-pro"></a>[DeepSeek-V4-Pro](https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/main/config.json) | 同 Flash | dense：E8M0，N128/K128；grouped FP4：E8M0，N1/K32 | Excel 简称 FP8，但 grouped 输入确实为 FP8×FP4；公开 expert_dtype=fp4，与此一致。 |
-| <a id="quant-glm"></a>[GLM-5.1-FP8](https://huggingface.co/zai-org/GLM-5.1-FP8/blob/main/config.json) | 明确量化输出为 FP32/K128；indexer_wk 仅候选、连线待确认 | FP32，N128/K128 | G171 旧实验 B E8M0/N1/K128 不等于原始 checkpoint。DeepGEMM 特定路径可重新量化为 UE8M0，需实际后端证据。 |
-| <a id="quant-q35"></a>[Qwen3.5-35B-A3B-FP8](https://huggingface.co/Qwen/Qwen3.5-35B-A3B-FP8/blob/main/config.json) | 已列输出为 FP32/K128；部分 o_proj 缺失 | BF16，N128/K128（实读 dense/shared/expert header）；标准 SGLang FP8 层分配 FP32 scale | BF16 存储与 FP32 kernel 输入不是矛盾；需记录加载转换，不能改标 E8M0。 |
+| <a id="quant-glm"></a>[GLM-5.1-FP8](https://huggingface.co/zai-org/GLM-5.1-FP8/blob/main/config.json) | 明确量化输出为 FP32/K128；indexer_wk 缺失项网补 FP32/K128 | FP32，N128/K128 | G171 旧实验 B E8M0/N1/K128 不等于原始 checkpoint。DeepGEMM 特定路径可重新量化为 UE8M0，需实际后端证据。 |
+| <a id="quant-q35"></a>[Qwen3.5-35B-A3B-FP8](https://huggingface.co/Qwen/Qwen3.5-35B-A3B-FP8/blob/main/config.json) | 已列输出为 FP32/K128；o_proj 缺失项网补 FP32/K128 | BF16，N128/K128（实读 dense/shared/expert header）；标准 SGLang FP8 层分配 FP32 scale | BF16 存储与 FP32 kernel 输入不是矛盾；需记录加载转换，不能改标 E8M0。 |
 | <a id="quant-q397"></a>[Qwen3.5-397B-A17B-FP8](https://huggingface.co/Qwen/Qwen3.5-397B-A17B-FP8/blob/main/config.json) | 同 Q35 FP8 | BF16，N128/K128（实读 dense/shared/expert header）；框架可转 FP32 | 同一 G 含 DS/Qwen 时须保留两种 scale，不能按 shape 合并成同一量化配置。 |
-| <a id="quant-hy3"></a>[Hy3-FP8 / Excel Hunyuan-V3](https://huggingface.co/tencent/Hy3-FP8/blob/main/config.json) | 逐行 FP32/整行 K；部分 o_proj 没有量化输出 | weight_scale 为 BF16 scalar；input_scale 为 FP32 scalar；activation_scheme=static | 公开静态 per-tensor 与 Excel 逐行量化路径不一致。保留 BU 要求，必须确认使用版本或再量化过程。 |
-| <a id="quant-mx4"></a>[Qwen3.5-35B-A3B-MXFP4（AMD 候选）](https://huggingface.co/amd/Qwen3.5-35B-A3B-MXFP4/blob/main/config.json) | grouped gate_up 为 FP8 + E8M0/K32；down 为 FP8 + FP32/K32 | U8 存储 E8M0，N1/K32；公开 activation/weight 均为 FP4 | Excel A 是 FP8，公开 AMD A 是 FP4；同名 MXFP4 不足以确认实际 BU checkpoint。 |
+| <a id="quant-hy3"></a>[Hy3-FP8 / Excel Hunyuan-V3](https://huggingface.co/tencent/Hy3-FP8/blob/main/config.json) | 逐行 FP32/整行 K 保留；o_proj 缺失项网补 FP32 scalar | 各原始 projection 的 weight_scale 为 BF16 scalar；input_scale 为 FP32 scalar；static。融合 QKV/gate-up 保留各段 scale | 以 Excel 的逐行 scale 布局为准；静态 scalar 可由框架重复为 [M,1]，并非确定冲突。缺失字段采用公开补充。 |
+| <a id="quant-mx4"></a>[Qwen3.5-35B-A3B-MXFP4（AMD 候选）](https://huggingface.co/amd/Qwen3.5-35B-A3B-MXFP4/blob/main/config.json) | grouped gate_up 为 FP8 + E8M0/K32；down 为 FP8 + FP32/K32 | U8 存储 E8M0，N1/K32；公开 activation/weight 均为 FP4 | 以 Excel 的 A FP8 为准；B scale 缺失项采用 AMD 公开 E8M0/K32，公开 A FP4 不采用。 |
 | <a id="quant-kimi"></a>[Kimi-K2.6 / W4A16](https://huggingface.co/moonshotai/Kimi-K2.6/blob/main/config.json) | grouped A 为 BF16；无 A scale | routed experts：INT4，对称 K32，BF16 scale；pack-quantized（compressed-tensors） | 可补充主模型 grouped 权重背景；表6是独立 EAGLE3，不能据此补 group32 或认定 AWQ。 |
 
-证据优先级：BU Excel 决定本地调用形状和显式 dtype；公开模型补充 checkpoint 信息；框架代码只说明可能的加载/转换路径。冲突保留在表中等待 BU 实际 checkpoint revision、SGLang commit、量化参数和后端选择，不用公开默认值覆盖 Excel。GLM 表头同时写“5.2/5.1”、Kimi 表头写“2.7/2.6”，第 3 行描述分别明确 5.1、2.6，本清单据第 3 行命名，版本歧义仍保留。
+证据优先级：BU Excel 的显式字段 > 官方 checkpoint 对缺失项的补充 > 框架实现对缺失行为的推导。当前验收采用上表补充值；部署版本与启动参数留作上线复核，不阻塞已按此规则补齐的需求。不用公开默认值覆盖 Excel。GLM 表头同时写“5.2/5.1”、Kimi 表头写“2.7/2.6”，第 3 行描述分别明确 5.1、2.6，本清单据第 3 行命名，版本歧义仍保留。
 
 G171 原始定位：`shape_05_glm_128k_s2000.xlsx / prefill_shape!F201:I201`，`mlp_gate_up_proj`，`Prefill_Remainder`，`[4608,6144] × [6144,3072] → [4608,3072]`；A scale 来自 `H200:I200` 的 `[4608,48] / FP32`，推导 K128。GLM gate/up 的公开 FP32 scale 为 `[96,48]` 对应单个 `[12288,6144]` 权重；TP8 合并 gate/up 后的逻辑 B scale 可推导为 `[24,48]`，仍需核对运行时拼接/stride。
 
-前两个 FP8 接口可表达 B 的 N128/K128：AITer wrapper 从 scale shape 推导 `GROUP_N/GROUP_K`；vLLM wrapper 接收 `block_size=[128,128]`。此前 N1 实验不是这组 scale 的验证。Hy3 公开 K 不变 scalar 语义与 `triton_scaled_mm` 相容，但公开静态 A 与 Excel 逐行 A 仍待确认。
+前两个 FP8 接口可表达 B 的 N128/K128：AITer wrapper 从 scale shape 推导 `GROUP_N/GROUP_K`；vLLM wrapper 接收 `block_size=[128,128]`。此前 N1 实验不是这组 scale 的验证。Hy3 的 K 不变 scalar/per-row 语义与 `triton_scaled_mm` 相容；优先保留 Excel 的 [M,1] 布局。静态 scalar 在框架中可重复为 [M,1]，不能把存储 shape 差异直接视为数值/动态量化冲突。
 
 本次只校正文档及来源；不新增测试 PASS，不恢复暂停进程，不修改任何生产 kernel 或默认 config。ResNet DOCX 是 BW1000 上 INT8 融合卷积/quant_gemm 记录，继续独立于这 469 行；公开 [TorchVision ResNet50](https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py) 的标准 FC 为 2048→1000，只作结构参考，不能补写 BU 实际量化 scale/zero-point，也不把融合卷积 FPS 作为 dense GEMM 指标。
 
@@ -686,52 +692,52 @@ X 编号用于回到 Excel 原文件；SHA256 见模型来源 JSON。DeepSeek Pr
 
 以下是 Excel 中的单次 grouped GEMM，不是路由、激活或 fused_experts 包装接口。36 个 FP8×FP8 shape（70 条来源记录）及 6 个 BF16×INT4 shape（10 条来源记录）此前未列入 469 行。现在补列为**待范围确认 / 待接口映射与验证**，不恢复已删除的 MoE 表、不重排 G 编号，也不宣称它们已被现有接口支持。E、M 沿用源输入形状，不能据此证明实际等长或 ragged 分组。逐条原文件/sheet/行号见 [缺口清单](debug_tuning/requirements_audit_20261023/grouped-gaps.csv)。
 
-| M × N × K | E | A × B → 输出 | Excel A scale | 模型来源 | 记录数 |
-| --- | ---: | --- | --- | --- | ---: |
-| 6 × 4096 × 7168 | 24 | BF16 × INT4 → BF16 | 不适用（BF16） | X11 | 1 |
-| 6 × 7168 × 2048 | 24 | BF16 × INT4 → BF16 | 不适用（BF16） | X11 | 1 |
-| 854 × 4096 × 7168 | 48 | BF16 × INT4 → BF16 | 不适用（BF16） | X11 | 2 |
-| 854 × 7168 × 2048 | 48 | BF16 × INT4 → BF16 | 不适用（BF16） | X11 | 2 |
-| 1110 × 4096 × 7168 | 48 | BF16 × INT4 → BF16 | 不适用（BF16） | X11 | 2 |
-| 1110 × 7168 × 2048 | 48 | BF16 × INT4 → BF16 | 不适用（BF16） | X11 | 2 |
-| 3 × 1024 × 2048 | 221 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X09 | 2 |
-| 3 × 2048 × 512 | 221 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X09 | 2 |
-| 3 × 3072 × 4096 | 11 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×4096 | X12 | 1 |
-| 3 × 4096 × 1536 | 11 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×1536 | X12 | 1 |
-| 4 × 2048 × 4096 | 63 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X13 | 1 |
-| 4 × 4096 × 1024 | 63 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X13 | 1 |
-| 4 × 4096 × 6144 | 15 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X07 | 1 |
-| 4 × 6144 × 2048 | 15 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X07 | 1 |
-| 6 × 4096 × 6144 | 16 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X08 | 1 |
-| 6 × 6144 × 2048 | 16 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X08 | 1 |
-| 11 × 3072 × 4096 | 12 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×4096 | X12 | 1 |
-| 11 × 4096 × 1536 | 12 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×1536 | X12 | 1 |
-| 12 × 4096 × 6144 | 16 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X07 | 1 |
-| 12 × 6144 × 2048 | 16 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X07 | 1 |
-| 15 × 2048 × 4096 | 64 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X13 | 2 |
-| 15 × 4096 × 1024 | 64 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X13 | 2 |
-| 24 × 4096 × 6144 | 16 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X08 | 1 |
-| 24 × 6144 × 2048 | 16 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X08 | 1 |
-| 80 × 1024 × 2048 | 256 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X09 | 2 |
-| 80 × 2048 × 512 | 256 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X09 | 2 |
-| 171 × 3072 × 4096 | 24 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×4096 | X12 | 2 |
-| 171 × 4096 × 1536 | 24 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×1536 | X12 | 2 |
-| 208 × 1024 × 2048 | 256 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X09 | 2 |
-| 208 × 2048 × 512 | 256 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X09 | 2 |
-| 560 × 2048 × 4096 | 64 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X13 | 4 |
-| 560 × 4096 × 1024 | 64 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X13 | 4 |
-| 640 × 4096 × 6144 | 32 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X08 | 2 |
-| 640 × 6144 × 2048 | 32 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X08 | 2 |
-| 1040 × 2048 × 4096 | 64 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X13 | 4 |
-| 1040 × 4096 × 1024 | 64 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X13 | 4 |
-| 1152 × 4096 × 6144 | 32 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X07 | 2 |
-| 1152 × 6144 × 2048 | 32 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X07 | 2 |
-| 1664 × 4096 × 6144 | 32 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X07/X08 | 4 |
-| 1664 × 6144 × 2048 | 32 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | X07/X08 | 4 |
-| 2219 × 3072 × 4096 | 24 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×4096 | X12 | 2 |
-| 2219 × 4096 × 1536 | 24 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×1536 | X12 | 2 |
+| M × N × K | E | A × B → 输出 | Excel A scale | 权重信息（网补） | 模型来源 | 记录数 |
+| --- | ---: | --- | --- | --- | --- | ---: |
+| 6 × 4096 × 7168 | 24 | BF16 × INT4 → BF16 | 不适用（BF16） | INT4 对称 K32 / BF16 scale / pack-quantized | X11 | 1 |
+| 6 × 7168 × 2048 | 24 | BF16 × INT4 → BF16 | 不适用（BF16） | INT4 对称 K32 / BF16 scale / pack-quantized | X11 | 1 |
+| 854 × 4096 × 7168 | 48 | BF16 × INT4 → BF16 | 不适用（BF16） | INT4 对称 K32 / BF16 scale / pack-quantized | X11 | 2 |
+| 854 × 7168 × 2048 | 48 | BF16 × INT4 → BF16 | 不适用（BF16） | INT4 对称 K32 / BF16 scale / pack-quantized | X11 | 2 |
+| 1110 × 4096 × 7168 | 48 | BF16 × INT4 → BF16 | 不适用（BF16） | INT4 对称 K32 / BF16 scale / pack-quantized | X11 | 2 |
+| 1110 × 7168 × 2048 | 48 | BF16 × INT4 → BF16 | 不适用（BF16） | INT4 对称 K32 / BF16 scale / pack-quantized | X11 | 2 |
+| 3 × 1024 × 2048 | 221 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X09 | 2 |
+| 3 × 2048 × 512 | 221 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X09 | 2 |
+| 3 × 3072 × 4096 | 11 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×4096 | BF16：每专家每原始 projection scalar，融合保留各段 | X12 | 1 |
+| 3 × 4096 × 1536 | 11 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×1536 | BF16：每专家每原始 projection scalar，融合保留各段 | X12 | 1 |
+| 4 × 2048 × 4096 | 63 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X13 | 1 |
+| 4 × 4096 × 1024 | 63 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X13 | 1 |
+| 4 × 4096 × 6144 | 15 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X07 | 1 |
+| 4 × 6144 × 2048 | 15 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X07 | 1 |
+| 6 × 4096 × 6144 | 16 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X08 | 1 |
+| 6 × 6144 × 2048 | 16 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X08 | 1 |
+| 11 × 3072 × 4096 | 12 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×4096 | BF16：每专家每原始 projection scalar，融合保留各段 | X12 | 1 |
+| 11 × 4096 × 1536 | 12 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×1536 | BF16：每专家每原始 projection scalar，融合保留各段 | X12 | 1 |
+| 12 × 4096 × 6144 | 16 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X07 | 1 |
+| 12 × 6144 × 2048 | 16 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X07 | 1 |
+| 15 × 2048 × 4096 | 64 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X13 | 2 |
+| 15 × 4096 × 1024 | 64 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X13 | 2 |
+| 24 × 4096 × 6144 | 16 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X08 | 1 |
+| 24 × 6144 × 2048 | 16 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X08 | 1 |
+| 80 × 1024 × 2048 | 256 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X09 | 2 |
+| 80 × 2048 × 512 | 256 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X09 | 2 |
+| 171 × 3072 × 4096 | 24 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×4096 | BF16：每专家每原始 projection scalar，融合保留各段 | X12 | 2 |
+| 171 × 4096 × 1536 | 24 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×1536 | BF16：每专家每原始 projection scalar，融合保留各段 | X12 | 2 |
+| 208 × 1024 × 2048 | 256 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X09 | 2 |
+| 208 × 2048 × 512 | 256 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X09 | 2 |
+| 560 × 2048 × 4096 | 64 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X13 | 4 |
+| 560 × 4096 × 1024 | 64 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X13 | 4 |
+| 640 × 4096 × 6144 | 32 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X08 | 2 |
+| 640 × 6144 × 2048 | 32 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X08 | 2 |
+| 1040 × 2048 × 4096 | 64 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X13 | 4 |
+| 1040 × 4096 × 1024 | 64 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | BF16@N128/K128 | X13 | 4 |
+| 1152 × 4096 × 6144 | 32 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X07 | 2 |
+| 1152 × 6144 × 2048 | 32 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X07 | 2 |
+| 1664 × 4096 × 6144 | 32 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X07/X08 | 4 |
+| 1664 × 6144 × 2048 | 32 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×128 | FP32@N128/K128 | X07/X08 | 4 |
+| 2219 × 3072 × 4096 | 24 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×4096 | BF16：每专家每原始 projection scalar，融合保留各段 | X12 | 2 |
+| 2219 × 4096 × 1536 | 24 | FP8E4M3 × FP8E4M3 → BF16 | FP32@1×1536 | BF16：每专家每原始 projection scalar，融合保留各段 | X12 | 2 |
 
-Kimi 主模型 grouped INT4 的公开 group32/对称/packed 格式只作为该组候选补充；GLM/Qwen grouped FP8 可参照各自公开 N128/K128 权重 scale。实际调用的 layout、packing、scale dtype 及空组/offsets 仍须由部署方提供。
+上述 grouped 的缺失权重信息按模型补齐：GLM 为 FP32/N128/K128；Qwen FP8 为 BF16/N128/K128；Hy3 每专家、每原始 projection 为 BF16 scalar（融合时保持分段）；Kimi 主模型 INT4 为对称 K32、BF16 scale、compressed-tensors pack-quantized。实际 tensor stride、空组/offsets 属于调用数据，不能由模型配置推导；表6 EAGLE3 不套用 Kimi 主模型格式。
 
 <a id="model-config-index"></a>
 

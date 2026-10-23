@@ -26,9 +26,9 @@
 | --- | --- |
 | `gemm_a8w8_blockscale` | A 按 K 分组或整行 scale；W 的 N/K 分组由 scale shape 推导，包含 N128/K128 的表达能力。15/15 为旧 smoke，新增需求组合待验证，性能调优对象 |
 | `w8a8_triton_block_scaled_mm` | 另接收 `block_size=[block_n,block_k]`（例如 `[128,128]`）并展开 A 前导维。17/17 为旧 smoke，新增需求组合待验证，性能调优对象 |
-| `triton_scaled_mm` | scalar / per-row / per-column 的 K 不变 scale。14/14 为旧 smoke；可表达 Hy3 公开 scalar scale 语义，不能表达 K 分组 scale；BU 路径仍待确认 |
+| `triton_scaled_mm` | scalar / per-row / per-column 的 K 不变 scale。14/14 为旧 smoke；可表达 Hy3 公开 scalar scale 语义，不能表达 K 分组 scale；以 Excel 布局与网补字段作为测试要求 |
 
-前两个接口按 K 分组执行 `dot` 后乘 A/W scale 再累加，不要求 `tl.dot_scaled`。uint8 scale 解码为 E8M0，浮点 scale 保持数值；A/W 可独立选择。需求中未明确的 W scale dtype 不补写为 E8M0。2026-10-23 核对发现，GLM/Qwen/DeepSeek 的公开 block-FP8 权重为 N128/K128，Hy3 为 per-tensor，不能统一解释成 N1/K128。checkpoint dtype 与框架转换路径分开记录，详见 [模型配置与冲突](SHAOBO_BU_REQUIREMENTS.md#requirements-cross-check)。此前 G171 的 FP32 A + E8M0/N1 B 性能结果只适用于该实验组合。
+前两个接口按 K 分组执行 `dot` 后乘 A/W scale 再累加，不要求 `tl.dot_scaled`。uint8 scale 解码为 E8M0，浮点 scale 保持数值；A/W 可独立选择。Excel 缺失的 scale 信息按公开模型/框架配置补齐并标“网补”，不统一假设 E8M0。2026-10-23 核对发现，GLM/Qwen/DeepSeek 的公开 block-FP8 权重为 N128/K128，Hy3 为 per-tensor，不能统一解释成 N1/K128。以 Excel 明确字段优先；Q35 MXFP4 的 A 保留 FP8，Hy3 的 A 保留 Excel 逐行布局，缺失字段采用网补。静态 scalar 可由框架复制为 [M,1]，不能据 shape 判定动态/静态冲突。checkpoint dtype 与框架转换路径分开记录，详见 [模型配置与冲突](SHAOBO_BU_REQUIREMENTS.md#requirements-cross-check)。此前 G171 的 FP32 A + E8M0/N1 B 性能结果只适用于该实验组合。
 
 FP8×FP4 接口使用预量化 A 与低/高半字节打包的 E2M1 W（偶数 K 取低半字节）；A scale 按 K32 或 K128，W 按 N1/K32。当前实现以 `tl.dot_scaled(a, None, "e4m3", b, None, "e2m1")` 执行每 K32 的原生 F32 混合 MMAC，再乘 A/W scale 并以 FP32 累加，按输出 dtype 写回。gfx946 需要配套的 Triton K-packed FP4 布局/寄存器格式修复；2026-10-21 PMD 验证为 19/19 接口回归及 10/10 新旧实现对照通过，尚不代表完整需求尺寸或实卡验收。实现、环境依赖及证据见 [原生 FP8×FP4 K32 修复](debug_tuning/FP8FP4_NATIVE_K32.md)。不包含在线量化或路由生成。
 

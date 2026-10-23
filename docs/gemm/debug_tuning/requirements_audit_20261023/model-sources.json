@@ -1217,6 +1217,41 @@
     {
       "url": "https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash/blob/60d8d70770c6776ff598c94bb586a859a38244f1/inference/kernel.py",
       "scope": "FP8 dense N128/K128 and FP4 weight N1/K32 scaling."
+    },
+    {
+      "url": "https://github.com/sgl-project/sglang/blob/main/python/sglang/kernels/ops/quantization/fp8_kernel.py",
+      "scope": "FP32 token-group scale allocation; static_quant_fp8 repeat_scale expands static scalar to [M,1]."
+    }
+  ],
+  "adoption_policy": {
+    "authority": "Excel explicit fields first; public information fills missing fields",
+    "supplements_are_test_requirements": true,
+    "public_supplement_is_not_measured_PASS": true,
+    "Hy3": "Keep Excel per-row FP32 layout; static scalar can be repeated to [M,1]. Fill missing o_proj A scale using public FP32 scalar.",
+    "Q35_MXFP4": "Keep Excel FP8 activation, use public E8M0/K32 weight scale only.",
+    "EAGLE3": "Do not import group32 from the target Kimi model; exact INT4 draft format still absent.",
+    "Hy3_fused_projection": "Each source Q/K/V or gate/up tensor has its own scalar; preserve separate N segments after fusion."
+  },
+  "additional_draft_candidates": [
+    {
+      "model": "AQ-MedAI/Kimi-K25-eagle3",
+      "config_url": "https://huggingface.co/AQ-MedAI/Kimi-K25-eagle3/blob/main/config.json",
+      "config_sha256": "cdb2636bcd525a9030601fbdfdebe77b6373eefa87da89ab41f31437963434c9",
+      "hidden_size": 7168,
+      "intermediate_size": 18432,
+      "quantization_config": null,
+      "adopted_for_table6": false,
+      "reason": "No matching INT4 scale/group/packing configuration; public FFN intermediate_size18432 differs from Excel draft12288."
+    },
+    {
+      "model": "nvidia/Kimi-K2.6-Eagle3",
+      "config_url": "https://huggingface.co/nvidia/Kimi-K2.6-Eagle3/blob/main/config.json",
+      "config_sha256": "f7f1f3adfd127dcb736457a3d0ed8fe9af4c19708508349236e67c093915c02a",
+      "hidden_size": 7168,
+      "intermediate_size": 18432,
+      "quantization_config": null,
+      "adopted_for_table6": false,
+      "reason": "No matching INT4 scale/group/packing configuration; public FFN intermediate_size18432 differs from Excel draft12288."
     }
   ]
 }
