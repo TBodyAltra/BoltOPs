@@ -1,6 +1,6 @@
 # GEMM 关键调优记录
 
-截至 2026-10-21；支持范围见 [README](../README.md)，形状与 scale 见 [少伯 BU 支持需求](../SHAOBO_BU_REQUIREMENTS.md)。生产 kernel、默认 config 与 `builtin_gemm_configs.py` 不随实验修改。PMD 只校准与打磨少量流水候选，真实卡再做 autotune。
+截至 2026-10-23；支持范围见 [README](../README.md)，形状与 scale 见 [少伯 BU 支持需求](../SHAOBO_BU_REQUIREMENTS.md)。生产 kernel、默认 config 与 `builtin_gemm_configs.py` 不随实验修改。PMD 只校准与打磨少量流水候选，真实卡再做 autotune。
 
 ## Die 模式与性能记录
 
@@ -236,3 +236,10 @@ Git 只保留关键结论和证据索引，不接收原始日志、StatLog、输
 表 2 已按 scale dtype 与 block size 分组，见 [少伯 BU 需求](../SHAOBO_BU_REQUIREMENTS.md#table-2)。源需求中 B scale dtype 未注明，实测采用的 E8M0 配置不能反推为所有需求的确定 dtype；选取后续调优代表点时须保留这一边界。
 
 2026-10-23 原始需求复核：此前 G171/G036 等 N1 B scale 实验只证明所测组合，不能作为 GLM 公开 FP32/N128/K128 scale 的验收；Qwen checkpoint scale 为 BF16，DeepSeek dense 为 E8M0/N128/K128，Hy3 为 scalar。后续先按 Excel 明确字段优先、缺失项采用公开配置补齐的口径对齐 scale，再继续性能比较；部署版本绑定另作上线复核。完整来源与冲突见 [需求核对](requirements_audit_20261023/REPORT.md)。历史数据不改写，不将新确认配置标成已测。
+
+
+### G171 对齐 FP32/N128/K128 scale 后的流水筛选（2026-10-23）
+
+[配置、关键代码与数据](g171_fp32_scale_20261023/REPORT.md)：采用 A FP32/M1/K128、B FP32/N128/K128，B scale 物理紧凑存储；自然单 TG 为 M128/N256/K6144、tile128×256×128、stages2。最佳 WDRA48 aligned 普通加载/dot-first 副本两进程共6次均值149829.8 cycles，较无 spill 的生产8warp基线198953.7少24.69%；两个随机种子均与CPU/生产输出逐元素一致，spill=0。实际动态VGPR配额(112,196,196)，LDS101376 bytes。环境固定单die48CU、455ps，完整commit/库指纹/编译参数随记录保留。
+
+MLS未稳定胜过匹配的普通加载；A/B下一轮LDS预取相对重编IR对照约少4.1%，仍慢于上述最佳。普通加载预取分支受VGPR预算限制，没有绕过守卫。生产与最佳的真实PERF已采集，绝对路径及SHA见记录；未计算本次MMAC利用率。未改生产kernel/default config，未跑完整G171、双die、第二接口迁移或尾块。历史E8M0/N1结果继续保留原口径，不能用作本次FP32/N128需求验收。
