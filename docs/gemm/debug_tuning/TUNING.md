@@ -227,3 +227,8 @@ PERF 开启后的独立 warm launch 为 99106 cycles，单列诊断，不混入�
 | 全部点的环境/代码/编译/数值/指标索引 | `overnight-gemm-20261020/record-index.csv`、`records/` |
 
 Git 只保留关键结论和证据索引，不接收原始日志、StatLog、输入输出、IR、汇编、HSACO 或快照。后续关键记录至少含环境/commit、对齐配置、精度阈值及误差、建模周期与重复次数、资源限制和外部证据路径。
+
+
+### FP8 E8M0 与小 tile WASP 补充（2026-10-23）
+
+[实测代码、配置与结果](fp8_scale_wasp_20261022/README.md)：G048 派生单 TG 的 native E8M0 decode 在两个接口均约降低 22.5% cycles；G081 小规模自然 grid 的 tile + WASP22 组合约降低 10%。256×256×64 仍受 VGPR 配额或 spill 限制，G171 未找到可靠的新收益。原生硬件 scale 指令已在最小及 stages1 实验执行，但较大点更慢，流水路径存在固定编译器缺口，暂不采用。全部是单 die 小规模实验，未更改生产 dispatch/default config，不等于完整需求或双 die 验收。
