@@ -12,4 +12,3 @@ def safety(tag):
  d=dict(tag=tag,remote_epoch=time.time(),protected=rows,git_statuses=repos,passed=True)
  with (O/'safety.jsonl').open('a') as h:h.write(json.dumps(d)+'\n')
  return d
-
