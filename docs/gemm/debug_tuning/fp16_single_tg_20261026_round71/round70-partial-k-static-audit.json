@@ -1,0 +1,650 @@
+{
+  "passed": true,
+  "CPU_only": true,
+  "no_kernel_loading": true,
+  "no_PMD_accuracy_or_performance_claim": true,
+  "scope": "Both consumers: K64 slices retain BK128 parent; no conversionLDS; physical allSpill0; actual ISA drains lgkmcnt(0) before both empty arrivals; native offset correctness and numerical accuracy still require PMD qualification.",
+  "screen_sha256": "942467419c152b032312212b84c5e92b100ed562418b005d94cf0423562a577e",
+  "rows": [
+    {
+      "directory": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261026-round70-partial-k-entry-fix/compile-probes/features/454efad19a173aba",
+      "layout": "TN",
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": -1,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2,
+        "LOAD_B_FIRST": false,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "hcu_wasp_single_buffer": true,
+        "MIXED_OPERAND": 0,
+        "MIXED_VECTOR_FULL": false,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "hcu_wasp_partial_k_local_read": true
+      },
+      "actual_partition_vgprs": [
+        2,
+        177,
+        177
+      ],
+      "shared": 131072,
+      "fields": {
+        "private_segment_fixed_size": 0,
+        "vgpr_spill_count": 0,
+        "sgpr_spill_count": 0,
+        "amdhsa_next_free_vgpr": 168
+      },
+      "consumer_release_pairs": [
+        {
+          "first_empty_line": 1197,
+          "second_empty_line": 1201,
+          "preceding_wait_line": 1196,
+          "full_lgkm_drain": true
+        },
+        {
+          "first_empty_line": 2350,
+          "second_empty_line": 2354,
+          "preceding_wait_line": 2349,
+          "full_lgkm_drain": true
+        }
+      ],
+      "matrix_load_instructions": 16,
+      "mmac_instructions": 512,
+      "sha256": {
+        "job.json": "c5fbdbd98c789777000f026919114ccf19c7534e817b5ef208f8196e0344e958",
+        "result.json": "42d3ac42fb355448322eeb89d937c2e40cdedf9a33ec914c3e178c6839d7c802",
+        "kernel.amdgcn": "e9d89847a69ff9bd2e15d1844203f71c73f69c88e15b8ebcaa393da1073386a8",
+        "kernel.llir": "9822c9a38060e82842734fd38f423abc5188a8b96024cdea37233671a7be85c1",
+        "partial-k-proof/before.ttgir": "262905c84fa4a47d512c725aa9e67287c3b26de8c3d1b2037ce66070883e0a46",
+        "partial-k-proof/after.ttgir": "303bc1b91a17ea392f8afefe22ce6ac7fdfef5b65c7c02ebbb0db0e3a933c575",
+        "partial-k-proof/proof.json": "f899360035e17621d3dee5a4f11699002788d9a9b7ffaf94d48c351a45049473"
+      }
+    },
+    {
+      "directory": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261026-round70-partial-k-entry-fix/compile-probes/features/2c3eef4035dea500",
+      "layout": "TN",
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": -1,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2,
+        "LOAD_B_FIRST": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "hcu_wasp_single_buffer": true,
+        "MIXED_OPERAND": 0,
+        "MIXED_VECTOR_FULL": false,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "hcu_wasp_partial_k_local_read": true
+      },
+      "actual_partition_vgprs": [
+        2,
+        177,
+        177
+      ],
+      "shared": 131072,
+      "fields": {
+        "private_segment_fixed_size": 0,
+        "vgpr_spill_count": 0,
+        "sgpr_spill_count": 0,
+        "amdhsa_next_free_vgpr": 168
+      },
+      "consumer_release_pairs": [
+        {
+          "first_empty_line": 1197,
+          "second_empty_line": 1201,
+          "preceding_wait_line": 1196,
+          "full_lgkm_drain": true
+        },
+        {
+          "first_empty_line": 2348,
+          "second_empty_line": 2352,
+          "preceding_wait_line": 2347,
+          "full_lgkm_drain": true
+        }
+      ],
+      "matrix_load_instructions": 16,
+      "mmac_instructions": 512,
+      "sha256": {
+        "job.json": "0a4e577433efea39bcee990b6c79bdf9e9285ba7c06dd839f0257675d36248e8",
+        "result.json": "690b8708a02192ecacfa00ef4a81ddba4560cfdea186d7091a228359805fd060",
+        "kernel.amdgcn": "e99675ec68d5b173c751a34834c827c0aa07918ac3e139b6c5c6e36b872ca229",
+        "kernel.llir": "173c000745cd3e071948802fb001e84d6ef81ea7f3048c0fdf0605b1a7c179b9",
+        "partial-k-proof/before.ttgir": "b73a5c5f11b0cd5457c37a32113e7f069d9747b5ac541beee0631bec8bfb12b6",
+        "partial-k-proof/after.ttgir": "7ff6549ddc7fd1dbf43359232c1b020d07c63682ff18d841dbea6a36f5b72a11",
+        "partial-k-proof/proof.json": "cfca421d755dcb8681c0129fd7edce41c1d3f57c302096f24998a430d52ead73"
+      }
+    },
+    {
+      "directory": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261026-round70-partial-k-entry-fix/compile-probes/features/b6c562ea53647683",
+      "layout": "TN",
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": 3,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2,
+        "LOAD_B_FIRST": false,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "hcu_wasp_single_buffer": true,
+        "MIXED_OPERAND": 0,
+        "MIXED_VECTOR_FULL": false,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "hcu_wasp_partial_k_local_read": true
+      },
+      "actual_partition_vgprs": [
+        2,
+        218,
+        218
+      ],
+      "shared": 131072,
+      "fields": {
+        "private_segment_fixed_size": 0,
+        "vgpr_spill_count": 0,
+        "sgpr_spill_count": 0,
+        "amdhsa_next_free_vgpr": 168
+      },
+      "consumer_release_pairs": [
+        {
+          "first_empty_line": 1197,
+          "second_empty_line": 1201,
+          "preceding_wait_line": 1196,
+          "full_lgkm_drain": true
+        },
+        {
+          "first_empty_line": 2753,
+          "second_empty_line": 2757,
+          "preceding_wait_line": 2752,
+          "full_lgkm_drain": true
+        }
+      ],
+      "matrix_load_instructions": 16,
+      "mmac_instructions": 512,
+      "sha256": {
+        "job.json": "42339e0afd6d79568ec63933194960fc4f60057fdfb478e45574b8a726c44dd9",
+        "result.json": "5a891dcf73ed1da392212d703564a9bfb5b27a4bd4a0e222267f752004ef448c",
+        "kernel.amdgcn": "82c5ff7d073630571f930813f9337e1e96c0e01a6b20e7aec4e86dcdb05fd527",
+        "kernel.llir": "be953bbdc88bd2b1f1125f6063dc70466d1017fc18a1ef9d4d44e3627e316855",
+        "partial-k-proof/before.ttgir": "70ba1f1822c339535ca9c9c9125991659ada1e90149dd8c9ca5a494a081c2a1a",
+        "partial-k-proof/after.ttgir": "931558592e79a294a2a4477a675299953dea7f952981b05d50432de32558eece",
+        "partial-k-proof/proof.json": "5245d17db4fbf0cb56ec25647c3b887604f1f120dfa945840199abe70bdf235f"
+      }
+    },
+    {
+      "directory": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261026-round70-partial-k-entry-fix/compile-probes/features/679ca1210f88975d",
+      "layout": "TN",
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": 3,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2,
+        "LOAD_B_FIRST": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "hcu_wasp_single_buffer": true,
+        "MIXED_OPERAND": 0,
+        "MIXED_VECTOR_FULL": false,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "hcu_wasp_partial_k_local_read": true
+      },
+      "actual_partition_vgprs": [
+        2,
+        218,
+        218
+      ],
+      "shared": 131072,
+      "fields": {
+        "private_segment_fixed_size": 0,
+        "vgpr_spill_count": 0,
+        "sgpr_spill_count": 0,
+        "amdhsa_next_free_vgpr": 168
+      },
+      "consumer_release_pairs": [
+        {
+          "first_empty_line": 1197,
+          "second_empty_line": 1201,
+          "preceding_wait_line": 1196,
+          "full_lgkm_drain": true
+        },
+        {
+          "first_empty_line": 2751,
+          "second_empty_line": 2755,
+          "preceding_wait_line": 2750,
+          "full_lgkm_drain": true
+        }
+      ],
+      "matrix_load_instructions": 16,
+      "mmac_instructions": 512,
+      "sha256": {
+        "job.json": "915244e39f8c82006b1d84d6cfc0915d0078bf15b4190bcba64fcf1e666291e7",
+        "result.json": "0fba5ef0fac15da3add075b84ed747ec21b3f3a454c713f6456605eaf6de8adb",
+        "kernel.amdgcn": "b9f4f534ac71a924cbf962e77753ea3671311ea03b802e35c8daf02591104865",
+        "kernel.llir": "c5fd18a5af8ae2e9a3e6cbb2909f18d034f1fb7a55932f4785ad8235aab46e1a",
+        "partial-k-proof/before.ttgir": "55774d49389406c3be66f90d052d98f6c94ee56cb8ec4bf8fd1004f4ef3e77df",
+        "partial-k-proof/after.ttgir": "805e5a180a24d2f47886cc313d7a05b5bc1b8c783de22f736755b529b668bfae",
+        "partial-k-proof/proof.json": "e57aa41218a00cc1b6a7a28002fb0b529772c165aab513de978f304ec16a3624"
+      }
+    },
+    {
+      "directory": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261026-round70-partial-k-entry-fix/compile-probes/features/6806a0c08adf015d",
+      "layout": "TT",
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": false,
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": -1,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "hcu_wasp_single_buffer": true,
+        "LOAD_B_FIRST": false,
+        "MIXED_OPERAND": 0,
+        "MIXED_VECTOR_FULL": false,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "hcu_wasp_partial_k_local_read": true
+      },
+      "actual_partition_vgprs": [
+        2,
+        161,
+        161
+      ],
+      "shared": 131072,
+      "fields": {
+        "private_segment_fixed_size": 0,
+        "vgpr_spill_count": 0,
+        "sgpr_spill_count": 0,
+        "amdhsa_next_free_vgpr": 168
+      },
+      "consumer_release_pairs": [
+        {
+          "first_empty_line": 1247,
+          "second_empty_line": 1249,
+          "preceding_wait_line": 1246,
+          "full_lgkm_drain": true
+        },
+        {
+          "first_empty_line": 2462,
+          "second_empty_line": 2464,
+          "preceding_wait_line": 2461,
+          "full_lgkm_drain": true
+        }
+      ],
+      "matrix_load_instructions": 16,
+      "mmac_instructions": 512,
+      "sha256": {
+        "job.json": "8eab5f482fdfee79380debb86cd45e03c1001f63dae698c6fd55e79fde6058b2",
+        "result.json": "82e380147d022cd81f1c0cc00242a230c1b75fbf4f3d672797fd6b921f03d204",
+        "kernel.amdgcn": "73407e3535c78b3a556578ac39a6360cc2757084ee3a488e880edea1be68727b",
+        "kernel.llir": "ff14ba8be096d091ea34c031db423f6dedc9eba97cd3a8cad5ef5cb7b1be4495",
+        "partial-k-proof/before.ttgir": "3159a4f6ca7478ff4f70d9e4a222b7bb09cae0cce4c1be33b0061570065dd3a7",
+        "partial-k-proof/after.ttgir": "253562ae90436715ab1c69d51b0aca9a0030ab1ed1fd9c96ac0b9cb8f8dc1d22",
+        "partial-k-proof/proof.json": "b71427fcac4311f9c9b2b650eaa958027621c62cd1ba453f17a76dd60bbadcde"
+      }
+    },
+    {
+      "directory": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261026-round70-partial-k-entry-fix/compile-probes/features/cfdebefd58bfc333",
+      "layout": "TT",
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": false,
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": -1,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "hcu_wasp_single_buffer": true,
+        "LOAD_B_FIRST": true,
+        "MIXED_OPERAND": 0,
+        "MIXED_VECTOR_FULL": false,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "hcu_wasp_partial_k_local_read": true
+      },
+      "actual_partition_vgprs": [
+        2,
+        161,
+        161
+      ],
+      "shared": 131072,
+      "fields": {
+        "private_segment_fixed_size": 0,
+        "vgpr_spill_count": 0,
+        "sgpr_spill_count": 0,
+        "amdhsa_next_free_vgpr": 168
+      },
+      "consumer_release_pairs": [
+        {
+          "first_empty_line": 1247,
+          "second_empty_line": 1249,
+          "preceding_wait_line": 1246,
+          "full_lgkm_drain": true
+        },
+        {
+          "first_empty_line": 2459,
+          "second_empty_line": 2461,
+          "preceding_wait_line": 2458,
+          "full_lgkm_drain": true
+        }
+      ],
+      "matrix_load_instructions": 16,
+      "mmac_instructions": 512,
+      "sha256": {
+        "job.json": "c3cf24903c396cd3ab6da06f073c7710935923cd6787589a9bacd6783b341246",
+        "result.json": "63956c86add298f518e8368049bfb4ac73b0045a89cae8168257accf83b616e2",
+        "kernel.amdgcn": "bb9bdfef2abcfaaf1ac5046378dfb4c482bf43e20be0a8525356960ccf4564c2",
+        "kernel.llir": "75c71173d58afc6e2b8d714d0fd3c07607282c1130271df50bd33f6be0ded9a2",
+        "partial-k-proof/before.ttgir": "d7615833fed54e42e009531d7955b202e5b456a684ae5e926ea0d4be4a9c8015",
+        "partial-k-proof/after.ttgir": "fdf1e241b3170575a7f79f917987b0a950455390cc95237e782078eac995037f",
+        "partial-k-proof/proof.json": "6c817cac5010c149f54244f9cc7e753a228ba61540f8067ac66eef06c9bd952d"
+      }
+    },
+    {
+      "directory": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261026-round70-partial-k-entry-fix/compile-probes/features/51865a890088f559",
+      "layout": "TT",
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": false,
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": 3,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "hcu_wasp_single_buffer": true,
+        "LOAD_B_FIRST": false,
+        "MIXED_OPERAND": 0,
+        "MIXED_VECTOR_FULL": false,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "hcu_wasp_partial_k_local_read": true
+      },
+      "actual_partition_vgprs": [
+        2,
+        161,
+        161
+      ],
+      "shared": 131072,
+      "fields": {
+        "private_segment_fixed_size": 0,
+        "vgpr_spill_count": 0,
+        "sgpr_spill_count": 0,
+        "amdhsa_next_free_vgpr": 168
+      },
+      "consumer_release_pairs": [
+        {
+          "first_empty_line": 1247,
+          "second_empty_line": 1249,
+          "preceding_wait_line": 1246,
+          "full_lgkm_drain": true
+        },
+        {
+          "first_empty_line": 2884,
+          "second_empty_line": 2886,
+          "preceding_wait_line": 2883,
+          "full_lgkm_drain": true
+        }
+      ],
+      "matrix_load_instructions": 16,
+      "mmac_instructions": 512,
+      "sha256": {
+        "job.json": "63d81562deb51e7dd5f09a7a1c7f580497a976cf6e549fadd9fcaf249b9f976f",
+        "result.json": "0030456e584b50c76ea6506ea73ca5b8c50d9bfdf0976aa5c1b84308add11c6a",
+        "kernel.amdgcn": "2a4118f9cb276ef7c81b5a103ffeec832fa0f61a99e4d2147ef47af5dd0a0ec4",
+        "kernel.llir": "41f3a65c6161f5173788a936a22efa12e52b125eed4792ab3ae3a5555f4a19da",
+        "partial-k-proof/before.ttgir": "9cdb913679e0f5385885983a202de015f80ac079bf58e60bd33d2664524abf1d",
+        "partial-k-proof/after.ttgir": "13b5d9bd65c55f3c15d7b94f27696f111906e419b82f223f9a40fe50c0cf02fd",
+        "partial-k-proof/proof.json": "a2710ce2993e6479340f42f19d789f106b69bb4a3154e2d1e351f836a263ca86"
+      }
+    },
+    {
+      "directory": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261026-round70-partial-k-entry-fix/compile-probes/features/639f498ca4a76c9f",
+      "layout": "TT",
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": false,
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": 3,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "hcu_wasp_single_buffer": true,
+        "LOAD_B_FIRST": true,
+        "MIXED_OPERAND": 0,
+        "MIXED_VECTOR_FULL": false,
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "hcu_wasp_partial_k_local_read": true
+      },
+      "actual_partition_vgprs": [
+        2,
+        161,
+        161
+      ],
+      "shared": 131072,
+      "fields": {
+        "private_segment_fixed_size": 0,
+        "vgpr_spill_count": 0,
+        "sgpr_spill_count": 0,
+        "amdhsa_next_free_vgpr": 168
+      },
+      "consumer_release_pairs": [
+        {
+          "first_empty_line": 1247,
+          "second_empty_line": 1249,
+          "preceding_wait_line": 1246,
+          "full_lgkm_drain": true
+        },
+        {
+          "first_empty_line": 2881,
+          "second_empty_line": 2883,
+          "preceding_wait_line": 2880,
+          "full_lgkm_drain": true
+        }
+      ],
+      "matrix_load_instructions": 16,
+      "mmac_instructions": 512,
+      "sha256": {
+        "job.json": "5a11895cabca221c0ef4648196c7784d1d4744518ff680d8188d2fa09e223054",
+        "result.json": "3aa63edb871341df30fd055844477c7982318a1fd3e08ae10c8d44683035d736",
+        "kernel.amdgcn": "b671eb3eb336a27b13ec8029ef41a10285e2b5ae12e2a7e2c6d0a78a0d7a0651",
+        "kernel.llir": "7686816e27410ea43de4f88095d47545d150053c69c4d89fa36ee65e21c7d117",
+        "partial-k-proof/before.ttgir": "95907d5927f86fddcbcf3a8813043e738d497b2922a720b68f9ff6a045198916",
+        "partial-k-proof/after.ttgir": "3173dda288e8b46084f541ceba659ef8973807c4b1cf67f160d5ddfbc6a16685",
+        "partial-k-proof/proof.json": "f48bae93e9ca8b221b300eeac1d7f0af38870a9606db73c9b8980ac2982bd7f7"
+      }
+    }
+  ]
+}
