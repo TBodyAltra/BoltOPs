@@ -1,0 +1,67 @@
+{
+  "repos": {
+    "triton": {
+      "commit": "46f0bed3561364b63ba4046d9c8c0cb70380ea30",
+      "status": "?? third_party/hcu/backend/_cy_utils.cpython-310-x86_64-linux-gnu.so"
+    },
+    "bolt_ops": {
+      "commit": "840d816b671983527e5b1acc831c5e67618fe981",
+      "status": "M boltops/gemm/triton/gemm_fp16.py",
+      "tracked_diff_sha256": "955c5e066f83412b74d477134c1cf582505a290b2413290056473b9f4b597b19"
+    }
+  },
+  "host": "c45e31c9b3d9",
+  "execution": "PMD",
+  "arch": "gfx946",
+  "die_count": "unknown until config evidence",
+  "cu_per_die": 48,
+  "xcd_topology": "read per-run m5out config; do not equate XCD with die",
+  "clock_source": "per-dispatch gcFrequency in GHz; no driver clock substitution",
+  "statistics": "system.gcSimCycles per dispatch, warmup excluded, median of 3",
+  "hashes": {
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/split-producer-experiment/deps/pmd/libgem5.so": "99f62ef95c65577499b5d75c8dce916e7dbd25371ea883980e5db5672deeab73",
+    "/opt/rocm/llvm/bin/clang-18": "164f067ce20f44049ad6d1486c057bd51e59ac110c782859f0ea38e586fe8684",
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/split-producer-experiment/worker.py": "3c2f4a3f6ad67b664ea9ff45e4e41940b6c671e9f80a4a9a000723a71a1072b3",
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/split-producer-experiment/scan.py": "09fe8e8d2e819b0de79bd21129b1c9a4978b5cb2287eab8fe63bec25857dec98",
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/split-producer-experiment/env.sh": "e4277964ec67ad5de21d5e691289d19097924b725d9472df08b340bddc1fc365",
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/split-producer-experiment/triton/python/triton/_C/libtriton.so": "ed8f0352a379e4cf7d37372f6df47e89cafd554a4a25e0eaa5fd850d12c6b568"
+  },
+  "env": {
+    "AMDGCN_USE_BUFFER_OPS": "1",
+    "GPU_CHIP": "sb",
+    "GPU_DFLAGS": "['StatLog']",
+    "HCU_PIPELINE_ENV_REV": "2",
+    "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+    "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/gemm-wdra48-release-3.6.x/llvm-build",
+    "OMP_NUM_THREADS": "8",
+    "OPENBLAS_NUM_THREADS": "8",
+    "PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/llvm/bin:/xukang/code/pmd-triton-sessions/fp16-map-20261020/venv/bin:/opt/hyhal/bin:/opt/rocm/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+    "PYTHONPATH": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/full-k-experiment/triton/python:/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/full-k-experiment/bolt_ops",
+    "TRITON_BACKENDS_IN_TREE": "1",
+    "TRITON_BUILD_DIR": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/split-producer-experiment/build",
+    "TRITON_BUILD_PROTON": "OFF",
+    "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/split-producer-experiment/cache/kernels",
+    "TRITON_HIP_CLANG_PATH": "/opt/rocm/llvm/bin/clang-18",
+    "TRITON_HIP_LLD_PATH": "/opt/rocm/llvm/bin/ld.lld",
+    "TRITON_HOME": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/split-producer-experiment/cache/home",
+    "TRITON_OFFLINE_BUILD": "1"
+  },
+  "benchmark": "Two A/B producer partitions, single-TG full-K/runtime-MN source",
+  "kernel_contract": "Same readonly qualified full-K kernel as full-k-experiment; runtimeM/N, complete BK, grid1 benchmark",
+  "grid": [
+    1
+  ],
+  "pipeline_loop_counts": [
+    16,
+    32,
+    64
+  ],
+  "excluded_block": [
+    128,
+    128,
+    128
+  ],
+  "compile_extra_virtual_memory_bytes": 8589934592,
+  "driver_sha256": "94a6c7af3b386d3aff921eeb77af41cc39303f3333f3d3f96cc59f7b6dbcfc87"
+}
