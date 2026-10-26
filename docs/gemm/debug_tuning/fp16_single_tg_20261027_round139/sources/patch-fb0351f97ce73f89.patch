@@ -1,0 +1,82 @@
+diff --git a/boltops/gemm/triton/gemm_fp16.py b/boltops/gemm/triton/gemm_fp16.py
+index 013f5e7b..8183c21f 100644
+--- a/boltops/gemm/triton/gemm_fp16.py
++++ b/boltops/gemm/triton/gemm_fp16.py
+@@ -1,3 +1,4 @@
++# Experimental full-K-block contract: K divisible by BK; original runtime M/N interface retained.
+ """FP16 GEMM Triton kernel with optional WASP/WDRA (gfx946) and barrier knobs.
+ 
+ Public call shape follows vLLM's Triton matmul wrappers
+@@ -319,7 +320,10 @@ def _gemm_fp16_load_kernel(
+     GROUP_SIZE_M: tl.constexpr,
+     WARP_SPECIALIZE: tl.constexpr,
+     HAS_BIAS: tl.constexpr,
++    LOOP_UNROLL_FACTOR: tl.constexpr,
++    MMA_K_SPLIT: tl.constexpr,
+ ):
++    tl.assume(K % BLOCK_SIZE_K == 0)
+     tl.assume(stride_am > 0)
+     tl.assume(stride_ak > 0)
+     tl.assume(stride_bk > 0)
+@@ -343,11 +347,19 @@ def _gemm_fp16_load_kernel(
+     b_ptrs = b_ptr + offs_k[:, None] * stride_bk + offs_bn[None, :] * stride_bn
+ 
+     accumulator = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
+-    for k in tl.range(0, tl.cdiv(K, BLOCK_SIZE_K), warp_specialize=WARP_SPECIALIZE):
++    for k in tl.range(0, K // BLOCK_SIZE_K, warp_specialize=WARP_SPECIALIZE, loop_unroll_factor=LOOP_UNROLL_FACTOR):
+         remaining_k = K - k * BLOCK_SIZE_K
+-        a = tl.load(a_ptrs, mask=offs_k[None, :] < remaining_k, other=0.0)
+-        b = tl.load(b_ptrs, mask=offs_k[:, None] < remaining_k, other=0.0)
+-        accumulator = tl.dot(a, b, accumulator)
++        a = tl.load(a_ptrs)
++        b = tl.load(b_ptrs)
++        if MMA_K_SPLIT == 1:
++            accumulator = tl.dot(a, b, accumulator)
++        else:
++            tl.static_assert(MMA_K_SPLIT == 2)
++            tl.static_assert(BLOCK_SIZE_K % 2 == 0)
++            a0, a1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 2)), (0, 2, 1)))
++            b0, b1 = tl.split(tl.permute(tl.reshape(b, (2, BLOCK_SIZE_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
++            accumulator = tl.dot(a0, b0, accumulator)
++            accumulator = tl.dot(a1, b1, accumulator)
+         a_ptrs += BLOCK_SIZE_K * stride_ak
+         b_ptrs += BLOCK_SIZE_K * stride_bk
+ 
+@@ -384,8 +396,11 @@ def _gemm_fp16_mls_kernel(
+     GROUP_SIZE_M: tl.constexpr,
+     WARP_SPECIALIZE: tl.constexpr,
+     HAS_BIAS: tl.constexpr,
++    LOOP_UNROLL_FACTOR: tl.constexpr,
++    MMA_K_SPLIT: tl.constexpr,
+     USE_MATRIX_STORE: tl.constexpr,
+ ):
++    tl.assume(K % BLOCK_SIZE_K == 0)
+     tl.assume(stride_am > 0)
+     tl.assume(stride_ak > 0)
+     tl.assume(stride_bk > 0)
+@@ -408,7 +423,7 @@ def _gemm_fp16_mls_kernel(
+     mls_offs_am = pid_m * BLOCK_SIZE_M
+     mls_offs_bn = pid_n * BLOCK_SIZE_N
+     accumulator = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
+-    for k in tl.range(0, tl.cdiv(K, BLOCK_SIZE_K), warp_specialize=WARP_SPECIALIZE):
++    for k in tl.range(0, K // BLOCK_SIZE_K, warp_specialize=WARP_SPECIALIZE, loop_unroll_factor=LOOP_UNROLL_FACTOR):
+         mls_offs_k = k * BLOCK_SIZE_K
+         a = tl.matrix_load(
+             a_ptr,
+@@ -424,7 +439,15 @@ def _gemm_fp16_mls_kernel(
+             block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N],
+             offsets=[mls_offs_k, mls_offs_bn],
+         )
+-        accumulator = tl.dot(a, b, accumulator)
++        if MMA_K_SPLIT == 1:
++            accumulator = tl.dot(a, b, accumulator)
++        else:
++            tl.static_assert(MMA_K_SPLIT == 2)
++            tl.static_assert(BLOCK_SIZE_K % 2 == 0)
++            a0, a1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 2)), (0, 2, 1)))
++            b0, b1 = tl.split(tl.permute(tl.reshape(b, (2, BLOCK_SIZE_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
++            accumulator = tl.dot(a0, b0, accumulator)
++            accumulator = tl.dot(a1, b1, accumulator)
+ 
+     if HAS_BIAS:
+         offs_cn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)

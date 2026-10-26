@@ -1,0 +1,11 @@
+{
+  "scope": "AUDIT_ONLY_NO_GPU_SOURCE_CHANGE",
+  "v1_failure": "Counted B64x64 macro as one intrinsic; actual lowering uses four64x16 intrinsic subtasks per macro.",
+  "evidence": "Pinned MlsGroup.cpp lines172-183:16-bit64x64 version2/fallback3 uses four instructions and LDS offsets0/1024/2048/3072. MlsOpToLLVM.cpp loops instsPerWarp and adds these offsets.",
+  "corrected_expected_events_per_iteration": 48,
+  "A_macrotiles": 16,
+  "B_macrotiles": 8,
+  "B_micro_intrinsics": 32,
+  "producer_addresses_still_compared_exactly_with_all_flags": true,
+  "failed_audit_script_preserved": true
+}
