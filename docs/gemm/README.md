@@ -34,7 +34,7 @@ FP8×FP4 接口使用预量化 A 与低/高半字节打包的 E2M1 W（偶数 K 
 
 ## 优化状态与后续范围
 
-- FP16 单 TG block 流水的当前最佳配置、资源与复测证据见 [2026-10-26 round88 配置地图](debug_tuning/fp16_single_tg_20261026_round88/README.md) 与配套 JSON；按 BM/BN/BK 查找，供 BU 调优起步使用。历史快照：[round84](debug_tuning/fp16_single_tg_20261026_round84/README.md)、[round82](debug_tuning/fp16_single_tg_20261026_round82/README.md)、[round76](debug_tuning/fp16_single_tg_20261026_round76/README.md)、[round71](debug_tuning/fp16_single_tg_20261026_round71/README.md)、[round62](debug_tuning/fp16_single_tg_20261026/README.md)、[2026-10-23](debug_tuning/fp16_single_tg_20261023/README.md)。
+- FP16 单 TG block 流水的当前最佳配置、资源与复测证据见 [2026-10-26 round93 配置地图](debug_tuning/fp16_single_tg_20261026_round93/README.md) 与配套 JSON；按 BM/BN/BK 查找，供 BU 调优起步使用。历史快照：[round88](debug_tuning/fp16_single_tg_20261026_round88/README.md)、[round84](debug_tuning/fp16_single_tg_20261026_round84/README.md)、[round82](debug_tuning/fp16_single_tg_20261026_round82/README.md)、[round76](debug_tuning/fp16_single_tg_20261026_round76/README.md)、[round71](debug_tuning/fp16_single_tg_20261026_round71/README.md)、[round62](debug_tuning/fp16_single_tg_20261026/README.md)、[2026-10-23](debug_tuning/fp16_single_tg_20261023/README.md)。
 
 - WDRA48 的 post-dot scale 分区依赖断言已修复，Triton 同名分支提交 `e33b79cf1`；34 项运行检查 PASS，4 项同 BK 普通流水对照逐元素一致。大 tile 仍受 LDS / VGPR 限制，尚无性能晋升结论。
 - FP8×FP8 已建立对齐基线及 async / BPP 候选。下一步先调通少量关键流水，再上真实卡 autotune；不在 PMD 对 207 个需求形状展开全量搜索。
