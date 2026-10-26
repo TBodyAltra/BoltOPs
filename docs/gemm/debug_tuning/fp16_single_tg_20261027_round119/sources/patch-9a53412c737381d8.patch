@@ -1,0 +1,1241 @@
+diff --git a/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/DataPartition.cpp b/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/DataPartition.cpp
+index 99886cbb3..a596f6f7e 100644
+--- a/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/DataPartition.cpp
++++ b/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/DataPartition.cpp
+@@ -15,6 +15,8 @@
+ #include "TritonHCU/BufferLdsEncoding.h"
+ #include "TritonHCU/MlsGroup.h"
+ #include "TritonHCU/WaspSplitPlan.h"
++#include <optional>
++#include <utility>
+ #include "mlir/Pass/Pass.h"
+ #include "mlir/Transforms/Passes.h"
+ #include "mlir/Transforms/RegionUtils.h"
+@@ -219,6 +221,13 @@ struct DataPartitionScheme {
+   unsigned numPartitions = 0;
+   // TwoPTwoC: slice producer buffers and tag load chains with slice task ids.
+   bool producerSliced = false;
++  bool hasFragmentViews = false;
++  struct LoopCarryFixup {
++    scf::ForOp loop;
++    unsigned previousCarryCount;
++    SmallVector<std::pair<unsigned, unsigned>> appendedIndices;
++  };
++  SmallVector<LoopCarryFixup> loopCarryFixups;
+   // All operations that participate in this partitioning scheme.
+   SetVector<Operation *> ops;
+   // Which dimension to partition. For dot, dim 0 means along M dimension, 1
+@@ -239,6 +248,7 @@ struct DataPartitionScheme {
+ 
+   void append(DataPartitionScheme &other) {
+     producerSliced = producerSliced || other.producerSliced;
++    hasFragmentViews = hasFragmentViews || other.hasFragmentViews;
+     for (auto op : other.ops)
+       ops.insert(op);
+     for (auto op : other.opPartitionDims)
+@@ -256,7 +266,9 @@ struct DataPartitionScheme {
+   bool partitionIsCompatible() { return true; }
+ 
+   bool isValidPartitionDim(unsigned dim) const {
+-    return dim < numPartitions || dim == DataPartitionScheme::noOpPartitionDim;
++    // Number of partitions is independent of tensor rank. K-fragment views
++    // use rank three; staged memdescs can have one additional dimension.
++    return dim < 4 || dim == DataPartitionScheme::noOpPartitionDim;
+   }
+ 
+   unsigned flipPartitionDim(unsigned dim) const {
+@@ -332,6 +344,47 @@ static SmallVector<int64_t> getShape(Type type) {
+ static SmallVector<int64_t> getShape(Value v) { return getShape(v.getType()); }
+ 
+ // Forward declaration: used while collecting MLS producer chains.
++// Preserve an axis only if its extent and row-major inner span are unchanged.
++// This supports splitting/merging the other (K) axis without treating a K
++// fragment as an independently partitionable output tile.
++static std::optional<unsigned>
++mapReshapePartitionDim(ArrayRef<int64_t> from, ArrayRef<int64_t> to,
++                       unsigned dim) {
++  if (dim == DataPartitionScheme::noOpPartitionDim)
++    return dim;
++  if (dim >= from.size())
++    return std::nullopt;
++  int64_t inner = 1;
++  for (unsigned i = dim + 1; i < from.size(); ++i)
++    inner *= from[i];
++  int64_t candidateInner = 1;
++  for (int i = int(to.size()) - 1; i >= 0; --i) {
++    if (to[i] == from[dim] && candidateInner == inner)
++      return unsigned(i);
++    candidateInner *= to[i];
++  }
++  return std::nullopt;
++}
++
++static unsigned transposeInputPartitionDim(Operation *op, unsigned dim) {
++  if (dim == DataPartitionScheme::noOpPartitionDim)
++    return dim;
++  auto order = isa<TransOp>(op) ? cast<TransOp>(op).getOrder()
++                               : cast<MemDescTransOp>(op).getOrder();
++  assert(dim < order.size() && "invalid transpose output partition axis");
++  return order[dim];
++}
++
++static unsigned transposeOutputPartitionDim(Operation *op, unsigned dim) {
++  if (dim == DataPartitionScheme::noOpPartitionDim)
++    return dim;
++  auto order = isa<TransOp>(op) ? cast<TransOp>(op).getOrder()
++                               : cast<MemDescTransOp>(op).getOrder();
++  auto it = llvm::find(order, int32_t(dim));
++  assert(it != order.end() && "invalid transpose input partition axis");
++  return unsigned(it - order.begin());
++}
++
+ static bool getBackwardSliceToPartition(Value v,
+                                         DataPartitionScheme &partitionScheme,
+                                         unsigned currentDim);
+@@ -891,7 +944,25 @@ static bool getBackwardSliceToPartition(Value v,
+ 
+     // Flip dim when op is trans
+     if (isa<TransOp, MemDescTransOp>(op))
+-      currentDim = partitionScheme.flipPartitionDim(currentDim);
++      currentDim = transposeInputPartitionDim(op, currentDim);
++    if (auto reshape = dyn_cast<ReshapeOp>(op)) {
++      auto mapped = mapReshapePartitionDim(
++          cast<RankedTensorType>(reshape.getResult().getType()).getShape(),
++          cast<RankedTensorType>(reshape.getSrc().getType()).getShape(),
++          currentDim);
++      if (!mapped)
++        return false;
++      currentDim = *mapped;
++    }
++    if (auto split = dyn_cast<SplitOp>(op)) {
++      partitionScheme.hasFragmentViews = true;
++      // Split removes the trailing two-element selector axis; never partition
++      // that selector. All remaining axes retain their indices.
++      unsigned rank = cast<RankedTensorType>(split.getSrc().getType()).getRank();
++      if (currentDim != DataPartitionScheme::noOpPartitionDim &&
++          currentDim >= rank - 1)
++        return false;
++    }
+ 
+     if (auto expandDimsOp = dyn_cast<ExpandDimsOp>(op)) {
+       // currentDim is the dim after expansion.
+@@ -907,7 +978,7 @@ static bool getBackwardSliceToPartition(Value v,
+     if (op->hasTrait<OpTrait::Elementwise>() ||
+         isa<arith::ConstantOp, arith::ExtSIOp, arith::ExtUIOp, arith::ExtFOp,
+             BroadcastOp, ExpandDimsOp, MakeRangeOp, SplatOp, ConvertLayoutOp,
+-            LoadOp, TransOp, MemDescTransOp,
++            LoadOp, TransOp, MemDescTransOp, SplitOp, ReshapeOp,
+             AtomicRMWOp, triton::AddPtrOp, DescriptorLoadOp,
+             LocalLoadOp, AsyncCommitGroupOp, AsyncWaitOp,
+             nvidia_gpu::TMEMAllocOp, nvidia_gpu::TMEMLoadOp, FpToFpOp>(op)) {
+@@ -1026,6 +1097,10 @@ static bool getBackwardSliceToPartition(Value v,
+                                        currentDim))
+         return false;
+     } else {
++      llvm::errs() << "HCU_PARTITION_UNSUPPORTED_OP="
++                   << op->getName().getStringRef() << " DIM=" << currentDim
++                   << "\n";
++      op->dump();
+       llvm_unreachable("Unexpected op");
+     }
+   } else {
+@@ -1081,7 +1156,22 @@ static bool getForwardSliceToPartition(Value v,
+     currentDim = originalDim;
+     // Flip dim when op is trans
+     if (isa<TransOp, MemDescTransOp>(depOp))
+-      currentDim = partitionScheme.flipPartitionDim(currentDim);
++      currentDim = transposeOutputPartitionDim(depOp, currentDim);
++    if (auto reshape = dyn_cast<ReshapeOp>(depOp)) {
++      auto mapped = mapReshapePartitionDim(
++          cast<RankedTensorType>(reshape.getSrc().getType()).getShape(),
++          cast<RankedTensorType>(reshape.getResult().getType()).getShape(),
++          currentDim);
++      if (!mapped)
++        return false;
++      currentDim = *mapped;
++    }
++    if (auto split = dyn_cast<SplitOp>(depOp)) {
++      unsigned rank = cast<RankedTensorType>(split.getSrc().getType()).getRank();
++      if (currentDim != DataPartitionScheme::noOpPartitionDim &&
++          currentDim >= rank - 1)
++        return false;
++    }
+ 
+     // Check dim compatibility
+     if (!partitionScheme.ops.insert(depOp)) {
+@@ -1093,10 +1183,10 @@ static bool getForwardSliceToPartition(Value v,
+         });
+         return false;
+       }
+-      // YieldOp can be partitioned multiple times, one for each of its
+-      // operands.
+-      if (!isa<scf::YieldOp>(depOp))
+-        continue;
++      // Backward discovery may already own this operation. Forward closure
++      // still has to reach its result users (including loop yields and the
++      // epilogue). The Value-based seen set below guards forward traversal;
++      // operation membership is not a forward-visited marker.
+     }
+ 
+     partitionScheme.opPartitionDims[depOp] = currentDim;
+@@ -1220,6 +1310,21 @@ static bool getSliceToPartition(Value root,
+                                          currentDim))
+           return false;
+       }
++    } else if (isa<DotOp>(op)) {
++      // A preceding dot reaches subsequent dots through their accumulator.
++      // Pull in EACH dot's A/B dependencies as well, including the odd Split
++      // results; marking the dot as visited alone loses those producer trees.
++      unsigned opndIndx = partitionScheme.dotPartitionOperand[op];
++      if (opndIndx != currentDim)
++        return false; // This path partitions output tiles, never reduction K.
++      if (!getBackwardSliceToPartition(op->getOperand(opndIndx),
++                                       partitionScheme, currentDim) ||
++          !getBackwardSliceToPartition(op->getOperand(1 - opndIndx),
++                                       partitionScheme,
++                                       DataPartitionScheme::noOpPartitionDim) ||
++          !getBackwardSliceToPartition(op->getOperand(2), partitionScheme,
++                                       currentDim))
++        return false;
+     } else if (isa<nvidia_gpu::WarpGroupDotOp, nvidia_gpu::TCGen5MMAOp>(op)) {
+       unsigned opndIndx = partitionScheme.dotPartitionOperand[op];
+       if (!getBackwardSliceToPartition(op->getOperand(opndIndx),
+@@ -2308,8 +2413,10 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
+     reverseMappings.map(newOp, op);
+     for (auto [oldV, newV] :
+          llvm::zip(op->getResults(), newOp->getResults())) {
+-      // Retype stage views when the parent alloc was sliced (MLS or TwoPTwoC).
+-      if (isMlsSharedValue(oldV) || partitionScheme.producerSliced) {
++      // Every stage view follows the ACTUAL parent shape, including an
++      // ordinary tl.load buffer sliced through the fragment producer chain.
++      if (mappings.lookupOrNull(memDescIndexOp.getSrc()) ||
++          isMlsSharedValue(oldV) || partitionScheme.producerSliced) {
+         Value mappedParent = mappings.lookupOrNull(memDescIndexOp.getSrc());
+         auto parentTy = cast<MemDescType>(
+             (mappedParent ? mappedParent : memDescIndexOp.getSrc()).getType());
+@@ -2324,6 +2431,32 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
+     }
+   } else if (auto tensorDescOp = dyn_cast<ttng::ReinterpretTensorDescOp>(op)) {
+     newOp = cloneAndSetResultType(op);
++  } else if (isa<SplitOp, ReshapeOp>(op)) {
++    for (Value operand : op->getOperands())
++      sliceOp(operand, offset, mappings, reverseMappings, partitionScheme);
++    builder.setInsertionPoint(op);
++    newOp = builder.clone(*op, mappings);
++    hcu::setAsyncTaskIds(newOp, sliceTaskIds);
++    // Split has two results. Retype and map BOTH, including the odd fragment;
++    // mapping just result zero silently leaves half the reduction unsliced.
++    for (auto [oldV, newV] : llvm::zip(op->getResults(), newOp->getResults())) {
++      auto type = cast<RankedTensorType>(oldV.getType());
++      SmallVector<int64_t> shape(type.getShape().begin(), type.getShape().end());
++      if (dim != DataPartitionScheme::noOpPartitionDim) {
++        assert(dim < shape.size() && shape[dim] % numOfPartitions == 0 &&
++               "invalid shape-view partition");
++        shape[dim] /= numOfPartitions;
++      }
++      Attribute encoding = repairMfmaEncodingForShape(type.getEncoding(), shape);
++      newV.setType(RankedTensorType::get(shape, type.getElementType(), encoding));
++      mappings.map(oldV, newV);
++      reverseMappings.map(newV, oldV);
++    }
++  } else if (isa<TransOp, MemDescTransOp>(op) &&
++             dim == DataPartitionScheme::noOpPartitionDim) {
++    sliceOp(op->getOperand(0), offset, mappings, reverseMappings,
++            partitionScheme);
++    newOp = cloneAndSetResultType(op);
+   } else if (isa<TransOp, MemDescTransOp>(op)) {
+     sliceOp(op->getOperand(0), offset, mappings, reverseMappings,
+             partitionScheme);
+@@ -2469,6 +2602,14 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
+       mappings.map(regionArg, newRegionArg);
+       reverseMappings.map(newRegionArg, regionArg);
+     }
++    if (partitionScheme.hasFragmentViews && !newArgIdices.empty()) {
++      DataPartitionScheme::LoopCarryFixup fixup;
++      fixup.loop = newForOp;
++      fixup.previousCarryCount = forOp.getNumResults();
++      for (auto indices : newArgIdices)
++        fixup.appendedIndices.emplace_back(indices.first, indices.second);
++      partitionScheme.loopCarryFixups.push_back(std::move(fixup));
++    }
+   } else if (auto ifOp = dyn_cast<scf::IfOp>(op)) {
+     // Slice the yield op and update if results
+     auto thenYieldOp = ifOp.thenYield();
+@@ -2674,6 +2815,7 @@ static bool doDataPartition(triton::FuncOp &funcOp,
+   // Slice the ops.
+   for (int i = 0; i < partitionScheme.numPartitions; i++) {
+     IRMapping mappings, reverseMappings;
++    partitionScheme.loopCarryFixups.clear();
+     LDBG("partitioning op for task " << i + 1 << ":\n");
+     int numOps = partitionScheme.ops.size();
+     for (int j = 0; j < numOps; j++) {
+@@ -2681,6 +2823,35 @@ static bool doDataPartition(triton::FuncOp &funcOp,
+       sliceOp(op, i, mappings, reverseMappings, partitionScheme);
+     }
+ 
++    // Dot fragments form a cyclic accumulator chain. Resolve each appended
++    // carry only AFTER all ops for this offset have a mapping. The old prefix
++    // remains intact; each new result is tied to its original SCF carry index.
++    for (auto &fixup : partitionScheme.loopCarryFixups) {
++      auto yield = cast<scf::YieldOp>(fixup.loop.getBody()->getTerminator());
++      unsigned expected = fixup.loop.getInitArgs().size();
++      if (yield.getNumOperands() < fixup.previousCarryCount ||
++          yield.getNumOperands() > expected)
++        return false;
++      SmallVector<Value> values;
++      for (unsigned j = 0; j < fixup.previousCarryCount; ++j)
++        values.push_back(yield.getOperand(j));
++      values.resize(expected);
++      for (auto [oldIndex, newIndex] : fixup.appendedIndices) {
++        Value mapped = mappings.lookupOrNull(yield.getOperand(oldIndex));
++        if (!mapped || mapped.getType() !=
++                           fixup.loop.getRegionIterArg(newIndex).getType()) {
++          fixup.loop.emitError("missing typed fragment loop carry mapping");
++          return false;
++        }
++        values[newIndex] = mapped;
++      }
++      for (unsigned j = 0; j < expected; ++j)
++        if (!values[j] || values[j].getType() !=
++                              fixup.loop.getRegionIterArg(j).getType())
++          return false;
++      yield->setOperands(values);
++    }
++
+     // clean up
+     LLVM_DEBUG({
+       LDBG("prior to clean up:");
+diff --git a/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/PartitionScheduling.cpp b/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/PartitionScheduling.cpp
+index 0f3e4d3f9..b20e08745 100644
+--- a/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/PartitionScheduling.cpp
++++ b/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/PartitionScheduling.cpp
+@@ -262,8 +262,15 @@ static std::optional<WarpSchedule> getInitialSchedule(scf::ForOp loop) {
+       Operation *op = operandViews.pop_back_val();
+       // Follow dot operand views so consumer synchronization is not assigned
+       // to root and replicated into producer warps.
+-      if (!isa<LocalLoadOp, TransOp, ConvertLayoutOp>(op))
++      if (auto alloc = dyn_cast<LocalAllocOp>(op)) {
++        // Layout conversion buffers initialized from a register tensor belong
++        // to its consumers. Empty/pipelined producer allocations remain owned
++        // by the producer; only traverse initialized consumer buffers.
++        if (!alloc.getSrc() || schedule.getPartition(op) == loadPartition)
++          continue;
++      } else if (!isa<LocalLoadOp, TransOp, ConvertLayoutOp, ReshapeOp, SplitOp>(op)) {
+         continue;
++      }
+ 
+       // Duplicate the op if necessary to ensure that the MMA partition is the only user.
+       if (!llvm::all_of(op->getUsers(), [&](Operation *user) {
+diff --git a/native-overlays/added-parser.cpp.inc b/native-overlays/added-parser.cpp.inc
+new file mode 100644
+index 000000000..c17ff5b2f
+--- /dev/null
++++ b/native-overlays/added-parser.cpp.inc
+@@ -0,0 +1,15 @@
++    .Case("mls_shared_import", [&](llvm::StringRef, llvm::SMLoc) -> ::mlir::ParseResult {
++      unsigned fields[9];
++      if (parser.parseLess()) return ::mlir::failure();
++      for (unsigned i = 0; i != 9; ++i) {
++        if (i && parser.parseComma()) return ::mlir::failure();
++        if (parser.parseInteger(fields[i])) return ::mlir::failure();
++      }
++      if (parser.parseGreater()) return ::mlir::failure();
++      value = ::mlir::triton::gpu::HCUMlsSharedEncodingAttr::get(
++          parser.getContext(), fields[0], {fields[1], fields[2]}, fields[3],
++          static_cast<::mlir::triton::gpu::MlsElemBitTyKind>(fields[4]),
++          fields[5], fields[6], {fields[7], fields[8]},
++          ::mlir::triton::gpu::CTAEncodingAttr::getDefault(parser.getContext(), 2));
++      return ::mlir::success(!!value);
++    })
+diff --git a/native-overlays/mls-shared-import.patch b/native-overlays/mls-shared-import.patch
+new file mode 100644
+index 000000000..eb37e0121
+--- /dev/null
++++ b/native-overlays/mls-shared-import.patch
+@@ -0,0 +1,24 @@
++--- AttrDefs.cpp.inc
+++++ AttrDefs.cpp.inc
++@@ -33,6 +33,21 @@
++ 
++ static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef *mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
++   return ::mlir::AsmParser::KeywordSwitch<::mlir::OptionalParseResult>(parser)
+++    .Case("mls_shared_import", [&](llvm::StringRef, llvm::SMLoc) -> ::mlir::ParseResult {
+++      unsigned fields[9];
+++      if (parser.parseLess()) return ::mlir::failure();
+++      for (unsigned i = 0; i != 9; ++i) {
+++        if (i && parser.parseComma()) return ::mlir::failure();
+++        if (parser.parseInteger(fields[i])) return ::mlir::failure();
+++      }
+++      if (parser.parseGreater()) return ::mlir::failure();
+++      value = ::mlir::triton::gpu::HCUMlsSharedEncodingAttr::get(
+++          parser.getContext(), fields[0], {fields[1], fields[2]}, fields[3],
+++          static_cast<::mlir::triton::gpu::MlsElemBitTyKind>(fields[4]),
+++          fields[5], fields[6], {fields[7], fields[8]},
+++          ::mlir::triton::gpu::CTAEncodingAttr::getDefault(parser.getContext(), 2));
+++      return ::mlir::success(!!value);
+++    })
++     .Case(::mlir::triton::gpu::SwizzledSharedEncodingAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
++       value = ::mlir::triton::gpu::SwizzledSharedEncodingAttr::parse(parser, type);
++       return ::mlir::success(!!value);
+diff --git a/third_party/hcu/backend/compiler.py b/third_party/hcu/backend/compiler.py
+index 812937a65..e268fd2f8 100644
+--- a/third_party/hcu/backend/compiler.py
++++ b/third_party/hcu/backend/compiler.py
+@@ -108,6 +108,11 @@ class HIPOptions:
+     # schedule_hint="attention,memory-bound-attention"
+     schedule_hint: str = 'none'
+ 
++    # Experimental independent MLS global prefetch depth. None preserves the
++    # existing hint-derived behavior. Dataclass field participates in hash().
++    mls_global_prefetch: Optional[int] = None
++    hcu_fragment_mls_layout: bool = False
++
+     # Extend options for HCU(legacy), used for old arch like gfx928, gfx936
+     # 1. set scheduling latency for mmac and ds:
+     #    - none: use default scheduling latency which equal mmac1-ds5
+@@ -167,6 +172,14 @@ class HIPOptions:
+     # num_warps only seeds the initial layouts; launch waves are sum(tuple).
+     wasp_partition_warps: Tuple[int, ...] = (4, 4, 4)
+     wasp_wdra: bool = True
++    # Private opt-in prototype; default APIs retain the 2/4-buffer restriction.
++    hcu_wasp_single_buffer: bool = False
++    hcu_wasp_partial_k_local_read: bool = False
++    hcu_wasp_mmac_turn: int = 0
++    hcu_wasp_merge_ab: bool = False
++    hcu_wasp_prefetch_full_k: bool = False
++    hcu_wasp_first_operand_early: bool = False
++    hcu_wasp_prefetch_one_operand: int = 0
+     wasp_partition_regs: Tuple[int, ...] = None
+ 
+     # Delay empty abarrier arrive until after mmac (+ SchedBarrier fence).
+@@ -186,6 +199,11 @@ class HIPOptions:
+     assume_no_nans: bool = False
+ 
+     def __post_init__(self):
++        if type(self.hcu_fragment_mls_layout) is not bool:
++            raise ValueError("hcu_fragment_mls_layout must be bool")
++        if self.mls_global_prefetch is not None and (
++                type(self.mls_global_prefetch) is not int or self.mls_global_prefetch not in (0, 1)):
++            raise ValueError("mls_global_prefetch must be None, 0 or 1")
+         gfx_major = int(self.arch[3:-2])  # Drop "gfx" prefix and minor/patch number
+         warp_size = 32 if gfx_major >= 10 else 64
+         object.__setattr__(self, 'warp_size', warp_size)
+@@ -609,6 +627,8 @@ class HIPBackend(BaseBackend):
+         b = ir.builder(mod.context)
+         use_async_copy = options.use_async_copy
+         mmac_cluster_on = int(options.enable_v_mmac_cluster) >= 1
++        if options.hcu_fragment_mls_layout:
++            mod.set_attr("hcu.fragment_mls_layout", b.get_bool_attr(True))
+         mod.set_attr("hcu.sched_barrier_before_mmac",
+                      b.get_bool_attr(mmac_cluster_on))
+         mod.set_attr("hcu.empty_arrive_after_mmac",
+@@ -694,7 +714,9 @@ class HIPBackend(BaseBackend):
+ 
+         # Preserve the old triton stream-prefetch behavior for MLS:
+         # separate global load and LDS consumption by one pipeline stage.
+-        global_prefetch = int(options.schedule_hint == "local-prefetch")
++        global_prefetch = (int(options.schedule_hint == "local-prefetch")
++                           if options.mls_global_prefetch is None else options.mls_global_prefetch)
++        metadata["mls_global_prefetch_resolved"] = global_prefetch
+ 
+         # When WASP is enabled, skip MLS software pipelining (same rationale as
+         # skipping amd stream_pipeline): WASP owns multi-buffering / sync for
+@@ -790,6 +812,51 @@ class HIPBackend(BaseBackend):
+         hcu.passes.ttgpuir.add_update_async_wait_count(pm, options.arch)
+         pm.run(mod, 'make_ttgir')
+         metadata["tensordesc_meta"] = mod.get_tensordesc_metadata()
++        if options.hcu_wasp_partial_k_local_read:
++            if (not metadata.get("wasp_enabled") or not options.hcu_wasp_single_buffer or
++                not options.wasp_wdra or options.num_stages != 1 or
++                options.empty_arrive_after_mmac or tuple(options.wasp_partition_warps) != (4, 4, 4)):
++                raise ValueError("partial K LDS reads require explicit early-release OnePTwoC singlebuffer")
++            from .partial_k_local import rewrite_module
++            mod, proof = rewrite_module(mod)
++            metadata["hcu_partial_k_local_reads"] = sum(x["new_local_reads"] for x in proof["consumers"])
++            metadata["hcu_partial_k_fragments_per_bk"] = 2
++        if options.hcu_wasp_prefetch_one_operand:
++            if not options.hcu_wasp_partial_k_local_read or options.hcu_wasp_prefetch_full_k or options.hcu_wasp_first_operand_early or options.hcu_wasp_merge_ab or options.hcu_wasp_mmac_turn not in (0,1,2):
++                raise ValueError("one-operand prefetch requires partialK, separate data barriers and MMAC turns; full/first prefetch modes are exclusive")
++            from .prefetch_one_operand import rewrite_module as rewrite_one_operand
++            mod, one_proof = rewrite_one_operand(mod, options.hcu_wasp_prefetch_one_operand)
++            metadata["hcu_prefetch_one_operand"] = one_proof["prefetched_operand"]
++            metadata["hcu_operand_barriers"] = one_proof["operand_barriers"]
++            metadata["hcu_streamed_other_k_fragments"] = 2
++            metadata["hcu_turn_wait_before_streamed_ready"] = bool(options.hcu_wasp_mmac_turn)
++        if options.hcu_wasp_prefetch_full_k:
++            if not options.hcu_wasp_partial_k_local_read:
++                raise ValueError("full-K local prefetch requires the qualified partial-K reader")
++            from .prefetch_full_k import rewrite_module as rewrite_prefetch
++            mod, prefetch_proof = rewrite_prefetch(mod)
++            metadata["hcu_full_BK_local_prefetch"] = True
++        if options.hcu_wasp_first_operand_early:
++            if not options.hcu_wasp_prefetch_full_k or options.hcu_wasp_merge_ab:
++                raise ValueError("first-operand early capture requires full-K prefetch and separate A/B data barriers")
++            from .first_operand_early import rewrite_module as rewrite_first_early
++            mod, first_early_proof = rewrite_first_early(mod)
++            metadata["hcu_first_operand_early_capture"] = first_early_proof["first_operand"]
++            metadata["hcu_operand_barriers"] = first_early_proof["operand_barriers"]
++        if options.hcu_wasp_merge_ab:
++            if not options.hcu_wasp_partial_k_local_read:
++                raise ValueError("merged AB prototype requires the qualified partial-K reader")
++            from .merge_ab import rewrite_module as rewrite_ab
++            mod, ab_proof = rewrite_ab(mod)
++            metadata["hcu_merged_AB_data_barriers"] = True
++            metadata["hcu_AB_data_barrier_ids"] = [0, 1]
++        if options.hcu_wasp_mmac_turn:
++            if not options.hcu_wasp_partial_k_local_read:
++                raise ValueError("MMAC turn prototype requires the qualified partial-K reader")
++            from .mmac_turn import rewrite_module as rewrite_turn
++            mod, turn_proof = rewrite_turn(mod, options.hcu_wasp_mmac_turn, prefetch_operand=options.hcu_wasp_prefetch_one_operand)
++            metadata["hcu_mmac_turn_mode"] = options.hcu_wasp_mmac_turn
++            metadata["hcu_mmac_turn_barrier_ids"] = [4, 5]
+         return mod
+ 
+     @staticmethod
+diff --git a/third_party/hcu/backend/data_barrier_map.py b/third_party/hcu/backend/data_barrier_map.py
+new file mode 100644
+index 000000000..26941b5cb
+--- /dev/null
++++ b/third_party/hcu/backend/data_barrier_map.py
+@@ -0,0 +1,40 @@
++"""Bind math operands to their producer-assigned data barrier channels."""
++import re,hashlib
++SSA=r'%[\w.]+'
++def derive(source):
++ markers=list(re.finditer(r'^    partition([012])\(',source,re.M));assert [m[1] for m in markers]==['0','1','2']
++ prefix=source[:markers[0].start()];producer=source[markers[0].start():markers[1].start()];lines=producer.splitlines()
++ vals={m[1]:int(m[2]) for m in re.finditer(r'('+SSA+r') = arith.constant (\d+) : i32',prefix+producer)}
++ for m in re.finditer(r'('+SSA+r') = llvm.mlir.constant\((\d+) : i32\)',prefix+producer):vals[m[1]]=int(m[2])
++ init=re.findall(r'rocdl.hcu.s.abarrier.init ('+SSA+r'), (\d+)',prefix)
++ initial=sorted((vals[v],int(n)) for v,n in init)
++ assert [x for x in initial if x[0]<4]==[(0,8),(1,4),(2,8),(3,4)]
++ assert [x for x in initial if x[0]>=4] in ([],[(4,4),(5,4)])
++ copies=[i for i,l in enumerate(lines) if 'amdg.matrix_load_to_local ' in l];assert len(copies)==2
++ maps={};records=[]
++ for pos,i in enumerate(copies):
++  lo=copies[pos-1]+1 if pos else 0;hi=copies[pos+1] if pos+1<len(copies) else len(lines)
++  op=int(re.search(r'MlsEncoding opIdx = ([01])',lines[i])[1]);assert 'AB'[op] not in maps
++  w=next(j for j in range(i-1,lo-1,-1) if 'rocdl.hcu.s.abarrier.try.wait ' in lines[j]);seq=next(j for j in range(i-1,lo-1,-1) if 'rocdl.hcu.s.abarrier.seq ' in lines[j]);arr=next(j for j in range(i+1,hi) if 'rocdl.hcu.s.abarrier.arrive ' in lines[j])
++  e=vals[re.search(r'abarrier.try.wait i32, ('+SSA+r'),',lines[w])[1]];r=vals[re.search(r'abarrier.seq ('+SSA+r')',lines[seq])[1]];a=vals[re.search(r'abarrier.arrive i32, ('+SSA+r'), 1',lines[arr])[1]]
++  assert w<seq<i<arr and r==a==e+1 and e in (0,2)
++  dest=re.search(r'amdg.matrix_load_to_local '+SSA+r', ('+SSA+r'),',lines[i])[1]
++  root_line=next(l for l in lines[:i] if re.match(r'\s*'+re.escape(dest)+r' = ttg.memdesc_index ',l));root=re.search(r'ttg.memdesc_index ('+SSA+r')',root_line)[1]
++  maps['AB'[op]]=dict(empty=e,ready=r);records.append(dict(operand='AB'[op],empty=e,ready=r,producer_root=root,wait_line=w+1,sequence_line=seq+1,copy_line=i+1,arrival_line=arr+1))
++ assert sorted(v['empty'] for v in maps.values())==[0,2]
++ # The local-load math encoding must trace to the same shared root as its MLS.
++ for role,part in [(1,source[markers[1].start():markers[2].start()]),(2,source[markers[2].start():])]:
++  defs={}
++  for l in part.splitlines():
++   m=re.match(r'\s*('+SSA+r') = (.*)',l)
++   if m:defs[m[1]]=m[2]
++  seen={0:0,1:0}
++  for l in part.splitlines():
++   if ' = ttg.local_load ' not in l:continue
++   op=int(re.search(r'dot_op<\{opIdx = ([01])',l)[1]);v=re.search(r'ttg.local_load ('+SSA+r')',l)[1]
++   while v in defs:
++    rhs=defs[v];m=re.match(r'ttg.memdesc_(?:index|subslice) ('+SSA+r')',rhs);assert m,(v,rhs);v=m[1]
++   expect=next(x['producer_root'] for x in records if x['operand']=='AB'[op]);assert v==expect,(role,op,v,expect)
++   seen[op]+=1
++  assert seen=={0:2,1:2}
++ return maps,dict(source_sha256=hashlib.sha256(source.encode()).hexdigest(),producer_order=[x['operand'] for x in records],channels=records,consumer_shared_roots_match_math_operands=True)
+diff --git a/third_party/hcu/backend/first_operand_early.py b/third_party/hcu/backend/first_operand_early.py
+new file mode 100644
+index 000000000..3d087b30b
+--- /dev/null
++++ b/third_party/hcu/backend/first_operand_early.py
+@@ -0,0 +1,80 @@
++"""Capture/release the producer's first operand before waiting for its second.
++Requires separate A/B data barriers and full-K direct-view prefetch. Moves only
++existing SSA operations; producer, local allocation and FP32 math are unchanged.
++"""
++import pathlib,re,json,hashlib,tempfile,os,collections
++SSA=r'%[\w.]+'
++def definitions(lines):
++ d={}
++ for i,line in enumerate(lines):
++  m=re.match(r'\s*('+SSA+r') = (.*)',line)
++  if m:assert m[1] not in d;d[m[1]]=(i,m[2])
++ return d
++def transform(source,operand=None):
++ assert '__mt_' not in source and 'hcu.consumer_pingpong' not in source
++ markers=list(re.finditer(r'^    partition([012])\(',source,re.M));assert [m[1] for m in markers]==['0','1','2']
++ prefix=source[:markers[0].start()];producer=source[markers[0].start():markers[1].start()]
++ const={m[1]:int(m[2]) for m in re.finditer(r'('+SSA+r') = arith.constant (\d+) : i32',prefix)}
++ for m in re.finditer(r'('+SSA+r') = llvm.mlir.constant\((\d+) : i32\)',prefix):const[m[1]]=int(m[2])
++ init=re.findall(r'rocdl.hcu.s.abarrier.init ('+SSA+r'), (\d+)',prefix)
++ assert sorted((const[v],int(n)) for v,n in init)==[(0,8),(1,4),(2,8),(3,4)]
++ ml=[int(re.search(r'opIdx = ([01])',l)[1]) for l in producer.splitlines() if 'amdg.matrix_load_to_local ' in l];assert sorted(ml)==[0,1]
++ from .data_barrier_map import derive
++ mapping,mapping_proof=derive(source)
++ first=ml[0] if operand is None else operand;assert type(first) is int and first in (0,1);ready=mapping['AB'[first]]['ready'];empty=mapping['AB'[first]]['empty'];second=1-first
++ pieces=[source[:markers[1].start()]];proof=[]
++ for role,part in [(1,source[markers[1].start():markers[2].start()]),(2,source[markers[2].start():])]:
++  lines=part.splitlines(True);defs=definitions(lines);vals=dict(const)
++  for v,(i,rhs) in defs.items():
++   m=re.fullmatch(r'arith.constant (\d+) : i32(?: loc\([^\n]+\))?',rhs)
++   if m:vals[v]=int(m[1])
++  waits={};releases={};reads={0:[],1:[]}
++  for i,l in enumerate(lines):
++   m=re.search(r'rocdl.hcu.s.abarrier.try.wait i32, ('+SSA+r'),',l)
++   if m:assert vals[m[1]] not in waits;waits[vals[m[1]]]=i
++   m=re.search(r'rocdl.hcu.s.abarrier.arrive i32, ('+SSA+r'), 1',l)
++   if m:assert vals[m[1]] not in releases;releases[vals[m[1]]]=i
++   if ' = ttg.local_load ' in l:
++    op=int(re.search(r'dot_op<\{opIdx = ([01])',l)[1]);reads[op].append(i)
++  assert sorted(waits)==[1,3] and sorted(releases)==[0,2] and [len(reads[o]) for o in [0,1]]==[2,2]
++  dots=[i for i,l in enumerate(lines) if ' = tt.dot ' in l];assert len(dots)==2
++  assert max(reads[0]+reads[1])<min(releases.values()) and max(releases.values())<dots[0]
++  pivot=min(waits.values());move={waits[ready],releases[empty]}
++  def closure(i):
++   if i<pivot or i in move:return
++   rhs=re.match(r'\s*'+SSA+r' = (.*)',lines[i])[1]
++   assert rhs.startswith(('ttg.local_load ','ttg.memdesc_index ','ttg.memdesc_subslice ')),rhs
++   move.add(i)
++   for v in re.findall(SSA,rhs):
++    if v in defs and defs[v][0]>=pivot:closure(defs[v][0])
++  for i in reads[first]:closure(i)
++  assert all(i<dots[0] for i in move) and waits[mapping['AB'[second]]['ready']] not in move
++  for i in move:
++   lhs=re.match(r'\s*('+SSA+r') = ',lines[i])[1]
++   uses=[j for j,l in enumerate(lines) if j!=i and lhs in re.findall(SSA,l)]
++   assert all(j in move or j>=dots[0] for j in uses),(lhs,uses)
++  ordered=sorted(move)
++  result=''.join((''.join(lines[j] for j in ordered) if i==pivot else '')+(l if i not in move else '') for i,l in enumerate(lines))
++  rl=result.splitlines();fwait=next(i for i,l in enumerate(rl) if lines[waits[ready]].strip()==l.strip());swait=next(i for i,l in enumerate(rl) if lines[waits[mapping['AB'[second]]['ready']]].strip()==l.strip());release=next(i for i,l in enumerate(rl) if lines[releases[empty]].strip()==l.strip());rfirst=[i for i,l in enumerate(rl) if any(l.strip()==lines[j].strip() for j in reads[first])];rsecond=[i for i,l in enumerate(rl) if any(l.strip()==lines[j].strip() for j in reads[second])]
++  assert fwait<min(rfirst)<=max(rfirst)<release<swait<min(rsecond)
++  assert [l.strip() for l in part.splitlines() if ' = tt.dot ' in l]==[l.strip() for l in rl if ' = tt.dot ' in l]
++  assert collections.Counter(l.strip() for l in part.splitlines())==collections.Counter(l.strip() for l in rl)
++  # Every newly early operand's SSA dependency is either already defined or moved before it.
++  for i in ordered:
++   rhs=defs[re.match(r'\s*('+SSA+r') = ',lines[i])[1]][1]
++   for v in re.findall(SSA,rhs):
++    if v in defs:assert defs[v][0]<pivot or (defs[v][0] in move and defs[v][0]<i),(i,v,defs[v])
++  pieces.append(result);proof.append(dict(consumer=role,first_operand='AB'[first],first_ready_id=ready,first_empty_id=empty,moved_nodes=len(move),both_K64_views_captured_before_empty=True,first_empty_before_second_ready_wait=True,math_order_unchanged=True))
++ output=''.join(pieces)
++ assert output[:output.index('    partition1(')]==source[:source.index('    partition1(')]
++ return output,dict(source_sha256=hashlib.sha256(source.encode()).hexdigest(),transformed_sha256=hashlib.sha256(output.encode()).hexdigest(),producer_unchanged=True,no_new_memory_or_math_ops=True,operand_barriers=mapping,barrier_map_proof=mapping_proof,first_operand='AB'[first],consumers=proof)
++def rewrite_module(module):
++ from triton._C.libtriton import ir
++ from .partial_k_local import normalize_mls
++ text,proof=transform(str(module));text,n=normalize_mls(text);assert n==2
++ with tempfile.TemporaryDirectory(prefix='pmd-first-operand-early-') as t:
++  p=pathlib.Path(t)/'early.ttgir';p.write_text(text);new=ir.parse_mlir_module(str(p),module.context);new.context=module.context;assert new.verify()
++ dump=os.environ.get('TRITON_FIRST_OPERAND_EARLY_DUMP_DIR')
++ if dump:
++  p=pathlib.Path(dump);p.mkdir(parents=True,exist_ok=True);(p/'before.ttgir').write_text(str(module));(p/'after.ttgir').write_text(text);(p/'proof.json').write_text(json.dumps(proof,indent=2)+'\n')
++ return new,proof
+diff --git a/third_party/hcu/backend/merge_ab.py b/third_party/hcu/backend/merge_ab.py
+new file mode 100644
+index 000000000..26579595a
+--- /dev/null
++++ b/third_party/hcu/backend/merge_ab.py
+@@ -0,0 +1,62 @@
++"""Merge synchronized single-slot A/B data barriers; preserve all data and math.
++One producer seq1 covers both full BK128 MLS transfers; one ready1 publication
++after B. Empty0 is released after both operands' final K64 reads complete.
++"""
++import re,json,hashlib,tempfile,os
++from pathlib import Path
++SSA=r'%[\w.]+'
++def constants(s):
++ d={m[1]:int(m[2]) for m in re.finditer(r'('+SSA+r') = arith.constant (\d+) : i32',s)}
++ d.update({m[1]:int(m[2]) for m in re.finditer(r'('+SSA+r') = llvm.mlir.constant\((\d+) : i32\)',s)});return d
++def used_once(value,part):return len(re.findall(re.escape(value)+r'(?![\w.])',part))==1
++def transform(source):
++ assert 'hcu.consumer_pingpong' not in source and '__mt_' not in source
++ markers=list(re.finditer(r'^    partition([012])\(',source,re.M));assert [m[1] for m in markers]==['0','1','2']
++ assert source.count(' = tt.dot ')==4 and source.count(' = ttg.local_load ')==8
++ first=markers[0].start();pre=source[:first];c=constants(pre);lines=pre.splitlines(True);out=[];removed=[]
++ for line in lines:
++  m=re.search(r'rocdl.hcu.s.abarrier.init ('+SSA+r'), (\d+)',line)
++  if m and c[m[1]] in (2,3):removed.append('init'+str(c[m[1]]));continue
++  m=re.search(r'('+SSA+r') = rocdl.hcu.s.abarrier.arrive i32, ('+SSA+r'), 2',line)
++  if m and c[m[2]]==2:assert used_once(m[1],pre);removed.append('Bemptyseed');continue
++  out.append(line)
++ assert sorted(removed)==['Bemptyseed','init2','init3']
++ producer=source[first:markers[1].start()];pc=constants(producer);pl=producer.splitlines(True)
++ waits=[(i,re.search(r'('+SSA+r') = rocdl.hcu.s.abarrier.try.wait i32, ('+SSA+r'),',l)) for i,l in enumerate(pl) if 'rocdl.hcu.s.abarrier.try.wait' in l]
++ assert len(waits)==2 and sorted(pc[m[2]] for _,m in waits)==[0,2]
++ arrivals=[(i,re.search(r'('+SSA+r') = rocdl.hcu.s.abarrier.arrive i32, ('+SSA+r'), 1',l)) for i,l in enumerate(pl) if 'rocdl.hcu.s.abarrier.arrive' in l]
++ assert len(arrivals)==2 and sorted(pc[m[2]] for _,m in arrivals)==[1,3]
++ ai,am=next((i,m) for i,m in arrivals if pc[m[2]]==1);bi,bm=next((i,m) for i,m in arrivals if pc[m[2]]==3)
++ assert ai<bi and used_once(am[1],producer) and used_once(bm[1],producer)
++ wi,wm=next((i,m) for i,m in waits if pc[m[2]]==2);assert used_once(wm[1],producer)
++ seqs=[(i,re.search(r'rocdl.hcu.s.abarrier.seq ('+SSA+r')',l)) for i,l in enumerate(pl) if 'rocdl.hcu.s.abarrier.seq' in l];assert len(seqs)==2 and sorted(pc[m[1]] for _,m in seqs)==[1,3]
++ si=next(i for i,m in seqs if pc[m[1]]==3)
++ producer=''.join(pl[ai] if i==bi else l for i,l in enumerate(pl) if i not in (ai,wi,si));assert producer.count('amdg.matrix_load_to_local ')==2 and producer.count('rocdl.hcu.s.abarrier.seq ')==1
++ parts=[''.join(out),producer];proof=[]
++ for role,part in [(1,source[markers[1].start():markers[2].start()]),(2,source[markers[2].start():])]:
++  cs=constants(part);kept=[];removed=[]
++  for line in part.splitlines(True):
++   m=re.search(r'('+SSA+r') = rocdl.hcu.s.abarrier.try.wait i32, ('+SSA+r'),',line)
++   if m and cs[m[2]]==3:assert used_once(m[1],part);removed.append('Breadywait');continue
++   m=re.search(r'('+SSA+r') = rocdl.hcu.s.abarrier.arrive i32, ('+SSA+r'), 1',line)
++   if m and cs[m[2]]==2:assert used_once(m[1],part);removed.append('Bemptyarrive');continue
++   m=re.search(r'rocdl.hcu.s.abarrier.inv ('+SSA+r')',line)
++   if m and cs[m[1]] in (2,3):removed.append('inv'+str(cs[m[1]]));continue
++   kept.append(line)
++  assert sorted(removed)==['Bemptyarrive','Breadywait','inv2','inv3']
++  parts.append(''.join(kept));proof.append(dict(consumer=role,removed=removed,empty0_after_all_original_local_reads=True))
++ result=''.join(parts)
++ assert result.count('rocdl.hcu.s.abarrier.init ')==2 and result.count('rocdl.hcu.s.abarrier.inv ')==4
++ for token in [' = tt.dot ',' = ttg.local_load ','ttg.memdesc_subslice ','amdg.matrix_load_to_local ','ttg.local_alloc','arith.xori','scf.yield']:
++  assert [l.strip() for l in source.splitlines() if token in l]==[l.strip() for l in result.splitlines() if token in l],token
++ return result,dict(source_sha256=hashlib.sha256(source.encode()).hexdigest(),transformed_sha256=hashlib.sha256(result.encode()).hexdigest(),data_ids=[0,1],empty_count=8,ready_count=4,initial_empty_arrival_per_producer_wave=2,producer_seq=1,full_BK128_MLS_both_operands_unchanged=True,all_local_reads_dot_math_allocations_unchanged=True,Aready_moved_after_B_transfer=True,consumers=proof)
++def rewrite_module(module):
++ from triton._C.libtriton import ir
++ from .partial_k_local import normalize_mls
++ text,proof=transform(str(module));text,n=normalize_mls(text);assert n==2
++ with tempfile.TemporaryDirectory(prefix='pmd-merge-ab-') as t:
++  p=Path(t)/'ab.ttgir';p.write_text(text);new=ir.parse_mlir_module(str(p),module.context);new.context=module.context;assert new.verify()
++ dump=os.environ.get('TRITON_MERGE_AB_DUMP_DIR')
++ if dump:
++  p=Path(dump);p.mkdir(parents=True,exist_ok=True);(p/'before.ttgir').write_text(str(module));(p/'after.ttgir').write_text(text);(p/'proof.json').write_text(json.dumps(proof,indent=2)+'\n')
++ return new,proof
+diff --git a/third_party/hcu/backend/mmac_turn.py b/third_party/hcu/backend/mmac_turn.py
+new file mode 100644
+index 000000000..4b433ac20
+--- /dev/null
++++ b/third_party/hcu/backend/mmac_turn.py
+@@ -0,0 +1,96 @@
++"""Private post-WASP MMAC turns on ordinary abarriers 4/5.
++Data abarriers 0..3 and early release stay intact. All new invalidates live
++behind the compiler's existing all-partition teardown rendezvous.
++"""
++import re,json,hashlib,tempfile,os
++from pathlib import Path
++SSA=r'%[\w.]+'
++def transform(source,mode,prefetch_operand=0):
++    assert type(mode) is int and mode in (1,2)
++    assert type(prefetch_operand) is int and prefetch_operand in (0,1,2)
++    assert '__mt_' not in source and 'hcu.consumer_pingpong' not in source
++    markers=list(re.finditer(r'^    partition([012])\(',source,re.M))
++    assert [m[1] for m in markers]==['0','1','2']
++    assert source.count(' = tt.dot ')==4 and source.count(' = ttg.local_load ')==8
++    assert not re.search(r'ttg.local_alloc\s+%',source)
++    boundary=source.index('    ttg.warp_specialize(')
++    prefix=source[:boundary]
++    constants={m[1]:int(m[2]) for m in re.finditer(r'('+SSA+r') = (?:arith.constant (\d+) : i32|NOT_MATCH)',prefix)}
++    for m in re.finditer(r'('+SSA+r') = llvm.mlir.constant\((\d+) : i32\)',prefix):constants[m[1]]=int(m[2])
++    init=re.findall(r'^    rocdl.hcu.s.abarrier.init ('+SSA+r'), (\d+)( loc\([^\n]+\))$',prefix,re.M)
++    data_init=sorted((constants[v],int(count)) for v,count,_ in init)
++    assert data_init in [[(0,8),(1,4)],[(0,8),(1,4),(2,8),(3,4)]]
++    data_ids=[z[0] for z in data_init]
++    loc=init[0][2]
++    seed=('    %__mt_ping = arith.constant 4 : i32'+loc+'\n'
++          '    %__mt_pong = arith.constant 5 : i32'+loc+'\n'
++          '    rocdl.hcu.s.abarrier.init %__mt_ping, 4'+loc+'\n'
++          '    rocdl.hcu.s.abarrier.init %__mt_pong, 4'+loc+'\n'
++          '    %__mt_seed = rocdl.hcu.s.abarrier.arrive i32, %__mt_ping, 1'+loc+'\n')
++    parts=[source[:markers[1].start()]];records=[]
++    for role,part in [(1,source[markers[1].start():markers[2].start()]),(2,source[markers[2].start():])]:
++        lines=part.splitlines(True)
++        dots=[i for i,l in enumerate(lines) if ' = tt.dot ' in l];assert len(dots)==2
++        assert part.count(' = ttg.local_load ')==4 and part.count('rocdl.hcu.s.abarrier.arrive ')==len(data_ids)//2
++        loop=re.search(r'scf.for ('+SSA+r') = ('+SSA+r') to ('+SSA+r') step ('+SSA+r')',part);assert loop
++        vals={m[1]:int(m[2]) for m in re.finditer(r'('+SSA+r') = arith.constant (\d+) : i32',part)}
++        assert vals[loop[2]]==0 and vals[loop[4]]==1
++        inp,out=(4,5) if role==1 else (5,4)
++        head=part.index('\n')+1
++        local=(f'      %__mt_in = arith.constant {inp} : i32{loc}\n'
++               f'      %__mt_out = arith.constant {out} : i32{loc}\n'
++               f'      %__mt_zero = arith.constant 0 : i32{loc}\n'
++               f'      %__mt_one = arith.constant 1 : i32{loc}\n')
++        before_at={};after_at={}
++        stream_wait=None
++        if prefetch_operand:
++            ids=dict(constants);ids.update(vals);other=2-prefetch_operand
++            from .data_barrier_map import derive
++            operand_map,operand_map_proof=derive(source)
++            ready_id=operand_map['AB'[other]]['ready']
++            waits=[]
++            for j,line in enumerate(lines):
++                m=re.search(r'rocdl.hcu.s.abarrier.try.wait i32, ('+SSA+r'),',line)
++                if m and ids[m[1]]==ready_id:waits.append(j)
++            assert len(waits)==1;stream_wait=waits[0]
++            first_other=next(j for j,l in enumerate(lines) if ' = ttg.local_load ' in l and re.search(r'dot_op<\{opIdx = '+str(other)+r',',l))
++            assert stream_wait<first_other<dots[0]
++
++        for f,i in enumerate(dots):
++            m=re.search(r'( loc\([^\n]+\))$',lines[i]);assert m;dl=m[1]
++            before='';after=''
++            if mode==2 or f==0:
++                phase=f'%__mt_phase_{f}' if mode==1 else '%__mt_zero' if f==0 else '%__mt_one'
++                if mode==1:before+=f'        {phase} = arith.andi {loop[1]}, %__mt_one : i32{dl}\n'
++                before+=f'        %__mt_wait_{f} = rocdl.hcu.s.abarrier.try.wait i32, %__mt_in, {phase}{dl}\n        rocdl.sched.barrier 0{dl}\n'
++            if mode==2 or f==1:
++                after+=f'        rocdl.sched.barrier 0{dl}\n        %__mt_signal_{f} = rocdl.hcu.s.abarrier.arrive i32, %__mt_out, 1{dl}\n        rocdl.sched.barrier 0{dl}\n'
++            target=stream_wait if prefetch_operand and f==0 else i
++            before_at[target]=before_at.get(target,'')+before
++            after_at[i]=after_at.get(i,'')+after
++        part=''.join(before_at.get(i,'')+l+after_at.get(i,'') for i,l in enumerate(lines))
++        head=part.index('\n')+1;part=part[:head]+local+part[head:]
++        firstinv=re.search(r'^      rocdl.hcu.s.abarrier.inv ',part,re.M);assert firstinv
++        # Native HCU WarpSpecializeToLLVM inserts its all12-wave teardown join
++        # before the earliest invalidate. No consumer may destroy another's turn.
++        teardown=f'      rocdl.hcu.s.abarrier.inv %__mt_in{loc}\n      rocdl.hcu.s.abarrier.inv %__mt_out{loc}\n'
++        part=part[:firstinv.start()]+teardown+part[firstinv.start():]
++        parts.append(part);records.append(dict(consumer=role,in_id=inp,out_id=out,waits_per_bk=mode,arrivals_per_bk=mode,phase='iteration & 1' if mode==1 else 'fragment 0/1; twice per BK',teardown='existing HCU all-partition join before earliest invalidate'))
++    result=''.join(parts);result=result[:boundary]+seed+result[boundary:]
++    for token in [' = tt.dot ',' = ttg.local_load ','ttg.memdesc_subslice ','amdg.matrix_load_to_local ','rocdl.hcu.s.abarrier.seq ','arith.xori','scf.yield']:
++        assert [l.strip() for l in source.splitlines() if token in l]==[l.strip() for l in result.splitlines() if token in l],token
++    assert result.count('rocdl.hcu.s.abarrier.init ')==len(data_init)+2
++    assert result.count('rocdl.hcu.s.abarrier.inv ')==source.count('rocdl.hcu.s.abarrier.inv ')+4
++    assert result.count(' = rocdl.hcu.s.abarrier.arrive ')==source.count(' = rocdl.hcu.s.abarrier.arrive ')+1+2*mode
++    return result,dict(mode=mode,prefetch_operand=prefetch_operand,first_turn_wait_before_streamed_ready=bool(prefetch_operand),source_sha256=hashlib.sha256(source.encode()).hexdigest(),transformed_sha256=hashlib.sha256(result.encode()).hexdigest(),count=4,turn_ids=[4,5],seed=dict(id=4,per_producer_wave=1,producer_waves=4),data_barrier_ids=data_ids,data_and_math_unchanged=True,no_consumer_ebarrier=True,consumers=records)
++
++def rewrite_module(module,mode,prefetch_operand=0):
++    from triton._C.libtriton import ir
++    from .partial_k_local import normalize_mls
++    text,proof=transform(str(module),mode,prefetch_operand);text,count=normalize_mls(text);assert count==2
++    with tempfile.TemporaryDirectory(prefix='pmd-mmac-turn-') as t:
++        p=Path(t)/'turn.ttgir';p.write_text(text);new=ir.parse_mlir_module(str(p),module.context);new.context=module.context;assert new.verify()
++    dump=os.environ.get('TRITON_MMAC_TURN_DUMP_DIR')
++    if dump:
++        p=Path(dump);p.mkdir(parents=True,exist_ok=True);(p/'before.ttgir').write_text(str(module));(p/'after.ttgir').write_text(text);(p/'proof.json').write_text(json.dumps(proof,indent=2)+'\n')
++    return new,proof
+diff --git a/third_party/hcu/backend/partial_k_local.py b/third_party/hcu/backend/partial_k_local.py
+new file mode 100644
+index 000000000..d1bbd72eb
+--- /dev/null
++++ b/third_party/hcu/backend/partial_k_local.py
+@@ -0,0 +1,201 @@
++"""Private post-WASP prototype: stream aligned K64 reads from full BK128 LDS.
++Only the proven two-consumer, two-dot, no-consumer-ebarrier shape is accepted.
++Default compiler behavior is unchanged unless the explicit option enables this.
++"""
++import hashlib
++import json
++import os
++from pathlib import Path
++import re
++import tempfile
++
++SSA = r'%[\w.]+'
++
++
++def _tensor_shapes(text):
++    return [list(map(int, s.split('x'))) for s in re.findall(r'tensor<([0-9]+(?:x[0-9]+)*)xf16', text)]
++
++
++def _definition(line):
++    m = re.match(r'\s*(' + SSA + r'(?:,\s*' + SSA + r')*) = (.*)', line)
++    return (re.findall(SSA, m[1]), m[2]) if m else ([], '')
++
++
++def _consumer(part, aliases, role):
++    if 'hcu.consumer_pingpong' in part:
++        raise ValueError('partial K reads require the two-dot path without consumer ebarriers')
++    assert '__pkl_' not in part
++    lines = part.splitlines(True)
++    defs = {}
++    for i, line in enumerate(lines):
++        values, rhs = _definition(line)
++        for j, value in enumerate(values):
++            assert value not in defs, value
++            defs[value] = (i, j, rhs)
++    dots = [i for i, line in enumerate(lines) if ' = tt.dot ' in line]
++    assert len(dots) == 2, 'prototype accepts exactly two K64 dots per consumer'
++    releases = [i for i, line in enumerate(lines) if ' = rocdl.hcu.s.abarrier.arrive ' in line]
++    assert len(releases) == 2
++    for i in releases:
++        value = _definition(lines[i])[0][0]
++        assert len(re.findall(re.escape(value) + r'(?![\w.])', part)) == 1
++    removed = set()
++    roots = {}
++
++    def trace(value):
++        assert value in defs, ('unknown operand', value)
++        i, result, rhs = defs[value]
++        op = rhs.split(' ', 1)[0]
++        removed.add(i)
++        if op == 'ttg.local_load':
++            m = re.match(r'ttg.local_load (' + SSA + r')(.*?) : (!ttg.memdesc<[^>]+>) -> (tensor<.*>)( loc\([^\n]+\))$', rhs)
++            assert m, rhs
++            src, attrs, src_type, dst_type, loc = m.groups()
++            payload = [x.strip() for x in src_type[len('!ttg.memdesc<'):-1].split(',')]
++            if payload[1] in aliases:
++                opidx = aliases[payload[1]]
++                shape = list(map(int, payload[0].split('xf16')[0].split('x')))
++                assert len(shape) == 2 and shape[1 - opidx] == 128
++                roots[value] = dict(value=value, src=src, attrs=attrs, src_type=src_type,
++                                    parts=payload, shape=shape, opidx=opidx, loc=loc)
++                return roots[value], 0, 128
++            ai, _, arhs = defs[src]
++            assert arhs.startswith('ttg.local_alloc '), arhs
++            removed.add(ai)
++            parent = re.match(r'ttg.local_alloc (' + SSA + r')', arhs)
++            assert parent
++            return trace(parent[1])
++        if op == 'ttg.convert_layout':
++            return trace(re.match(r'ttg.convert_layout (' + SSA + r')', rhs)[1])
++        assert op == 'tt.split', ('unsupported register view', rhs)
++        trans_value = re.match(r'tt.split (' + SSA + r')', rhs)[1]
++        ti, _, trhs = defs[trans_value]
++        assert trhs.startswith('tt.trans ')
++        removed.add(ti)
++        reshape_value = re.match(r'tt.trans (' + SSA + r')', trhs)[1]
++        ri, _, rrhs = defs[reshape_value]
++        assert rrhs.startswith('tt.reshape ')
++        removed.add(ri)
++        parent = re.match(r'tt.reshape (' + SSA + r')', rrhs)[1]
++        root, offset, length = trace(parent)
++        assert result in (0, 1) and length == 128
++        shapes = _tensor_shapes(rrhs)
++        assert len(shapes) == 2
++        nonk = root['shape'][root['opidx']]
++        expected = [nonk, 2, 64] if root['opidx'] == 0 else [2, 64, nonk]
++        assert shapes[-1] == expected, shapes
++        order = re.search(r'order = array<i32: ([0-9, ]+)>', trhs)
++        assert order and list(map(int, order[1].split(','))) == ([0, 2, 1] if root['opidx'] == 0 else [1, 2, 0])
++        return root, offset + result * 64, 64
++
++    fragments = []
++    for dot_index, i in enumerate(dots):
++        line = lines[i]
++        m = re.search(r'tt.dot (' + SSA + r'), (' + SSA + r'),', line)
++        assert m
++        types = line.split(' : ', 1)[1]
++        ty_a, rest = types.split(' * ', 1)
++        ty_b = rest.split(' -> ', 1)[0]
++        reads = []
++        for opidx, (operand, target_type) in enumerate(zip(m.groups(), [ty_a, ty_b])):
++            root, offset, length = trace(operand)
++            assert root['opidx'] == opidx and (offset, length) == (dot_index * 64, 64)
++            shape = list(root['shape']);shape[1 - opidx] = 64
++            assert _tensor_shapes(target_type) == [shape]
++            reads.append(dict(root=root, offset=offset, target_type=target_type, shape=shape))
++        fragments.append((i, m, reads))
++    assert len(roots) == 2
++    # Every removed definition must be internal to the replaced operand graph.
++    deleted_values = {v for i in removed for v in _definition(lines[i])[0]}
++    for i, line in enumerate(lines):
++        if i in removed or i in dots:
++            continue
++        if 'ttg.local_dealloc ' in line and any(v in deleted_values for v in re.findall(SSA, line)):
++            removed.add(i)
++            continue
++        assert not (set(re.findall(SSA, line)) & deleted_values), ('external graph user', line)
++    replacements = {}
++    for dot_index, (i, match, reads) in enumerate(fragments):
++        indent = re.match(r'\s*', lines[i])[0]
++        inserted = []
++        new_values = []
++        for opidx, read in enumerate(reads):
++            root = read['root'];parts = list(root['parts'])
++            parent_shape = parts[-1] if re.fullmatch(r'\d+x\d+', parts[-1]) else 'x'.join(map(str, root['shape']))
++            parts[0] = 'x'.join(map(str, read['shape'])) + 'xf16'
++            if re.fullmatch(r'\d+x\d+', parts[-1]):parts[-1] = parent_shape
++            else:parts.append(parent_shape)
++            view_type = '!ttg.memdesc<' + ', '.join(parts) + '>'
++            offsets = [0, 0];offsets[1 - opidx] = read['offset']
++            desc = f'%__pkl_desc_{dot_index}_{opidx}'
++            value = f'%__pkl_val_{dot_index}_{opidx}'
++            inserted.append(f"{indent}{desc} = ttg.memdesc_subslice {root['src']}[{offsets[0]}, {offsets[1]}]{root['attrs']} : {root['src_type']} -> {view_type}{root['loc']}\n")
++            inserted.append(f"{indent}{value} = ttg.local_load {desc}{root['attrs']} : {view_type} -> {read['target_type']}{root['loc']}\n")
++            new_values.append(value)
++        # No producer may refill either full tile until BOTH K64 reads are done.
++        if dot_index == len(fragments) - 1:inserted.extend(lines[j] for j in releases)
++        updated = lines[i][:match.start()] + 'tt.dot ' + new_values[0] + ', ' + new_values[1] + ',' + lines[i][match.end():]
++        inserted.append(updated);replacements[i] = ''.join(inserted)
++    output = ''.join(replacements.get(i, line) for i, line in enumerate(lines) if i not in removed and i not in releases)
++    assert output.count(' = tt.dot ') == part.count(' = tt.dot ') == 2
++    assert output.count(' = ttg.local_load ') == 4
++    assert not re.search(r'ttg.local_alloc\s+%', output)
++    # Phase/index/ready operations and the producer-owned descriptors are intact.
++    for token in ['rocdl.hcu.s.abarrier.try.wait', 'arith.xori', 'scf.yield']:
++        before = [l.strip() for l in part.splitlines() if token in l]
++        after = [l.strip() for l in output.splitlines() if token in l]
++        assert before == after
++    return output, dict(consumer=role,root_descriptors=[x['src_type'] for x in roots.values()],
++                        k_ranges=[[0, 64], [64, 128]],dot_order_preserved=True,
++                        register_graph_nodes_removed=len(removed),new_local_reads=4,
++                        release_after_all_fragment_reads=True,producer_full_bk=128,
++                        original_parent_allocation_shapes_preserved=True)
++
++
++def transform(source):
++    aliases = {m[1]: int(m[2]) for m in re.finditer(r'^(#\w+) = #ttg.mls_shared<opIdx = ([01]),', source, re.M)}
++    assert len(aliases) == 2
++    markers = list(re.finditer(r'^    partition([012])\(', source, re.M))
++    assert [m[1] for m in markers] == ['0', '1', '2']
++    prefix = source[:markers[1].start()]
++    parts = [source[markers[1].start():markers[2].start()], source[markers[2].start():]]
++    rewritten = [];proof = []
++    for role, part in enumerate(parts, 1):
++        text, record = _consumer(part, aliases, role);rewritten.append(text);proof.append(record)
++    result = prefix + ''.join(rewritten)
++    for token in ['amdg.matrix_load_to_local', 'ttg.local_alloc : ()', 'rocdl.hcu.s.abarrier.init', 'rocdl.hcu.s.abarrier.seq', 'rocdl.hcu.s.abarrier.inv']:
++        assert [l.strip() for l in source.splitlines() if token in l] == [l.strip() for l in result.splitlines() if token in l]
++    assert result.count(' = tt.dot ') == source.count(' = tt.dot ') == 4
++    return result, dict(source_sha256=hashlib.sha256(source.encode()).hexdigest(),
++                        transformed_sha256=hashlib.sha256(result.encode()).hexdigest(),
++                        consumers=proof,global_full_bk128_transfers_unchanged=True,
++                        no_new_allocation=True,logical_dot_k=64)
++
++
++def normalize_mls(source):
++    # Equivalent default-single-CTA spelling, also used by current BoltOps G171.
++    pattern = r'#ttg.mls_shared<opIdx = (\d+), mlsTile = \[(\d+), (\d+)\], elemBitWidth = (\d+), elemBitTyKind = none, alt2Kind = (\d+), version = (\d+), order = \[(\d+), (\d+)\], CTALayout = #ttg<>>'
++    def sub(match):
++        a, b, c, d, e, f, g, h = match.groups()
++        return f'#ttg.mls_shared_import<{a}, {b}, {c}, {d}, 0, {e}, {f}, {g}, {h}>'
++    result, count = re.subn(pattern, sub, source)
++    assert count == 2 and '#ttg.mls_shared<' not in result
++    return result, count
++
++
++def rewrite_module(module):
++    from triton._C.libtriton import ir
++    text, proof = transform(str(module))
++    text, normalized = normalize_mls(text)
++    proof["default_single_cta_import_aliases"] = normalized
++    dump = os.environ.get('TRITON_PARTIAL_K_DUMP_DIR')
++    with tempfile.TemporaryDirectory(prefix='pmd-partial-k-') as temp:
++        path = Path(temp) / 'partial.ttgir';path.write_text(text)
++        rewritten = ir.parse_mlir_module(str(path), module.context)
++        rewritten.context = module.context
++        assert rewritten.verify()
++    if dump:
++        directory = Path(dump);directory.mkdir(parents=True, exist_ok=True)
++        (directory/'before.ttgir').write_text(str(module));(directory/'after.ttgir').write_text(text)
++        (directory/'proof.json').write_text(json.dumps(proof, indent=2)+'\n')
++    return rewritten, proof
+diff --git a/third_party/hcu/backend/prefetch_full_k.py b/third_party/hcu/backend/prefetch_full_k.py
+new file mode 100644
+index 000000000..3a5bab96e
+--- /dev/null
++++ b/third_party/hcu/backend/prefetch_full_k.py
+@@ -0,0 +1,57 @@
++"""Prefetch both direct K64 operand views before the first dot; no new copies.
++Only qualified two-dot/OnePTwoC/early-release input is accepted. This is a
++register-lifetime experiment, not a change to the full BK128 global transport.
++"""
++import pathlib,re,hashlib,json,tempfile,os
++SSA=r'%[\w.]+'
++def definitions(lines):
++ d={}
++ for i,line in enumerate(lines):
++  m=re.match(r'\s*('+SSA+r'(?:,\s*'+SSA+r')*) = (.*)',line)
++  if m:
++   for v in re.findall(SSA,m[1]):assert v not in d;d[v]=(i,m[2])
++ return d
++def transform(source):
++ assert '__mt_' not in source and 'hcu.consumer_pingpong' not in source
++ markers=list(re.finditer(r'^    partition([012])\(',source,re.M));assert [m[1] for m in markers]==['0','1','2']
++ assert source.count(' = tt.dot ')==4 and source.count(' = ttg.local_load ')==8 and not re.search(r'ttg.local_alloc\s+%',source)
++ parts=[source[:markers[1].start()]];proof=[]
++ for role,part in [(1,source[markers[1].start():markers[2].start()]),(2,source[markers[2].start():])]:
++  lines=part.splitlines(True);defs=definitions(lines)
++  dots=[i for i,l in enumerate(lines) if ' = tt.dot ' in l];loads=[i for i,l in enumerate(lines) if ' = ttg.local_load ' in l];releases=[i for i,l in enumerate(lines) if ' = rocdl.hcu.s.abarrier.arrive ' in l]
++  assert len(dots)==2 and len(loads)==4 and len(releases)==2
++  assert loads[0]<loads[1]<dots[0]<loads[2]<loads[3]<min(releases)<=max(releases)<dots[1]
++  move=set(releases)
++  for i in loads[2:]:
++   m=re.search(r'ttg.local_load ('+SSA+r')',lines[i]);assert m;desc=m[1];di,rhs=defs[desc]
++   assert rhs.startswith('ttg.memdesc_subslice ');root=re.match(r'ttg.memdesc_subslice ('+SSA+r')',rhs)[1]
++   assert defs[root][0]<dots[0] and dots[0]<di<i<dots[1]
++   move.update([di,i])
++  assert len(move)==6
++  for i in move:
++   lhs=re.match(r'\s*('+SSA+r') = ',lines[i])[1]
++   if i in releases:assert len(re.findall(re.escape(lhs)+r'(?![\w.])',part))==1
++   else:
++    uses=[j for j,l in enumerate(lines) if j!=i and lhs in re.findall(SSA,l)]
++    assert all(j in move or j==dots[1] for j in uses),(lhs,uses)
++  ordered=sorted(move);assert ordered[-1]<dots[1]
++  result=''.join((''.join(lines[j] for j in ordered)+l) if i==dots[0] else l for i,l in enumerate(lines) if i not in move)
++  rl=result.splitlines();ds=[i for i,l in enumerate(rl) if ' = tt.dot ' in l];ld=[i for i,l in enumerate(rl) if ' = ttg.local_load ' in l];ar=[i for i,l in enumerate(rl) if ' = rocdl.hcu.s.abarrier.arrive ' in l]
++  assert len(ld)==4 and len(ar)==2 and max(ld)<min(ar)<=max(ar)<ds[0]<ds[1]
++  for token in [' = tt.dot ',' = ttg.local_load ','ttg.memdesc_subslice ','rocdl.hcu.s.abarrier.try.wait ','arith.xori','scf.yield']:
++   assert [l.strip() for l in part.splitlines() if token in l]==[l.strip() for l in result.splitlines() if token in l],token
++  parts.append(result);proof.append(dict(consumer=role,moved_nodes=6,local_reads=4,all_reads_before_empty_release=True,empty_release_before_first_dot=True,math_accumulation_order_unchanged=True))
++ output=''.join(parts)
++ for token in ['amdg.matrix_load_to_local ','rocdl.hcu.s.abarrier.seq ','rocdl.hcu.s.abarrier.init ','rocdl.hcu.s.abarrier.inv ','ttg.local_alloc']:
++  assert [l.strip() for l in source.splitlines() if token in l]==[l.strip() for l in output.splitlines() if token in l]
++ return output,dict(source_sha256=hashlib.sha256(source.encode()).hexdigest(),transformed_sha256=hashlib.sha256(output.encode()).hexdigest(),full_global_BK=128,operand_local_K_fragments=[64,64],no_new_allocations_or_memory_ops=True,producer_unchanged=True,consumers=proof)
++def rewrite_module(module):
++ from triton._C.libtriton import ir
++ from .partial_k_local import normalize_mls
++ text,proof=transform(str(module));text,n=normalize_mls(text);assert n==2
++ with tempfile.TemporaryDirectory(prefix='pmd-full-k-prefetch-') as t:
++  p=pathlib.Path(t)/'prefetch.ttgir';p.write_text(text);new=ir.parse_mlir_module(str(p),module.context);new.context=module.context;assert new.verify()
++ dump=os.environ.get('TRITON_FULL_K_PREFETCH_DUMP_DIR')
++ if dump:
++  p=pathlib.Path(dump);p.mkdir(parents=True,exist_ok=True);(p/'before.ttgir').write_text(str(module));(p/'after.ttgir').write_text(text);(p/'proof.json').write_text(json.dumps(proof,indent=2)+'\n')
++ return new,proof
+diff --git a/third_party/hcu/backend/prefetch_one_operand.py b/third_party/hcu/backend/prefetch_one_operand.py
+new file mode 100644
+index 000000000..17584e82a
+--- /dev/null
++++ b/third_party/hcu/backend/prefetch_one_operand.py
+@@ -0,0 +1,54 @@
++"""Full-register capture of one BK128 operand; stream the other as two K64 views.
++Only reorders existing memory/SSA operations. Pair with a first MMAC-turn wait
++before the streamed operand's ready wait, so its LDS reads can interleave MMAC.
++"""
++import pathlib,re,json,hashlib,collections,tempfile,os
++SSA=r'%[\w.]+'
++def transform(source,operand):
++ from .prefetch_full_k import transform as full_prefetch
++ from .first_operand_early import transform as capture_first
++ assert type(operand) is int and operand in (1,2);first=operand-1;other=1-first
++ from .data_barrier_map import derive
++ mapping,mapping_proof=derive(source)
++ full,full_proof=full_prefetch(source);ordered,early_proof=capture_first(full,operand=first)
++ markers=list(re.finditer(r'^    partition([012])\(',ordered,re.M));assert [m[1] for m in markers]==['0','1','2']
++ pieces=[ordered[:markers[1].start()]];records=[]
++ for role,part in [(1,ordered[markers[1].start():markers[2].start()]),(2,ordered[markers[2].start():])]:
++  lines=part.splitlines(True);defs={}
++  for i,l in enumerate(lines):
++   m=re.match(r'\s*('+SSA+r') = (.*)',l)
++   if m:assert m[1] not in defs;defs[m[1]]=(i,m[2])
++  dots=[i for i,l in enumerate(lines) if ' = tt.dot ' in l];assert len(dots)==2
++  loads=[i for i,l in enumerate(lines) if ' = ttg.local_load ' in l and re.search(r'dot_op<\{opIdx = '+str(other)+r',',l)];assert len(loads)==2
++  assert loads[1]<dots[0]
++  desc=re.search(r'ttg.local_load ('+SSA+r')',lines[loads[1]])[1];di,rhs=defs[desc];assert rhs.startswith('ttg.memdesc_subslice ')
++  root=re.match(r'ttg.memdesc_subslice ('+SSA+r')',rhs)[1];assert defs[root][0]<dots[0]
++  vals={m[1]:int(m[2]) for m in re.finditer(r'('+SSA+r') = arith.constant (\d+) : i32',ordered[:markers[0].start()]+part)}
++  for m in re.finditer(r'('+SSA+r') = llvm.mlir.constant\((\d+) : i32\)',ordered[:markers[0].start()]):vals[m[1]]=int(m[2])
++  releases=[]
++  for i,l in enumerate(lines):
++   m=re.search(r'rocdl.hcu.s.abarrier.arrive i32, ('+SSA+r'), 1',l)
++   if m and vals[m[1]]==mapping['AB'[other]]['empty']:releases.append(i)
++  assert len(releases)==1 and loads[1]<releases[0]<dots[0]
++  move={di,loads[1],releases[0]};assert len(move)==3
++  for i in move:
++   lhs=re.match(r'\s*('+SSA+r') = ',lines[i])[1];uses=[j for j,l in enumerate(lines) if j!=i and lhs in re.findall(SSA,l)]
++   assert all(j in move or j==dots[1] for j in uses),(lhs,uses)
++  result=''.join(l+(''.join(lines[j] for j in sorted(move)) if i==dots[0] else '') for i,l in enumerate(lines) if i not in move)
++  out=result.splitlines();ds=[i for i,l in enumerate(out) if ' = tt.dot ' in l];ld=[i for i,l in enumerate(out) if ' = ttg.local_load ' in l and re.search(r'dot_op<\{opIdx = '+str(other)+r',',l)]
++  assert ld[0]<ds[0]<ld[1]<ds[1]
++  assert collections.Counter(l.strip() for l in lines)==collections.Counter(l.strip() for l in out)
++  assert [l.strip() for l in lines if ' = tt.dot ' in l]==[l.strip() for l in out if ' = tt.dot ' in l]
++  pieces.append(result);records.append(dict(consumer=role,prefetched_operand='AB'[first],streamed_operand='AB'[other],streamed_K_fragments=[64,64],moved_existing_nodes=3,other_second_fragment_after_first_dot=True,math_order_unchanged=True))
++ output=''.join(pieces);assert output[:output.index('    partition1(')]==source[:source.index('    partition1(')]
++ return output,dict(source_sha256=hashlib.sha256(source.encode()).hexdigest(),transformed_sha256=hashlib.sha256(output.encode()).hexdigest(),producer_unchanged=True,no_new_allocations_or_memory_ops=True,full_global_BK=128,operand_barriers=mapping,barrier_map_proof=mapping_proof,prefetched_operand='AB'[first],streamed_operand='AB'[other],full_prefetch_intermediate=full_proof,early_capture_intermediate=early_proof,consumers=records)
++def rewrite_module(module,operand):
++ from triton._C.libtriton import ir
++ from .partial_k_local import normalize_mls
++ text,proof=transform(str(module),operand);text,n=normalize_mls(text);assert n==2
++ with tempfile.TemporaryDirectory(prefix='pmd-one-operand-') as t:
++  p=pathlib.Path(t)/'prefetch.ttgir';p.write_text(text);new=ir.parse_mlir_module(str(p),module.context);new.context=module.context;assert new.verify()
++ dump=os.environ.get('TRITON_ONE_OPERAND_PREFETCH_DUMP_DIR')
++ if dump:
++  p=pathlib.Path(dump);p.mkdir(parents=True,exist_ok=True);(p/'before.ttgir').write_text(str(module));(p/'after.ttgir').write_text(text);(p/'proof.json').write_text(json.dumps(proof,indent=2)+'\n')
++ return new,proof
+diff --git a/third_party/hcu/backend/wasp.py b/third_party/hcu/backend/wasp.py
+index c6402e8f7..214ce67aa 100644
+--- a/third_party/hcu/backend/wasp.py
++++ b/third_party/hcu/backend/wasp.py
+@@ -5,6 +5,37 @@ from triton._C.libtriton import ir
+ 
+ 
+ def check_options(args):
++    one=args.get("hcu_wasp_prefetch_one_operand",0)
++    if type(one) is not int or one not in (0,1,2):
++        raise ValueError("hcu_wasp_prefetch_one_operand must be int 0/1/2")
++    if one and (not args.get("hcu_wasp_partial_k_local_read") or args.get("hcu_wasp_prefetch_full_k") or args.get("hcu_wasp_first_operand_early") or args.get("hcu_wasp_merge_ab") or args.get("hcu_wasp_mmac_turn",0) not in (0,1,2)):
++        raise ValueError("one-operand prefetch requires partialK and separate-data MMAC turns, excluding full/first modes")
++
++    if type(args.get("hcu_wasp_first_operand_early", False)) is not bool:
++        raise ValueError("hcu_wasp_first_operand_early must be bool")
++    if args.get("hcu_wasp_first_operand_early") and (not args.get("hcu_wasp_prefetch_full_k") or args.get("hcu_wasp_merge_ab")):
++        raise ValueError("first-operand early capture requires full-K prefetch and separate A/B data barriers")
++
++    if type(args.get("hcu_wasp_prefetch_full_k", False)) is not bool:
++        raise ValueError("hcu_wasp_prefetch_full_k must be bool")
++    if args.get("hcu_wasp_prefetch_full_k") and not args.get("hcu_wasp_partial_k_local_read"):
++        raise ValueError("full-K local prefetch requires explicit partial-K reader")
++
++    if type(args.get("hcu_wasp_merge_ab", False)) is not bool:
++        raise ValueError("hcu_wasp_merge_ab must be bool")
++    if args.get("hcu_wasp_merge_ab") and not args.get("hcu_wasp_partial_k_local_read"):
++        raise ValueError("merged AB requires explicit partial-K reader")
++
++    turn = args.get("hcu_wasp_mmac_turn", 0)
++    if type(turn) is not int or turn not in (0, 1, 2):
++        raise ValueError("hcu_wasp_mmac_turn must be 0, 1, or 2")
++    if turn and not args.get("hcu_wasp_partial_k_local_read", False):
++        raise ValueError("MMAC turn requires explicit partial-K reader")
++
++    if type(args.get("hcu_wasp_partial_k_local_read", False)) is not bool:
++        raise ValueError("hcu_wasp_partial_k_local_read must be bool")
++    if type(args.get("hcu_wasp_single_buffer", False)) is not bool:
++        raise ValueError("hcu_wasp_single_buffer must be a bool")
+     if type(args.get("wasp_wdra", True)) is not bool:
+         raise ValueError("wasp_wdra must be a bool")
+     waves = args.get("wasp_partition_warps", (4, 4, 4))
+@@ -49,6 +80,8 @@ def configure_wasp(mod, metadata, options):
+     metadata["wasp_enabled"] = requested
+     metadata["wasp_wdra"] = requested and options.wasp_wdra
+     if not requested:
++        if options.hcu_wasp_single_buffer:
++            raise ValueError("single-buffer prototype requires a WASP loop")
+         if options.wasp_partition_regs is not None:
+             raise ValueError("wasp_partition_regs requires a warp_specialize=True loop")
+         return
+@@ -57,7 +90,15 @@ def configure_wasp(mod, metadata, options):
+     # WASP owns LDS multi-buffering through LoadMMASpecialization; num_stages
+     # is the LDS buffer depth, not the ordinary AMD software-pipeline depth.
+     # The current stage/phase and abarrier lowering supports depths 2 and 4.
+-    if options.num_stages not in (2, 4):
++    if options.hcu_wasp_single_buffer:
++        if options.empty_arrive_after_mmac:
++            raise ValueError("singlebuffer late release has a proven cyclic consumer wait")
++        if explicit or not options.wasp_wdra or options.num_stages != 1 or len(options.wasp_partition_warps) != 3:
++            raise ValueError("single-buffer prototype requires automatic OnePTwoC and num_stages=1")
++        if options.use_block_pingpong:
++            raise ValueError("single-buffer prototype cannot combine with BPP")
++        metadata["hcu_wasp_single_buffer"] = True
++    elif options.num_stages not in (2, 4):
+         raise ValueError("WASP requires num_stages in (2, 4)")
+     # The current 2P2C plan budgets 2 load groups * 2 (empty/ready) *
+     # 2 producer-consumer pairs * num_stages = 8 * num_stages abarrier IDs.
+diff --git a/third_party/hcu/lib/TritonHCUTransforms/AccelerateHCUMatmul.cpp b/third_party/hcu/lib/TritonHCUTransforms/AccelerateHCUMatmul.cpp
+index b9a9de370..c6e8cc95d 100644
+--- a/third_party/hcu/lib/TritonHCUTransforms/AccelerateHCUMatmul.cpp
++++ b/third_party/hcu/lib/TritonHCUTransforms/AccelerateHCUMatmul.cpp
+@@ -104,6 +104,42 @@ DotOperandMatrixLoadInfo getDotOperandMatrixLoadInfo(DotOpInterface dotOp,
+     if (opIdx >= 0 && opIdx < 2 && !matrixOps[opIdx])
+       matrixOps[opIdx] = mOp;
+   });
++  // Experimental: split K fragments retain the MLS source of both halves.
++  // The normal forward search associates a matrix load with only the first
++  // dot; subsequent fragments otherwise get an incompatible fallback layout.
++  if (auto enabled = mod->getAttrOfType<BoolAttr>("hcu.fragment_mls_layout");
++      enabled && enabled.getValue()) {
++    if (auto plainDot = dyn_cast<tt::DotOp>(dotOp.getOperation())) {
++      for (int idx = 0; idx < 2; ++idx) {
++        if (matrixOps[idx])
++          continue;
++        Value value = idx == 0 ? plainDot.getA() : plainDot.getB();
++        auto operandTy = cast<RankedTensorType>(value.getType());
++        unsigned splitCount = 0;
++        for (unsigned depth = 0; depth < 16 && value; ++depth) {
++          Operation *def = value.getDefiningOp();
++          if (!def)
++            break;
++          if (auto load = dyn_cast<tt::MatrixLoadOp>(def)) {
++            auto sourceTy = load.getType();
++            unsigned kAxis = 1 - idx;
++            if (splitCount >= 1 && splitCount <= 2 && operandTy.getRank() == 2 &&
++                sourceTy.getRank() == 2 && operandTy.getElementType().isF16() &&
++                sourceTy.getElementType() == operandTy.getElementType() &&
++                sourceTy.getShape()[idx] == operandTy.getShape()[idx] &&
++                sourceTy.getShape()[kAxis] == (1LL << splitCount) * operandTy.getShape()[kAxis])
++              matrixOps[idx] = load;
++            break;
++          }
++          if (isa<tt::SplitOp>(def))
++            ++splitCount;
++          else if (!isa<tt::ReshapeOp, tt::TransOp, ttg::ConvertLayoutOp>(def))
++            break;
++          value = def->getOperand(0);
++        }
++      }
++    }
++  }
+   std::array<std::optional<MatrixLoadInfo>, 2> infos = {
+       buildDotOperandMatrixLoadInfo(dotOp, 0, matrixOps[0]),
+       buildDotOperandMatrixLoadInfo(dotOp, 1, matrixOps[1])};
