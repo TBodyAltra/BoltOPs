@@ -1,0 +1,377 @@
+diff --git a/boltops/gemm/triton/gemm_fp16.py b/boltops/gemm/triton/gemm_fp16.py
+index 013f5e7b..36941eeb 100644
+--- a/boltops/gemm/triton/gemm_fp16.py
++++ b/boltops/gemm/triton/gemm_fp16.py
+@@ -1,3 +1,4 @@
++# Experimental full-K-block contract: K divisible by BK; original runtime M/N interface retained.
+ """FP16 GEMM Triton kernel with optional WASP/WDRA (gfx946) and barrier knobs.
+ 
+ Public call shape follows vLLM's Triton matmul wrappers
+@@ -104,9 +105,13 @@ def _validate_mmac_layout_force(mmac_layout_force: int) -> int:
+     return layout
+ 
+ 
+-def _validate_num_stages(num_stages: int, *, wasp: bool, wdra: bool, load_warps: int) -> int:
++def _validate_num_stages(num_stages: int, *, wasp: bool, wdra: bool, load_warps: int, hcu_wasp_single_buffer: bool = False) -> int:
+     """WASP/WDRA LDS buffer depth is 2 or 4; TwoPTwoC (wdra88) forbids 4."""
+     stages = int(num_stages)
++    if hcu_wasp_single_buffer:
++        if not wasp or not wdra or load_warps != 4 or stages != 1:
++            raise ValueError("single-buffer prototype requires WDRA OnePTwoC with stages=1")
++        return stages
+     if wasp:
+         if stages not in (2, 4):
+             raise ValueError(f"wasp requires num_stages in (2, 4); got {stages}")
+@@ -130,6 +135,7 @@ def default_launch_config(
+     enable_v_mmac_cluster: int = 0,
+     num_stages: int = 2,
+     mmac_layout_force: int = -1,
++    hcu_wasp_single_buffer: bool = False,
+ ) -> dict[str, Any]:
+     """Single fixed launch config (no autotune).
+ 
+@@ -138,9 +144,11 @@ def default_launch_config(
+ 
+     Under WASP/WDRA, ``num_stages`` is the LDS buffer depth (2 or 4).
+     """
++    if hcu_wasp_single_buffer and mma_warps != 8:
++        raise ValueError("single-buffer prototype requires two Consumer groups")
+     block = 64 if wdra else 128
+     stages = _validate_num_stages(
+-        num_stages, wasp=wasp, wdra=wdra, load_warps=load_warps
++        num_stages, wasp=wasp, wdra=wdra, load_warps=load_warps, hcu_wasp_single_buffer=hcu_wasp_single_buffer
+     )
+     cfg = _mode_launch_kwargs(
+         wasp=wasp, wdra=wdra, load_warps=load_warps, mma_warps=mma_warps
+@@ -158,6 +166,8 @@ def default_launch_config(
+     )
+     if not wasp:
+         cfg["num_warps"] = 4
++    if hcu_wasp_single_buffer:
++        cfg["hcu_wasp_single_buffer"] = True
+     return cfg
+ 
+ 
+@@ -319,7 +329,10 @@ def _gemm_fp16_load_kernel(
+     GROUP_SIZE_M: tl.constexpr,
+     WARP_SPECIALIZE: tl.constexpr,
+     HAS_BIAS: tl.constexpr,
++    LOOP_UNROLL_FACTOR: tl.constexpr,
++    MMA_K_SPLIT: tl.constexpr,
+ ):
++    tl.assume(K % BLOCK_SIZE_K == 0)
+     tl.assume(stride_am > 0)
+     tl.assume(stride_ak > 0)
+     tl.assume(stride_bk > 0)
+@@ -343,11 +356,32 @@ def _gemm_fp16_load_kernel(
+     b_ptrs = b_ptr + offs_k[:, None] * stride_bk + offs_bn[None, :] * stride_bn
+ 
+     accumulator = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
+-    for k in tl.range(0, tl.cdiv(K, BLOCK_SIZE_K), warp_specialize=WARP_SPECIALIZE):
++    for k in tl.range(0, K // BLOCK_SIZE_K, warp_specialize=WARP_SPECIALIZE, loop_unroll_factor=LOOP_UNROLL_FACTOR):
+         remaining_k = K - k * BLOCK_SIZE_K
+-        a = tl.load(a_ptrs, mask=offs_k[None, :] < remaining_k, other=0.0)
+-        b = tl.load(b_ptrs, mask=offs_k[:, None] < remaining_k, other=0.0)
+-        accumulator = tl.dot(a, b, accumulator)
++        a = tl.load(a_ptrs)
++        b = tl.load(b_ptrs)
++        if MMA_K_SPLIT == 1:
++            accumulator = tl.dot(a, b, accumulator)
++        elif MMA_K_SPLIT == 2:
++            tl.static_assert(MMA_K_SPLIT == 2)
++            tl.static_assert(BLOCK_SIZE_K % 2 == 0)
++            a0, a1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 2)), (0, 2, 1)))
++            b0, b1 = tl.split(tl.permute(tl.reshape(b, (2, BLOCK_SIZE_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
++            accumulator = tl.dot(a0, b0, accumulator)
++            accumulator = tl.dot(a1, b1, accumulator)
++        else:
++            tl.static_assert(MMA_K_SPLIT == 4)
++            tl.static_assert(BLOCK_SIZE_K % 4 == 0)
++            ah0, ah1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 2)), (0, 2, 1)))
++            bh0, bh1 = tl.split(tl.permute(tl.reshape(b, (2, BLOCK_SIZE_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
++            a0, a1 = tl.split(tl.permute(tl.reshape(ah0, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
++            a2, a3 = tl.split(tl.permute(tl.reshape(ah1, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
++            b0, b1 = tl.split(tl.permute(tl.reshape(bh0, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++            b2, b3 = tl.split(tl.permute(tl.reshape(bh1, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++            accumulator = tl.dot(a0, b0, accumulator)
++            accumulator = tl.dot(a1, b1, accumulator)
++            accumulator = tl.dot(a2, b2, accumulator)
++            accumulator = tl.dot(a3, b3, accumulator)
+         a_ptrs += BLOCK_SIZE_K * stride_ak
+         b_ptrs += BLOCK_SIZE_K * stride_bk
+ 
+@@ -363,6 +397,26 @@ def _gemm_fp16_load_kernel(
+     tl.store(c_ptrs, c, mask=c_mask)
+ 
+ 
++@triton.jit
++def _gemm_fp16_mls_stream_load(
++    a_ptr, b_ptr, M, N, K, stride_am, stride_ak, stride_bk, stride_bn,
++    m0, n0, k0,
++    BM: tl.constexpr, BN: tl.constexpr, KF: tl.constexpr,
++    B_FIRST: tl.constexpr,
++):
++    if B_FIRST:
++        b = tl.matrix_load(b_ptr, shape=[K, N], strides=[stride_bk, stride_bn],
++                           block_shape=[KF, BN], offsets=[k0, n0])
++        a = tl.matrix_load(a_ptr, shape=[M, K], strides=[stride_am, stride_ak],
++                           block_shape=[BM, KF], offsets=[m0, k0])
++    else:
++        a = tl.matrix_load(a_ptr, shape=[M, K], strides=[stride_am, stride_ak],
++                           block_shape=[BM, KF], offsets=[m0, k0])
++        b = tl.matrix_load(b_ptr, shape=[K, N], strides=[stride_bk, stride_bn],
++                           block_shape=[KF, BN], offsets=[k0, n0])
++    return a, b
++
++
+ @triton.jit
+ def _gemm_fp16_mls_kernel(
+     a_ptr,
+@@ -384,8 +438,18 @@ def _gemm_fp16_mls_kernel(
+     GROUP_SIZE_M: tl.constexpr,
+     WARP_SPECIALIZE: tl.constexpr,
+     HAS_BIAS: tl.constexpr,
++    LOOP_UNROLL_FACTOR: tl.constexpr,
++    MMA_K_SPLIT: tl.constexpr,
+     USE_MATRIX_STORE: tl.constexpr,
++    LOAD_B_FIRST: tl.constexpr = False,
++    MIXED_OPERAND: tl.constexpr = 0,
++    MIXED_VECTOR_FULL: tl.constexpr = False,
++    SIMPLIFY_GROUP1: tl.constexpr = False,
++    REBASE_MLS_TILE: tl.constexpr = 0,
++    STREAM_K_FRAGMENTS: tl.constexpr = 1,
++    STREAM_FRAGMENT_PREFETCH: tl.constexpr = False,
+ ):
++    tl.assume(K % BLOCK_SIZE_K == 0)
+     tl.assume(stride_am > 0)
+     tl.assume(stride_ak > 0)
+     tl.assume(stride_bk > 0)
+@@ -396,35 +460,204 @@ def _gemm_fp16_mls_kernel(
+     tl.assume(N > 0)
+     tl.assume(K > 0)
+     pid = tl.program_id(axis=0)
+-    num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
+-    num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
+-    num_pid_in_group = GROUP_SIZE_M * num_pid_n
+-    group_id = pid // num_pid_in_group
+-    first_pid_m = group_id * GROUP_SIZE_M
+-    group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)
+-    pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m)
+-    pid_n = (pid % num_pid_in_group) // group_size_m
++    if SIMPLIFY_GROUP1:
++        tl.static_assert(GROUP_SIZE_M == 1)
++        # For every valid flattened GEMM program id, group_size_m is one.
++        num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
++        pid_m = pid // num_pid_n
++        pid_n = pid % num_pid_n
++    else:
++        num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
++        num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
++        num_pid_in_group = GROUP_SIZE_M * num_pid_n
++        group_id = pid // num_pid_in_group
++        first_pid_m = group_id * GROUP_SIZE_M
++        group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)
++        pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m)
++        pid_n = (pid % num_pid_in_group) // group_size_m
+ 
+     mls_offs_am = pid_m * BLOCK_SIZE_M
+     mls_offs_bn = pid_n * BLOCK_SIZE_N
++    tl.static_assert(REBASE_MLS_TILE >= 0 and REBASE_MLS_TILE <= 3)
++    if REBASE_MLS_TILE:
++        tl.static_assert(not WARP_SPECIALIZE)
++        tl.static_assert(MIXED_OPERAND == 0)
++    # Rebase only the non-K tile coordinates. Keep the exact remaining shape
++    # so every original edge predicate is preserved for arbitrary M/N.
++    if REBASE_MLS_TILE & 1:
++        mls_a_ptr = a_ptr + mls_offs_am.to(tl.int64) * stride_am
++        mls_shape_m = M - mls_offs_am
++        mls_load_m = 0
++    else:
++        mls_a_ptr = a_ptr
++        mls_shape_m = M
++        mls_load_m = mls_offs_am
++    if REBASE_MLS_TILE & 2:
++        mls_b_ptr = b_ptr + mls_offs_bn.to(tl.int64) * stride_bn
++        mls_shape_n = N - mls_offs_bn
++        mls_load_n = 0
++    else:
++        mls_b_ptr = b_ptr
++        mls_shape_n = N
++        mls_load_n = mls_offs_bn
+     accumulator = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
+-    for k in tl.range(0, tl.cdiv(K, BLOCK_SIZE_K), warp_specialize=WARP_SPECIALIZE):
++    for k in tl.range(0, K // BLOCK_SIZE_K, warp_specialize=WARP_SPECIALIZE, loop_unroll_factor=LOOP_UNROLL_FACTOR):
+         mls_offs_k = k * BLOCK_SIZE_K
+-        a = tl.matrix_load(
+-            a_ptr,
+-            shape=[M, K],
+-            strides=[stride_am, stride_ak],
+-            block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K],
+-            offsets=[mls_offs_am, mls_offs_k],
+-        )
+-        b = tl.matrix_load(
+-            b_ptr,
+-            shape=[K, N],
+-            strides=[stride_bk, stride_bn],
+-            block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N],
+-            offsets=[mls_offs_k, mls_offs_bn],
+-        )
+-        accumulator = tl.dot(a, b, accumulator)
++        tl.static_assert(MIXED_OPERAND >= 0 and MIXED_OPERAND <= 2)
++        if STREAM_K_FRAGMENTS > 1:
++            tl.static_assert(not WARP_SPECIALIZE)
++            tl.static_assert(MIXED_OPERAND == 0)
++            tl.static_assert(STREAM_K_FRAGMENTS == 2 or STREAM_K_FRAGMENTS == 4)
++            tl.static_assert(MMA_K_SPLIT == STREAM_K_FRAGMENTS)
++            tl.static_assert(BLOCK_SIZE_K % STREAM_K_FRAGMENTS == 0)
++            KF: tl.constexpr = BLOCK_SIZE_K // STREAM_K_FRAGMENTS
++            if STREAM_FRAGMENT_PREFETCH:
++                a_s, b_s = _gemm_fp16_mls_stream_load(
++                    mls_a_ptr, mls_b_ptr, mls_shape_m, mls_shape_n, K,
++                    stride_am, stride_ak, stride_bk, stride_bn,
++                    mls_load_m, mls_load_n, mls_offs_k,
++                    BLOCK_SIZE_M, BLOCK_SIZE_N, KF, LOAD_B_FIRST)
++                for f in tl.static_range(1, STREAM_K_FRAGMENTS):
++                    a_n, b_n = _gemm_fp16_mls_stream_load(
++                        mls_a_ptr, mls_b_ptr, mls_shape_m, mls_shape_n, K,
++                        stride_am, stride_ak, stride_bk, stride_bn,
++                        mls_load_m, mls_load_n, mls_offs_k + f * KF,
++                        BLOCK_SIZE_M, BLOCK_SIZE_N, KF, LOAD_B_FIRST)
++                    accumulator = tl.dot(a_s, b_s, accumulator)
++                    a_s = a_n
++                    b_s = b_n
++                accumulator = tl.dot(a_s, b_s, accumulator)
++            else:
++                for f in tl.static_range(STREAM_K_FRAGMENTS):
++                    a_s, b_s = _gemm_fp16_mls_stream_load(
++                        mls_a_ptr, mls_b_ptr, mls_shape_m, mls_shape_n, K,
++                        stride_am, stride_ak, stride_bk, stride_bn,
++                        mls_load_m, mls_load_n, mls_offs_k + f * KF,
++                        BLOCK_SIZE_M, BLOCK_SIZE_N, KF, LOAD_B_FIRST)
++                    accumulator = tl.dot(a_s, b_s, accumulator)
++        else:
++            tl.static_assert(STREAM_K_FRAGMENTS == 1)
++            tl.static_assert(not STREAM_FRAGMENT_PREFETCH)
++        if STREAM_K_FRAGMENTS == 1 and MIXED_OPERAND == 0:
++            if LOAD_B_FIRST:
++                b = tl.matrix_load(
++                    mls_b_ptr,
++                    shape=[K, mls_shape_n],
++                    strides=[stride_bk, stride_bn],
++                    block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N],
++                    offsets=[mls_offs_k, mls_load_n],
++                )
++                a = tl.matrix_load(
++                    mls_a_ptr,
++                    shape=[mls_shape_m, K],
++                    strides=[stride_am, stride_ak],
++                    block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K],
++                    offsets=[mls_load_m, mls_offs_k],
++                )
++            else:
++                a = tl.matrix_load(
++                    mls_a_ptr,
++                    shape=[mls_shape_m, K],
++                    strides=[stride_am, stride_ak],
++                    block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K],
++                    offsets=[mls_load_m, mls_offs_k],
++                )
++                b = tl.matrix_load(
++                    mls_b_ptr,
++                    shape=[K, mls_shape_n],
++                    strides=[stride_bk, stride_bn],
++                    block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N],
++                    offsets=[mls_offs_k, mls_load_n],
++                )
++            if MMA_K_SPLIT == 1:
++                accumulator = tl.dot(a, b, accumulator)
++            elif MMA_K_SPLIT == 2:
++                tl.static_assert(MMA_K_SPLIT == 2)
++                tl.static_assert(BLOCK_SIZE_K % 2 == 0)
++                a0, a1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 2)), (0, 2, 1)))
++                b0, b1 = tl.split(tl.permute(tl.reshape(b, (2, BLOCK_SIZE_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
++                accumulator = tl.dot(a0, b0, accumulator)
++                accumulator = tl.dot(a1, b1, accumulator)
++            else:
++                tl.static_assert(MMA_K_SPLIT == 4)
++                tl.static_assert(BLOCK_SIZE_K % 4 == 0)
++                ah0, ah1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 2)), (0, 2, 1)))
++                bh0, bh1 = tl.split(tl.permute(tl.reshape(b, (2, BLOCK_SIZE_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
++                a0, a1 = tl.split(tl.permute(tl.reshape(ah0, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
++                a2, a3 = tl.split(tl.permute(tl.reshape(ah1, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
++                b0, b1 = tl.split(tl.permute(tl.reshape(bh0, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++                b2, b3 = tl.split(tl.permute(tl.reshape(bh1, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++                accumulator = tl.dot(a0, b0, accumulator)
++                accumulator = tl.dot(a1, b1, accumulator)
++                accumulator = tl.dot(a2, b2, accumulator)
++                accumulator = tl.dot(a3, b3, accumulator)
++        elif STREAM_K_FRAGMENTS == 1 and MIXED_OPERAND == 1:
++            tl.static_assert(MMA_K_SPLIT == 4)
++            tl.static_assert(BLOCK_SIZE_K % 4 == 0)
++            a = tl.matrix_load(a_ptr, shape=[M, K], strides=[stride_am, stride_ak], block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K], offsets=[mls_offs_am, mls_offs_k])
++            ah0, ah1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 2)), (0, 2, 1)))
++            a0, a1 = tl.split(tl.permute(tl.reshape(ah0, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
++            a2, a3 = tl.split(tl.permute(tl.reshape(ah1, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
++            if MIXED_VECTOR_FULL:
++                rn = mls_offs_bn + tl.arange(0, BLOCK_SIZE_N)
++                rk = mls_offs_k + tl.arange(0, BLOCK_SIZE_K)
++                bv = tl.load(b_ptr + rk[:, None] * stride_bk + rn[None, :] * stride_bn, mask=(rk[:, None] < K) & (rn[None, :] < N), other=0)
++                bh0, bh1 = tl.split(tl.permute(tl.reshape(bv, (2, BLOCK_SIZE_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
++                bv0, bv1 = tl.split(tl.permute(tl.reshape(bh0, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++                bv2, bv3 = tl.split(tl.permute(tl.reshape(bh1, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++                accumulator = tl.dot(a0, bv0, accumulator)
++                accumulator = tl.dot(a1, bv1, accumulator)
++                accumulator = tl.dot(a2, bv2, accumulator)
++                accumulator = tl.dot(a3, bv3, accumulator)
++            else:
++                rn = mls_offs_bn + tl.arange(0, BLOCK_SIZE_N)
++                rk = mls_offs_k + tl.arange(0, BLOCK_SIZE_K // 4)
++                kb0 = rk + 0 * (BLOCK_SIZE_K // 4)
++                bv0 = tl.load(b_ptr + kb0[:, None] * stride_bk + rn[None, :] * stride_bn, mask=(kb0[:, None] < K) & (rn[None, :] < N), other=0)
++                accumulator = tl.dot(a0, bv0, accumulator)
++                kb1 = rk + 1 * (BLOCK_SIZE_K // 4)
++                bv1 = tl.load(b_ptr + kb1[:, None] * stride_bk + rn[None, :] * stride_bn, mask=(kb1[:, None] < K) & (rn[None, :] < N), other=0)
++                accumulator = tl.dot(a1, bv1, accumulator)
++                kb2 = rk + 2 * (BLOCK_SIZE_K // 4)
++                bv2 = tl.load(b_ptr + kb2[:, None] * stride_bk + rn[None, :] * stride_bn, mask=(kb2[:, None] < K) & (rn[None, :] < N), other=0)
++                accumulator = tl.dot(a2, bv2, accumulator)
++                kb3 = rk + 3 * (BLOCK_SIZE_K // 4)
++                bv3 = tl.load(b_ptr + kb3[:, None] * stride_bk + rn[None, :] * stride_bn, mask=(kb3[:, None] < K) & (rn[None, :] < N), other=0)
++                accumulator = tl.dot(a3, bv3, accumulator)
++        elif STREAM_K_FRAGMENTS == 1 and MIXED_OPERAND == 2:
++            tl.static_assert(MIXED_OPERAND == 2)
++            tl.static_assert(MMA_K_SPLIT == 4)
++            tl.static_assert(BLOCK_SIZE_K % 4 == 0)
++            b = tl.matrix_load(b_ptr, shape=[K, N], strides=[stride_bk, stride_bn], block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N], offsets=[mls_offs_k, mls_offs_bn])
++            bh0, bh1 = tl.split(tl.permute(tl.reshape(b, (2, BLOCK_SIZE_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
++            b0, b1 = tl.split(tl.permute(tl.reshape(bh0, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++            b2, b3 = tl.split(tl.permute(tl.reshape(bh1, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++            if MIXED_VECTOR_FULL:
++                rm = mls_offs_am + tl.arange(0, BLOCK_SIZE_M)
++                rk = mls_offs_k + tl.arange(0, BLOCK_SIZE_K)
++                av = tl.load(a_ptr + rm[:, None] * stride_am + rk[None, :] * stride_ak, mask=(rm[:, None] < M) & (rk[None, :] < K), other=0)
++                ah0, ah1 = tl.split(tl.permute(tl.reshape(av, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 2)), (0, 2, 1)))
++                av0, av1 = tl.split(tl.permute(tl.reshape(ah0, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
++                av2, av3 = tl.split(tl.permute(tl.reshape(ah1, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
++                accumulator = tl.dot(av0, b0, accumulator)
++                accumulator = tl.dot(av1, b1, accumulator)
++                accumulator = tl.dot(av2, b2, accumulator)
++                accumulator = tl.dot(av3, b3, accumulator)
++            else:
++                rm = mls_offs_am + tl.arange(0, BLOCK_SIZE_M)
++                rk = mls_offs_k + tl.arange(0, BLOCK_SIZE_K // 4)
++                ka0 = rk + 0 * (BLOCK_SIZE_K // 4)
++                av0 = tl.load(a_ptr + rm[:, None] * stride_am + ka0[None, :] * stride_ak, mask=(rm[:, None] < M) & (ka0[None, :] < K), other=0)
++                accumulator = tl.dot(av0, b0, accumulator)
++                ka1 = rk + 1 * (BLOCK_SIZE_K // 4)
++                av1 = tl.load(a_ptr + rm[:, None] * stride_am + ka1[None, :] * stride_ak, mask=(rm[:, None] < M) & (ka1[None, :] < K), other=0)
++                accumulator = tl.dot(av1, b1, accumulator)
++                ka2 = rk + 2 * (BLOCK_SIZE_K // 4)
++                av2 = tl.load(a_ptr + rm[:, None] * stride_am + ka2[None, :] * stride_ak, mask=(rm[:, None] < M) & (ka2[None, :] < K), other=0)
++                accumulator = tl.dot(av2, b2, accumulator)
++                ka3 = rk + 3 * (BLOCK_SIZE_K // 4)
++                av3 = tl.load(a_ptr + rm[:, None] * stride_am + ka3[None, :] * stride_ak, mask=(rm[:, None] < M) & (ka3[None, :] < K), other=0)
++                accumulator = tl.dot(av3, b3, accumulator)
+ 
+     if HAS_BIAS:
+         offs_cn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)

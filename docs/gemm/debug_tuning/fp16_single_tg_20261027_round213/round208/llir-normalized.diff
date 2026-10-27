@@ -1,0 +1,265 @@
+--- CPU
+
++++ native
+
+@@ -115,6 +115,6 @@
+
+   %103 = zext i32 %102 to i64
+   %104 = shl nuw nsw i32 %101, 9
+-  %105 = getelementptr i16, ptr addrspace(1) %1, i64 %98
+-  %106 = getelementptr i16, ptr addrspace(1) %105, i64 %103
++  %105 = getelementptr i16, ptr addrspace(1) %26, i64 %103
++  %106 = getelementptr i16, ptr addrspace(1) %105, i64 %98
+   %107 = ptrtoint ptr addrspace(1) %106 to i64
+   %108 = trunc i64 %107 to i32
+@@ -126,32 +126,32 @@
+
+   %114 = insertelement <4 x i32> %113, i32 %8, i64 2
+   %115 = getelementptr i16, ptr addrspace(3) @global_smem, i32 %104
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %114, ptr addrspace(3) %115, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
+-  %116 = getelementptr i16, ptr addrspace(3) @global_smem, i32 %104
+-  %117 = getelementptr i8, ptr addrspace(3) %116, i32 4096
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %114, ptr addrspace(3) %117, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
+-  %118 = getelementptr i16, ptr addrspace(1) %26, i64 %103
+-  %119 = getelementptr i16, ptr addrspace(1) %118, i64 %98
+-  %120 = ptrtoint ptr addrspace(1) %119 to i64
+-  %121 = trunc i64 %120 to i32
+-  %122 = lshr i64 %120, 32
+-  %123 = trunc i64 %122 to i32
+-  %124 = and i32 %123, 65535
+-  %125 = insertelement <4 x i32> <i32 poison, i32 poison, i32 poison, i32 65536>, i32 %121, i64 0
+-  %126 = insertelement <4 x i32> %125, i32 %124, i64 1
+-  %127 = insertelement <4 x i32> %126, i32 %8, i64 2
+-  %128 = getelementptr i16, ptr addrspace(3) @global_smem, i32 %104
+-  %129 = getelementptr i8, ptr addrspace(3) %128, i32 8192
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %127, ptr addrspace(3) %129, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
++  %116 = getelementptr i8, ptr addrspace(3) %115, i32 8192
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %114, ptr addrspace(3) %116, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
++  %117 = getelementptr i16, ptr addrspace(3) @global_smem, i32 %104
++  %118 = getelementptr i8, ptr addrspace(3) %117, i32 12288
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %114, ptr addrspace(3) %118, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
++  %119 = getelementptr i16, ptr addrspace(1) %1, i64 %98
++  %120 = getelementptr i16, ptr addrspace(1) %119, i64 %103
++  %121 = ptrtoint ptr addrspace(1) %120 to i64
++  %122 = trunc i64 %121 to i32
++  %123 = lshr i64 %121, 32
++  %124 = trunc i64 %123 to i32
++  %125 = and i32 %124, 65535
++  %126 = insertelement <4 x i32> <i32 poison, i32 poison, i32 poison, i32 65536>, i32 %122, i64 0
++  %127 = insertelement <4 x i32> %126, i32 %125, i64 1
++  %128 = insertelement <4 x i32> %127, i32 %8, i64 2
++  %129 = getelementptr i16, ptr addrspace(3) @global_smem, i32 %104
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %128, ptr addrspace(3) %129, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
+   %130 = getelementptr i16, ptr addrspace(3) @global_smem, i32 %104
+-  %131 = getelementptr i8, ptr addrspace(3) %130, i32 12288
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %127, ptr addrspace(3) %131, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
++  %131 = getelementptr i8, ptr addrspace(3) %130, i32 4096
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %128, ptr addrspace(3) %131, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
+   tail call void @llvm.amdgcn.asyncmark()
+   tail call void @llvm.amdgcn.wait.asyncmark(i16 0)
+   tail call void @llvm.amdgcn.s.waitcnt(i32 49279)
+   tail call void @llvm.amdgcn.s.barrier()
+-  %132 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %115, i32 0, i8 2, i8 2, i8 1, i8 0)
+-  %133 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %129, i32 0, i8 2, i8 2, i8 1, i8 0)
+-  %134 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %117, i32 0, i8 2, i8 2, i8 1, i8 0)
+-  %135 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %131, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %132 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %129, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %133 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %116, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %134 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %131, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %135 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %118, i32 0, i8 2, i8 2, i8 1, i8 0)
+   tail call void @llvm.amdgcn.s.waitcnt(i32 49279)
+   tail call void @llvm.amdgcn.s.barrier()
+@@ -169,5 +169,5 @@
+
+   %146 = insertelement <4 x i32> %145, i32 %144, i64 1
+   %147 = insertelement <4 x i32> %146, i32 %7, i64 2
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %147, ptr addrspace(3) %115, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %147, ptr addrspace(3) %129, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
+   tail call void @llvm.amdgcn.asyncmark()
+   tail call void @llvm.amdgcn.wait.asyncmark(i16 0)
+@@ -184,17 +184,17 @@
+
+   %154 = mul nsw i64 %153, %21
+   %155 = add nsw i64 %154, %24
+-  %156 = getelementptr i16, ptr addrspace(1) %118, i64 %155
+-  %157 = ptrtoint ptr addrspace(1) %156 to i64
+-  %158 = trunc i64 %157 to i32
+-  %159 = lshr i64 %157, 32
+-  %160 = trunc i64 %159 to i32
+-  %161 = and i32 %160, 65535
+-  %162 = insertelement <4 x i32> <i32 poison, i32 poison, i32 poison, i32 65536>, i32 %158, i64 0
+-  %163 = insertelement <4 x i32> %162, i32 %161, i64 1
+-  %164 = insertelement <4 x i32> %163, i32 %8, i64 2
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %164, ptr addrspace(3) %129, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %164, ptr addrspace(3) %131, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
+-  %165 = getelementptr i16, ptr addrspace(1) %1, i64 %155
+-  %166 = getelementptr i16, ptr addrspace(1) %165, i64 %103
++  %156 = getelementptr i16, ptr addrspace(1) %1, i64 %155
++  %157 = getelementptr i16, ptr addrspace(1) %156, i64 %103
++  %158 = ptrtoint ptr addrspace(1) %157 to i64
++  %159 = trunc i64 %158 to i32
++  %160 = lshr i64 %158, 32
++  %161 = trunc i64 %160 to i32
++  %162 = and i32 %161, 65535
++  %163 = insertelement <4 x i32> <i32 poison, i32 poison, i32 poison, i32 65536>, i32 %159, i64 0
++  %164 = insertelement <4 x i32> %163, i32 %162, i64 1
++  %165 = insertelement <4 x i32> %164, i32 %8, i64 2
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %165, ptr addrspace(3) %129, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %165, ptr addrspace(3) %131, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
++  %166 = getelementptr i16, ptr addrspace(1) %105, i64 %155
+   %167 = ptrtoint ptr addrspace(1) %166 to i64
+   %168 = trunc i64 %167 to i32
+@@ -205,14 +205,14 @@
+
+   %173 = insertelement <4 x i32> %172, i32 %171, i64 1
+   %174 = insertelement <4 x i32> %173, i32 %8, i64 2
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %174, ptr addrspace(3) %115, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %174, ptr addrspace(3) %117, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %174, ptr addrspace(3) %116, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %174, ptr addrspace(3) %118, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
+   tail call void @llvm.amdgcn.asyncmark()
+   tail call void @llvm.amdgcn.wait.asyncmark(i16 0)
+   tail call void @llvm.amdgcn.s.waitcnt(i32 49279)
+   tail call void @llvm.amdgcn.s.barrier()
+-  %175 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %115, i32 0, i8 2, i8 2, i8 1, i8 0)
+-  %176 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %129, i32 0, i8 2, i8 2, i8 1, i8 0)
+-  %177 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %117, i32 0, i8 2, i8 2, i8 1, i8 0)
+-  %178 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %131, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %175 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %129, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %176 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %116, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %177 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %131, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %178 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %118, i32 0, i8 2, i8 2, i8 1, i8 0)
+   tail call void @llvm.amdgcn.s.waitcnt(i32 49279)
+   tail call void @llvm.amdgcn.s.barrier()
+@@ -226,5 +226,5 @@
+
+   %186 = insertelement <4 x i32> %185, i32 %184, i64 1
+   %187 = insertelement <4 x i32> %186, i32 %7, i64 2
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %187, ptr addrspace(3) %115, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %187, ptr addrspace(3) %129, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
+   tail call void @llvm.amdgcn.asyncmark()
+   tail call void @llvm.amdgcn.wait.asyncmark(i16 0)
+@@ -354,17 +354,17 @@
+
+   %306 = mul nsw i64 %305, %21
+   %307 = add nsw i64 %306, %24
+-  %308 = getelementptr i16, ptr addrspace(1) %118, i64 %307
+-  %309 = ptrtoint ptr addrspace(1) %308 to i64
+-  %310 = trunc i64 %309 to i32
+-  %311 = lshr i64 %309, 32
+-  %312 = trunc i64 %311 to i32
+-  %313 = and i32 %312, 65535
+-  %314 = insertelement <4 x i32> <i32 poison, i32 poison, i32 poison, i32 65536>, i32 %310, i64 0
+-  %315 = insertelement <4 x i32> %314, i32 %313, i64 1
+-  %316 = insertelement <4 x i32> %315, i32 %8, i64 2
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %316, ptr addrspace(3) %129, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %316, ptr addrspace(3) %131, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
+-  %317 = getelementptr i16, ptr addrspace(1) %1, i64 %307
+-  %318 = getelementptr i16, ptr addrspace(1) %317, i64 %103
++  %308 = getelementptr i16, ptr addrspace(1) %1, i64 %307
++  %309 = getelementptr i16, ptr addrspace(1) %308, i64 %103
++  %310 = ptrtoint ptr addrspace(1) %309 to i64
++  %311 = trunc i64 %310 to i32
++  %312 = lshr i64 %310, 32
++  %313 = trunc i64 %312 to i32
++  %314 = and i32 %313, 65535
++  %315 = insertelement <4 x i32> <i32 poison, i32 poison, i32 poison, i32 65536>, i32 %311, i64 0
++  %316 = insertelement <4 x i32> %315, i32 %314, i64 1
++  %317 = insertelement <4 x i32> %316, i32 %8, i64 2
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %317, ptr addrspace(3) %129, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %317, ptr addrspace(3) %131, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
++  %318 = getelementptr i16, ptr addrspace(1) %105, i64 %307
+   %319 = ptrtoint ptr addrspace(1) %318 to i64
+   %320 = trunc i64 %319 to i32
+@@ -375,14 +375,14 @@
+
+   %325 = insertelement <4 x i32> %324, i32 %323, i64 1
+   %326 = insertelement <4 x i32> %325, i32 %8, i64 2
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %326, ptr addrspace(3) %115, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %326, ptr addrspace(3) %117, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %326, ptr addrspace(3) %116, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %326, ptr addrspace(3) %118, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
+   tail call void @llvm.amdgcn.asyncmark()
+   tail call void @llvm.amdgcn.wait.asyncmark(i16 0)
+   tail call void @llvm.amdgcn.s.waitcnt(i32 49279)
+   tail call void @llvm.amdgcn.s.barrier()
+-  %327 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %115, i32 0, i8 2, i8 2, i8 1, i8 0)
+-  %328 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %129, i32 0, i8 2, i8 2, i8 1, i8 0)
+-  %329 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %117, i32 0, i8 2, i8 2, i8 1, i8 0)
+-  %330 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %131, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %327 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %129, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %328 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %116, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %329 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %131, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %330 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %118, i32 0, i8 2, i8 2, i8 1, i8 0)
+   tail call void @llvm.amdgcn.s.waitcnt(i32 49279)
+   tail call void @llvm.amdgcn.s.barrier()
+@@ -396,5 +396,5 @@
+
+   %338 = insertelement <4 x i32> %337, i32 %336, i64 1
+   %339 = insertelement <4 x i32> %338, i32 %7, i64 2
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %339, ptr addrspace(3) %115, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %339, ptr addrspace(3) %129, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
+   tail call void @llvm.amdgcn.asyncmark()
+   tail call void @llvm.amdgcn.wait.asyncmark(i16 0)
+@@ -460,17 +460,17 @@
+
+   %394 = mul nsw i64 %393, %21
+   %395 = add nsw i64 %394, %24
+-  %396 = getelementptr i16, ptr addrspace(1) %118, i64 %395
+-  %397 = ptrtoint ptr addrspace(1) %396 to i64
+-  %398 = trunc i64 %397 to i32
+-  %399 = lshr i64 %397, 32
+-  %400 = trunc i64 %399 to i32
+-  %401 = and i32 %400, 65535
+-  %402 = insertelement <4 x i32> <i32 poison, i32 poison, i32 poison, i32 65536>, i32 %398, i64 0
+-  %403 = insertelement <4 x i32> %402, i32 %401, i64 1
+-  %404 = insertelement <4 x i32> %403, i32 %8, i64 2
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %404, ptr addrspace(3) %129, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %404, ptr addrspace(3) %131, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
+-  %405 = getelementptr i16, ptr addrspace(1) %1, i64 %395
+-  %406 = getelementptr i16, ptr addrspace(1) %405, i64 %103
++  %396 = getelementptr i16, ptr addrspace(1) %1, i64 %395
++  %397 = getelementptr i16, ptr addrspace(1) %396, i64 %103
++  %398 = ptrtoint ptr addrspace(1) %397 to i64
++  %399 = trunc i64 %398 to i32
++  %400 = lshr i64 %398, 32
++  %401 = trunc i64 %400 to i32
++  %402 = and i32 %401, 65535
++  %403 = insertelement <4 x i32> <i32 poison, i32 poison, i32 poison, i32 65536>, i32 %399, i64 0
++  %404 = insertelement <4 x i32> %403, i32 %402, i64 1
++  %405 = insertelement <4 x i32> %404, i32 %8, i64 2
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %405, ptr addrspace(3) %129, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %405, ptr addrspace(3) %131, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
++  %406 = getelementptr i16, ptr addrspace(1) %105, i64 %395
+   %407 = ptrtoint ptr addrspace(1) %406 to i64
+   %408 = trunc i64 %407 to i32
+@@ -481,14 +481,14 @@
+
+   %413 = insertelement <4 x i32> %412, i32 %411, i64 1
+   %414 = insertelement <4 x i32> %413, i32 %8, i64 2
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %414, ptr addrspace(3) %115, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %414, ptr addrspace(3) %117, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %414, ptr addrspace(3) %116, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %414, ptr addrspace(3) %118, i32 128, i1 true, i1 true, i1 false, i1 false, i1 false)
+   tail call void @llvm.amdgcn.asyncmark()
+   tail call void @llvm.amdgcn.wait.asyncmark(i16 0)
+   tail call void @llvm.amdgcn.s.waitcnt(i32 49279)
+   tail call void @llvm.amdgcn.s.barrier()
+-  %415 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %115, i32 0, i8 2, i8 2, i8 1, i8 0)
+-  %416 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %129, i32 0, i8 2, i8 2, i8 1, i8 0)
+-  %417 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %117, i32 0, i8 2, i8 2, i8 1, i8 0)
+-  %418 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %131, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %415 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %129, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %416 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %116, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %417 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %131, i32 0, i8 2, i8 2, i8 1, i8 0)
++  %418 = tail call <8 x half> @llvm.hcu.ds.read.matrix.format.v8f16.p3(ptr addrspace(3) %118, i32 0, i8 2, i8 2, i8 1, i8 0)
+   tail call void @llvm.amdgcn.s.waitcnt(i32 49279)
+   tail call void @llvm.amdgcn.s.barrier()
+@@ -502,5 +502,5 @@
+
+   %426 = insertelement <4 x i32> %425, i32 %424, i64 1
+   %427 = insertelement <4 x i32> %426, i32 %7, i64 2
+-  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %427, ptr addrspace(3) %115, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
++  tail call void @llvm.hcu.matrix.load.32x16.b16.p3(<4 x i32> %427, ptr addrspace(3) %129, i32 0, i1 true, i1 true, i1 false, i1 false, i1 false)
+   tail call void @llvm.amdgcn.asyncmark()
+   tail call void @llvm.amdgcn.wait.asyncmark(i16 0)

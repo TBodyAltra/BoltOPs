@@ -1,0 +1,53 @@
+{
+  "passed": true,
+  "diagnostic_only": true,
+  "no_PMD_execution": true,
+  "stored_TTGIR_replay_failed_due_to_null_CTA_printer": true,
+  "failed_attempt_log": "cpu1.log",
+  "full_AST_replays": 4,
+  "all_compiled": true,
+  "comparisons": [
+    {
+      "pair": [
+        "ast_cpu1",
+        "ast_native1"
+      ],
+      "first_difference": {
+        "dump_index": 56,
+        "first_different_before_pass": "// -----// IR Dump Before ConvertHCUDistributedToLLVM (convert-hcu-distributed-to-llvm) ('builtin.module' operation) //----- //",
+        "previous_pass": "// -----// IR Dump Before ConvertTritonHCUToLLVM (convert-triton-hcu-to-llvm) ('builtin.module' operation) //----- //"
+      },
+      "asm_equal": false
+    },
+    {
+      "pair": [
+        "ast_cpu1",
+        "ast_cpu2"
+      ],
+      "first_difference": null,
+      "asm_equal": true
+    },
+    {
+      "pair": [
+        "ast_native1",
+        "ast_native2"
+      ],
+      "first_difference": {
+        "dump_index": 56,
+        "first_different_before_pass": "// -----// IR Dump Before ConvertHCUDistributedToLLVM (convert-hcu-distributed-to-llvm) ('builtin.module' operation) //----- //",
+        "previous_pass": "// -----// IR Dump Before ConvertTritonHCUToLLVM (convert-triton-hcu-to-llvm) ('builtin.module' operation) //----- //"
+      },
+      "asm_equal": false
+    }
+  ],
+  "first_diverging_pass": "ConvertHCUToLLVM",
+  "suspected_mechanism": "MlsOpToLLVM.cpp computeMatrixLoadStoreOffsetsWithMlOffs emits descriptor groups by DenseMap<Value> iteration; same-process-input fresh compiles differ after this lowering",
+  "mechanism_status": "Targeted isolated MapVector fix built next; causality and determinism still require repeated compilation and native qualification",
+  "source_logs": {
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round208-layout3-codegen-diagnostic/ast_native2.log": "a776c506c9c6881ed027a64f213e77e31a60647f6060d72d23b714c682770aed",
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round208-layout3-codegen-diagnostic/ast_cpu1.log": "0b4dc7acfd7cce80a88df060ff02409fb99712075e9c97f204279b46dd3577af",
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round208-layout3-codegen-diagnostic/ast_cpu2.log": "0111dcefab032504d146428db9a5e26a80a43b27b552746bb961689ebf13af78",
+    "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round208-layout3-codegen-diagnostic/ast_native1.log": "ad2f9febd5e36b5a56c4df810fbf57bcfe095bd9cc0bf3ab1abb70dad7308e3c"
+  },
+  "report_normalization": "Exclude final JSON compiler result from final IR dump; v1 preserved"
+}

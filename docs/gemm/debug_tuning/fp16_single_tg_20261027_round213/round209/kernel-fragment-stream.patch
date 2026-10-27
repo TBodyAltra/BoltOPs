@@ -1,0 +1,100 @@
+--- a/boltops/gemm/triton/gemm_fp16.py
++++ b/boltops/gemm/triton/gemm_fp16.py
+@@ -398,6 +398,26 @@
+ 
+ 
+ @triton.jit
++def _gemm_fp16_mls_stream_load(
++    a_ptr, b_ptr, M, N, K, stride_am, stride_ak, stride_bk, stride_bn,
++    m0, n0, k0,
++    BM: tl.constexpr, BN: tl.constexpr, KF: tl.constexpr,
++    B_FIRST: tl.constexpr,
++):
++    if B_FIRST:
++        b = tl.matrix_load(b_ptr, shape=[K, N], strides=[stride_bk, stride_bn],
++                           block_shape=[KF, BN], offsets=[k0, n0])
++        a = tl.matrix_load(a_ptr, shape=[M, K], strides=[stride_am, stride_ak],
++                           block_shape=[BM, KF], offsets=[m0, k0])
++    else:
++        a = tl.matrix_load(a_ptr, shape=[M, K], strides=[stride_am, stride_ak],
++                           block_shape=[BM, KF], offsets=[m0, k0])
++        b = tl.matrix_load(b_ptr, shape=[K, N], strides=[stride_bk, stride_bn],
++                           block_shape=[KF, BN], offsets=[k0, n0])
++    return a, b
++
++
++@triton.jit
+ def _gemm_fp16_mls_kernel(
+     a_ptr,
+     b_ptr,
+@@ -426,6 +446,8 @@
+     MIXED_VECTOR_FULL: tl.constexpr = False,
+     SIMPLIFY_GROUP1: tl.constexpr = False,
+     REBASE_MLS_TILE: tl.constexpr = 0,
++    STREAM_K_FRAGMENTS: tl.constexpr = 1,
++    STREAM_FRAGMENT_PREFETCH: tl.constexpr = False,
+ ):
+     tl.assume(K % BLOCK_SIZE_K == 0)
+     tl.assume(stride_am > 0)
+@@ -481,7 +503,42 @@
+     accumulator = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
+     for k in tl.range(0, K // BLOCK_SIZE_K, warp_specialize=WARP_SPECIALIZE, loop_unroll_factor=LOOP_UNROLL_FACTOR):
+         mls_offs_k = k * BLOCK_SIZE_K
+-        if MIXED_OPERAND == 0:
++        tl.static_assert(MIXED_OPERAND >= 0 and MIXED_OPERAND <= 2)
++        if STREAM_K_FRAGMENTS > 1:
++            tl.static_assert(not WARP_SPECIALIZE)
++            tl.static_assert(MIXED_OPERAND == 0)
++            tl.static_assert(STREAM_K_FRAGMENTS == 2 or STREAM_K_FRAGMENTS == 4)
++            tl.static_assert(MMA_K_SPLIT == STREAM_K_FRAGMENTS)
++            tl.static_assert(BLOCK_SIZE_K % STREAM_K_FRAGMENTS == 0)
++            KF: tl.constexpr = BLOCK_SIZE_K // STREAM_K_FRAGMENTS
++            if STREAM_FRAGMENT_PREFETCH:
++                a_s, b_s = _gemm_fp16_mls_stream_load(
++                    mls_a_ptr, mls_b_ptr, mls_shape_m, mls_shape_n, K,
++                    stride_am, stride_ak, stride_bk, stride_bn,
++                    mls_load_m, mls_load_n, mls_offs_k,
++                    BLOCK_SIZE_M, BLOCK_SIZE_N, KF, LOAD_B_FIRST)
++                for f in tl.static_range(1, STREAM_K_FRAGMENTS):
++                    a_n, b_n = _gemm_fp16_mls_stream_load(
++                        mls_a_ptr, mls_b_ptr, mls_shape_m, mls_shape_n, K,
++                        stride_am, stride_ak, stride_bk, stride_bn,
++                        mls_load_m, mls_load_n, mls_offs_k + f * KF,
++                        BLOCK_SIZE_M, BLOCK_SIZE_N, KF, LOAD_B_FIRST)
++                    accumulator = tl.dot(a_s, b_s, accumulator)
++                    a_s = a_n
++                    b_s = b_n
++                accumulator = tl.dot(a_s, b_s, accumulator)
++            else:
++                for f in tl.static_range(STREAM_K_FRAGMENTS):
++                    a_s, b_s = _gemm_fp16_mls_stream_load(
++                        mls_a_ptr, mls_b_ptr, mls_shape_m, mls_shape_n, K,
++                        stride_am, stride_ak, stride_bk, stride_bn,
++                        mls_load_m, mls_load_n, mls_offs_k + f * KF,
++                        BLOCK_SIZE_M, BLOCK_SIZE_N, KF, LOAD_B_FIRST)
++                    accumulator = tl.dot(a_s, b_s, accumulator)
++        else:
++            tl.static_assert(STREAM_K_FRAGMENTS == 1)
++            tl.static_assert(not STREAM_FRAGMENT_PREFETCH)
++        if STREAM_K_FRAGMENTS == 1 and MIXED_OPERAND == 0:
+             if LOAD_B_FIRST:
+                 b = tl.matrix_load(
+                     mls_b_ptr,
+@@ -534,7 +591,7 @@
+                 accumulator = tl.dot(a1, b1, accumulator)
+                 accumulator = tl.dot(a2, b2, accumulator)
+                 accumulator = tl.dot(a3, b3, accumulator)
+-        elif MIXED_OPERAND == 1:
++        elif STREAM_K_FRAGMENTS == 1 and MIXED_OPERAND == 1:
+             tl.static_assert(MMA_K_SPLIT == 4)
+             tl.static_assert(BLOCK_SIZE_K % 4 == 0)
+             a = tl.matrix_load(a_ptr, shape=[M, K], strides=[stride_am, stride_ak], block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K], offsets=[mls_offs_am, mls_offs_k])
+@@ -567,7 +624,7 @@
+                 kb3 = rk + 3 * (BLOCK_SIZE_K // 4)
+                 bv3 = tl.load(b_ptr + kb3[:, None] * stride_bk + rn[None, :] * stride_bn, mask=(kb3[:, None] < K) & (rn[None, :] < N), other=0)
+                 accumulator = tl.dot(a3, bv3, accumulator)
+-        else:
++        elif STREAM_K_FRAGMENTS == 1 and MIXED_OPERAND == 2:
+             tl.static_assert(MIXED_OPERAND == 2)
+             tl.static_assert(MMA_K_SPLIT == 4)
+             tl.static_assert(BLOCK_SIZE_K % 4 == 0)
