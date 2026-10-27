@@ -1,0 +1,40 @@
+--- a/boltops/gemm/triton/gemm_fp16.py
++++ b/boltops/gemm/triton/gemm_fp16.py
+@@ -424,6 +424,7 @@
+     LOAD_B_FIRST: tl.constexpr = False,
+     MIXED_OPERAND: tl.constexpr = 0,
+     MIXED_VECTOR_FULL: tl.constexpr = False,
++    SIMPLIFY_GROUP1: tl.constexpr = False,
+ ):
+     tl.assume(K % BLOCK_SIZE_K == 0)
+     tl.assume(stride_am > 0)
+@@ -436,14 +437,21 @@
+     tl.assume(N > 0)
+     tl.assume(K > 0)
+     pid = tl.program_id(axis=0)
+-    num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
+-    num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
+-    num_pid_in_group = GROUP_SIZE_M * num_pid_n
+-    group_id = pid // num_pid_in_group
+-    first_pid_m = group_id * GROUP_SIZE_M
+-    group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)
+-    pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m)
+-    pid_n = (pid % num_pid_in_group) // group_size_m
++    if SIMPLIFY_GROUP1:
++        tl.static_assert(GROUP_SIZE_M == 1)
++        # For every valid flattened GEMM program id, group_size_m is one.
++        num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
++        pid_m = pid // num_pid_n
++        pid_n = pid % num_pid_n
++    else:
++        num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
++        num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
++        num_pid_in_group = GROUP_SIZE_M * num_pid_n
++        group_id = pid // num_pid_in_group
++        first_pid_m = group_id * GROUP_SIZE_M
++        group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)
++        pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m)
++        pid_n = (pid % num_pid_in_group) // group_size_m
+ 
+     mls_offs_am = pid_m * BLOCK_SIZE_M
+     mls_offs_bn = pid_n * BLOCK_SIZE_N
