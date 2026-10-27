@@ -1,0 +1,19 @@
+--- a/third_party/hcu/lib/TritonHCUTransforms/BlockPingpong.cpp
++++ b/third_party/hcu/lib/TritonHCUTransforms/BlockPingpong.cpp
+@@ -22,6 +22,7 @@
+ #include "triton/Dialect/TritonGPU/Transforms/Schedule.h"
+ #include "triton/Dialect/TritonGPU/Transforms/Utility.h"
+ #include "llvm/ADT/DenseMap.h"
++#include "llvm/ADT/MapVector.h"
+ #include "llvm/ADT/SetVector.h"
+ #include "llvm/ADT/TypeSwitch.h"
+ #include "llvm/Support/Debug.h"
+@@ -1299,7 +1300,7 @@
+   if (!requiresStaticRingMaterialization(loop))
+     return failure();
+ 
+-  DenseMap<Operation *, SmallVector<ttg::MemDescIndexOp>>
++  llvm::MapVector<Operation *, SmallVector<ttg::MemDescIndexOp>>
+       groupedIndices;
+   bool hasMarkedAllocation = false;
+   for (Operation &op : loop.getBody()->without_terminator()) {
