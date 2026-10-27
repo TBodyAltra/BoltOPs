@@ -1,0 +1,605 @@
+{
+  "parent_publication_commit": "d1b1b6367f122d10d5c661054e8130ee0fc5ca82",
+  "canonical_map_sha256": "dea011fb5090e9015379f8529c8f898b99fd7e835fda194bb3620b8d1488a6d2",
+  "candidates": [
+    {
+      "tile": [
+        32,
+        128,
+        128
+      ],
+      "layout": "TN",
+      "recipe": "32x128tn_layout3_native263",
+      "mode": "wasp44",
+      "mls": true,
+      "matrix_store": false,
+      "stages": 2,
+      "warps": 4,
+      "regs": null,
+      "mmac_layout": 3,
+      "cluster": 2,
+      "empty_arrive": false,
+      "use_async_copy": false,
+      "use_block_pingpong": false,
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": false,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": false,
+        "wasp_partition_warps": [
+          2,
+          4
+        ],
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 2,
+        "num_stages": 2,
+        "mmac_layout_force": 3,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "num_warps": 4,
+        "SIMPLIFY_GROUP1": false,
+        "REBASE_MLS_TILE": 0,
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 1,
+        "STREAM_K_FRAGMENTS": 1,
+        "STREAM_FRAGMENT_PREFETCH": false
+      },
+      "effective_partition_regs": null,
+      "actual_partition_regs": null,
+      "effective_num_warps": 6,
+      "shared_bytes": 81920,
+      "n_regs": 97,
+      "n_spills": 0,
+      "cycles_per_bk_slope": 985.8541666666666,
+      "ideal_mmac_cycles_per_bk": 256.0,
+      "mmac_theoretical_fraction": 0.2596732951543712,
+      "slope_sample_range": [
+        946.9791666666666,
+        994.5
+      ],
+      "loop_counts": [
+        16,
+        32,
+        64
+      ],
+      "source_ids": [
+        "5b5d35cb61f07a39",
+        "008c3dcbadb44c1b",
+        "cea538d62d31ac60"
+      ],
+      "asm_sha256": "cac6139ee9897de026f0cab8d8b146feeddc45e100925a9001049f47171d759a",
+      "assembly_features": {
+        "mmac_opcodes": [
+          "v_mmac_f32_16x16x16_f16"
+        ],
+        "buffer_to_lds": false,
+        "set_priority_instructions": 0
+      },
+      "identical_binary_across_loop_counts": true,
+      "peak_flops_per_cu_cycle": 4096,
+      "valid_metric": true,
+      "steadiness": "three-or-more loop-count check",
+      "intermediate_residual_cycles": 1301.3333333333358,
+      "intermediate_residual_fraction_of_long_time": 0.017882581431247827,
+      "measurement_context_id": "4e8f933928ddcf8e",
+      "source_root_container": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round263-32x128tn-layout3-native",
+      "evidence_root_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round263-32x128tn-layout3-native/runs",
+      "evidence_root_relative": "runs",
+      "kernel_source_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round263-32x128tn-layout3-native/bolt_ops/boltops/gemm/triton/gemm_fp16.py",
+      "kernel_source_relative": "bolt_ops/boltops/gemm/triton/gemm_fp16.py",
+      "compiler_source_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round263-32x128tn-layout3-native/triton/third_party/hcu/backend/compiler.py",
+      "native_artifact_sha256": "e2ae375d24cd4c61ee9085f19f26967597f4e8355c1781461c0b74d92bba815a",
+      "physical_resource_fields": {
+        "private_segment_fixed_size": 0,
+        "vgpr_spill_count": 0,
+        "sgpr_spill_count": 0,
+        "amdhsa_next_free_vgpr": 97
+      },
+      "all_physical_spills_zero": true,
+      "native_raw_audit_sha256": "0e9bb9f95ee92d31b86fd7b5e0e491f0a0e4727815eb5d454da1a813061ff83a",
+      "pipeline_unroll_factor": 1,
+      "logical_block_K": 128,
+      "dot_fragment_K": 128,
+      "executed_mmop_instructions_per_bk": 128,
+      "executed_to_logical_mmac_ratio": 1.0,
+      "executed_mmac_throughput_fraction": 0.2596732951543712,
+      "continuation_selection_eligible": false,
+      "continuation_eligible_choices": [],
+      "requested_num_stages": 2,
+      "requested_partition_warps": [
+        2,
+        4
+      ],
+      "requested_partition_regs": null,
+      "kernel_contract": "Natural-stride FP16 singleTG32x128x128 TN,FP32acc/FP16out. Frozen Bolt197/Triton209/native209. NoWDRA1P1C WASP producer1/2/4,consumer4,stages2,wholeBK128,MMA_K_SPLIT1,UF1,GROUP1False,explicitMMAC layout3 and required USE_MATRIX_STOREFalse. PriorTN alreadyWASP;exact old/new configs preserved. All three physicalspills0,MMOPwork1,CU0,fullGOLD16/32/64 plus identicalshader4TG off-origin odd17. Fastest independently confirmed once with exact executable,all nondebugELF,metadata/resources/runtime contract;only128KiB-budget main choices promoted,80KiB never comparedto64KiB domain. No runtime MNK specialization or TG rearrangement.",
+      "selection_rejection_reason": "Not the fastest >=3% initial candidate within the resource budget; no independent series or promotion."
+    },
+    {
+      "tile": [
+        32,
+        128,
+        128
+      ],
+      "layout": "TN",
+      "recipe": "32x128tn_layout3_native263",
+      "mode": "wasp44",
+      "mls": true,
+      "matrix_store": false,
+      "stages": 2,
+      "warps": 4,
+      "regs": null,
+      "mmac_layout": 3,
+      "cluster": 2,
+      "empty_arrive": false,
+      "use_async_copy": false,
+      "use_block_pingpong": false,
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": false,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": false,
+        "wasp_partition_warps": [
+          4,
+          4
+        ],
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 2,
+        "num_stages": 2,
+        "mmac_layout_force": 3,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "num_warps": 4,
+        "SIMPLIFY_GROUP1": false,
+        "REBASE_MLS_TILE": 0,
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 1,
+        "STREAM_K_FRAGMENTS": 1,
+        "STREAM_FRAGMENT_PREFETCH": false
+      },
+      "effective_partition_regs": null,
+      "actual_partition_regs": null,
+      "effective_num_warps": 8,
+      "shared_bytes": 81920,
+      "n_regs": 97,
+      "n_spills": 0,
+      "cycles_per_bk_slope": 944.125,
+      "ideal_mmac_cycles_per_bk": 256.0,
+      "mmac_theoretical_fraction": 0.27115053621077717,
+      "slope_sample_range": [
+        936.0833333333334,
+        956.0833333333334
+      ],
+      "loop_counts": [
+        16,
+        32,
+        64
+      ],
+      "source_ids": [
+        "86696b3d7215b1d9",
+        "c851b65d7ae7a11b",
+        "9eca527bc75a121e"
+      ],
+      "asm_sha256": "9576469b424002ab4fe86975de8340e2b52157d07f09e8fcff9c7ffd0e068413",
+      "assembly_features": {
+        "mmac_opcodes": [
+          "v_mmac_f32_16x16x16_f16"
+        ],
+        "buffer_to_lds": false,
+        "set_priority_instructions": 0
+      },
+      "identical_binary_across_loop_counts": true,
+      "peak_flops_per_cu_cycle": 4096,
+      "valid_metric": true,
+      "steadiness": "three-or-more loop-count check",
+      "intermediate_residual_cycles": 612.0,
+      "intermediate_residual_fraction_of_long_time": 0.008693058337239528,
+      "measurement_context_id": "4e8f933928ddcf8e",
+      "source_root_container": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round263-32x128tn-layout3-native",
+      "evidence_root_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round263-32x128tn-layout3-native/runs",
+      "evidence_root_relative": "runs",
+      "kernel_source_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round263-32x128tn-layout3-native/bolt_ops/boltops/gemm/triton/gemm_fp16.py",
+      "kernel_source_relative": "bolt_ops/boltops/gemm/triton/gemm_fp16.py",
+      "compiler_source_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round263-32x128tn-layout3-native/triton/third_party/hcu/backend/compiler.py",
+      "native_artifact_sha256": "e2ae375d24cd4c61ee9085f19f26967597f4e8355c1781461c0b74d92bba815a",
+      "physical_resource_fields": {
+        "private_segment_fixed_size": 0,
+        "vgpr_spill_count": 0,
+        "sgpr_spill_count": 0,
+        "amdhsa_next_free_vgpr": 97
+      },
+      "all_physical_spills_zero": true,
+      "native_raw_audit_sha256": "0e9bb9f95ee92d31b86fd7b5e0e491f0a0e4727815eb5d454da1a813061ff83a",
+      "pipeline_unroll_factor": 1,
+      "logical_block_K": 128,
+      "dot_fragment_K": 128,
+      "executed_mmop_instructions_per_bk": 128,
+      "executed_to_logical_mmac_ratio": 1.0,
+      "executed_mmac_throughput_fraction": 0.27115053621077717,
+      "continuation_selection_eligible": false,
+      "continuation_eligible_choices": [],
+      "requested_num_stages": 2,
+      "requested_partition_warps": [
+        4,
+        4
+      ],
+      "requested_partition_regs": null,
+      "kernel_contract": "Natural-stride FP16 singleTG32x128x128 TN,FP32acc/FP16out. Frozen Bolt197/Triton209/native209. NoWDRA1P1C WASP producer1/2/4,consumer4,stages2,wholeBK128,MMA_K_SPLIT1,UF1,GROUP1False,explicitMMAC layout3 and required USE_MATRIX_STOREFalse. PriorTN alreadyWASP;exact old/new configs preserved. All three physicalspills0,MMOPwork1,CU0,fullGOLD16/32/64 plus identicalshader4TG off-origin odd17. Fastest independently confirmed once with exact executable,all nondebugELF,metadata/resources/runtime contract;only128KiB-budget main choices promoted,80KiB never comparedto64KiB domain. No runtime MNK specialization or TG rearrangement.",
+      "selection_rejection_reason": "Not the fastest >=3% initial candidate within the resource budget; no independent series or promotion."
+    },
+    {
+      "tile": [
+        32,
+        128,
+        128
+      ],
+      "layout": "TN",
+      "recipe": "32x128tn_layout3_native263",
+      "mode": "wasp44",
+      "mls": true,
+      "matrix_store": false,
+      "stages": 2,
+      "warps": 4,
+      "regs": null,
+      "mmac_layout": 3,
+      "cluster": 2,
+      "empty_arrive": false,
+      "use_async_copy": false,
+      "use_block_pingpong": false,
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": false,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": false,
+        "wasp_partition_warps": [
+          1,
+          4
+        ],
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 2,
+        "num_stages": 2,
+        "mmac_layout_force": 3,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "num_warps": 4,
+        "SIMPLIFY_GROUP1": false,
+        "REBASE_MLS_TILE": 0,
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 1,
+        "STREAM_K_FRAGMENTS": 1,
+        "STREAM_FRAGMENT_PREFETCH": false
+      },
+      "effective_partition_regs": null,
+      "actual_partition_regs": null,
+      "effective_num_warps": 5,
+      "shared_bytes": 81920,
+      "n_regs": 97,
+      "n_spills": 0,
+      "cycles_per_bk_slope": 940.0,
+      "ideal_mmac_cycles_per_bk": 256.0,
+      "mmac_theoretical_fraction": 0.2723404255319149,
+      "slope_sample_range": [
+        927.375,
+        949.1041666666666
+      ],
+      "loop_counts": [
+        16,
+        32,
+        64
+      ],
+      "source_ids": [
+        "d99c8fa03899a4ce",
+        "1de593828c808457",
+        "c859d41d36e67539"
+      ],
+      "asm_sha256": "a1191fcd3e0d4cc19dc3d2f6922055bf75d0e9f44ba9a27ff5e729f172e649a7",
+      "assembly_features": {
+        "mmac_opcodes": [
+          "v_mmac_f32_16x16x16_f16"
+        ],
+        "buffer_to_lds": false,
+        "set_priority_instructions": 0
+      },
+      "identical_binary_across_loop_counts": true,
+      "peak_flops_per_cu_cycle": 4096,
+      "valid_metric": true,
+      "steadiness": "three-or-more loop-count check",
+      "intermediate_residual_cycles": 753.0,
+      "intermediate_residual_fraction_of_long_time": 0.01079864048988255,
+      "measurement_context_id": "4e8f933928ddcf8e",
+      "source_root_container": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round263-32x128tn-layout3-native",
+      "evidence_root_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round263-32x128tn-layout3-native/runs",
+      "evidence_root_relative": "runs",
+      "kernel_source_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round263-32x128tn-layout3-native/bolt_ops/boltops/gemm/triton/gemm_fp16.py",
+      "kernel_source_relative": "bolt_ops/boltops/gemm/triton/gemm_fp16.py",
+      "compiler_source_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round263-32x128tn-layout3-native/triton/third_party/hcu/backend/compiler.py",
+      "native_artifact_sha256": "e2ae375d24cd4c61ee9085f19f26967597f4e8355c1781461c0b74d92bba815a",
+      "physical_resource_fields": {
+        "private_segment_fixed_size": 0,
+        "vgpr_spill_count": 0,
+        "sgpr_spill_count": 0,
+        "amdhsa_next_free_vgpr": 97
+      },
+      "all_physical_spills_zero": true,
+      "native_raw_audit_sha256": "0e9bb9f95ee92d31b86fd7b5e0e491f0a0e4727815eb5d454da1a813061ff83a",
+      "pipeline_unroll_factor": 1,
+      "logical_block_K": 128,
+      "dot_fragment_K": 128,
+      "executed_mmop_instructions_per_bk": 128,
+      "executed_to_logical_mmac_ratio": 1.0,
+      "executed_mmac_throughput_fraction": 0.2723404255319149,
+      "continuation_selection_eligible": true,
+      "continuation_eligible_choices": [
+        "best",
+        "best_no_spill"
+      ],
+      "requested_num_stages": 2,
+      "requested_partition_warps": [
+        1,
+        4
+      ],
+      "requested_partition_regs": null,
+      "kernel_contract": "Natural-stride FP16 singleTG32x128x128 TN,FP32acc/FP16out. Frozen Bolt197/Triton209/native209. NoWDRA1P1C WASP producer1/2/4,consumer4,stages2,wholeBK128,MMA_K_SPLIT1,UF1,GROUP1False,explicitMMAC layout3 and required USE_MATRIX_STOREFalse. PriorTN alreadyWASP;exact old/new configs preserved. All three physicalspills0,MMOPwork1,CU0,fullGOLD16/32/64 plus identicalshader4TG off-origin odd17. Fastest independently confirmed once with exact executable,all nondebugELF,metadata/resources/runtime contract;only128KiB-budget main choices promoted,80KiB never comparedto64KiB domain. No runtime MNK specialization or TG rearrangement.",
+      "independent_repeat_fraction": 0.26760747419312686,
+      "independent_repeat_residual": 0.001984830226128872,
+      "confirmation_source_ids": [
+        "99fcaf7a05fe3bef",
+        "97d0e127a61bd8b1",
+        "900fdc5e0c8e9370"
+      ],
+      "confirmation_root_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round265-32x128tn-oneconsumer-confirm/runs",
+      "confirmation_measurement_context_id": "8e915a50e959cf9b",
+      "independent_confirmation_sha256": "ff97ad0101818de2d1185d07ac133f4781b33c9154f03e0f285b25f53e97445f",
+      "independent_confirmation_raw_audit_sha256": "e9187580e5eefec87559ca51d2a27f3d7dbdbf323014011b8f135f96786a2b17",
+      "cross_root_executable_proof_sha256": "f2d55ebaf4f98e5145305534f7084dcb215fcda537511cf8692726611b5ff9f1",
+      "raw_full_ASM_identical_across_roots": false,
+      "executable_and_non_debug_ELF_sections_identical_across_roots": true,
+      "independent_choice_validation": [
+        {
+          "choice": "best",
+          "validated": true,
+          "prior": {
+            "tile": [
+              32,
+              128,
+              128
+            ],
+            "layout": "TN",
+            "recipe": "bounded_coordinate_refinement",
+            "mode": "wasp44",
+            "mls": false,
+            "matrix_store": false,
+            "stages": 2,
+            "warps": 4,
+            "regs": null,
+            "mmac_layout": -1,
+            "cluster": 2,
+            "empty_arrive": false,
+            "use_async_copy": false,
+            "use_block_pingpong": false,
+            "config": {
+              "GROUP_SIZE_M": 1,
+              "WARP_SPECIALIZE": true,
+              "wasp_wdra": false,
+              "amdgpu_enable_max_ilp_scheduling_strategy": true,
+              "hcu_use_gfx946_sched_model_v2": false,
+              "wasp_partition_warps": [
+                4,
+                4
+              ],
+              "BLOCK_SIZE_M": 32,
+              "BLOCK_SIZE_N": 128,
+              "BLOCK_SIZE_K": 128,
+              "empty_arrive_after_mmac": false,
+              "enable_v_mmac_cluster": 2,
+              "num_stages": 2,
+              "mmac_layout_force": -1,
+              "optimize_epilogue": true,
+              "HAS_BIAS": false,
+              "use_async_copy": false,
+              "use_block_pingpong": false
+            },
+            "effective_partition_regs": null,
+            "actual_partition_regs": null,
+            "effective_num_warps": 8,
+            "shared_bytes": 81920,
+            "n_regs": 92,
+            "n_spills": 0,
+            "cycles_per_bk_slope": 1004.4375,
+            "ideal_mmac_cycles_per_bk": 256.0,
+            "mmac_theoretical_fraction": 0.25486901872938833,
+            "slope_sample_range": [
+              989.5625,
+              1074.0416666666667
+            ],
+            "loop_counts": [
+              16,
+              32,
+              64
+            ],
+            "source_ids": [
+              "c2e64ef3bf51cd1d",
+              "a74c56c02555974e",
+              "bae0cba8f8e0d47a"
+            ],
+            "asm_sha256": "b8081d4a0d1a7e4d74cab4f11a2575bbd2fad2db13a8fac083827c083956071f",
+            "assembly_features": {
+              "mmac_opcodes": [
+                "v_mmac_f32_16x16x16_f16"
+              ],
+              "buffer_to_lds": false,
+              "set_priority_instructions": 0
+            },
+            "identical_binary_across_loop_counts": true,
+            "peak_flops_per_cu_cycle": 4096,
+            "valid_metric": true,
+            "steadiness": "three-or-more loop-count check",
+            "intermediate_residual_cycles": 153.0,
+            "intermediate_residual_fraction_of_long_time": 0.001977664029781294,
+            "measurement_context_id": "917fd8be76ddb52b",
+            "evidence_root_relative": "runs",
+            "baseline_qualification_reference": null,
+            "kernel_contract": "generic GEMM frontend evaluated with grid=1 and M=BM/N=BN",
+            "frontend_kind": "generic_masked",
+            "kernel_source_relative": "bolt_ops/boltops/gemm/triton/gemm_fp16.py",
+            "pipeline_unroll_factor": 1,
+            "executed_mmop_instructions_per_bk": 128.0,
+            "executed_to_logical_mmac_ratio": 1.0,
+            "executed_mmac_throughput_fraction": 0.25486901872938833,
+            "bpp_applied_ir_marker": false,
+            "requested_num_stages": 2,
+            "ir_loop_stage_annotations": [],
+            "ir_static_buffer_bpp_stages": [],
+            "max_ilp_requested": true,
+            "sched_model_v2_requested": false,
+            "schedule_hint_requested": null,
+            "requested_partition_regs": null,
+            "requested_partition_warps": [
+              4,
+              4
+            ],
+            "source_root_container": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021",
+            "evidence_root_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/runs",
+            "kernel_source_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/bolt_ops/boltops/gemm/triton/gemm_fp16.py"
+          },
+          "initial_relative_throughput": 1.0685505319148936,
+          "fresh_relative_throughput": 1.0499803998431987,
+          "minimum_relative_throughput": 1.0499803998431987,
+          "resource_cap_bytes": 131072
+        },
+        {
+          "choice": "best_no_spill",
+          "validated": true,
+          "prior": {
+            "tile": [
+              32,
+              128,
+              128
+            ],
+            "layout": "TN",
+            "recipe": "bounded_coordinate_refinement",
+            "mode": "wasp44",
+            "mls": false,
+            "matrix_store": false,
+            "stages": 2,
+            "warps": 4,
+            "regs": null,
+            "mmac_layout": -1,
+            "cluster": 2,
+            "empty_arrive": false,
+            "use_async_copy": false,
+            "use_block_pingpong": false,
+            "config": {
+              "GROUP_SIZE_M": 1,
+              "WARP_SPECIALIZE": true,
+              "wasp_wdra": false,
+              "amdgpu_enable_max_ilp_scheduling_strategy": true,
+              "hcu_use_gfx946_sched_model_v2": false,
+              "wasp_partition_warps": [
+                4,
+                4
+              ],
+              "BLOCK_SIZE_M": 32,
+              "BLOCK_SIZE_N": 128,
+              "BLOCK_SIZE_K": 128,
+              "empty_arrive_after_mmac": false,
+              "enable_v_mmac_cluster": 2,
+              "num_stages": 2,
+              "mmac_layout_force": -1,
+              "optimize_epilogue": true,
+              "HAS_BIAS": false,
+              "use_async_copy": false,
+              "use_block_pingpong": false
+            },
+            "effective_partition_regs": null,
+            "actual_partition_regs": null,
+            "effective_num_warps": 8,
+            "shared_bytes": 81920,
+            "n_regs": 92,
+            "n_spills": 0,
+            "cycles_per_bk_slope": 1004.4375,
+            "ideal_mmac_cycles_per_bk": 256.0,
+            "mmac_theoretical_fraction": 0.25486901872938833,
+            "slope_sample_range": [
+              989.5625,
+              1074.0416666666667
+            ],
+            "loop_counts": [
+              16,
+              32,
+              64
+            ],
+            "source_ids": [
+              "c2e64ef3bf51cd1d",
+              "a74c56c02555974e",
+              "bae0cba8f8e0d47a"
+            ],
+            "asm_sha256": "b8081d4a0d1a7e4d74cab4f11a2575bbd2fad2db13a8fac083827c083956071f",
+            "assembly_features": {
+              "mmac_opcodes": [
+                "v_mmac_f32_16x16x16_f16"
+              ],
+              "buffer_to_lds": false,
+              "set_priority_instructions": 0
+            },
+            "identical_binary_across_loop_counts": true,
+            "peak_flops_per_cu_cycle": 4096,
+            "valid_metric": true,
+            "steadiness": "three-or-more loop-count check",
+            "intermediate_residual_cycles": 153.0,
+            "intermediate_residual_fraction_of_long_time": 0.001977664029781294,
+            "measurement_context_id": "917fd8be76ddb52b",
+            "evidence_root_relative": "runs",
+            "baseline_qualification_reference": null,
+            "kernel_contract": "generic GEMM frontend evaluated with grid=1 and M=BM/N=BN",
+            "frontend_kind": "generic_masked",
+            "kernel_source_relative": "bolt_ops/boltops/gemm/triton/gemm_fp16.py",
+            "pipeline_unroll_factor": 1,
+            "executed_mmop_instructions_per_bk": 128.0,
+            "executed_to_logical_mmac_ratio": 1.0,
+            "executed_mmac_throughput_fraction": 0.25486901872938833,
+            "bpp_applied_ir_marker": false,
+            "requested_num_stages": 2,
+            "ir_loop_stage_annotations": [],
+            "ir_static_buffer_bpp_stages": [],
+            "max_ilp_requested": true,
+            "sched_model_v2_requested": false,
+            "schedule_hint_requested": null,
+            "requested_partition_regs": null,
+            "requested_partition_warps": [
+              4,
+              4
+            ],
+            "source_root_container": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021",
+            "evidence_root_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/runs",
+            "kernel_source_absolute": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/bolt_ops/boltops/gemm/triton/gemm_fp16.py"
+          },
+          "initial_relative_throughput": 1.0685505319148936,
+          "fresh_relative_throughput": 1.0499803998431987,
+          "minimum_relative_throughput": 1.0499803998431987,
+          "resource_cap_bytes": 131072
+        }
+      ]
+    }
+  ]
+}
