@@ -15,7 +15,7 @@ round195进一步测试256×128×128 TT的UF4、MLS基址重定位及参数降�
 
 round210最快稳态TT为32.155965%、TN为30.553863%，两者LDS均80KiB；不能将它们与64KiB配置比较。所有候选分别按实际128KiB/64KiB预算筛选，没有性能最佳晋级。完整配置、16/32/64循环中位数、残差、SGPR/VGPR/scratch与来源ID见各轮JSON。
 
-本次发现并修复MLS降低中按指针哈希表迭代顺序发射descriptor groups的问题。round207的TT pilot虽完整精度及工作量通过，CPU/native实际汇编不同，原门禁拒绝记录保留。round208以4次纯CPU AST编译定位第一处差异在ConvertTritonHCUToLLVM。隔离Triton worktree209仅将该descriptor-group返回及局部容器从DenseMap改为MapVector，保留几何插入顺序；坐标查询DenseMap不变。只替换native95的MLS目标文件，其余503个链接输入逐字节不变。补丁、依赖/构建证明和完整累计补丁均附带。
+本次发现并修复MLS降低中按指针哈希表迭代顺序发射descriptor groups的问题。round207的TT pilot虽完整精度及工作量通过，CPU/native实际汇编不同，原门禁拒绝记录保留。round208以4次纯CPU AST编译定位第一处差异在ConvertTritonHCUToLLVM。隔离Triton worktree209仅将该descriptor-group返回及局部容器从DenseMap改为MapVector，保留几何插入顺序；坐标查询DenseMap不变。只替换native95的MLS目标文件，其余503个链接输入逐字节不变。补丁与依赖/构建证明均附带。原 `triton-source.patch` 仅含 tracked diff，缺少 13 个新增源码文件；其原始字节保留用于追溯。现补充 `round209/triton-parent209-complete-source.patch`，已在独立 worktree 从相同基线应用，并逐字节验证 19 个改动源码文件。生成的 `_cy_utils` 二进制依赖另记录路径及 SHA256，不纳入源码补丁。该证明验证源码导出完整性；实测 native 仍是替换一个 MLS 对象、复用其余 503 个链接输入的增量构建，未声称完成全量重编译。
 
 新native SHA256：`e2ae375d24cd4c61ee9085f19f26967597f4e8355c1781461c0b74d92bba815a`。4个独立编译进程（交替Torch预导入）汇编一致，两个既有TT/TN控制的汇编与物理资源精确不变。round210的99个模型点进一步全部通过CPU/native汇编、资源、完整精度及工作量门禁。Triton基线46f0bed3561364b63ba4046d9c8c0cb70380ea30，Bolt基线840d816b671983527e5b1acc831c5e67618fe981，须匹配累计补丁，不能将其称为未修改的上游代码。
 
