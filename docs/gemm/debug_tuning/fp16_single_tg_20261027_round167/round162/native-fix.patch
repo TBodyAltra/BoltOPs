@@ -1,0 +1,134 @@
+--- a/third_party/hcu/lib/TritonHCUToLLVM/MlsOpToLLVM.cpp
++++ b/third_party/hcu/lib/TritonHCUToLLVM/MlsOpToLLVM.cpp
+@@ -907,6 +907,131 @@
+         blockLayout.getOrder(), ctaLayout);
+ 
+     auto inVals = unpackLLElements(loc, llValue, rewriter);
++    // A repeated CTA fragment is not a contiguous per-warp rectangle. Use
++    // the MFMA register/lane/warp layout directly for these full-tile stores.
++    // Keep the established non-repeated and boundary paths below unchanged.
++    auto mfmaShape = valueTy.getShape();
++    auto mfmaInstr = mfmaEnc.getInstrShape();
++    auto mfmaTiles = mfmaEnc.getTilesPerWarp();
++    auto mfmaWarpGrid = mfmaEnc.getWarpsPerCTA();
++    bool repeatedCta =
++        mfmaShape[0] > mfmaInstr[0] * mfmaTiles[0] * mfmaWarpGrid[0] ||
++        mfmaShape[1] > mfmaInstr[1] * mfmaTiles[1] * mfmaWarpGrid[1];
++    if (repeatedCta && boundaryCheck.empty() &&
++        msInsnAttr.instrShape == std::array<unsigned, 2>{32, 32}) {
++      auto sourceLayout = mfmaEnc.toLinearLayout(mfmaShape);
++      auto kRegister = StringAttr::get(ctx, "register");
++      auto kLane = StringAttr::get(ctx, "lane");
++      auto kWarp = StringAttr::get(ctx, "warp");
++      auto dimM = StringAttr::get(ctx, "dim0");
++      auto dimN = StringAttr::get(ctx, "dim1");
++      if (sourceLayout.getInDimSize(kRegister) != inVals.size() ||
++          sourceLayout.getInDimSize(kLane) != 64 ||
++          !sourceLayout.isInjective())
++        return rewriter.notifyMatchFailure(
++            opToErase, "repeated matrix-store requires a nonduplicated MFMA layout");
++      auto coordinate = [&](unsigned reg, unsigned lane, unsigned warp) {
++        SmallVector<std::pair<StringAttr, int32_t>> indices;
++        for (auto name : sourceLayout.getInDimNames()) {
++          int32_t index = name == kRegister ? reg : name == kLane ? lane :
++                          name == kWarp ? warp : 0;
++          indices.emplace_back(name, index);
++        }
++        std::array<int32_t, 2> xy{};
++        for (auto [name, index] : sourceLayout.apply(indices)) {
++          if (name == dimM) xy[0] = index;
++          if (name == dimN) xy[1] = index;
++        }
++        return xy;
++      };
++      using Tile = std::pair<int32_t, int32_t>;
++      llvm::MapVector<Tile, SmallVector<Value>> tileValues;
++      unsigned warpCount = sourceLayout.getInDimSize(kWarp);
++      std::vector<bool> seen(mfmaShape[0] * mfmaShape[1], false);
++      for (unsigned reg = 0; reg < inVals.size(); ++reg) {
++        auto xy = coordinate(reg, 0, 0);
++        int32_t localM = xy[0] % 32, localN = xy[1] % 32;
++        if (localM % 4 || localN % 16)
++          return rewriter.notifyMatchFailure(
++              opToErase, "repeated matrix-store has incompatible MFMA lane packing");
++        // Before Interleave2 packing, a wide store consumes M-half, N-half,
++        // then the four layout-3 register rows within an MMAC microtile.
++        unsigned slot = (localM / 16) * 8 + (localN / 16) * 4 +
++                        (localM % 16) / 4;
++        Tile tile{xy[0] - localM, xy[1] - localN};
++        auto &values = tileValues[tile];
++        if (values.empty()) values.resize(16);
++        if (values[slot])
++          return rewriter.notifyMatchFailure(
++              opToErase, "repeated matrix-store duplicated a register slot");
++        values[slot] = inVals[reg];
++        // Verify the complete 64-lane register/warp ownership before emitting
++        // any store. This also rejects overlaps and unsupported warp layouts.
++        for (unsigned warp = 0; warp < warpCount; ++warp) {
++          auto warpXY = coordinate(0, 0, warp);
++          if ((warpXY[0] % 32) || (warpXY[1] % 32))
++            return rewriter.notifyMatchFailure(
++                opToErase, "repeated matrix-store warp base is not tile aligned");
++          for (unsigned lane = 0; lane < 64; ++lane) {
++            auto actualXY = coordinate(reg, lane, warp);
++            int32_t expectedM = (tile.first ^ warpXY[0]) + localM + lane / 16;
++            int32_t expectedN = (tile.second ^ warpXY[1]) + localN + lane % 16;
++            if (actualXY[0] != expectedM || actualXY[1] != expectedN ||
++                expectedM < 0 || expectedN < 0 ||
++                expectedM >= mfmaShape[0] || expectedN >= mfmaShape[1])
++              return rewriter.notifyMatchFailure(
++                  opToErase, "repeated matrix-store lane coordinates disagree with MFMA");
++            size_t index = expectedM * mfmaShape[1] + expectedN;
++            if (seen[index])
++              return rewriter.notifyMatchFailure(
++                  opToErase, "repeated matrix-store overlaps an output element");
++            seen[index] = true;
++          }
++        }
++      }
++      if (llvm::any_of(seen, [](bool present) { return !present; }) ||
++          llvm::any_of(tileValues, [](const auto &entry) {
++            return llvm::any_of(entry.second, [](Value value) { return !value; });
++          }))
++        return rewriter.notifyMatchFailure(
++            opToErase, "repeated matrix-store does not cover the full MFMA output");
++      SmallVector<std::pair<StringAttr, Value>> warpIndices;
++      Value linearWarp = getLinearWarpId(loc, rewriter, targetInfo);
++      for (auto name : sourceLayout.getInDimNames())
++        warpIndices.emplace_back(name, name == kWarp ? linearWarp : b.i32_val(0));
++      Value warpM, warpN;
++      for (auto [name, index] : mlir::applyLinearLayout(
++               loc, rewriter, sourceLayout, warpIndices)) {
++        if (name == dimM) warpM = index;
++        if (name == dimN) warpN = index;
++      }
++      SmallVector<std::pair<Value, Value>> stores;
++      for (auto &entry : tileValues) {
++        SmallVector<Value> packedValues;
++        for (unsigned group = 0; group < 16; group += 8)
++          for (unsigned element = 0; element < 4; ++element)
++            for (unsigned part = 0; part < 2; ++part)
++              packedValues.push_back(entry.second[group + part * 4 + element]);
++        Value packed = packMatrixStoreVGPRArgs(
++            loc, rewriter, valueTy, msInsnAttr, packedValues);
++        Value row = b.add(llOffsets[0], b.xor_(warpM, b.i32_val(entry.first.first)));
++        Value col = b.add(llOffsets[1], b.xor_(warpN, b.i32_val(entry.first.second)));
++        Value offset = loadHelper.dot64(loc, rewriter, {row, col}, llStrides);
++        Value pointer = b.gep(ptr_ty(ctx, 1), i16_ty, llBasePtr, offset);
++        Value stride = b.trunc(i32_ty, llStrides[blockLayout.getOrder()[1]]);
++        Value descriptor = loadHelper.createRsrcDesc(
++            loc, rewriter, mlsInsn->getMlsVersion(), pointer, stride,
++            blockLayout.getAlt2Kind(), b.i32_val(0), b.i32_val(0));
++        stores.emplace_back(packed, descriptor);
++      }
++      for (auto [packed, descriptor] : stores)
++        generateMatrixStoreVGPROp(loc, rewriter, msInsnAttr.insn, packed,
++                                 descriptor, mlsInsn->isRowMajor(), 0, false,
++                                 8, false, false);
++      rewriter.eraseOp(opToErase);
++      return success();
++    }
++
+     auto elemByteWidth = blockLayout.getElemBitWidth() / 8;
+     // This is reassigned after adding the warp base and read later by the
+     // boundary paths, so it must own the replacement values.
