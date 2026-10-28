@@ -1,0 +1,490 @@
+{
+  "tile": [
+    256,
+    128,
+    128
+  ],
+  "shape": [
+    272,
+    144,
+    2176
+  ],
+  "scope": "full_gemm",
+  "layout": "TT",
+  "mode": "wasp44",
+  "stages": 2,
+  "regs": null,
+  "warps": 8,
+  "empty_arrive": false,
+  "cluster": 2,
+  "mmac_layout": 3,
+  "mls": true,
+  "matrix_store": false,
+  "repeats": 3,
+  "compiler_options": {
+    "amdgpu_enable_max_ilp_scheduling_strategy": true,
+    "hcu_use_gfx946_sched_model_v2": false
+  },
+  "wasp_single_buffer": false,
+  "wasp_global_k_fragments": 2,
+  "dot_k_split": 1,
+  "pipeline_unroll_factor": 1,
+  "load_b_first": false,
+  "mixed_operand": null,
+  "mixed_vector_full": false,
+  "partition_warps": [
+    2,
+    8
+  ],
+  "use_async_copy": false,
+  "use_block_pingpong": false,
+  "async_global_prefetch": null,
+  "async_local_prefetch": null,
+  "pipeline_loops": 17,
+  "optimize_epilogue": true,
+  "simplify_group1": false,
+  "rebase_mls_tile": 0,
+  "correctness_only": true,
+  "stream_k_fragments": 1,
+  "stream_fragment_prefetch": false,
+  "recipe": "large_global_k_fragment307",
+  "execution_phase": "validate",
+  "execution_parallelism_limit": 8,
+  "manifest_id": "ab1f63e738dd3989",
+  "measurement_context_id": "05f4727fc8ffc025",
+  "id": "1f121e3cfc7ba0f4",
+  "status": "PASS",
+  "phase": "validate",
+  "started_remote_epoch": 1793157604.5901365,
+  "clock_offset_reference_minus_remote_seconds": 345.0226957798004,
+  "started_reference_epoch": 1793157949.6129673,
+  "loaded_native": {
+    "path": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round209-deterministic-mls-cpu/native/libtriton.so",
+    "sha256": "e2ae375d24cd4c61ee9085f19f26967597f4e8355c1781461c0b74d92bba815a"
+  },
+  "kernel_contract": "Correctness-only full grid with off-origin and M/N edge tiles; same full-K contract; excluded from performance map",
+  "custom_partition_warps": [
+    2,
+    8
+  ],
+  "transport_contract": {
+    "logical_bk": 128,
+    "mixed_operand": 0,
+    "matrix_operand": "both",
+    "other_operand_fragments": 1,
+    "other_operand_k": 64,
+    "other_source_api": "tl.matrix_load",
+    "other_operand_full_vector": false,
+    "other_operand_load_k": 64,
+    "wasp_global_k_fragments": 2,
+    "physical_global_block_k": 64,
+    "physical_dot_k": 64,
+    "logical_loop_count": 17,
+    "physical_loop_count": 34
+  },
+  "config": {
+    "GROUP_SIZE_M": 1,
+    "WARP_SPECIALIZE": true,
+    "wasp_wdra": false,
+    "amdgpu_enable_max_ilp_scheduling_strategy": true,
+    "hcu_use_gfx946_sched_model_v2": false,
+    "wasp_partition_warps": [
+      2,
+      8
+    ],
+    "BLOCK_SIZE_M": 256,
+    "BLOCK_SIZE_N": 128,
+    "BLOCK_SIZE_K": 128,
+    "empty_arrive_after_mmac": false,
+    "enable_v_mmac_cluster": 2,
+    "num_stages": 2,
+    "mmac_layout_force": 3,
+    "optimize_epilogue": true,
+    "HAS_BIAS": false,
+    "USE_MATRIX_STORE": false,
+    "use_async_copy": false,
+    "use_block_pingpong": false,
+    "num_warps": 8,
+    "SIMPLIFY_GROUP1": false,
+    "REBASE_MLS_TILE": 0,
+    "LOOP_UNROLL_FACTOR": 1,
+    "MMA_K_SPLIT": 1,
+    "STREAM_K_FRAGMENTS": 1,
+    "STREAM_FRAGMENT_PREFETCH": false,
+    "WASP_GLOBAL_K_FRAGMENTS": 2
+  },
+  "grid": [
+    4
+  ],
+  "dtype": "fp16/fp16/fp32-acc/fp16-out",
+  "warmup_launches": 1,
+  "measured_launches": 3,
+  "input_seed": 29,
+  "input_scale": 1.0,
+  "atol": 0.001,
+  "rtol": 0.001,
+  "device_virtual_pointers": {
+    "a": 139758923677696,
+    "b": 139758883831808,
+    "out": 139758884458496
+  },
+  "device_virtual_pointer_mod_bytes": {
+    "64": {
+      "a": 0,
+      "b": 0,
+      "out": 0
+    },
+    "256": {
+      "a": 0,
+      "b": 0,
+      "out": 0
+    },
+    "4096": {
+      "a": 0,
+      "b": 0,
+      "out": 0
+    },
+    "65536": {
+      "a": 0,
+      "b": 0,
+      "out": 36864
+    },
+    "1048576": {
+      "a": 0,
+      "b": 0,
+      "out": 626688
+    },
+    "2097152": {
+      "a": 0,
+      "b": 0,
+      "out": 626688
+    }
+  },
+  "strides": {
+    "a": [
+      2176,
+      1
+    ],
+    "b": [
+      144,
+      1
+    ],
+    "out": [
+      144,
+      1
+    ]
+  },
+  "target": "GPUTarget(backend='hip', arch='gfx946', warp_size=64)",
+  "device_properties": {
+    "max_shared_mem": 262144,
+    "max_num_regs": 65536,
+    "multiprocessor_count": 48,
+    "sm_clock_rate": 1801000,
+    "mem_clock_rate": 1000000,
+    "mem_bus_width": 4096,
+    "arch": "gfx946:sramecc-:xnack-",
+    "warpSize": 64,
+    "max_threads_per_sm": 2560
+  },
+  "wall_seconds": 53.29188315290958,
+  "updated_remote_epoch": 1793157657.8820224,
+  "compile_memory_guard": {
+    "additional_virtual_bytes": 8589934592,
+    "baseline_virtual_bytes": 15890677760,
+    "soft_limit_during_compile": 24480612352,
+    "restored_before_kernel_loading": true
+  },
+  "compile_serialization": {
+    "lock": "/xukang/code/pmd-triton-sessions/single-tg-continuation-20261023/compiler.lock",
+    "acquired_remote_epoch": 1793157614.7152205,
+    "acquired_monotonic_ns": 1351178135445479,
+    "pid": 1410825,
+    "completed_remote_epoch": 1793157615.5470195,
+    "completed_monotonic_ns": 1351178967236438
+  },
+  "compile_seconds": 4.0065379531588405,
+  "metadata": {
+    "AMDGCN_USE_BUFFER_OPS": "true",
+    "allow_flush_denorm": false,
+    "allow_flush_denorm_explicitly_set": false,
+    "allowed_dot_input_precisions": [
+      "ieee",
+      "tf32"
+    ],
+    "amdgpu_enable_max_ilp_scheduling_strategy": true,
+    "arch": "gfx946",
+    "assume_no_nans": false,
+    "backend_name": "hip",
+    "block_pingpong_async_global_prefetch": null,
+    "block_pingpong_async_local_prefetch": 1,
+    "buffer_cache_swizzle": false,
+    "cluster_dims": [
+      1,
+      1,
+      1
+    ],
+    "debug": false,
+    "default_dot_input_precision": "ieee",
+    "deprecated_fp8_dot_operand_dtypes": [],
+    "empty_arrive_after_mmac": false,
+    "enable_fp_fusion": true,
+    "enable_v_mmac_cluster": 2,
+    "extern_libs": [
+      [
+        "ocml",
+        "/opt/rocm/amdgcn/bitcode/ocml.bc"
+      ],
+      [
+        "ockl",
+        "/opt/rocm/amdgcn/bitcode/ockl.bc"
+      ],
+      [
+        "hip",
+        "/opt/rocm/amdgcn/bitcode/hip.bc"
+      ],
+      [
+        "opencl",
+        "/opt/rocm/amdgcn/bitcode/opencl.bc"
+      ]
+    ],
+    "hash": "19aa876989855983025bab3a4df1e9ee2d095b8fcd650d6e1114f570ff364076",
+    "hcu_fragment_mls_layout": false,
+    "hcu_sgpr_liveness_strategy": 0,
+    "hcu_use_gfx946_sched_model_v2": false,
+    "hcu_wasp_alias_ab_slots": false,
+    "hcu_wasp_first_operand_early": false,
+    "hcu_wasp_merge_ab": false,
+    "hcu_wasp_mmac_turn": 0,
+    "hcu_wasp_partial_k_local_read": false,
+    "hcu_wasp_prefetch_full_k": false,
+    "hcu_wasp_prefetch_one_operand": 0,
+    "hcu_wasp_single_buffer": false,
+    "hcu_wasp_split_b_global_probe": false,
+    "hcu_wasp_split_b_slot_turn": 0,
+    "hcu_wasp_split_b_slot_turn_wait_mask": 0,
+    "hcu_wasp_split_b_slots": false,
+    "instrumentation_mode": "",
+    "kpack": 1,
+    "launch_cooperative_grid": false,
+    "matrix_instr_nonkdim": 0,
+    "max_memory_cluster_dwords": null,
+    "max_num_imprecise_acc_default": 0,
+    "misched_regpressure": true,
+    "mls_global_prefetch": null,
+    "mls_global_prefetch_resolved": 0,
+    "mmac_layout_force": 3,
+    "name": "_gemm_fp16_mls_kernel",
+    "num_ctas": 1,
+    "num_stages": 2,
+    "num_warps": 10,
+    "optimize_epilogue": true,
+    "profile_scratch_align": 1,
+    "profile_scratch_size": 0,
+    "sanitize_overflow": true,
+    "sched_latency": "none",
+    "schedule_hint": "none",
+    "shared": 98304,
+    "supported_fp8_dtypes": [
+      "fp8e4nv",
+      "fp8e5"
+    ],
+    "target": "GPUTarget(backend='hip', arch='gfx946', warp_size=64)",
+    "tensordesc_meta": [],
+    "triton_version": "3.6.0",
+    "use_async_copy": false,
+    "use_block_pingpong": false,
+    "use_nvshmem": false,
+    "use_rocshmem": false,
+    "uses_bank_conflict_aware_lds_placement": false,
+    "utc_warmup": false,
+    "warp_size": 64,
+    "wasp_enabled": true,
+    "wasp_partition_regs": null,
+    "wasp_partition_warps": [
+      2,
+      8
+    ],
+    "wasp_wdra": false,
+    "waves_per_eu": 1
+  },
+  "lds_capacity_bytes": 131072,
+  "lds_capacity_source": "PMD config.ini lds_size=131072, validated by probes/capacity-128k",
+  "arch_info_lds_capacity_bytes": 65536,
+  "within_arch_info_capacity": false,
+  "effective_partition_regs": null,
+  "actual_partition_regs": null,
+  "effective_num_warps": 10,
+  "asm_sha256": "2ae712170462166f1524fc1cdd8d32961e2b5b31d4cdd8775d668cf763b090e6",
+  "benchmark_kind": "correctness_only_off_origin_and_edge_tiles",
+  "assembly_features": {
+    "mmac_opcodes": [
+      "v_mmac_f32_16x16x16_f16"
+    ],
+    "buffer_to_lds": false,
+    "set_priority_instructions": 0
+  },
+  "n_regs": 129,
+  "n_spills": 0,
+  "launches": [
+    {
+      "index": 0,
+      "warmup": true,
+      "host_launch_seconds_excluding_jit": 10.767590062925592
+    },
+    {
+      "index": 1,
+      "warmup": false,
+      "host_launch_seconds_excluding_jit": 10.465974506922066
+    },
+    {
+      "index": 2,
+      "warmup": false,
+      "host_launch_seconds_excluding_jit": 10.491092770826072
+    },
+    {
+      "index": 3,
+      "warmup": false,
+      "host_launch_seconds_excluding_jit": 10.407607426168397
+    }
+  ],
+  "accuracy": {
+    "elements": 39168,
+    "mismatches": 0,
+    "nonfinite": 0,
+    "max_abs": 0.0625,
+    "max_rel": 0.02277580089867115
+  },
+  "pmd_topology": {
+    "num_chip": "1",
+    "num_cu": "48",
+    "die_count": "unknown",
+    "die_evidence": "num_chip/num_cu are PMD model fields; no physical die inference",
+    "config": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261028-round307-large-fragment-identity-native/runs/1f121e3cfc7ba0f4/m5out/config.ini",
+    "config_sha256": "7500d46b959a46bf3ef6eede27d82f47e4e7eb617f3d9eca6015646c4cb54393",
+    "gpu_clock_ticks": "455",
+    "sys_clock_ticks": "1000",
+    "umc_clock_ticks": "2276",
+    "xcd_topology": "unknown; stats output directory index is not a physical die/XCD count"
+  },
+  "dispatches": [
+    {
+      "packet": 0,
+      "xcd": "0",
+      "cycles": 72191.0,
+      "frequency_ghz": 2.197802,
+      "host_seconds": 18.0,
+      "stats": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261028-round307-large-fragment-identity-native/runs/1f121e3cfc7ba0f4/m5out/0/0/stats.txt",
+      "active_mmac_cus": [
+        0,
+        12,
+        24,
+        36
+      ],
+      "mmop_runtime_counter_sum": 138909.5,
+      "instructions": {
+        "VALU": 11360.0,
+        "MMOP": 69632.0,
+        "LDS": 17408.0,
+        "VMEM": 5312.0,
+        "SCA": 58912.0
+      },
+      "wait_lgkm": 31841.834,
+      "l2_requests": 111579.0,
+      "vgpr_allocation_blocks": 0.0,
+      "lds_allocation_blocks": 0.0,
+      "max_distinct_wave_slots_per_cu": 10,
+      "max_wave_slot_reuse": 1.0
+    },
+    {
+      "packet": 1,
+      "xcd": "0",
+      "cycles": 66725.0,
+      "frequency_ghz": 2.197802,
+      "host_seconds": 10.39,
+      "stats": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261028-round307-large-fragment-identity-native/runs/1f121e3cfc7ba0f4/m5out/0/1/stats.txt",
+      "active_mmac_cus": [
+        0,
+        12,
+        24,
+        36
+      ],
+      "mmop_runtime_counter_sum": 138595.5,
+      "instructions": {
+        "VALU": 11360.0,
+        "MMOP": 69632.0,
+        "LDS": 17408.0,
+        "VMEM": 5312.0,
+        "SCA": 58912.0
+      },
+      "wait_lgkm": 28281.834,
+      "l2_requests": 111252.0,
+      "vgpr_allocation_blocks": 0.0,
+      "lds_allocation_blocks": 0.0,
+      "max_distinct_wave_slots_per_cu": 10,
+      "max_wave_slot_reuse": 1.0
+    },
+    {
+      "packet": 2,
+      "xcd": "0",
+      "cycles": 66670.0,
+      "frequency_ghz": 2.197802,
+      "host_seconds": 10.42,
+      "stats": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261028-round307-large-fragment-identity-native/runs/1f121e3cfc7ba0f4/m5out/0/2/stats.txt",
+      "active_mmac_cus": [
+        0,
+        12,
+        24,
+        36
+      ],
+      "mmop_runtime_counter_sum": 138506.5,
+      "instructions": {
+        "VALU": 11360.0,
+        "MMOP": 69632.0,
+        "LDS": 17408.0,
+        "VMEM": 5312.0,
+        "SCA": 58912.0
+      },
+      "wait_lgkm": 28686.501000000004,
+      "l2_requests": 111252.0,
+      "vgpr_allocation_blocks": 0.0,
+      "lds_allocation_blocks": 0.0,
+      "max_distinct_wave_slots_per_cu": 10,
+      "max_wave_slot_reuse": 1.0
+    },
+    {
+      "packet": 3,
+      "xcd": "0",
+      "cycles": 65753.0,
+      "frequency_ghz": 2.197802,
+      "host_seconds": 10.33,
+      "stats": "/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261028-round307-large-fragment-identity-native/runs/1f121e3cfc7ba0f4/m5out/0/3/stats.txt",
+      "active_mmac_cus": [
+        0,
+        12,
+        24,
+        36
+      ],
+      "mmop_runtime_counter_sum": 138549.5,
+      "instructions": {
+        "VALU": 11360.0,
+        "MMOP": 69632.0,
+        "LDS": 17408.0,
+        "VMEM": 5312.0,
+        "SCA": 58912.0
+      },
+      "wait_lgkm": 26700.666,
+      "l2_requests": 111252.0,
+      "vgpr_allocation_blocks": 0.0,
+      "lds_allocation_blocks": 0.0,
+      "max_distinct_wave_slots_per_cu": 10,
+      "max_wave_slot_reuse": 1.0
+    }
+  ],
+  "stats_parser_sha256": "e4c5d6245b219b6e7df1129a3ffbf16d13fa0e023b043b432a0d4fd6d8022daa",
+  "median_cycles": 66670.0,
+  "gc_frequency_ghz": 2.197802,
+  "min_cycles": 65753.0,
+  "max_cycles": 66725.0,
+  "range_over_mean": 0.014642376523992206,
+  "not_for_performance_map": true
+}
