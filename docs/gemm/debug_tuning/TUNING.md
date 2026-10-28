@@ -2,6 +2,13 @@
 
 截至 2026-10-23；支持范围见 [README](../README.md)，形状与 scale 见 [少伯 BU 支持需求](../SHAOBO_BU_REQUIREMENTS.md)。生产 kernel、默认 config 与 `builtin_gemm_configs.py` 不随实验修改。PMD 只校准与打磨少量流水候选，真实卡再做 autotune。
 
+## FP8 FP32 block-scale 单 TG 更新（2026-10-28）
+
+保留 [416739 最佳实验与复现代码](fp8_blockscale_single_tg/README.md)：128×256×128 tile，
+M128/N256/K6144，A/B scale 均为 FP32，1 die/48 CU/455 ps。六次均值
+79054.333 cycles，配对对照下降 2.776%；后续 producer 重分工未取得稳定收益。
+这是冻结汇编调度实验，未修改生产 kernel 或默认配置，不能外推完整需求尺寸性能。
+
 ## Die 模式与性能记录
 
 少伯支持 1/2/4 die，每 die 48 CU，对应总计 48/96/192 CU。当前 PMD 只能测试 1 die 和 4 die；后续优化重点为 1 die 和 2 die，现阶段优先在 1 die（48 CU）上调优。2 die 暂记待实测，不从 4 die 结果推断已验证。Die 数与 XCD 数分别记录，不能直接等同；每波 CTA 数仍需按实际配置测量。

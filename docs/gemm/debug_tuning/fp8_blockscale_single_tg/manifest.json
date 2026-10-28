@@ -1,0 +1,124 @@
+{
+  "scope": "Frozen gfx946 single-CTA assembly research; not a general compiler pass or production kernel",
+  "selected_perf_id": 416739,
+  "shape": [
+    128,
+    256,
+    6144
+  ],
+  "tile": [
+    128,
+    256,
+    128
+  ],
+  "grid": [
+    1,
+    1,
+    1
+  ],
+  "environment": {
+    "captured_before_worker_epoch": 1793169757.7150278,
+    "environment": {
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_HIP_CLANG_PATH": "/opt/rocm/llvm/bin/clang-18",
+      "GPU_ARGS": "[]",
+      "OPENBLAS_NUM_THREADS": "1",
+      "TRITON_HIP_LLD_PATH": "/opt/rocm/llvm/bin/ld.lld",
+      "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/cache",
+      "GPU_DFLAGS": "['StatLog']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp8-support-20261017/deps/pmd",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/fp8-G171-wdra88-ab-20261021/python:/xukang/code/pmd-triton-sessions/gemm-optimization-20261020/bolt_ops",
+      "GPU_CHIP": "sb",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "TRITON_BUILD_DIR": "/xukang/code/pmd-triton-sessions/fp8-support-20261017/build",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp8-support-20261017/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HOME": "/xukang/code/pmd-triton-sessions/fp8-support-20261017/cache/triton-home",
+      "OMP_NUM_THREADS": "1",
+      "PATH": "/xukang/code/pmd-triton-sessions/fp8-support-20261017/deps/pmd:/xukang/code/pmd-triton-sessions/fp8-support-20261017/venv/bin:/opt/hyhal/bin:/opt/rocm/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "MKL_NUM_THREADS": "1"
+    },
+    "die_count": 1,
+    "cu_count": 48,
+    "clock_period_ps": 455,
+    "gc_frequency_ghz": 2.197802197802198,
+    "triton_commit": "9fab6e70ed511f9de6a52cd4dd95eb60a3b74916",
+    "boltops_commit": "b23492fbf1e34d1cdcea2da4f180c96005a8d9ce",
+    "private_parser_library_sha256": "1e7c42e239cfc1189c35758efd48e0d56e9b854ca491ae98eceea1d044b4378d",
+    "canonical_library_sha256": "ae44ad08c081a423f708cbb9e1601f45ab4e73956f952b576a6f3c84b474ede7"
+  },
+  "effective_options": {
+    "BLOCK_SIZE_M": 128,
+    "BLOCK_SIZE_N": 256,
+    "BLOCK_SIZE_K": 128,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 4,
+    "num_stages": 2,
+    "waves_per_eu": 2,
+    "matrix_instr_nonkdim": 16,
+    "cache_modifier": "",
+    "NUM_KSPLIT": 1,
+    "kpack": 2,
+    "SPLITK_BLOCK_SIZE": 6144,
+    "GROUP_K": 128,
+    "GROUP_N": 128,
+    "A_SCALE_PER_ROW": false,
+    "WARP_SPECIALIZE": true,
+    "wasp_partition_warps": [
+      4,
+      4,
+      4,
+      4
+    ],
+    "wasp_partition_regs": [
+      8,
+      8,
+      240,
+      240
+    ],
+    "wasp_wdra": true,
+    "optimize_epilogue": true,
+    "mmac_layout_force": 3,
+    "use_async_copy": true
+  },
+  "input_asm_sha256": "b16577c4d8a6681212114b2a4fded5e9e99b5168e22394736e07e5bbd3d9b2a8",
+  "output_asm_sha256": "dc4499d32bc3b1a91dd4fbf08402f2f40f04d7411be285b89feb89b6f7fae7e2",
+  "hsaco_sha256": "189b3aa8c7cca2f821abf2de8ecf4854de6422f5d888ec4841d2cf1d2e98adc7",
+  "source_ir_sha256": "98f36d6a9773292f4b92aaffe37e45086e70adce774e0e533486c72521287abb",
+  "source_kernel_sha256": "019d888f0b9fc87e68f807d47a361af82c160be745a279f627a2780cbeb10a92",
+  "transform_sources_sha256": {
+    "split_A_producers.py": "888a07c542a4bc0795e6db61edd2304883b6ece6562897b2abf47e9ba9cbb2dc",
+    "early_AB_empty.py": "9e1808ae979ee32b4dfe699b5d8ee1b08e93561623742bfea8d8f583d3b6054e",
+    "batch_scale_independent_ready.py": "6015ad6b098619ceeeaf12b498a1af6e09a28d6ee97bb97d3e904ac5a608c1f6",
+    "batch_scale_buffer_lds.py": "e21dc1ffdb948e4469db1d8c40770af0940876eade576ec92b2d823a6d1c5e52",
+    "preload_scale_buffer_lds.py": "dc11dcfcae5a910279c4a484e549e74216fdb3aae51faff68a892be0c83935fe",
+    "cluster_matrix_reads.py": "cec009648b39efadaa873dd10c3344a7a45228f04b56134fbce4104103d1477d",
+    "simplify_consumer.py": "499ad91957c41d46d335868be567e1bec634cb4d4408c4edd97c04be057a7cf1",
+    "hoist_producer.py": "baa4c481e36fc425bffa23738861886610f94cffd02a33466a4e5d2315ffb22a",
+    "hoist_wave_offset.py": "58adbe41f41bfba312837db1b0c47ba646d115e8cc5ff2ccd290d13d7ede1db7",
+    "remove_scale_movs.py": "1f7424ca5ce6df4ced155cd7534777f53aa039c592f3e70dcb647c5fca5d26a1",
+    "refine_joint_prefetch.py": "e2cfde9286f8bdc63d0aaa7445cbf1d8be5a3bd8feda11ce9b08699ce0e8a8b0"
+  },
+  "lds_bytes": 123264,
+  "spill": 0,
+  "dynamic_vgpr_sizes": [
+    8,
+    8,
+    240,
+    240
+  ],
+  "metrics_mean_cycles": 79054.33333333334,
+  "perf": [
+    {
+      "container": "/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/PF-split-A-producers/m5out/0/1/416739_python3.10.perf",
+      "host": "/home/hygon/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/PF-split-A-producers/m5out/0/1/416739_python3.10.perf",
+      "bytes": 77712,
+      "sha256": "e527e7e6abdc07ee1a61f31cbc8485fcd953968f760fa4cda0814c606cef9634",
+      "embedded_ELF_offset": 80,
+      "embedded_ELF_matches_executed": true
+    }
+  ],
+  "artifacts_container": "/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023",
+  "artifacts_host": "/home/hygon/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023"
+}
