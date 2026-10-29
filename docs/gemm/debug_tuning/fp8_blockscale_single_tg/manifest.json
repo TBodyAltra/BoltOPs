@@ -1,6 +1,6 @@
 {
   "scope": "Frozen gfx946 single-CTA assembly research; not a general compiler pass or production kernel",
-  "selected_perf_id": 416739,
+  "selected_perf_id": 432520,
   "shape": [
     128,
     256,
@@ -17,11 +17,11 @@
     1
   ],
   "environment": {
-    "captured_before_worker_epoch": 1793169757.7150278,
+    "captured_before_worker_epoch": 1793238184.7537024,
     "environment": {
       "TRITON_OFFLINE_BUILD": "1",
       "TRITON_HIP_CLANG_PATH": "/opt/rocm/llvm/bin/clang-18",
-      "GPU_ARGS": "[]",
+      "GPU_ARGS": "['--abs-max-tick=2000000000']",
       "OPENBLAS_NUM_THREADS": "1",
       "TRITON_HIP_LLD_PATH": "/opt/rocm/llvm/bin/ld.lld",
       "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/cache",
@@ -83,22 +83,28 @@
     "use_async_copy": true
   },
   "input_asm_sha256": "b16577c4d8a6681212114b2a4fded5e9e99b5168e22394736e07e5bbd3d9b2a8",
-  "output_asm_sha256": "dc4499d32bc3b1a91dd4fbf08402f2f40f04d7411be285b89feb89b6f7fae7e2",
-  "hsaco_sha256": "189b3aa8c7cca2f821abf2de8ecf4854de6422f5d888ec4841d2cf1d2e98adc7",
+  "output_asm_sha256": "c8090bc1cd35dff054472b8b76aebfa490c8afb173f016077735ca51cd5f123d",
+  "hsaco_sha256": "95af800cc902612c12f31cc2eea8fb8dc5711f81d66e6a4a2e815fed17762412",
   "source_ir_sha256": "98f36d6a9773292f4b92aaffe37e45086e70adce774e0e533486c72521287abb",
   "source_kernel_sha256": "019d888f0b9fc87e68f807d47a361af82c160be745a279f627a2780cbeb10a92",
   "transform_sources_sha256": {
-    "split_A_producers.py": "888a07c542a4bc0795e6db61edd2304883b6ece6562897b2abf47e9ba9cbb2dc",
-    "early_AB_empty.py": "9e1808ae979ee32b4dfe699b5d8ee1b08e93561623742bfea8d8f583d3b6054e",
-    "batch_scale_independent_ready.py": "6015ad6b098619ceeeaf12b498a1af6e09a28d6ee97bb97d3e904ac5a608c1f6",
+    "b8_mls_store.py": "0cf7b5fe6ba9467066c0c62b2026ce66917e66012d33c4996650cc2098e57582",
+    "b8_store_64x16.py": "5ebcc0703f8d7910dd56addceac9b39e77da0b15a3449ac744fb4ddf3f5a2fb3",
     "batch_scale_buffer_lds.py": "e21dc1ffdb948e4469db1d8c40770af0940876eade576ec92b2d823a6d1c5e52",
-    "preload_scale_buffer_lds.py": "dc11dcfcae5a910279c4a484e549e74216fdb3aae51faff68a892be0c83935fe",
+    "batch_scale_independent_ready.py": "6015ad6b098619ceeeaf12b498a1af6e09a28d6ee97bb97d3e904ac5a608c1f6",
     "cluster_matrix_reads.py": "cec009648b39efadaa873dd10c3344a7a45228f04b56134fbce4104103d1477d",
-    "simplify_consumer.py": "499ad91957c41d46d335868be567e1bec634cb4d4408c4edd97c04be057a7cf1",
+    "early_AB_empty.py": "9e1808ae979ee32b4dfe699b5d8ee1b08e93561623742bfea8d8f583d3b6054e",
+    "ebarrier_mmac_turn.py": "613782a5e286bc319cd1fc5ff02df3c30c383bfdcda242c55d2ddd0d58a3e2fa",
     "hoist_producer.py": "baa4c481e36fc425bffa23738861886610f94cffd02a33466a4e5d2315ffb22a",
     "hoist_wave_offset.py": "58adbe41f41bfba312837db1b0c47ba646d115e8cc5ff2ccd290d13d7ede1db7",
+    "interleave_B_mls_store.py": "8f0b309fae2595aad5df5377a5dd94adb018baf4aeef0aaf079aec4d837dce2b",
+    "native_mls_store_v4.py": "8d2d52d67f628d5bf83f3a0d4492683ff2a81acd063cd1f7eb157c160a8f51f3",
+    "preload_scale_buffer_lds.py": "dc11dcfcae5a910279c4a484e549e74216fdb3aae51faff68a892be0c83935fe",
+    "refine_joint_prefetch.py": "e2cfde9286f8bdc63d0aaa7445cbf1d8be5a3bd8feda11ce9b08699ce0e8a8b0",
     "remove_scale_movs.py": "1f7424ca5ce6df4ced155cd7534777f53aa039c592f3e70dcb647c5fca5d26a1",
-    "refine_joint_prefetch.py": "e2cfde9286f8bdc63d0aaa7445cbf1d8be5a3bd8feda11ce9b08699ce0e8a8b0"
+    "simplify_consumer.py": "499ad91957c41d46d335868be567e1bec634cb4d4408c4edd97c04be057a7cf1",
+    "split_A_producers.py": "888a07c542a4bc0795e6db61edd2304883b6ece6562897b2abf47e9ba9cbb2dc",
+    "consumer_priority.py": "be7243c0e4ce3ec2f4c960a4f7e9c57cc0ee3ab65538e692cd30cccf4ab87946"
   },
   "lds_bytes": 123264,
   "spill": 0,
@@ -108,17 +114,87 @@
     240,
     240
   ],
-  "metrics_mean_cycles": 79054.33333333334,
+  "metrics_mean_cycles": 77549.0,
   "perf": [
     {
-      "container": "/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/PF-split-A-producers/m5out/0/1/416739_python3.10.perf",
-      "host": "/home/hygon/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/PF-split-A-producers/m5out/0/1/416739_python3.10.perf",
-      "bytes": 77712,
-      "sha256": "e527e7e6abdc07ee1a61f31cbc8485fcd953968f760fa4cda0814c606cef9634",
+      "container": "/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/PF-priority-winner/m5out/0/1/432520_python3.10.perf",
+      "host": "/home/hygon/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/PF-priority-winner/m5out/0/1/432520_python3.10.perf",
+      "bytes": 70512,
+      "sha256": "c1462e7d3e1a528502e62cd7c388b2d4a414a6fdf3ff189d609023e45b03dbb3",
       "embedded_ELF_offset": 80,
-      "embedded_ELF_matches_executed": true
+      "embedded_ELF_matches_executed": true,
+      "profile_HSACO_sha256": "e033513a2fac11e410628b9319e4697e55f945b663bfd879a8c72a688d521872",
+      "paired_HSACO_sha256": "95af800cc902612c12f31cc2eea8fb8dc5711f81d66e6a4a2e815fed17762412",
+      "executable_text_sha256": "aaecc4ef884dd097054f92a2ab742a31a802acf0eb941c4fcd4d6913093def1a",
+      "all_non_debug_sections_identical_to_timed": true,
+      "differing_debug_sections": [
+        ".debug_line",
+        ".debug_line_str"
+      ],
+      "reason": "profile and paired processes have different CWD in DWARF line metadata; ASM and all non-debug sections identical",
+      "debug_line_string_difference": {
+        "paired_only": [
+          "/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/P278-priority-paired-seed21"
+        ],
+        "profile_only": [
+          "/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/PF-priority-winner"
+        ]
+      }
     }
   ],
   "artifacts_container": "/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023",
-  "artifacts_host": "/home/hygon/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023"
+  "artifacts_host": "/home/hygon/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023",
+  "selection_date": "2026-10-29",
+  "profile_hsaco_sha256": "e033513a2fac11e410628b9319e4697e55f945b663bfd879a8c72a688d521872",
+  "matched_control_cycles": 78281.75,
+  "cycle_samples": [
+    77350.0,
+    77612.0,
+    77578.0,
+    77656.0
+  ],
+  "numerical_validation": {
+    "max_abs": 0.0,
+    "mismatch": 0,
+    "production_mismatch": 0
+  },
+  "artifact_repository_url": "http://42.228.13.241:10068/xukang/triton_gemm_asm/-/tree/main/moe_grouped_gemm/fp8e4m3xfp8e4m3_to_bf16/20261029-xukang-g171-dense-single-tg-priority",
+  "experiment_kind": "dense single CTA/E=1, archived under user-specified moe_grouped_gemm; does not validate grouped/MoE",
+  "measurement_case": "P278-priority-paired-seed21",
+  "profile_case": "PF-priority-winner",
+  "profile_environment": {
+    "captured_before_worker_epoch": 1793238454.329033,
+    "environment": {
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_HIP_CLANG_PATH": "/opt/rocm/llvm/bin/clang-18",
+      "GPU_ARGS": "['--abs-max-tick=2000000000']",
+      "OPENBLAS_NUM_THREADS": "1",
+      "TRITON_HIP_LLD_PATH": "/opt/rocm/llvm/bin/ld.lld",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
+      "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/fp8-G171-fp32-blockscale-20261023/cache",
+      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp8-support-20261017/deps/pmd",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/fp8-G171-wdra88-ab-20261021/python:/xukang/code/pmd-triton-sessions/gemm-optimization-20261020/bolt_ops",
+      "GPU_CHIP": "sb",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "TRITON_BUILD_DIR": "/xukang/code/pmd-triton-sessions/fp8-support-20261017/build",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp8-support-20261017/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HOME": "/xukang/code/pmd-triton-sessions/fp8-support-20261017/cache/triton-home",
+      "OMP_NUM_THREADS": "1",
+      "PATH": "/xukang/code/pmd-triton-sessions/fp8-support-20261017/deps/pmd:/xukang/code/pmd-triton-sessions/fp8-support-20261017/venv/bin:/opt/hyhal/bin:/opt/rocm/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "MKL_NUM_THREADS": "1"
+    },
+    "die_count": 1,
+    "cu_count": 48,
+    "clock_period_ps": 455,
+    "gc_frequency_ghz": 2.197802197802198,
+    "triton_commit": "9fab6e70ed511f9de6a52cd4dd95eb60a3b74916",
+    "boltops_commit": "b23492fbf1e34d1cdcea2da4f180c96005a8d9ce",
+    "private_parser_library_sha256": "1e7c42e239cfc1189c35758efd48e0d56e9b854ca491ae98eceea1d044b4378d",
+    "canonical_library_sha256": "ae44ad08c081a423f708cbb9e1601f45ab4e73956f952b576a6f3c84b474ede7"
+  },
+  "artifact_repository_commit": "fc150c69a8442b09fd71e19b470077bb276f25fe",
+  "artifact_repository_permalink": "http://42.228.13.241:10068/xukang/triton_gemm_asm/-/tree/fc150c69a8442b09fd71e19b470077bb276f25fe/moe_grouped_gemm/fp8e4m3xfp8e4m3_to_bf16/20261029-xukang-g171-dense-single-tg-priority"
 }
