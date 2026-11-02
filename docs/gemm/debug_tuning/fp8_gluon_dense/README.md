@@ -37,47 +37,63 @@ c = gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(
   长K路径逐组处理，资源不随总K线性增长。长K/尾块路径尚未做性能调优。
 - API不改变既有算子的dispatch/default config；不支持其他scale粒度、FP4、grouped或batch。
 
+## 布局与标准操作
+
+MLS B 使用 `alt=1`。寄存器排列由 `MmacInterleave2Layout` 描述：
+它包装已有的 MMAC 指令布局 F，或包装 B 的 `DotOperandLayout(1,F,8)`。
+A 保留普通 DotOperandLayout；B/C 的 N 交错映射由类型表示。
+
+```python
+from triton.experimental.gluon.language.amd.hcu import MmacInterleave2Layout
+
+# F 是 LTS AMDMFMALayout，指令 16x16x32、FP32 累加、每 warp 配对 N tiles。
+b_layout = MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8))
+c_layout = MmacInterleave2Layout(F)
+b = async_copy.load_shared_relaxed(smem_b, b_layout)
+acc = gl.full((64, 256), 0, gl.float32, c_layout)
+dot = gl.amd.cdna4.mfma(a, b, acc)
+```
+
+上述调用产生现有 `ttg.local_load` 和 `tt.dot`，不再提供独立的 interleave2 load/dot
+函数或 IR 操作。布局类型保留基础 MMAC 几何，因此 matrix_store 从 value 类型推导，
+不需要额外的 `mmac_layout` 提示参数。普通 global load/store、scale 运算也使用同一数据映射。
+现有 AMDMfma 属性没有增加 nInterleave 字段；普通布局及既有 TL 路径保留原有语义。
+
 ## 验证与性能口径
 
 测试：`test/gemm/gluon/test_gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16.py`。
 覆盖最小尺寸、M/N/K尾块、M/N分别及二维多CTA、不同K、K8192、空维度。
-参考值由CPU生成，核心MMAC全部在PMD执行；二进制精确输入/scale作逐元素严格比较。
+参考值由CPU生成，核心MMAC在PMD执行，未修改生成汇编。
 
-环境为PMD CoreArch HEAD_1703、gfx946/sb、单die48CU、455ps/cycle。
-当前回归：31/31 接口测试、18/18 Triton 原语测试、4/4 既有 TL 编译回归通过。
-使用目标分支 cdf6827 对应的 LLVM 96fd797af621f19f2ce33dae35027dce185d1bb8
-完成独立编译和上述验证；未替换生产编译器。
+本次 31/31 接口测试、30/30 Triton 原语/布局测试、4/4 既有 TL 编译回归通过。
+原语测试分别检查 MLS 读入、普通 global load、标准 mfma、普通/matrix store，
+避免读写错位互相抵消；还检查 B/C 布局错配拒绝、A 不允许包装、布局身份与往返转换。
 
-B 恢复 MLS `alt=1`。B/C 的逻辑映射由已有 `LinearEncoding` 表达，
-`load_mls_interleave2_b` / `mmac_interleave2_b` 复用 MLS/MMAC lowering，避免读入及写出边界的寄存器重排。
-这些原语限定 E4M3FN 输入、FP32 累加及 LTS 配对 N tile，并验证映射一致性。
-`matrix_store` 的 `mmac_layout` 只提供指令几何，数据映射仍由 tensor encoding 决定。
-没有新增 `nInterleave` IR 字段或参数，普通 MMAC 和原有 TL matrix-store 路径保留。
+环境：PMD CoreArch HEAD_1703，gfx946/sb，单 die 48 CU，shader/cache 周期 455 ps。
+LLVM 96fd797af621f19f2ce33dae35027dce185d1bb8，TritonRelBuildWithAsserts，
+`GPU_CHIP=sb`、`GPU_ARGS=['--abs-max-tick=1000000000']`、`GPU_DFLAGS=['StatLog']`，
+OMP/MKL/OPENBLAS 线程均为 1。使用隔离编译库，生产库不替换。
 
-K6144 单 TG（M128/N256）同进程配对测试，每版先预热，再交错运行三次：
+M128/N256/K6144 自然单 CTA，同一进程交错运行历史保存二进制及新布局实现，
+各预热一次，再各计时三次：
 
 | 版本 | cycles 三次 | 平均 cycles | VALU | MMOP | LDS 类指令 |
 |---|---|---:|---:|---:|---:|
-| 历史保存二进制 | 78674 / 79044 / 78577 | 78765.00 | 28499 | 24576 | 9632 |
-| 回退版 alt=0 | 82235 / 81934 / 82202 | 82123.67 | 29587 | 24576 | 10656 |
-| 修复版 alt=1 + LinearEncoding | 78747 / 79021 / 78744 | 78837.33 | 28499 | 24576 | 9632 |
+| 历史保存二进制 | 78988 / 78697 / 79101 | 78928.67 | 28499 | 24576 | 9632 |
+| 布局类型 + 标准 load/dot | 78697 / 79017 / 78693 | 78802.33 | 28499 | 24576 | 9632 |
 
-修复版较回退版减少 4.00% 周期，与历史版差 0.09%，在本次抖动范围内。
-12 次 launch 与 CPU 参考逐元素一致（max_abs=0、mismatch=0），spill=0，
-LDS=120.375 KiB。修复版没有 `ds_bpermute_b32`；提取的机器指令序列与历史版一致。
-回退版增加的 LDS 类计数主要是跨 lane shuffle，不能解释成额外 LDS 内存读取。
-修复版 PMD hostSeconds 平均 9.867 秒，仅供预算，不作为性能指标。
-此结果仅覆盖单 die PMD；未做实卡或 2/4 die 性能验收。
+差异 -0.16%，在本次 0.41%～0.51% 极差/均值抖动内，不宣称提速。
+提取的 2196 条机器指令序列一致，ds_bpermute 为 0。8 次输出与 CPU 逐元素一致
+（max_abs=0、mismatch=0），spill=0，LDS=123264 bytes（120.375 KiB）。
+四分区 warps=(4,4,4,4)，寄存器分配配置=(8,8,240,240)，tile/config 未调整。
+宿主 hostSeconds 约 9.6 秒，仅供预算；性能以 PMD modeled cycles 为准。
 
-编译选项及启动环境：`TritonRelBuildWithAsserts`、LLVM96fd797a，
-`GPU_CHIP=sb`、`GPU_ARGS=['--abs-max-tick=1000000000']`、
-`GPU_DFLAGS=['StatLog']`，OMP/MKL/OPENBLAS 线程均为 1。
-Triton 修复基线 4a3fa0823b681856ba0ee1c24da7890ddfab33f6，
-BoltOps 修复基线 47e6dc89b8e48b25760871ec73e3f9983c207e58；最终修复见本记录所在提交及 Triton !520。
-私有 libtriton SHA256：`403a97b33d3601a6285d0517b53c81208994a1e42367e4dc52f5f368a2152b64`。
+Triton 实现提交：`fe795e799cdd9e704075c0e34e462c912c61cb03`（!520）。
+公开接口及配套调用见本记录所在 BoltOps 提交（!151）；目标基线 gemmOptimization 652c399。
+私有 libtriton SHA256：`71a6f09132839e4d5b265c24f358de0ff397304599f6cb22e391cdc7a842a5c7`。
 
-原始统计、汇编、结果和脚本全部保存在仓库外：
-`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/native-linear-fix/`，
-配对 StatLog 在同级 `check-native-linear-paired/`，
-接口测试在 `native-linear-dense-20261030/`。
-旧汇编重写方案 Triton !518 已撤回，本接口不修改生成的汇编。
+原始 IR、汇编、统计和编译日志均在仓库外：
+`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/layout-redesign-20261102/`。
+配对 StatLog 在同级 `check-layout-redesign-paired/`，接口结果在 `layout-redesign-dense-20261102/`。
+PMD 既有 src1/read-before-writing 警告保留在日志中；本次精度检查通过。
+结果仅覆盖单 die PMD，实卡及 2/4 die 性能尚未验收。
