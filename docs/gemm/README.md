@@ -20,8 +20,7 @@
 
 少伯 BU 清单当前含 7 张表、469 行 / 2424 实例：表 1 BMM、表 2–6 dense、表 8 grouped FP8×FP4。保留来源表号及 G 编号，不重排。469 行“接口 smoke 通过”是复用接口证据，不是 469 个完整需求尺寸 PASS。原始 Excel 另有 42 个 grouped shape 尚未纳入编号表，现作为待范围确认的覆盖缺口补列，未增加支持或 PASS 声明。INT8 隐式 GEMM 卷积与末端 FC 不在该清单中，未在此宣称支持。
 
-最新 FP32 block-scale 单 TG 实验保留提前 consumer 优先级版（77,549 cycles），配置、同步机制与复现源代码见
-[关键调优记录](debug_tuning/fp8_blockscale_single_tg/README.md)；生产接口和默认配置未变。
+公开入口 `gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16` 支持不同 M/N/K、多CTA和尾块，完整说明见 [接口说明](debug_tuning/fp8_gluon_dense/README.md)。
 
 ## FP8 接口与 scale
 
