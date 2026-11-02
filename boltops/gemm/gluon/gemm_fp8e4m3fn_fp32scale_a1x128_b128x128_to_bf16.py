@@ -13,9 +13,9 @@ from triton.experimental.gluon.language.amd.hcu import (
     MlsSharedLayout,
     matrix_load,
     matrix_store,
-    native_mmac_layout,
-    native_mmac_load,
-    native_mmac,
+    mmac_interleave2_layout,
+    load_mls_interleave2_b,
+    mmac_interleave2_b,
     flat_lds_address,
     abarrier_wait as aw,
     abarrier_seq as seq,
@@ -270,7 +270,7 @@ def consumer(
     F: gl.constexpr,
 ):
     initialize()
-    RF: gl.constexpr = native_mmac_layout(F, (64, 256), smB0.layout)
+    RF: gl.constexpr = mmac_interleave2_layout(F, (64, 256), smB0.layout)
     acc = gl.full((64, 256), 0, gl.float32, RF)
     zero_mmac = gl.inline_asm_elementwise(
         "v_mov_b32 $0, 0\n\tv_mov_b32 $1, 0\n\tv_mov_b32 $2, 0\n\tv_mov_b32 $3, 0",
@@ -301,7 +301,7 @@ def consumer(
     ready_a(0, GROUP)
     a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
     ready_b(0)
-    b = native_mmac_load(smB0, gl.DotOperandLayout(1, F, 8))
+    b = load_mls_interleave2_b(smB0, gl.DotOperandLayout(1, F, 8))
     sched_barrier(0)
     ready_scale(0, GROUP)
     sa, sb = scales(smAS0, smAS1, smBS, 0, m, lane_m_byte, bs_group, GROUP, RF)
@@ -310,7 +310,7 @@ def consumer(
         i = pair * 2
         sched_barrier(0)
         turn(GROUP, True)
-        dot = native_mmac(a, b, zero_mmac)
+        dot = mmac_interleave2_b(a, b, zero_mmac)
         turn(GROUP, False)
         selected_bs = select_bs(sb, bs_group)
         j = i + 1
@@ -321,9 +321,9 @@ def consumer(
             a = async_copy.load_shared_relaxed(smA1, gl.DotOperandLayout(0, F, 8))
         ready_b(j)
         if j % 2 == 0:
-            b = native_mmac_load(smB0, gl.DotOperandLayout(1, F, 8))
+            b = load_mls_interleave2_b(smB0, gl.DotOperandLayout(1, F, 8))
         else:
-            b = native_mmac_load(smB1, gl.DotOperandLayout(1, F, 8))
+            b = load_mls_interleave2_b(smB1, gl.DotOperandLayout(1, F, 8))
         sched_barrier(0)
         ready_scale(j, GROUP)
         next_sa, next_sb = scales(
@@ -338,7 +338,7 @@ def consumer(
             i = pair * 2 + 1
             sched_barrier(0)
             turn(GROUP, True)
-            dot = native_mmac(a, b, zero_mmac)
+            dot = mmac_interleave2_b(a, b, zero_mmac)
             turn(GROUP, False)
             selected_bs = select_bs(sb, bs_group)
             j = i + 1
@@ -349,9 +349,9 @@ def consumer(
                 a = async_copy.load_shared_relaxed(smA1, gl.DotOperandLayout(0, F, 8))
             ready_b(j)
             if j % 2 == 0:
-                b = native_mmac_load(smB0, gl.DotOperandLayout(1, F, 8))
+                b = load_mls_interleave2_b(smB0, gl.DotOperandLayout(1, F, 8))
             else:
-                b = native_mmac_load(smB1, gl.DotOperandLayout(1, F, 8))
+                b = load_mls_interleave2_b(smB1, gl.DotOperandLayout(1, F, 8))
             sched_barrier(0)
             ready_scale(j, GROUP)
             next_sa, next_sb = scales(
@@ -363,7 +363,7 @@ def consumer(
             sb = next_sb
             sched_barrier(0)
     turn(GROUP, True)
-    dot = native_mmac(a, b, zero_mmac)
+    dot = mmac_interleave2_b(a, b, zero_mmac)
     turn(GROUP, False)
     selected_bs = select_bs(sb, bs_group)
     acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)

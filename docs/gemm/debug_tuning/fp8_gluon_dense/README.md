@@ -49,7 +49,7 @@ c = gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(
 完成独立编译和上述验证；未替换生产编译器。
 
 B 恢复 MLS `alt=1`。B/C 的逻辑映射由已有 `LinearEncoding` 表达，
-`native_mmac_load` / `native_mmac` 复用 MLS/MMAC lowering，避免读入及写出边界的寄存器重排。
+`load_mls_interleave2_b` / `mmac_interleave2_b` 复用 MLS/MMAC lowering，避免读入及写出边界的寄存器重排。
 这些原语限定 E4M3FN 输入、FP32 累加及 LTS 配对 N tile，并验证映射一致性。
 `matrix_store` 的 `mmac_layout` 只提供指令几何，数据映射仍由 tensor encoding 决定。
 没有新增 `nInterleave` IR 字段或参数，普通 MMAC 和原有 TL matrix-store 路径保留。
