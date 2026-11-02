@@ -506,65 +506,11 @@ def _uses_mls_pipeline(m, n, k, a, b):
 
 
 def gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(
-    a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 128))
+    a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 128)), out_dtype=None
 ):
-    """Compute BF16 C[M,N] = sum_g (A_g @ B_g.T) * A_scale_g * B_scale_g.
+    """Compatibility name for gemm_block_scaled; defaults preserve the old recipe.
 
-    Inputs are contiguous CUDA E4M3FN tensors A[M,K] and B[N,K]. FP32 scales
-    have shapes [M,ceil(K/128)] and [ceil(N/128),ceil(K/128)], K-group contiguous.
-    All nonnegative M/N/K are supported, including partial scale groups and
-    empty dimensions. Requires gfx946 and the matching HCU Gluon extensions.
-    scale_recipe is fixed to ((1,128),(128,128)); other recipes are rejected.
-    Output is always BF16. No implicit dtype conversion is performed.
-    Aligned complete tiles use MLS; remaining shapes use masked native MMAC.
+    Other dtypes, scale blocks and output dtypes use the general native path.
     """
-    # Recipe is caller-supplied metadata: shape alone cannot distinguish
-    # different block sizes that happen to produce the same number of groups.
-    try:
-        recipe = tuple(tuple(block) for block in scale_recipe)
-    except TypeError:
-        recipe = None
-    if recipe != ((1, 128), (128, 128)):
-        raise ValueError("only scale_recipe=((1, 128), (128, 128)) is supported: "
-                         "A per-row/K128, B N128/K128; both scales must be FP32")
-    if a.ndim != 2 or b.ndim != 2 or a.shape[1] != b.shape[1]:
-        raise ValueError("expected A[M,K] and B[N,K] with matching K")
-    m, k = a.shape
-    n = b.shape[0]
-    groups = triton.cdiv(k, 128)
-    expected = (
-        ("a", a, (m, k), torch.float8_e4m3fn),
-        ("b", b, (n, k), torch.float8_e4m3fn),
-        ("a_scale", a_scale, (m, groups), torch.float32),
-        ("b_scale", b_scale, (triton.cdiv(n, 128), groups), torch.float32),
-    )
-    for name, tensor, shape, dtype in expected:
-        if tensor.dtype != dtype:
-            raise ValueError(f"{name} must have dtype {dtype}, got {tensor.dtype}; "
-                             "implicit conversion is not supported")
-        if tuple(tensor.shape) != shape:
-            raise ValueError(f"{name} must have shape {shape} for "
-                             f"scale_recipe={recipe}, got {tuple(tensor.shape)}")
-    for name, tensor, _, _ in expected:
-        if (
-            tensor.device != a.device
-            or not tensor.is_cuda
-            or not tensor.is_contiguous()
-        ):
-            raise ValueError("inputs must be contiguous on the same GPU")
-    with torch.cuda.device(a.device):
-        target = triton.runtime.driver.active.get_current_target()
-        if target.arch != "gfx946":
-            raise ValueError("gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16 requires gfx946")
-        out = torch.empty((m, n), dtype=torch.bfloat16, device=a.device)
-        if m == 0 or n == 0:
-            return out
-        if _uses_mls_pipeline(m, n, k, a, b):
-            kernel[(m // 128, n // 256)](
-                a, b, a_scale, b_scale, out, N=n, K=k, **launch_config()
-            )
-        else:
-            _masked_kernel[(triton.cdiv(m, 64), triton.cdiv(n, 128))](
-                a, b, a_scale, b_scale, out, M=m, N=n, K=k, num_warps=4, num_stages=1
-            )
-    return out
+    from .gemm_block_scaled import gemm_block_scaled
+    return gemm_block_scaled(a, b, a_scale, b_scale, scale_recipe=scale_recipe, out_dtype=out_dtype)

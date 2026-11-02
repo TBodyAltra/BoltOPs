@@ -14,7 +14,8 @@ Public operators:
 
 * ``matmul_persistent``
 * ``gemm_a16w16``
-* ``gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16``
+* ``gemm_block_scaled``
+* ``gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16`` (compatibility alias)
 * ``w8a8_triton_block_scaled_mm``
 * ``triton_scaled_mm``
 * ``awq_gemm_triton``
@@ -257,6 +258,7 @@ def w8a8_block_int8_matmul(
 
 __all__ = [
     "gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16",
+    "gemm_block_scaled",
     "awq_gemm_triton",
     "batched_gemm_a16wfp4",
     "batched_gemm_bf16",
@@ -293,13 +295,14 @@ def grouped_gemm_a8wfp4(
                 config=config)
 
 
-def gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(
-    a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 128))
-):
-    """gfx946 E4M3FN GEMM with fixed FP32 A M1/K128, B N128/K128 scales.
+def gemm_block_scaled(a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 128)), out_dtype=None):
+    """Native dense GEMM with independent A/B scale blocks and selectable output dtype."""
+    from boltops.gemm.gluon.gemm_block_scaled import gemm_block_scaled as impl
+    return impl(a, b, a_scale, b_scale, scale_recipe=scale_recipe, out_dtype=out_dtype)
 
-    scale_recipe=((1,128),(128,128)) is the only supported recipe. Output is
-    BF16. Other input/scale dtypes or recipes raise ValueError before launch.
-    """
-    from boltops.gemm.gluon.gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16 import gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16 as impl
-    return impl(a, b, a_scale, b_scale, scale_recipe=scale_recipe)
+
+def gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(
+    a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 128)), out_dtype=None
+):
+    """Compatibility alias for gemm_block_scaled, retaining the original defaults."""
+    return gemm_block_scaled(a, b, a_scale, b_scale, scale_recipe=scale_recipe, out_dtype=out_dtype)
