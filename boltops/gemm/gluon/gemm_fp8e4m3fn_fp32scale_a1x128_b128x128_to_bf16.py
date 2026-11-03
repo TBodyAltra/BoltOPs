@@ -374,6 +374,9 @@ def consumer(
         (GROUP * 64, 0),
         tile=(16, 32),
         byte_store=True,
+        interleave=1,
+        version=3,
+        order=(1, 0),
     )
 
 
