@@ -14,7 +14,7 @@ from triton.experimental.gluon.language.amd.hcu import (
     matrix_load,
     matrix_store,
     MmacInterleave2Layout,
-    get_base_lds_address,
+    get_lds_slice_address,
     abarrier_wait as aw,
     abarrier_seq as seq,
     abarrier_arrive as arrive,
@@ -220,10 +220,10 @@ def scales(
     GROUP: gl.constexpr,
     F: gl.constexpr,
 ):
-    base = get_base_lds_address(smAS0.index(i)) + GROUP * 256
+    base = get_lds_slice_address(smAS0.index(i)) + GROUP * 256
     base = base + lane_m_byte
     sa = gl.load(base.to(gl.uint64).to(gl.pointer_type(gl.float32, 3)) + (m // 4) * 4)
-    bp = get_base_lds_address(smBS.index(i))
+    bp = get_lds_slice_address(smBS.index(i))
     sb = gl.inline_asm_elementwise(
         "ds_read_b64 $0, $1",
         constraints="=v,v,~{memory}",
