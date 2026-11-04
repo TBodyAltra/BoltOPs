@@ -5,7 +5,7 @@ Phase-2: Q/KV use ``allocate_shared_memory(..., value=...)`` + ``load(dot_op)``.
 Phase-3: Match BN shared ``vec=16/maxPhase=8``, Q blocked ``[1,8]/[4,16]``, ``kWidth=16``.
 Phase-4: tried BN grouped W ``where/sum`` — IR matched but slower under mmacLayout=4;
   kept with mmacLayout=2.
-Phase-5: ``AMDMFMALayout(transposed=True)`` → HCU ``mmacLayout=INTERLEAVE(2)`` like BN.
+Phase-5: ``AMDMFMALayout(mmac_layout=MmacLayout.LIT)`` → HCU ``mmacLayout=INTERLEAVE(2)`` like BN.
 Phase-6: early-exit -inf on store layout; BN-style mma-mask store; attach hcu.sched_* opts.
 
 Optional ablations (defaults keep phase-6 BN behavior):
@@ -153,10 +153,10 @@ if _GLUON_AVAILABLE:
             )
 
         if SHIP_MMA:
-            mfma_transposed: gl.constexpr = False
+            mfma_mode: gl.constexpr = gl.amd.MmacLayout.LIT_LTS
             mfma_k_width: gl.constexpr = 8
         else:
-            mfma_transposed: gl.constexpr = True
+            mfma_mode: gl.constexpr = gl.amd.MmacLayout.LIT
             mfma_k_width: gl.constexpr = 16
 
         layout_kv: gl.constexpr = gl.BlockedLayout(
@@ -174,7 +174,7 @@ if _GLUON_AVAILABLE:
         mfma_layout: gl.constexpr = gl.amd.AMDMFMALayout(
             version=MFMA_VERSION,
             instr_shape=[16, 16, 32],
-            transposed=mfma_transposed,
+            mmac_layout=mfma_mode,
             warps_per_cta=[1, NumWarps],
             tiles_per_warp=[1, KV_TILES_N],
         )

@@ -437,7 +437,6 @@ def launch_config():
             mmac_layout=3,
             version=4,
             instr_shape=[16, 16, 32],
-            transposed=True,
             warps_per_cta=[1, 4],
             tiles_per_warp=[4, 4],
         ),
@@ -454,7 +453,6 @@ def _masked_kernel(A, B, AS, BS, C, M: gl.constexpr, N: gl.constexpr, K: gl.cons
     F: gl.constexpr = gl.amd.AMDMFMALayout(
         version=4,
         instr_shape=[16, 16, 32],
-        transposed=True,
         warps_per_cta=[1, 4],
         tiles_per_warp=[4, 2],
         mmac_layout=3,
