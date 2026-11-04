@@ -87,3 +87,11 @@ Triton提交 `7b54354c2e17617c45706efbed70fa70b5935819`；BoltOps提交见本记
 配对 StatLog 位于同级 `check-generalize-paired/`；通用接口结果在 `generalize-dense-20261102/`。
 前置接口 MR（已合入）：[BoltOps !151](http://42.228.13.241:10068/dcutoolkit/deeplearing/BoltOPs/-/merge_requests/151)。
 编译器 MR：[Triton !520](http://42.228.13.241:10068/dcutoolkit/deeplearing/triton/-/merge_requests/520)。
+
+## MLS 接口范围收缩（2026-11-04）
+
+Gluon matrix store 只接受显式 interleave2 结果布局，version=3、tile=(32,32)、order=(1,0)，每warp覆盖完整M tile且N方向只有一组64列。普通MMAC布局不再自动转换。MLS interleave2 B读取同样要求显式interleave2 operand布局。原有Triton带marker路径不变。删除普通/native自动重排和扩展M/N分组地址映射，复用既有地址计算。
+
+当前FP8流水无需修改kernel。50项Gluon测试（含不支持组合的拒绝检查）、4项TL编译回归、2项dense单/多CTA测试通过。M128/N256/K6144同进程交错各测3次：收缩前B16为78679/78505/78626（均值78603.33），收缩后78444/78641/78389（均值78491.33），差异-0.14%，在抖动内。2169条提取的机器指令序列一致；VALU/MMOP/LDS/VMEM均为28499/24576/9632/1328；8次输出max_abs=0/mismatch=0/spill=0。
+
+证据：`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/narrow-mls-20261104/`。本轮Triton提交 `b1d868f105d95c7a1111205c4951d035610136d4`。环境与上节相同；暂停进程检查通过。
