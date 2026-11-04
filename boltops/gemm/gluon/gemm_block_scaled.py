@@ -6,7 +6,7 @@ import torch
 import triton
 from triton.experimental import gluon as g
 from triton.experimental.gluon import language as gl
-from triton.experimental.gluon.language.amd.hcu import get_mmac_instruction
+from triton.experimental.gluon.language.amd.hcu import MmacLtsLayout, get_mmac_instruction
 
 from .gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16 import (
     _masked_kernel, _uses_mls_pipeline, kernel, launch_config,
@@ -25,10 +25,10 @@ def _block_scaled_kernel(A, B, AS, BS, C, M: gl.constexpr, N: gl.constexpr,
                              else gl.float32)
     INSTRUCTION: gl.constexpr = get_mmac_instruction(
         A.dtype.element_ty, B.dtype.element_ty, DOT_ACC, DOT_BK)
-    F: gl.constexpr = gl.amd.AMDMFMALayout(
+    F: gl.constexpr = MmacLtsLayout(
         version=4, instr_shape=INSTRUCTION[0], transposed=True,
         warps_per_cta=[2, 2], tiles_per_warp=[1, 2],
-        element_bitwidth=64 if DOT_ACC == gl.float64 else 32, mmac_layout=3,
+        element_bitwidth=64 if DOT_ACC == gl.float64 else 32,
     )
     L: gl.constexpr = gl.BlockedLayout([1, 4], [4, 16], [4, 1], [1, 0])
     m = gl.program_id(0) * 32 + gl.arange(0, 32, layout=gl.SliceLayout(1, L))

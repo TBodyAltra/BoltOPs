@@ -33,6 +33,12 @@ M/N/K 可为非负值；空 M/N 返回空矩阵，K=0 返回零。
 
 ## Triton 布局设计
 
+自动布局继续使用原有 `AMDMFMALayout` 和 `transposed` 参数，不增加可选 `mmac_layout`。
+纯 LTS 使用 HCU 的 `MmacLtsLayout`（几何字段沿用 AMD 布局，`transposed=True`）。
+IR 返回 Python 时，自动映射模式恢复普通布局，纯 LTS 恢复独立类型；严格区分两者，
+不再出现 `None` 与整数模式混用。通用 `expand_dims` 保持原实现，无绕行分支。
+优化流水及通用原生 MMAC 路径均已迁移到新 LTS 类型；不新增 IR 属性或模式编号。
+
 `MmacInterleave2Layout` 包装 B 的 `DotOperandLayout(1,F,k_width)` 或结果 F；A 保留普通布局。
 要求 rank-2 LTS、每 warp 覆盖完整的32列交错组、B/C 的基础布局匹配。
 32列是 MLS interleave2 的数据排列定义，不是固定 MMAC 几何。
@@ -95,3 +101,15 @@ Gluon matrix store 只接受显式 interleave2 结果布局，version=3、tile=(
 当前FP8流水无需修改kernel。50项Gluon测试（含不支持组合的拒绝检查）、4项TL编译回归、2项dense单/多CTA测试通过。M128/N256/K6144同进程交错各测3次：收缩前B16为78679/78505/78626（均值78603.33），收缩后78444/78641/78389（均值78491.33），差异-0.14%，在抖动内。2169条提取的机器指令序列一致；VALU/MMOP/LDS/VMEM均为28499/24576/9632/1328；8次输出max_abs=0/mismatch=0/spill=0。
 
 证据：`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/narrow-mls-20261104/`。本轮Triton提交 `b1d868f105d95c7a1111205c4951d035610136d4`。环境与上节相同；暂停进程检查通过。
+
+## LTS 布局表示重设计（2026-11-04）
+
+删除 AMDMFMALayout 可选 mmac_layout 及 expand_dims 的 parent 绕行；普通自动布局往返保持原表示。纯 LTS 由独立 MmacLtsLayout 表达并由 IR 返回同类型，不增加IR属性、不放宽相等比较。几何参数继承既有AMD布局，transposed须为True。普通类型与LTS类型的eq/hash/mangle均区分；不提供已撤回可选参数的兼容别名。
+
+53项Gluon原语/布局/跨目标编译检查、4项TL编译、42项BoltOps接口测试通过。包括gfx938/gfx950普通布局往返、gfx938 LTS往返及gfx950拒绝LTS。恢复原expand_dims后广播数值测试通过；reduction后的布局往返做编译检查。
+
+M128/N256/K6144同输入同进程、每版预热一次后交错各测3次：保存B16二进制78674/78437/78633（均值78581.33），新类型78425/78621/78373（78473），差异-0.14%，在抖动范围。2169条提取机器指令序列一致；8次max_abs=0/mismatch=0/spill=0；VALU/MMOP/LDS/VMEM仍28499/24576/9632/1328。
+
+额外发现：自动LIT布局的行归约数值异常，在保存的旧隔离库及旧显式LIT接口上同样复现，未计PASS，未在本轮修复。原始失败及control.log保存在本轮证据目录。CI所报pa_mqa只有失败名称，尚未独立确认原因。本轮没有宣称原CI两个测试均已实卡通过。
+
+证据：`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/lts-layout-20261104/`；Triton `adda207a271ddaa8d4009166198322d8fb791a03`。环境同上；暂停进程检查通过。
