@@ -33,13 +33,12 @@ M/N/K 可为非负值；空 M/N 返回空矩阵，K=0 返回零。
 
 ## Triton 布局设计
 
-`AMDMFMALayout` 保持原自动选择入口。HCU明确指定模式使用统一的
-`HcuMmacLayout(..., mode=MmacLayout.LTS)`；枚举同样包含 `LEGACY`、`LIT`、`LIT_LTS`。
-显式类型没有独立的transposed选择，方向由mode决定。不同模式不再各建一个类型。
-创建HCU tensor时，Python类型按已生成IR的实际模式规范化；自动与显式选择同一模式时
-得到相同的HcuMmacLayout（含Slice/DotOperand嵌套），不同模式仍严格区分。
-配置对象不会被修改；非HCU布局不变；通用expand_dims保持原实现。
-不增加IR布局属性，不改变硬件模式。优化与通用原生MMAC路径使用枚举LTS。
+`AMDMFMALayout(..., mmac_layout=MmacLayout.LTS)` 使用必填显式模式。
+`MmacLayout` 包含 `LEGACY`、`LIT`、`LTS`、`LIT_LTS`，从 `gl.amd` 导出。
+删除 `transposed` 参数及自动映射，不保留旧参数兼容层；普通 AMD MFMA 目标不在支持范围内。
+不再单独定义 `HcuMmacLayout`。IR 往返保留同一类型和实际模式，无需在 tensor 构造时规范化。
+公共 tensor 构造钩子、`_with_ir_layout` 和辅助 IR 查询绑定已删除，通用 expand_dims 保持原实现。
+这只调整前端表达，不增加 IR 布局属性、不改变显式选择后的硬件模式。
 
 `MmacInterleave2Layout` 包装 B 的 `DotOperandLayout(1,F,k_width)` 或结果 F；A 保留普通布局。
 要求 rank-2 LTS、每 warp 覆盖完整的32列交错组、B/C 的基础布局匹配。
@@ -104,12 +103,27 @@ Gluon matrix store 只接受显式 interleave2 结果布局，version=3、tile=(
 
 证据：`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/narrow-mls-20261104/`。本轮Triton提交 `b1d868f105d95c7a1111205c4951d035610136d4`。环境与上节相同；暂停进程检查通过。
 
-## 统一 MMAC 布局表示（2026-11-04）
+## 显式 MMAC 布局及迁移（2026-11-04）
 
-删除前一版LTS专用类型，四种模式统一由HcuMmacLayout表达。shared tensor构造增加可选前端类型钩子，Gluon distributed_type仅对HCU MMAC（含嵌套布局）按IR复制规范化类型；不修改原布局配置、不放宽eq/hash、不修改IR。旧AMDMFMALayout入口在HCU tensor上解析为具体模式，在AMD目标保留原表示。
+HCU kernel 必须显式选择模式。迁移旧的自动映射：gfx938/gfx946 上
+`transposed=True` 对应 `MmacLayout.LIT`，`False` 对应 `MmacLayout.LIT_LTS`；
+已有 `mmac_layout=3` 的 GEMM 调用保留 LTS 并删除 `transposed`。
+LEGACY 目标需显式指定 LEGACY，不会把 LIT/LTS 静默降级。
 
-主套件66项Gluon检查通过，补充边界19项通过（含12项复测，合计73项不同检查）；4项TL编译和42项BoltOps接口测试通过。覆盖四模式往返、gfx936/gfx938/gfx950目标能力、自动/显式同模式混用、不同模式拒绝、循环/JIT helper和reduction后的类型推导。reduction数值方面此前独立发现的LIT问题仍保留：旧隔离库也复现，不计PASS，本轮未修复。
+扫描远端 BoltOps main `e4c2c5848f1123118d3096a73b51e004289c8b80`：3 处 MQA 调用受影响；
+gemmOptimization `da99aa344f06a70e40bef1280928cab402ef15df`：相同 3 处 MQA + 2 处 GEMM 调用受影响。
+当前 MR 已迁移 MQA 和优化/通用 GEMM；两个目标分支的独立迁移补丁保存在仓库外，尚未直接修改目标分支。
 
-自然单CTA M128/N256/K6144，同进程交错各测3次：保存B16二进制78691/78428/78665（均值78594.67），统一布局新版78405/78690/78358（78484.33），差异-0.14%，在抖动内。2169条提取指令序列一致，8次max_abs=0/mismatch=0/spill=0。VALU/MMOP/LDS/VMEM仍28499/24576/9632/1328。
+Triton 测试扫描到 50 处旧参数调用（8 个文件），已迁移。MFMA 前端快照改为 HCU 目标；
+普通 AMD 目标不再作为支持兼容性承诺。WMMA/NVIDIA 的 transposed 参数与本次 MMAC 参数无关，保留不动。
 
-证据：`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/mmac-layout-20261104/`；Triton `4630d009ab37beaad4e48c41a208968f7d786fb0`。环境同上。暂停进程检查通过。LIT数值失败对照仍在同级lts-layout-20261104/control.log，未宣称原CI两个测试均实卡通过。
+此前独立发现的 LIT reduction 数值问题仍未修复，旧库也能复现；本轮 reduction 检查仅覆盖类型推导，不能据此宣称数值通过。
+产物与完整扫描清单：`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/explicit-mmac-20261104/`；
+本地分支迁移补丁：`/home/kxu/gluon-mr-20261029/explicit-mmac-20261104/boltops-{main,gemmOptimization}-migration.patch`。
+
+本轮验证：71 项 Gluon 布局/流水检查、6 项 HCU 前端检查、41 项 Gluon scaled 编译、
+4 项既有 TL 编译、42 项 BoltOps GEMM 接口测试通过。MQA 变更完成静态迁移检查，未宣称完整 MQA 数值回归通过。
+单 CTA M128/N256/K6144，旧 B16 二进制平均 78607 cycles，新版 78501 cycles（-0.13%，抖动范围）。
+8 次输出 max_abs=0、mismatch=0、spill=0；与上版提取的指令序列一致。
+环境仍为 gfx946/sb、单 die 48 CU、455ps shader/cache 时钟；LLVM 96fd797，编译参数/环境同前。
+本轮 Triton 提交 97e683db29abed7e6b82cb01e4521b7e63379dba；完整编译日志、环境脚本和配对结果在上述仓库外目录。
