@@ -95,6 +95,22 @@ file_to_x = {r['file']: r['source'] for r in historical['input_files'] if r['fil
 file_to_x['shape_12_qwen3vl8b_226_s150.xlsx'] = 'X14'
 assert set(file_to_x) == {r['file'] for r in manifest}
 x_to_file = {v: k for k, v in file_to_x.items()}
+P0_MODELS = [
+    ('X09', 'Qwen3.5-35B-A3B FP8', 'C013', 'p0-q35-fp8'),
+    ('X10', 'Qwen3.5-35B-A3B MXFP4', 'C018', 'p0-q35-mxfp4'),
+    ('X14', 'Qwen3-VL-8B BF16', 'C020', 'p0-qwen3-vl-8b'),
+]
+
+
+def priority_models(rs):
+    sources = {file_to_x[r['file']] for r in rs}
+    return [name for source, name, _, _ in P0_MODELS if source in sources]
+
+
+def priority(rs):
+    return 'P0' if priority_models(rs) else '未指定'
+
+
 for f in manifest:
     f['source'] = file_to_x[f['file']]
 
@@ -210,7 +226,8 @@ for c in cases:
 provenance = []
 for c in cases:
     k, rs = c['key'], c['sources']
-    provenance.append(dict(G=c['G'], table=c['table'], op=k[0], M=k[1], N=k[2], K=k[3],
+    provenance.append(dict(G=c['G'], table=c['table'], priority=priority(rs),
+        priority_models=';'.join(priority_models(rs)), op=k[0], M=k[1], N=k[2], K=k[3],
         batch_or_E=k[4], input_dtype=k[5], output_dtype=k[6], frequency=len(rs),
         legacy_compat=c['legacy_compat'], source_input_dtype=norm(rs[0])[5],
         source_records=';'.join(loc(r) for r in rs),
@@ -227,6 +244,7 @@ gaps = [(k,rs) for k,rs in bykey.items() if k not in covered]
 assert len(gaps)==42 and sum(len(rs) for _,rs in gaps)==80
 assert all(k[0]=='grouped_gemm' for k,_ in gaps)
 gaprows = [dict(op=k[0],M=k[1],N=k[2],K=k[3],batch_or_E=k[4],input_dtype=k[5],output_dtype=k[6],
+               priority=priority(rs),priority_models=';'.join(priority_models(rs)),
                frequency=len(rs),A_scale=effective_a(rs),B_scale=effective_b(rs),source_records=';'.join(loc(r) for r in rs)) for k,rs in sorted(gaps)]
 csvwrite(OUT/'grouped-gaps.csv',gaprows)
 source_rows=[]
@@ -419,7 +437,6 @@ for ref,(file,fn) in fnpaths.items():
     if re.search(r'^\['+ref+r'\]:.*$',text,re.M):
         text=re.sub(r'^\['+ref+r'\]:.*$',line,text,flags=re.M)
     else:text=text.rstrip()+'\n'+line+'\n'
-DOC.write_text(text)
 
 # Independent structural/source checks before publishing the update.
 newrows={cells(l)[0]:cells(l) for l in text.splitlines() if re.match(r'^\| G\d+',l)}
@@ -465,6 +482,88 @@ for r in new_gemm:
         issues.append(dict(file=r['file'],sheet=r['sheet'],quantizer_row=q['row'],GEMM_row=r['row'],op_name=r['op_name'],quantizer_output_shape=str(qs),GEMM_input_shape=str(ins),note='Named-link candidate only; tensor IDs/mapping not given'))
 assert len(issues)==18,len(issues)
 csvwrite(OUT/'named-link-issues.csv',issues)
+
+# Priority is a support-planning annotation; the original requirement cells above
+# stay unchanged. Source membership also covers shared-model and compatibility rows.
+priorities = {c['G']: priority(c['sources']) for c in cases}
+sorted_gaps = sorted(gaps)
+p0_cases = [c for c in cases if priorities[c['G']] == 'P0']
+p0_gaps = [(i, k, rs) for i, (k, rs) in enumerate(sorted_gaps, 1) if priority(rs) == 'P0']
+assert len(p0_cases) == 74 and len(p0_gaps) == 6
+assert sum(c['table'] == '3' for c in p0_cases) == 47
+rendered, mode, gap_number = [], None, 0
+for line in text.splitlines():
+    if not line.startswith('| '):
+        mode = None
+        rendered.append(line)
+        continue
+    row = cells(line)
+    if row[0] == '编号':
+        mode = 'numbered'
+        row.insert(1, '优先级')
+    elif row[:2] == ['M × N × K', 'E']:
+        mode = 'gaps'
+        row.insert(1, '优先级')
+    elif mode and all(re.fullmatch(r':?-+:?', cell) for cell in row):
+        row.insert(1, '---')
+    elif mode == 'numbered':
+        g = row[0]
+        row[0] = f'{g}<a id="{g.lower()}"></a>'
+        row.insert(1, priorities[g])
+    elif mode == 'gaps':
+        _, rs = sorted_gaps[gap_number]
+        gap_number += 1
+        row[0] += f'<a id="gap-{gap_number:03}"></a>'
+        row.insert(1, priority(rs))
+    rendered.append(mdrow(row))
+assert gap_number == len(gaps)
+text = '\n'.join(rendered) + '\n'
+
+quick = '''## P0 快速索引
+
+当前 P0：Qwen3.5-35B-A3B 的 FP8、MXFP4 两版，以及 Qwen3-VL-8B BF16。优先级按模型来源覆盖其全部需求，含保留的 FP8×FP4 兼容项；其他模型暂记“未指定”。点击数量可跳到对应首条，展开下方模型编号清单可逐项跳转。
+
+| 模型 / 配置 | 优先级 | BF16 dense | FP8 dense | FP4×FP4 grouped | FP8×FP4 兼容 | 未编号 grouped |
+| --- | --- | --- | --- | --- | --- | --- |
+'''
+details = []
+for source, name, config_id, anchor in P0_MODELS:
+    selected = [c for c in cases if any(file_to_x[r['file']] == source for r in c['sources'])]
+    links, items = [], []
+    for table, label in [('3', 'BF16 dense'), ('2', 'FP8 dense'),
+                         ('9', 'FP4×FP4 grouped'), ('8', 'FP8×FP4 grouped（兼容）')]:
+        cs = sorted((c for c in selected if c['table'] == table), key=lambda c: c['G'])
+        links.append(f'[{len(cs)} 项](#{cs[0]["G"].lower()})' if cs else '—')
+        if cs:
+            items.append('- ' + label + '：' + '、'.join(f'[{c["G"]}](#{c["G"].lower()})' for c in cs))
+    gs = [(i, k, rs) for i, (k, rs) in enumerate(sorted_gaps, 1)
+          if any(file_to_x[r['file']] == source for r in rs)]
+    links.append(f'[{len(gs)} 项](#gap-{gs[0][0]:03})' if gs else '—')
+    if gs:
+        items.append('- 未编号 grouped（待范围 / 接口确认）：' + '、'.join(
+            f'[{k[1]}×{k[2]}×{k[3]} / E{k[4]}](#gap-{i:03})' for i, k, _ in gs))
+    quick += mdrow([f'[{name}](#{config_id.lower()})', 'P0', *links]) + '\n'
+    details.append(f'<a id="{anchor}"></a>\n<details>\n<summary>{name}：P0 需求编号</summary>\n\n'
+                   + '\n\n'.join(items) + '\n\n</details>\n')
+quick += '''
+合计 **74 条已编号 P0 需求**（其中 47 条 BF16 dense、15 条 FP8 dense、6 条新版 FP4×FP4、6 条 FP8×FP4 兼容），另有 **6 个 P0 grouped 缺口**。G342/G347 为两种 Qwen35 配置共享，主表各只列一次；快速索引的逐模型数量不直接相加。
+
+''' + '\n'.join(details)
+text = text.replace('## 记录口径', quick.rstrip() + '\n\n## 记录口径', 1)
+for config_id in ['C013', 'C018', 'C019', 'C020']:
+    text = text.replace(f'### {config_id}\n\n', f'### {config_id}\n\n优先级：P0。\n\n')
+
+# Confirm that priority/row anchors introduced no changes to any requirement cell.
+final_rows = {}
+for line in text.splitlines():
+    if not re.match(r'^\| G\d+', line):
+        continue
+    row = cells(line)
+    g = re.match(r'G\d+', row[0]).group()
+    assert row[1] == priorities[g]
+    final_rows[g] = [g, *row[2:]]
+assert final_rows == newrows
+DOC.write_text(text)
 anchors=set(re.findall(r'<a id="([^"]+)"',text))|{x.lower() for x in re.findall(r'^### (C\d+)',text,re.M)}
 assert not (set(re.findall(r'\]\(#([^)]*)\)',text))-anchors)
 verification=dict(checked_date='2026-11-04',base_commit=BASE,xlsx_files=len(manifest),sheets=sum(len(x['sheets']) for x in manifest),
@@ -478,7 +577,13 @@ verification=dict(checked_date='2026-11-04',base_commit=BASE,xlsx_files=len(mani
     grouped_A_and_B_scale_E8M0_K32_from_new_excel=True,starred_weight_scale_sources=248,
     corrected_stage_sources=stage_changes,corrected_layer_count_sources=layer_changes,
     named_quantizer_dense_shape_link_issues=len(issues),A_scale_groups={g:dict(rows=len(cs),sources=sum(len(c['sources']) for c in cs)) for g,cs in groups.items()},
-    numbered_tables={t:dict(rows=count(t)[0],sources=count(t)[1]) for t in labels},GPU_tests_run=False)
+    numbered_tables={t:dict(rows=count(t)[0],sources=count(t)[1]) for t in labels},
+    priority_policy=dict(P0_models=[name for _,name,_,_ in P0_MODELS],
+                         source_files=[x_to_file[x] for x,_,_,_ in P0_MODELS],
+                         other_models='未指定'),
+    numbered_P0_rows=len(p0_cases),numbered_unspecified_priority_rows=len(cases)-len(p0_cases),
+    numbered_P0_BF16_dense_rows=47,unnumbered_P0_grouped_rows=len(p0_gaps),
+    priority_annotations_preserve_requirement_cells=True,GPU_tests_run=False)
 (OUT/'verification.json').write_text(json.dumps(verification,ensure_ascii=False,indent=2)+'\n')
 (OUT/'README.md').write_text('''# 新版少伯 Excel 需求更新核对
 
@@ -486,6 +591,7 @@ verification=dict(checked_date='2026-11-04',base_commit=BASE,xlsx_files=len(mani
 
 ## 更新口径
 
+- 用户指定 P0：Qwen3.5-35B-A3B FP8、Qwen3.5-35B-A3B MXFP4、Qwen3-VL-8B BF16，按 X09/X10/X14 来源标记全部关联需求；其他模型未指定。主表 74 条 P0，未编号 grouped 另有 6 条；共享 G342/G347 不重复计数。顶部快速索引包含各类首条入口与可展开的完整编号跳转，表格新增优先级列。
 - 新版 `shaobob0_shapes_1102` 的 14 份 XLSX、39 个 sheet、2526 条 GEMM/BMM/grouped 来源全部读取；忽略 Excel 的 `~$` 临时锁文件，不修改原工作簿。
 - 原 469 个 G 编号不重排，原 MNK/E、阶段、频次、模型引用、接口引用与历史状态保留。G436–G471 的历史空洞不复用。
 - 原 FP8×FP4 的 G472–G505 作为兼容需求保留；A/B scale 按新版统一 E8M0/K32，激活动态。新版对应来源的 A dtype 是 FP4，兼容项的 FP8 不冒充新版数据。
