@@ -61,24 +61,25 @@ LLVM `96fd797af621f19f2ce33dae35027dce185d1bb8`，TritonRelBuildWithAsserts。
 `GPU_CHIP=sb`、`GPU_ARGS=['--abs-max-tick=1000000000']`、`GPU_DFLAGS=['StatLog']`，
 OMP/MKL/OPENBLAS 线程均为1，unset HSA_TOOLS_LIB；隔离 runtime，不替换生产编译库。
 
-默认 recipe 的 M128/N256/K6144 自然单 CTA，与历史保存二进制在同进程交错预热后各测3次。
-本次默认流水的结果：
+2026-11-04 移除 `byte_store` 特殊路径，优化kernel使用 `matrix_store_32x32_b16`。
+前端参数、IR属性、B8替代指令及stride/offset倍增逻辑均删除；按结果元素位宽选择写出指令。
+
+默认 recipe 的 M128/N256/K6144 自然单 CTA，同输入、同进程交错预热后各测3次：
 
 | 版本 | modeled cycles 三次 | 平均 cycles | VALU / MMOP / LDS / VMEM |
 |---|---|---:|---|
-| 历史保存二进制 | 78991 / 78661 / 79165 | 78939.00 | 28499 / 24576 / 9632 / 1360 |
-| 当前编译结果 | 78653 / 79101 / 78549 | 78767.67 | 28499 / 24576 / 9632 / 1360 |
+| 保存的B8二进制 | 79005 / 78588 / 79093 | 78895.33 | 28499 / 24576 / 9632 / 1360 |
+| B16当前编译结果 | 78417 / 78658 / 78429 | 78501.33 | 28499 / 24576 / 9632 / 1328 |
 
-差异 -0.22%，小于样本极差/均值 0.64%～0.70%，无可观测回退，不宣称提速。
-机器指令序列2196条一致；8次输出均 max_abs=0、mismatch=0。两组 hostSeconds 均约9.63秒，
-只供预算，不作性能指标。
+平均差异 -0.50%，样本范围重叠，不宣称稳定提速；本次未观察到回退。
+8次输出均 max_abs=0、mismatch=0，spill=0。PMD hostSeconds均值9.61/9.63仅供预算。
+验证通过：46项Gluon原语/布局测试、4项既有TL编译回归、2项dense单/多CTA数值回归。
+Triton提交 `7b54354c2e17617c45706efbed70fa70b5935819`；BoltOps提交见本记录所属commit。
+私有libtriton SHA256 `9150c2fd792b3feaa0101a43f6f2c551ebd6705355f50cecc7a4ef7f5f27c4f2`。
+四分区warps=(4,4,4,4)、寄存器分配=(8,8,240,240)。
+日志仍有PMD src1修饰位与packed FMA寄存器读取诊断，完整文本保留，数值测试通过。
+本轮证据：`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/remove-byte-store-20261104/`。
 
-验证通过：Triton 原语/布局46项，通用接口17项，旧入口/边界25项，既有 TL 编译回归4项。
-Triton提交 `e47301bd36ce17bbef2e261cd0bb2a0a8af29855`；BoltOps提交见本记录所属commit，
-目标基线 `da99aa344f06a70e40bef1280928cab402ef15df`。
-私有libtriton SHA256 `3e78dbc929ff6d0b2c9ddfd2e2ee655cdfa12582b242640ecc2356548874875e`。
-资源配置保持四分区 warps=(4,4,4,4)、寄存器分配=(8,8,240,240)，
-LDS=123264 bytes（120.375 KiB）、spill=0。
 仅验收单 die PMD；实卡和2/4 die尚未验收，通用路径不做性能承诺。
 
 原始脚本、IR、汇编、完整错误和统计在仓库外：
