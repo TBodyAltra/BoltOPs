@@ -33,11 +33,13 @@ M/N/K 可为非负值；空 M/N 返回空矩阵，K=0 返回零。
 
 ## Triton 布局设计
 
-自动布局继续使用原有 `AMDMFMALayout` 和 `transposed` 参数，不增加可选 `mmac_layout`。
-纯 LTS 使用 HCU 的 `MmacLtsLayout`（几何字段沿用 AMD 布局，`transposed=True`）。
-IR 返回 Python 时，自动映射模式恢复普通布局，纯 LTS 恢复独立类型；严格区分两者，
-不再出现 `None` 与整数模式混用。通用 `expand_dims` 保持原实现，无绕行分支。
-优化流水及通用原生 MMAC 路径均已迁移到新 LTS 类型；不新增 IR 属性或模式编号。
+`AMDMFMALayout` 保持原自动选择入口。HCU明确指定模式使用统一的
+`HcuMmacLayout(..., mode=MmacLayout.LTS)`；枚举同样包含 `LEGACY`、`LIT`、`LIT_LTS`。
+显式类型没有独立的transposed选择，方向由mode决定。不同模式不再各建一个类型。
+创建HCU tensor时，Python类型按已生成IR的实际模式规范化；自动与显式选择同一模式时
+得到相同的HcuMmacLayout（含Slice/DotOperand嵌套），不同模式仍严格区分。
+配置对象不会被修改；非HCU布局不变；通用expand_dims保持原实现。
+不增加IR布局属性，不改变硬件模式。优化与通用原生MMAC路径使用枚举LTS。
 
 `MmacInterleave2Layout` 包装 B 的 `DotOperandLayout(1,F,k_width)` 或结果 F；A 保留普通布局。
 要求 rank-2 LTS、每 warp 覆盖完整的32列交错组、B/C 的基础布局匹配。
@@ -102,14 +104,12 @@ Gluon matrix store 只接受显式 interleave2 结果布局，version=3、tile=(
 
 证据：`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/narrow-mls-20261104/`。本轮Triton提交 `b1d868f105d95c7a1111205c4951d035610136d4`。环境与上节相同；暂停进程检查通过。
 
-## LTS 布局表示重设计（2026-11-04）
+## 统一 MMAC 布局表示（2026-11-04）
 
-删除 AMDMFMALayout 可选 mmac_layout 及 expand_dims 的 parent 绕行；普通自动布局往返保持原表示。纯 LTS 由独立 MmacLtsLayout 表达并由 IR 返回同类型，不增加IR属性、不放宽相等比较。几何参数继承既有AMD布局，transposed须为True。普通类型与LTS类型的eq/hash/mangle均区分；不提供已撤回可选参数的兼容别名。
+删除前一版LTS专用类型，四种模式统一由HcuMmacLayout表达。shared tensor构造增加可选前端类型钩子，Gluon distributed_type仅对HCU MMAC（含嵌套布局）按IR复制规范化类型；不修改原布局配置、不放宽eq/hash、不修改IR。旧AMDMFMALayout入口在HCU tensor上解析为具体模式，在AMD目标保留原表示。
 
-53项Gluon原语/布局/跨目标编译检查、4项TL编译、42项BoltOps接口测试通过。包括gfx938/gfx950普通布局往返、gfx938 LTS往返及gfx950拒绝LTS。恢复原expand_dims后广播数值测试通过；reduction后的布局往返做编译检查。
+主套件66项Gluon检查通过，补充边界19项通过（含12项复测，合计73项不同检查）；4项TL编译和42项BoltOps接口测试通过。覆盖四模式往返、gfx936/gfx938/gfx950目标能力、自动/显式同模式混用、不同模式拒绝、循环/JIT helper和reduction后的类型推导。reduction数值方面此前独立发现的LIT问题仍保留：旧隔离库也复现，不计PASS，本轮未修复。
 
-M128/N256/K6144同输入同进程、每版预热一次后交错各测3次：保存B16二进制78674/78437/78633（均值78581.33），新类型78425/78621/78373（78473），差异-0.14%，在抖动范围。2169条提取机器指令序列一致；8次max_abs=0/mismatch=0/spill=0；VALU/MMOP/LDS/VMEM仍28499/24576/9632/1328。
+自然单CTA M128/N256/K6144，同进程交错各测3次：保存B16二进制78691/78428/78665（均值78594.67），统一布局新版78405/78690/78358（78484.33），差异-0.14%，在抖动内。2169条提取指令序列一致，8次max_abs=0/mismatch=0/spill=0。VALU/MMOP/LDS/VMEM仍28499/24576/9632/1328。
 
-额外发现：自动LIT布局的行归约数值异常，在保存的旧隔离库及旧显式LIT接口上同样复现，未计PASS，未在本轮修复。原始失败及control.log保存在本轮证据目录。CI所报pa_mqa只有失败名称，尚未独立确认原因。本轮没有宣称原CI两个测试均已实卡通过。
-
-证据：`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/lts-layout-20261104/`；Triton `adda207a271ddaa8d4009166198322d8fb791a03`。环境同上；暂停进程检查通过。
+证据：`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/mmac-layout-20261104/`；Triton `4630d009ab37beaad4e48c41a208968f7d786fb0`。环境同上。暂停进程检查通过。LIT数值失败对照仍在同级lts-layout-20261104/control.log，未宣称原CI两个测试均实卡通过。

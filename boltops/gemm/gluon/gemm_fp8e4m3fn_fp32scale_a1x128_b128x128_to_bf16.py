@@ -10,7 +10,7 @@ from triton.experimental import gluon as g
 from triton.experimental.gluon import language as gl
 from triton.experimental.gluon.language.amd.cdna4 import async_copy
 from triton.experimental.gluon.language.amd.hcu import (
-    MmacLtsLayout,
+    HcuMmacLayout, MmacLayout,
     MlsSharedLayout,
     matrix_load,
     matrix_store,
@@ -436,9 +436,10 @@ def launch_config():
     return dict(
         SA=MlsSharedLayout(0, (64, 128)),
         SB=sb,
-        F=MmacLtsLayout(
+        F=HcuMmacLayout(
             version=4,
             instr_shape=[16, 16, 32],
+            mode=MmacLayout.LTS,
             warps_per_cta=[1, 4],
             tiles_per_warp=[4, 4],
         ),
@@ -452,9 +453,10 @@ def launch_config():
 
 @g.jit
 def _masked_kernel(A, B, AS, BS, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr):
-    F: gl.constexpr = MmacLtsLayout(
+    F: gl.constexpr = HcuMmacLayout(
         version=4,
         instr_shape=[16, 16, 32],
+        mode=MmacLayout.LTS,
         warps_per_cta=[1, 4],
         tiles_per_warp=[4, 2],
     )
