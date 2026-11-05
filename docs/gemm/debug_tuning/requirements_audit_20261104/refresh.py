@@ -563,9 +563,16 @@ for line in text.splitlines():
     assert row[1] == priorities[g]
     final_rows[g] = [g, *row[2:]]
 assert final_rows == newrows
+# GitLab strips arbitrary HTML `id` attributes. Its Markdown renderer retains
+# named anchors; use those for both table rows and section/model destinations.
+text = re.sub(r'<a id="([^"]+)"></a>', r'<a name="\1"></a>', text)
+text = re.sub(r'(?m)^### (C\d+)$',
+              lambda m: f'<a name="{m[1].lower()}"></a>\n\n### {m[1]}', text)
+text = text.replace('## P0 快速索引', '<a name="p0-快速索引"></a>\n\n## P0 快速索引', 1)
 DOC.write_text(text)
-anchors=set(re.findall(r'<a id="([^"]+)"',text))|{x.lower() for x in re.findall(r'^### (C\d+)',text,re.M)}
+anchors=set(re.findall(r'<a name="([^"]+)"',text))
 assert not (set(re.findall(r'\]\(#([^)]*)\)',text))-anchors)
+assert '<a id=' not in text
 verification=dict(checked_date='2026-11-04',base_commit=BASE,xlsx_files=len(manifest),sheets=sum(len(x['sheets']) for x in manifest),
     new_GEMM_sources=len(new_gemm),new_unique_GEMM_keys=len(bykey),numbered_support_rows=len(cases),
     numbered_current_excel_rows=len(covered),numbered_current_excel_sources=2446,
@@ -583,7 +590,8 @@ verification=dict(checked_date='2026-11-04',base_commit=BASE,xlsx_files=len(mani
                          other_models='未指定'),
     numbered_P0_rows=len(p0_cases),numbered_unspecified_priority_rows=len(cases)-len(p0_cases),
     numbered_P0_BF16_dense_rows=47,unnumbered_P0_grouped_rows=len(p0_gaps),
-    priority_annotations_preserve_requirement_cells=True,GPU_tests_run=False)
+    priority_annotations_preserve_requirement_cells=True,
+    custom_markdown_anchor_attribute='name',GPU_tests_run=False)
 (OUT/'verification.json').write_text(json.dumps(verification,ensure_ascii=False,indent=2)+'\n')
 (OUT/'README.md').write_text('''# 新版少伯 Excel 需求更新核对
 
@@ -592,6 +600,7 @@ verification=dict(checked_date='2026-11-04',base_commit=BASE,xlsx_files=len(mani
 ## 更新口径
 
 - 用户指定 P0：Qwen3.5-35B-A3B FP8、Qwen3.5-35B-A3B MXFP4、Qwen3-VL-8B BF16，按 X09/X10/X14 来源标记全部关联需求；其他模型未指定。主表 74 条 P0，未编号 grouped 另有 6 条；共享 G342/G347 不重复计数。顶部快速索引包含各类首条入口与可展开的完整编号跳转，表格新增优先级列。
+- 2026-11-05 修正 GitLab 锚点兼容性：自定义锚点使用 `<a name="...">`，而不是会被该实例清洗掉的 HTML `id` 属性。G 编号、缺口条目、表格、模型配置和 P0 索引均有明确的 named target；实际 GitLab 渲染核验见 rendered-anchors-20261105.json。
 - 新版 `shaobob0_shapes_1102` 的 14 份 XLSX、39 个 sheet、2526 条 GEMM/BMM/grouped 来源全部读取；忽略 Excel 的 `~$` 临时锁文件，不修改原工作簿。
 - 原 469 个 G 编号不重排，原 MNK/E、阶段、频次、模型引用、接口引用与历史状态保留。G436–G471 的历史空洞不复用。
 - 原 FP8×FP4 的 G472–G505 作为兼容需求保留；A/B scale 按新版统一 E8M0/K32，激活动态。新版对应来源的 A dtype 是 FP4，兼容项的 FP8 不冒充新版数据。
