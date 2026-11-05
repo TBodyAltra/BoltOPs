@@ -108,7 +108,7 @@ def priority_models(rs):
 
 
 def priority(rs):
-    return 'P0' if priority_models(rs) else '未指定'
+    return 'P0' if priority_models(rs) else 'P1'
 
 
 for f in manifest:
@@ -483,95 +483,17 @@ for r in new_gemm:
 assert len(issues)==18,len(issues)
 csvwrite(OUT/'named-link-issues.csv',issues)
 
-# Priority is a support-planning annotation; the original requirement cells above
-# stay unchanged. Source membership also covers shared-model and compatibility rows.
-priorities = {c['G']: priority(c['sources']) for c in cases}
-sorted_gaps = sorted(gaps)
-p0_cases = [c for c in cases if priorities[c['G']] == 'P0']
-p0_gaps = [(i, k, rs) for i, (k, rs) in enumerate(sorted_gaps, 1) if priority(rs) == 'P0']
+# Render by business and model after validating the canonical requirement set.
+from business_model_view import render
+p0_cases = [c for c in cases if priority(c['sources']) == 'P0']
+p0_gaps = [(k, rs) for k, rs in gaps if priority(rs) == 'P0']
 assert len(p0_cases) == 74 and len(p0_gaps) == 6
-assert sum(c['table'] == '3' for c in p0_cases) == 47
-rendered, mode, gap_number = [], None, 0
-for line in text.splitlines():
-    if not line.startswith('| '):
-        mode = None
-        rendered.append(line)
-        continue
-    row = cells(line)
-    if row[0] == '编号':
-        mode = 'numbered'
-        row.insert(1, '优先级')
-    elif row[:2] == ['M × N × K', 'E']:
-        mode = 'gaps'
-        row.insert(1, '优先级')
-    elif mode and all(re.fullmatch(r':?-+:?', cell) for cell in row):
-        row.insert(1, '---')
-    elif mode == 'numbered':
-        g = row[0]
-        row[0] = f'{g}<a id="{g.lower()}"></a>'
-        row.insert(1, priorities[g])
-    elif mode == 'gaps':
-        _, rs = sorted_gaps[gap_number]
-        gap_number += 1
-        row[0] += f'<a id="gap-{gap_number:03}"></a>'
-        row.insert(1, priority(rs))
-    rendered.append(mdrow(row))
-assert gap_number == len(gaps)
-text = '\n'.join(rendered) + '\n'
-
-quick = '''## P0 快速索引
-
-当前 P0：Qwen3.5-35B-A3B 的 FP8、MXFP4 两版，以及 Qwen3-VL-8B BF16。优先级按模型来源覆盖其全部需求，含保留的 FP8×FP4 兼容项；其他模型暂记“未指定”。点击数量可跳到对应首条，展开下方模型编号清单可逐项跳转。
-
-| 模型 / 配置 | 优先级 | BF16 dense | FP8 dense | FP4×FP4 grouped | FP8×FP4 兼容 | 未编号 grouped |
-| --- | --- | --- | --- | --- | --- | --- |
-'''
-details = []
-for source, name, config_id, anchor in P0_MODELS:
-    selected = [c for c in cases if any(file_to_x[r['file']] == source for r in c['sources'])]
-    links, items = [], []
-    for table, label in [('3', 'BF16 dense'), ('2', 'FP8 dense'),
-                         ('9', 'FP4×FP4 grouped'), ('8', 'FP8×FP4 grouped（兼容）')]:
-        cs = sorted((c for c in selected if c['table'] == table), key=lambda c: c['G'])
-        links.append(f'[{len(cs)} 项](#{cs[0]["G"].lower()})' if cs else '—')
-        if cs:
-            items.append('- ' + label + '：' + '、'.join(f'[{c["G"]}](#{c["G"].lower()})' for c in cs))
-    gs = [(i, k, rs) for i, (k, rs) in enumerate(sorted_gaps, 1)
-          if any(file_to_x[r['file']] == source for r in rs)]
-    links.append(f'[{len(gs)} 项](#gap-{gs[0][0]:03})' if gs else '—')
-    if gs:
-        items.append('- 未编号 grouped（待范围 / 接口确认）：' + '、'.join(
-            f'[{k[1]}×{k[2]}×{k[3]} / E{k[4]}](#gap-{i:03})' for i, k, _ in gs))
-    quick += mdrow([f'[{name}](#{config_id.lower()})', 'P0', *links]) + '\n'
-    details.append(f'<a id="{anchor}"></a>\n<details>\n<summary>{name}：P0 需求编号</summary>\n\n'
-                   + '\n\n'.join(items) + '\n\n</details>\n')
-quick += '''
-合计 **74 条已编号 P0 需求**（其中 47 条 BF16 dense、15 条 FP8 dense、6 条新版 FP4×FP4、6 条 FP8×FP4 兼容），另有 **6 个 P0 grouped 缺口**。G342/G347 为两种 Qwen35 配置共享，主表各只列一次；快速索引的逐模型数量不直接相加。
-
-''' + '\n'.join(details)
-text = text.replace('## 记录口径', quick.rstrip() + '\n\n## 记录口径', 1)
-for config_id in ['C013', 'C018', 'C019', 'C020']:
-    text = text.replace(f'### {config_id}\n\n', f'### {config_id}\n\n优先级：P0。\n\n')
-
-# Confirm that priority/row anchors introduced no changes to any requirement cell.
-final_rows = {}
-for line in text.splitlines():
-    if not re.match(r'^\| G\d+', line):
-        continue
-    row = cells(line)
-    g = re.match(r'G\d+', row[0]).group()
-    assert row[1] == priorities[g]
-    final_rows[g] = [g, *row[2:]]
-assert final_rows == newrows
-# GitLab strips arbitrary HTML `id` attributes. Its Markdown renderer retains
-# named anchors; use those for both table rows and section/model destinations.
-text = re.sub(r'<a id="([^"]+)"></a>', r'<a name="\1"></a>', text)
-text = re.sub(r'(?m)^### (C\d+)$',
-              lambda m: f'<a name="{m[1].lower()}"></a>\n\n### {m[1]}', text)
-text = text.replace('## P0 快速索引', '<a name="p0-快速索引"></a>\n\n## P0 快速索引', 1)
+text, model_rows, business_view = render(cases, gaps, file_to_x, manifest, text,
+                                        effective_a, effective_b)
+csvwrite(OUT/'model-requirements.csv', model_rows)
 DOC.write_text(text)
-anchors=set(re.findall(r'<a name="([^"]+)"',text))
-assert not (set(re.findall(r'\]\(#([^)]*)\)',text))-anchors)
+anchors = set(re.findall(r'<a name="([^"]+)"', text))
+assert set(re.findall(r'\]\(#([^)]*)\)', text)) <= anchors
 assert '<a id=' not in text
 verification=dict(checked_date='2026-11-04',base_commit=BASE,xlsx_files=len(manifest),sheets=sum(len(x['sheets']) for x in manifest),
     new_GEMM_sources=len(new_gemm),new_unique_GEMM_keys=len(bykey),numbered_support_rows=len(cases),
@@ -587,11 +509,11 @@ verification=dict(checked_date='2026-11-04',base_commit=BASE,xlsx_files=len(mani
     numbered_tables={t:dict(rows=count(t)[0],sources=count(t)[1]) for t in labels},
     priority_policy=dict(P0_models=[name for _,name,_,_ in P0_MODELS],
                          source_files=[x_to_file[x] for x,_,_,_ in P0_MODELS],
-                         other_models='未指定'),
-    numbered_P0_rows=len(p0_cases),numbered_unspecified_priority_rows=len(cases)-len(p0_cases),
+                         other_models='P1'),
+    numbered_P0_rows=len(p0_cases),numbered_P1_rows=len(cases)-len(p0_cases),
     numbered_P0_BF16_dense_rows=47,unnumbered_P0_grouped_rows=len(p0_gaps),
     priority_annotations_preserve_requirement_cells=True,
-    custom_markdown_anchor_attribute='name',GPU_tests_run=False)
+    custom_markdown_anchor_attribute='name',business_model_view=business_view,GPU_tests_run=False)
 (OUT/'verification.json').write_text(json.dumps(verification,ensure_ascii=False,indent=2)+'\n')
 (OUT/'README.md').write_text('''# 新版少伯 Excel 需求更新核对
 
@@ -599,8 +521,8 @@ verification=dict(checked_date='2026-11-04',base_commit=BASE,xlsx_files=len(mani
 
 ## 更新口径
 
-- 用户指定 P0：Qwen3.5-35B-A3B FP8、Qwen3.5-35B-A3B MXFP4、Qwen3-VL-8B BF16，按 X09/X10/X14 来源标记全部关联需求；其他模型未指定。主表 74 条 P0，未编号 grouped 另有 6 条；共享 G342/G347 不重复计数。顶部快速索引包含各类首条入口与可展开的完整编号跳转，表格新增优先级列。
-- 2026-11-05 修正 GitLab 锚点兼容性：自定义锚点使用 `<a name="...">`，而不是会被该实例清洗掉的 HTML `id` 属性。G 编号、缺口条目、表格、模型配置和 P0 索引均有明确的 named target；实际 GitLab 渲染核验见 rendered-anchors-20261105.json。
+- 用户指定业务一级、模型二级：12 月 BU 性能测试为 P0，包含 Qwen3.5-35B-A3B FP8、Qwen3.5-35B-A3B MXFP4、Qwen3-VL-8B BF16；其余模型归后续支持 P1。全局 P0 为 74 个 G 编号 + 6 个 grouped 缺口，P1 为 449 个 G 编号 + 36 个缺口。主文档按 9 个模型各自分表，每个模型中的每组需求使用独立的 R 编号（R001–R359）。旧 G/缺口与来源对应关系仅保存在审计数据中，正文不保留历史编号附录。当前展示范围排除 MoE grouped GEMM、fused_moe_gate、shared_gate_up_proj / shared_down_proj；attention、普通 dense MLP 和 EAGLE3 保留。混合来源只删除 MoE 来源，原始全量数据仍保存在审计 CSV 中。
+- 2026-11-05 修正 GitLab 锚点兼容性：自定义锚点使用 `<a name="...">`，而不是会被该实例清洗掉的 HTML `id` 属性。需求组 R 编号与业务、模型索引均有明确的 named target；实际 GitLab 渲染核验见 rendered-anchors-20261105.json。
 - 新版 `shaobob0_shapes_1102` 的 14 份 XLSX、39 个 sheet、2526 条 GEMM/BMM/grouped 来源全部读取；忽略 Excel 的 `~$` 临时锁文件，不修改原工作簿。
 - 原 469 个 G 编号不重排，原 MNK/E、阶段、频次、模型引用、接口引用与历史状态保留。G436–G471 的历史空洞不复用。
 - 原 FP8×FP4 的 G472–G505 作为兼容需求保留；A/B scale 按新版统一 E8M0/K32，激活动态。新版对应来源的 A dtype 是 FP4，兼容项的 FP8 不冒充新版数据。
@@ -619,6 +541,8 @@ verification=dict(checked_date='2026-11-04',base_commit=BASE,xlsx_files=len(mani
 
 - source-manifest.json：14 份新版 XLSX 的 SHA256、X 编号、sheet 描述与部署原文。
 - gemm-sources.csv：2526 条实际来源，含新版行号、stage、layer_count、原始 shape/dtype 与量化标签。
+- model-requirements.csv：业务/模型表的逐项投影，含 P0/P1、独立 R 编号、各模型自己的来源、scale、频次和算子名；legacy_row_id / legacy_G 仅供内部来源核对。每条原始来源恰好归属一个模型；兼容来源复用单独标记。
+- business_model_view.py：业务与模型视图生成器，与全局数据提取/核对分离。
 - case-provenance.csv：523 条支持需求，含兼容标志、来源 dtype、成对 G 编号、逐来源 act_quant/weight_quant；可区分支持 dtype 与新版源 dtype。
 - grouped-gaps.csv：42 个未编号 grouped shape，采用新版量化字段。
 - named-link-issues.csv：18 个 dense 命名连线候选问题。
