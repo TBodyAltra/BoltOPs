@@ -1,0 +1,136 @@
+{
+  "accuracy_atol": 0.02,
+  "accuracy_rtol": 0.01,
+  "config": {
+    "BLOCK_SIZE_K": 128,
+    "BLOCK_SIZE_M": 16,
+    "BLOCK_SIZE_N": 32,
+    "GROUP_SIZE_M": 1,
+    "LOOP_UNROLL_FACTOR": 1,
+    "USE_MLS": true,
+    "amdgpu_enable_max_ilp_scheduling_strategy": false,
+    "enable_v_mmac_cluster": 1,
+    "mmac_layout_force": 3,
+    "num_stages": 3,
+    "num_warps": 2
+  },
+  "config_file": "/public/home/duyubo/bolt/new/BoltOPs/docs/gemm/debug_tuning/bf16_linear_gemm/G261_12x2048x4096/generic/best_config.json",
+  "correctness": "PASS",
+  "correctness_scope": "all output elements vs gold = CPU FP32 reference rounded to BF16, |got-gold| <= 0.02 + 0.01*|gold|; mean |got-ref| <= 1.05x mean |gold-ref| + 1e-6 (ref is unrounded FP32); all outputs finite; 128 sentinel values before/after output unchanged",
+  "dispatches_per_round": 6,
+  "dtype": "bfloat16",
+  "environment": {
+    "boltops": {
+      "branch": "duyubo/bf16-gemm-tuning",
+      "commit": "673ede654b7cda290f68ce98665fb6f1dcb1efd8",
+      "path": "/public/home/duyubo/bolt/new/BoltOPs",
+      "tracked_changes": 7
+    },
+    "compiler": {
+      "clang": "/opt/dtk/aillvm/bin/clang-18",
+      "lld": "/opt/dtk/aillvm/bin/ld.lld",
+      "path_sh": "/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh"
+    },
+    "pmd": {
+      "GPU_CHIP": "sb",
+      "PMD_PATH": "/opt/rocm/pmd"
+    },
+    "source_sha256": {
+      "autotune/scripts/gemm_a16w16_generic.py": "e108b0bb94c719409fc0a8b387e295f1d39bf1e02d364494a1d92c5e361313fb",
+      "boltops/gemm/triton/gemm_config_utils.py": "d241010ad6a6689c88e036d184e9efdc1b63d2187db89cee21dd142f7c864168",
+      "boltops/gemm/triton/kernel_repr.py": "c65c5d8cd32b3c5df72a33d426e71901140226080b1b4f64ed46e1e7250110e1",
+      "boltops/gemm/triton/pid_preprocessing.py": "0826c3ab9e0ce014040d05f4db09654fcf1d43565ef404737b555c2b93fcf623",
+      "operators/gemm_a16w16_generic.py": "e108b0bb94c719409fc0a8b387e295f1d39bf1e02d364494a1d92c5e361313fb"
+    },
+    "triton": {
+      "build": "/public/home/duyubo/triton_all_version/triton_3.6/triton/build/lib.linux-x86_64-3.10",
+      "libtriton_mtime": "2026-10-31T06:52:56",
+      "libtriton_sha256": "919b51f14bcf5e177dc710922daa0b7e8d9758e88ede0819680b4d8f7e42caa7",
+      "source": {
+        "branch": "release/3.6.x",
+        "commit": "cdf6827b53b1a59104da41a1bfc7736134b13a2e",
+        "path": "/public/home/duyubo/triton_all_version/triton_3.6/triton",
+        "tracked_changes": 0
+      }
+    }
+  },
+  "layout": "TN",
+  "max_us": 14.59458131351232,
+  "median_cycles": 31896.0,
+  "median_us": 14.51268130614132,
+  "min_us": 14.465361301882519,
+  "results_directory": "/public/home/duyubo/bolt/new/BoltOPs/docs/gemm/debug_tuning/bf16_linear_gemm/G261_12x2048x4096/generic/runs/TN_20261105_062328",
+  "round_results": [
+    {
+      "active_cus": 48,
+      "checked_points": 24576,
+      "completed_wgs": 64,
+      "error": null,
+      "finite": true,
+      "grid": [
+        64
+      ],
+      "guard": true,
+      "mean_abs": 0.0719931498169899,
+      "median_cycles": 31884.0,
+      "median_us": 14.507221305649919,
+      "mismatches": 0,
+      "resources": {
+        "n_regs": 38,
+        "n_spills": 0,
+        "shared": 36864
+      },
+      "round": 0,
+      "rounding_floor": 0.0719931349158287,
+      "seed": 29,
+      "status": "PASS",
+      "timed_cycles": [
+        31887.0,
+        31919.0,
+        31812.0,
+        31884.0,
+        31792.0
+      ]
+    },
+    {
+      "active_cus": 48,
+      "checked_points": 24576,
+      "completed_wgs": 64,
+      "error": null,
+      "finite": true,
+      "grid": [
+        64
+      ],
+      "guard": true,
+      "mean_abs": 0.07103008776903152,
+      "median_cycles": 31932.0,
+      "median_us": 14.52906130761552,
+      "mismatches": 0,
+      "resources": {
+        "n_regs": 38,
+        "n_spills": 0,
+        "shared": 36864
+      },
+      "round": 1,
+      "rounding_floor": 0.07103007286787033,
+      "seed": 30,
+      "status": "PASS",
+      "timed_cycles": [
+        31932.0,
+        32076.0,
+        31948.0,
+        31900.0,
+        31892.0
+      ]
+    }
+  ],
+  "rounds": 2,
+  "scope": "PMD kernel-only (system.gcSimCycles); excludes JIT compilation, allocation and host copies",
+  "shape": [
+    12,
+    2048,
+    4096
+  ],
+  "shape_id": "G261",
+  "timed_samples": 10
+}
