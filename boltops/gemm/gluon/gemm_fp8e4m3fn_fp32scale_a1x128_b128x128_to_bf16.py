@@ -18,9 +18,9 @@ from triton.experimental.gluon.language.amd.hcu import (
     get_lds_slice_address,
     get_wave_id,
     abarrier_init,
-    abarrier_wait as aw,
-    abarrier_seq as seq,
-    abarrier_arrive as arrive,
+    abarrier_wait,
+    abarrier_seq,
+    abarrier_arrive,
     ebarrier_arrive,
     ebarrier_sync,
     sched_barrier,
@@ -108,19 +108,19 @@ def producer(
         slot = i % 2
         if GROUP == 0:
             if i >= 2:
-                aw(slot * 2, ((i // 2) - 1) % 2)
-            seq(slot * 2 + 1)
+                abarrier_wait(slot * 2, ((i // 2) - 1) % 2)
+            abarrier_seq(slot * 2 + 1)
             matrix_load(smA, A, (64, K), (K, 1), (0, i * 128), pred=wave % 4 == 0)
-            arrive(slot * 2 + 1)
+            abarrier_arrive(slot * 2 + 1)
             if i >= 2:
-                aw(8 + slot * 4, ((i // 2) - 1) % 2)
-            seq(9 + slot * 4)
+                abarrier_wait(8 + slot * 4, ((i // 2) - 1) % 2)
+            abarrier_seq(9 + slot * 4)
             matrix_load(smB, B, (K, 256), (1, K), (i * 128, 0))
-            arrive(9 + slot * 4)
+            abarrier_arrive(9 + slot * 4)
         else:
             if i >= 2:
-                aw(6 + slot * 4, ((i // 2) - 1) % 2)
-            seq(7 + slot * 4)
+                abarrier_wait(6 + slot * 4, ((i // 2) - 1) % 2)
+            abarrier_seq(7 + slot * 4)
             matrix_load(
                 smA, A + 64 * K, (64, K), (K, 1), (0, i * 128), pred=wave % 4 == 0
             )
@@ -128,8 +128,8 @@ def producer(
             async_copy.buffer_load_to_shared(smAS0.index(i), AS, ar * (K // 128) + i)
             bi = gl.arange(0, 2, layout=SL)
             async_copy.buffer_load_to_shared(smBS.index(i), BS, bi * (K // 128) + i)
-            arrive(7 + slot * 4)
-            aw(14, i % 2)
+            abarrier_arrive(7 + slot * 4)
+            abarrier_wait(14, i % 2)
 
 
 @g.jit
@@ -147,20 +147,20 @@ def wait_ab():
 @g.jit
 def ready_a(i, GROUP: gl.constexpr):
     if GROUP == 0:
-        aw((i % 2) * 2 + 1, (i // 2) % 2)
+        abarrier_wait((i % 2) * 2 + 1, (i // 2) % 2)
     else:
-        aw(7 + (i % 2) * 4, (i // 2) % 2)
+        abarrier_wait(7 + (i % 2) * 4, (i // 2) % 2)
 
 
 @g.jit
 def ready_b(i):
-    aw(9 + (i % 2) * 4, (i // 2) % 2)
+    abarrier_wait(9 + (i % 2) * 4, (i // 2) % 2)
 
 
 @g.jit
 def ready_scale(i, GROUP: gl.constexpr):
     if GROUP == 0:
-        aw(7 + (i % 2) * 4, (i // 2) % 2)
+        abarrier_wait(7 + (i % 2) * 4, (i // 2) % 2)
     # ACK means readiness observed, not completion of pending LDS reads.
     # Scale slices are immutable; producer writes the following distinct slice.
     gl.inline_asm_elementwise(
@@ -177,10 +177,10 @@ def ready_scale(i, GROUP: gl.constexpr):
 def release(i, GROUP: gl.constexpr):
     wait_ab()
     if GROUP == 0:
-        arrive((i % 2) * 2)
+        abarrier_arrive((i % 2) * 2)
     else:
-        arrive(6 + (i % 2) * 4)
-    arrive(8 + (i % 2) * 4)
+        abarrier_arrive(6 + (i % 2) * 4)
+    abarrier_arrive(8 + (i % 2) * 4)
 
 
 @g.jit
