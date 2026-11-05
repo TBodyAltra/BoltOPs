@@ -16,6 +16,7 @@ from triton.experimental.gluon.language.amd.hcu import (
     matrix_store,
     MmacInterleave2Layout,
     get_lds_slice_address,
+    abarrier_init,
     abarrier_wait as aw,
     abarrier_seq as seq,
     abarrier_arrive as arrive,
@@ -37,14 +38,19 @@ def initialize():
         pack=1,
     )
     if wave == 0:
-        gl.inline_asm_elementwise(
-            "s_abarrier_init 0, 4\n\ts_abarrier_init 1, 4\n\ts_abarrier_init 2, 4\n\ts_abarrier_init 3, 4\n\ts_abarrier_init 6, 4\n\ts_abarrier_init 7, 4\n\ts_abarrier_init 8, 8\n\ts_abarrier_init 9, 4\n\ts_abarrier_init 10, 4\n\ts_abarrier_init 11, 4\n\ts_abarrier_init 12, 8\n\ts_abarrier_init 13, 4\n\ts_abarrier_init 14, 8\n\ts_mov_b32 $0, 0",
-            constraints="=s,~{memory}",
-            args=[],
-            dtype=gl.int32,
-            is_pure=False,
-            pack=1,
-        )
+        abarrier_init(0, 4)
+        abarrier_init(1, 4)
+        abarrier_init(2, 4)
+        abarrier_init(3, 4)
+        abarrier_init(6, 4)
+        abarrier_init(7, 4)
+        abarrier_init(8, 8)
+        abarrier_init(9, 4)
+        abarrier_init(10, 4)
+        abarrier_init(11, 4)
+        abarrier_init(12, 8)
+        abarrier_init(13, 4)
+        abarrier_init(14, 8)
     if wave < 4:
         ebarrier_arrive(8, 8)
     ebarrier_sync(14, 16)
