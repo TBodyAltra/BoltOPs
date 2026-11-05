@@ -17,6 +17,8 @@ from triton.experimental.gluon.language.amd.hcu import (
     MmacInterleave2Layout,
     get_lds_slice_address,
     get_wave_id,
+    set_priority,
+    wait_lgkmcnt,
     abarrier_init,
     abarrier_wait,
     abarrier_seq,
@@ -51,14 +53,7 @@ def initialize(wave):
 
 @g.jit
 def drain():
-    gl.inline_asm_elementwise(
-        "s_waitcnt lgkmcnt(0)\n\ts_mov_b32 $0, 0",
-        constraints="=s,~{memory}",
-        args=[],
-        dtype=gl.int32,
-        is_pure=False,
-        pack=1,
-    )
+    wait_lgkmcnt(0)
 
 
 @g.jit
@@ -67,11 +62,7 @@ def turn(GROUP: gl.constexpr, WAIT: gl.constexpr):
         ebarrier_sync(8 + GROUP, 8)
     else:
         ebarrier_arrive(9 - GROUP, 8)
-        gl.inline_asm_elementwise(
-            "s_setprio 0\n\ts_mov_b32 $0, 0",
-            constraints="=s,~{memory}", args=[], dtype=gl.int32,
-            is_pure=False, pack=1,
-        )
+        set_priority(0)
 
 
 @g.jit
@@ -134,14 +125,8 @@ def producer(
 
 @g.jit
 def wait_ab():
-    gl.inline_asm_elementwise(
-        "s_setprio 3\n\ts_waitcnt lgkmcnt(9)\n\ts_mov_b32 $0, 0",
-        constraints="=s,~{memory}",
-        args=[],
-        dtype=gl.int32,
-        is_pure=False,
-        pack=1,
-    )
+    set_priority(3)
+    wait_lgkmcnt(9)
 
 
 @g.jit
