@@ -1,12 +1,12 @@
-# R014 · 12 × 64 × 2048 · BF16 linear（decode）
+# G256 · 12 × 64 × 2048 · BF16 linear（decode）
 
-本目录记录需求编号 R014（旧 G256）的调优结果。同一个 shape 保留两版实现：**通用版**（`generic/`）与**特化版**（`specialized_fused_splitk/`）。两版各自带有自己的 `best_config.json`，配置只对同目录的 kernel 有意义，不能互相套用。
+本目录记录需求编号 G256 的调优结果。同一个 shape 保留两版实现：**通用版**（`generic/`）与**特化版**（`specialized_fused_splitk/`）。两版各自带有自己的 `best_config.json`，配置只对同目录的 kernel 有意义，不能互相套用。
 
 ## 需求信息
 
 | 项 | 内容 |
 | --- | --- |
-| 需求编号 | R014（旧 G256），见 [少伯 BU 需求 · R014](../../../SHAOBO_BU_REQUIREMENTS.md#r014) |
+| 需求编号 | G256，见 [少伯 BU 需求 · 表 3](../../../SHAOBO_BU_REQUIREMENTS.md#table-3) |
 | M × N × K | 12 × 64 × 2048 |
 | 阶段 / 频次 | decode / 1 |
 | 模型 / 配置 | C018：Qwen3.5-35B-A3B / MXFP4 [128k/1k/s150] |
@@ -14,7 +14,7 @@
 | 对接接口 | [gemm_a16w16](../../../../../boltops/gemm/triton/gemm_a16w16.py)（权重布局 `[N,K]`） |
 | 需求表当前状态 | 接口 smoke 通过（尚未回填调优结果） |
 
-目录名使用当前需求表的 R 编号加 shape；旧 G256 和 C018 仅供历史结果追溯，C 编号不进入目录名。历史 `summary.json` 保留测量时的 G 编号和绝对路径，不因目录重命名而改写。
+目录名使用 G 编号加 shape。C 编号是模型配置的组合编号（例如 C019 = C013 + C018），模型配置变化时可能改变，因此只写在本表中，不进入目录名。
 
 ## 两个版本
 
@@ -28,7 +28,7 @@
 | 布局 | TT（另测了 TN） | TT |
 | 正确性 | PASS：TT 与 TN 各 2 个进程（种子 29 / 30），每轮 768 个输出逐个与 BF16 舍入后的 FP32 参考比较（`atol=0.02, rtol=0.01`），各轮 `mismatches=0`；全输出有限、前后各 128 个哨兵不变；对未舍入 FP32 参考的平均误差通过 `≤ 1.05 × 舍入下限 + 1e-6` | 历史 PASS（未重测）：BF16 输出对未舍入 FP32 参考检查 `rtol=0.01, atol=0.001`，FP32 partial、保护区、计数器复位均 PASS；输入缩放 0.25，与通用版判据和输入不同 |
 | 性能（PMD 单 die，kernel-only） | `best_config.json`（BK256），各 10 个正式样本的中位数：**TT 7.537531 µs，MMAC 利用率 0.0966%**（0.4173 TFLOPS；16566 cycles，范围 7.526156–7.738641 µs，202 VGPR）；**TN 7.180128 µs，MMAC 利用率 0.1014%**（0.4381 TFLOPS；15780.5 cycles，范围 7.092996–7.366906 µs，134 VGPR）；两布局 LDS 均为 49152 B，spill 为 0 | 历史 **6.59 µs，MMAC 利用率 0.1105%**（0.4773 TFLOPS；14485 cycles，3 个正式样本的中位数，范围 6.576–6.607 µs；本次未重测） |
-| 复现 | `bash ../repro_generic/run.sh R014_12x64x2048 [--layout TN]`；结果见 [`generic/runs/`](generic/runs/)，用法见[上层 README](../README.md#复现通用版) | `bash run.sh`，见 [特化版 README](specialized_fused_splitk/README.md) |
+| 复现 | `bash ../repro_generic/run.sh G256_12x64x2048 [--layout TN]`；结果见 [`generic/runs/`](generic/runs/)，用法见[上层 README](../README.md#复现通用版) | `bash run.sh`，见 [特化版 README](specialized_fused_splitk/README.md) |
 
 说明：
 
@@ -36,7 +36,7 @@
 
 - 特化版 6.59 µs 为本包 `fused_kernel.py`（`source_sha256=c4d2b5e5…`）的结果，汇总见 [`runs/verification_heuristics_20261104/summary.json`](specialized_fused_splitk/runs/verification_heuristics_20261104/summary.json)。
 - 通用版 `best_config.json`（BK256）于 2026-11-05 按当前判据重新复现，配置未改。新汇总：[TT](generic/runs/TT_20261105_061739/summary.json)、[TN](generic/runs/TN_20261105_062009/summary.json)；原先按未舍入参考与 `atol=0.001` 测得的通用版汇总已删除。TT 平均绝对误差约 0.05065726 / 0.05007705，TN 约 0.04871519 / 0.05067509，均通过舍入下限检查；当前汇总不提供最大绝对误差。
-- `autotune/results_TT_dyn/shapes/R014_12x64x2048_TT.json` 归档的是另一配置（BK128、unroll 4，真实参数在 `best.config`），本次未重测；不能用当前 BK256 的 PASS 为该归档背书。历史 `OPT_compare_TT` 的 BK64 特化配置也不在本包内，源码不同，尚不能当作本包结果。
+- `autotune/results_TT_dyn/shapes/12x64x2048_TT.json` 归档的是另一配置（BK128、unroll 4，真实参数在 `best.config`），本次未重测；不能用当前 BK256 的 PASS 为该归档背书。历史 `OPT_compare_TT` 的 BK64 特化配置也不在本包内，源码不同，尚不能当作本包结果。
 - 两版的计时均为 PMD `system.gcSimCycles` 经 `gcFrequency` 换算，不含编译与分配；正确性判据并未统一。通用版本次为 2 个进程各预热 1 次、正式 5 次，取 10 个样本的中位数。
 
 ## 测量条件
@@ -53,7 +53,7 @@
 ## 目录
 
 ```text
-R014_12x64x2048/
+G256_12x64x2048/
 ├── README.md
 ├── generic/
 │   ├── best_config.json

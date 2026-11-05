@@ -1,12 +1,12 @@
-# R015 · 12 × 2048 × 4096 · BF16 linear（decode）
+# G261 · 12 × 2048 × 4096 · BF16 linear（decode）
 
-本目录只有通用版：使用所有 shape 共用的 [`_gemm_bf16_generic_kernel`](../operators/gemm_a16w16_generic.py)，没有特化 kernel，只保存配置和复现结果。历史 `summary.json` 保留测量时的旧 G261 编号和绝对路径，不因目录重命名而改写。
+本目录只有通用版：使用所有 shape 共用的 [`_gemm_bf16_generic_kernel`](../operators/gemm_a16w16_generic.py)，没有特化 kernel，只保存配置和复现结果。
 
 ## 需求信息
 
 | 项 | 内容 |
 | --- | --- |
-| 需求编号 | R015（旧 G261，`o_proj` / `out_proj`），见 [少伯 BU 需求 · R015](../../../SHAOBO_BU_REQUIREMENTS.md#r015) |
+| 需求编号 | G261（需求表中对应 R015，`o_proj` / `out_proj`），见 [少伯 BU 需求 · 表 3](../../SHAOBO_BU_REQUIREMENTS.md#table-3) |
 | M × N × K | 12 × 2048 × 4096 |
 | 阶段 / 频次 | decode / 2 |
 | 精度 | BF16 × BF16 → BF16，FP32 累加 |
@@ -31,8 +31,8 @@ MMAC 利用率按 BF16 理论峰值 **432 TOPS**（浮点运算口径为 432 TFL
 
 ```bash
 cd ../repro_generic
-bash run.sh R015_12x2048x4096                 # TT
-bash run.sh R015_12x2048x4096 --layout TN     # TN（gemm_a16w16 接口布局）
+bash run.sh G261_12x2048x4096                 # TT
+bash run.sh G261_12x2048x4096 --layout TN     # TN（gemm_a16w16 接口布局）
 ```
 
 ## 配置来源与对照
@@ -45,6 +45,6 @@ bash run.sh R015_12x2048x4096 --layout TN     # TN（gemm_a16w16 接口布局）
 
 ## 待办
 
-1. 补充 die / CU 数，口径同 [R014](../R014_12x64x2048/README.md)。
+1. 补充 die / CU 数，口径同 [G256](../G256_12x64x2048/README.md)。
 2. 在同一次运行里 A/B 对比 autotune 最佳配置与本配置。
 3. 本配置只在 TT 上调过，TN 的结果是直接套用同一份配置。
