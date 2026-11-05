@@ -31,6 +31,34 @@ M/N/K 可为非负值；空 M/N 返回空矩阵，K=0 返回零。
 - 其他 dtype/recipe/output 使用 32×64 masked 原生 MMAC 路径，处理尾块和独立 scale 分组。
   此通用路径尚未调优。现有算子 dispatch、默认 config 和已优化流水保持不变。
 
+## Native ebarrier API migration (2026-11-05)
+
+The optimized kernel now uses `ebarrier_arrive` / `ebarrier_sync` from
+`triton.experimental.gluon.language.amd.hcu` for initialization and consumer
+MMAC handshakes. Barrier IDs, wave counts and the priority reset are preserved.
+This requires Triton !520 including interface commit `cb890751` (tested head
+`01203446`); older Triton packages do not expose these APIs.
+
+Single-CTA comparison: M/N/K=128/256/6144, tile=128/256/128, stages=2,
+partition waves=(4,4,4,4), gfx946, one die / 48 CU, clock period 455 ps
+(~2.198 GHz), LLVM `96fd797af621f19f2ce33dae35027dce185d1bb8`.
+The isolated compiler validation base is `97e683db` with the current API changes.
+Each version has one untimed launch and three interleaved measured launches;
+JIT compilation is excluded from modeled cycles.
+
+| Metric | Inline assembly baseline | Native API |
+|---|---:|---:|
+| Modeled cycles | 78,619.33 | 78,287.33 |
+| LDS bytes | 123,264 | 123,264 |
+| Spill | 0 | 0 |
+| VALU / MMOP / LDS / VMEM | 28,499 / 24,576 / 9,632 / 1,328 | same |
+
+The -0.42% difference is within the observed 0.60% sample range: no measurable
+regression, without claiming a stable speedup. K=256 and K=6144 outputs match
+both the original kernel and CPU reference elementwise (max_abs=0, mismatch=0).
+Full options, environment, IR, assembly and PMD statistics remain outside Git:
+`/xukang/code/pmd-triton-sessions/gluon-mr-20261029/ebarrier-boltops-20261105/`.
+
 ## Triton 布局设计
 
 `AMDMFMALayout(..., mmac_layout=MmacLayout.LTS)` 使用必填显式模式。

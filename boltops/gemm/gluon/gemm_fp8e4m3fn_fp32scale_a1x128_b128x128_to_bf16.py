@@ -19,6 +19,8 @@ from triton.experimental.gluon.language.amd.hcu import (
     abarrier_wait as aw,
     abarrier_seq as seq,
     abarrier_arrive as arrive,
+    ebarrier_arrive,
+    ebarrier_sync,
     sched_barrier,
     packed_scale_fma,
 )
@@ -44,22 +46,8 @@ def initialize():
             pack=1,
         )
     if wave < 4:
-        gl.inline_asm_elementwise(
-            "s_ebarrier_arrive 8, 8\n\ts_mov_b32 $0, 0",
-            constraints="=s,~{memory}",
-            args=[],
-            dtype=gl.int32,
-            is_pure=False,
-            pack=1,
-        )
-    gl.inline_asm_elementwise(
-        "s_ebarrier_sync 14, 16\n\ts_mov_b32 $0, 0",
-        constraints="=s,~{memory}",
-        args=[],
-        dtype=gl.int32,
-        is_pure=False,
-        pack=1,
-    )
+        ebarrier_arrive(8, 8)
+    ebarrier_sync(14, 16)
 
 
 @g.jit
@@ -74,23 +62,17 @@ def drain():
     )
 
 
-@triton.constexpr_function
-def turn_asm(GROUP, WAIT):
-    ID = (8 + GROUP) if WAIT else (9 - GROUP)
-    op = "sync" if WAIT else "arrive"
-    return (
-        f"s_ebarrier_{op} {ID}, 8\n\ts_mov_b32 $0, 0"
-        if WAIT
-        else f"s_ebarrier_{op} {ID}, 8\n\ts_setprio 0\n\ts_mov_b32 $0, 0"
-    )
-
-
 @g.jit
 def turn(GROUP: gl.constexpr, WAIT: gl.constexpr):
-    CODE: gl.constexpr = turn_asm(GROUP, WAIT)
-    gl.inline_asm_elementwise(
-        CODE, constraints="=s,~{memory}", args=[], dtype=gl.int32, is_pure=False, pack=1
-    )
+    if WAIT:
+        ebarrier_sync(8 + GROUP, 8)
+    else:
+        ebarrier_arrive(9 - GROUP, 8)
+        gl.inline_asm_elementwise(
+            "s_setprio 0\n\ts_mov_b32 $0, 0",
+            constraints="=s,~{memory}", args=[], dtype=gl.int32,
+            is_pure=False, pack=1,
+        )
 
 
 @g.jit
