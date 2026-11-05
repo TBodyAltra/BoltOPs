@@ -16,6 +16,7 @@ from triton.experimental.gluon.language.amd.hcu import (
     matrix_store,
     MmacInterleave2Layout,
     get_lds_slice_address,
+    get_wave_id,
     abarrier_init,
     abarrier_wait as aw,
     abarrier_seq as seq,
@@ -28,15 +29,7 @@ from triton.experimental.gluon.language.amd.hcu import (
 
 
 @g.jit
-def initialize():
-    wave = gl.inline_asm_elementwise(
-        "s_getreg_b32 $0, hwreg(HW_REG_HW_ID1, 0, 5)",
-        constraints="=s",
-        args=[],
-        dtype=gl.int32,
-        is_pure=True,
-        pack=1,
-    )
+def initialize(wave):
     if wave == 0:
         abarrier_init(0, 4)
         abarrier_init(1, 4)
@@ -102,15 +95,8 @@ def producer(
     K: gl.constexpr,
     GROUP: gl.constexpr,
 ):
-    initialize()
-    wave = gl.inline_asm_elementwise(
-        "s_getreg_b32 $0, hwreg(HW_REG_HW_ID1, 0, 5)",
-        constraints="=s",
-        args=[],
-        dtype=gl.int32,
-        is_pure=True,
-        pack=1,
-    )
+    wave = get_wave_id()
+    initialize(wave)
     SL: gl.constexpr = gl.BlockedLayout([1], [64], [4], [0])
     for i in range(K // 128):
         if i % 2 == 0:
@@ -256,7 +242,8 @@ def consumer(
     GROUP: gl.constexpr,
     F: gl.constexpr,
 ):
-    initialize()
+    wave = get_wave_id()
+    initialize(wave)
     RF: gl.constexpr = MmacInterleave2Layout(F)
     acc = gl.full((64, 256), 0, gl.float32, RF)
     zero_mmac = gl.inline_asm_elementwise(
@@ -268,14 +255,6 @@ def consumer(
         pack=4,
     )
     m = gl.arange(0, 64, layout=gl.SliceLayout(1, RF))
-    wave = gl.inline_asm_elementwise(
-        "s_getreg_b32 $0, hwreg(HW_REG_HW_ID1, 0, 5)",
-        constraints="=s",
-        args=[],
-        dtype=gl.int32,
-        is_pure=True,
-        pack=1,
-    )
     bs_group = (wave % 4) // 2
     lane_m_byte = gl.inline_asm_elementwise(
         "v_mbcnt_lo_u32_b32 $0, -1, 0\n\tv_mbcnt_hi_u32_b32 $0, -1, $0\n\tv_bfe_u32 $0, $0, 4, 2\n\tv_lshlrev_b32 $0, 2, $0",
