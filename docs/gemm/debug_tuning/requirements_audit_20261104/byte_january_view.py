@@ -16,8 +16,7 @@ def integrate(text, projected, stats):
     for r in projected:
         for field in ['requirement_id','anchor']:
             r[field]=re.sub(r'([Rr])(\d{3})',renumber,r[field])
-    repo=policy['hygon_repository']+'/-/blob/'+policy['hygon_commit']+'/projects/micro_perf/'
-    def link(label,path):return f'[{label}]({repo+path})'
+    def link(name):return f'[`{name}`](../../boltops/gemm/triton/{name}.py)'
     section='<a name="january-byte-p1"></a>\n\n## 1 月字节送测需求（P1）\n\n'
     section+='需求来源：`GPU单体测试用例 v2.1.xlsx` → `测试用例` 第 72–97 行，纳入第 72、86 行；MoE 及非 GEMM 用例不纳入。以下为通用算子测试，不限定模型。\n\n'
     section+='补充约定：INT8 默认输出 BF16；未规定的量化 scale 使用 FP32，A 按 token、B 按输出通道。MXFP8/MXFP4 保留标准 E8M0 / 32 元素分组；Basic BF16 不使用量化 scale。\n\n'
@@ -34,7 +33,7 @@ def integrate(text, projected, stats):
         if excelrow==72:
             section+='Excel 的 KN 按 **K、N** 解释：A[M,K] × B[K,N] → C[M,N]；FP4 为“如有”条件项。输出每组 shape 的算力。本文 BF16、INT8、FP8 默认输出 BF16；Basic FP4 的输出类型仍未规定。精度与 scale 采用下表口径，不表示相应 GPU 实现已验收。\n\n'
         else:
-            section+='`sp_size=1`，M=`num_tokens`、K=`hidden_size`、N=`new_hidden_size`。表内精度顺序为 **输入 / 权重 / 计算 / 输出**，scale 约定及运行结果见下方核对。\n\n'
+            section+='`sp_size=1`，M=`num_tokens`、K=`hidden_size`、N=`new_hidden_size`。表内精度顺序为 **输入 / 权重 / 计算 / 输出**。\n\n'
             section+='FP4、MXFP4 均需覆盖；输出 latency、算力、带宽、MFU、MBU。\n\n'
         section+='| 编号 | 算子 / 精度 | 层 / 算子名 | M × N × K | batch / E | 阶段 | 来源数 | A scale | B scale | 接口参考 / 状态 |\n'
         section+='| '+' | '.join(['---']*10)+' |\n'
@@ -57,11 +56,18 @@ def integrate(text, projected, stats):
                     aa='FP32 / token（默认）';bb='FP32 / 输出通道（默认）'
                     scale_a_dtype=scale_b_dtype='FP32'
                     scale_a_grain='token';scale_b_grain='output_channel'
-                ref=link('海光接口','vendor_ops/DCU/ops/lmslim/gemm.py' if excelrow==72 else 'vendor_ops/DCU/ops/lmslim/quant_matmul.py')
-                if excelrow==72:
-                    implementation={'bfloat16':'torch.matmul 路径；待验收','int8':'LMSlim W8A8 接口；待依赖 / 验收','float8':'LMSlim W8A8 接口；待依赖 / 验收','float4':'海光 gemm 当前跳过；待实现 / 验收'}[element]
+                if excelrow==72 and element=='bfloat16':
+                    ref=link('gemm_a16w16')
+                    implementation='待验收'
+                elif element in ('bfloat16','int8','float8'):
+                    ref=link('triton_scaled_mm')
+                    implementation='待验收'
+                elif element=='mxfloat4':
+                    ref=link('gemm_afp4wfp4')
+                    implementation='E8M0 / K32 接口；待验收'
                 else:
-                    implementation='LMSlim W8A8 接口；待依赖 / 验收' if element=='int8' else '海光 quant_matmul 当前拒绝；待实现 / 验收'
+                    ref='待实现'
+                    implementation='普通 FP4 / FP32 scale 接口待实现' if element=='float4' else 'MXFP8 / E8M0 scale GEMM 接口待实现'
                 status=f'{len(M)} 组 MNK；'+('FP4 如有；' if optional else '')+implementation
                 section+='| '+' | '.join([f'[{rid}](#{target})<a name="{target}"></a>',op+'<br>'+display_precision,'`'+op+'`',f'{mlabel} × {N} × {K}','—','—','1',aa,bb,ref+'<br>'+status])+' |\n'
                 row={k:'' for k in projected[0]}
@@ -74,9 +80,6 @@ def integrate(text, projected, stats):
         section+='\n'
     runtime=json.loads((AUDIT/'runtime-contract.json').read_text())
     assert runtime['repository_commit']==source['upstream']['commit']
-    section+=(AUDIT/'runtime-summary.md').read_text()+'\n'
-    section+='海光仓库运行入口使用 `--backend DCU`；底层 LMSlim 依赖与已有代码路径见接口链接。默认值属于本文实现约定，历史 CPU / PMD 结果按采集版本保留。\n\n'
-    section+='[原始行、完整展开网格及仓库核对](debug_tuning/byte_january_20261105/README.md)\n\n'
     assert len(new)==40 and len(expanded)==1328
     assert sum(not x['conditional_FP4'] for x in expanded)==1272
     text=text.replace('# 少伯 BU GEMM 支持需求','# GEMM 支持需求')
