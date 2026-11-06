@@ -1,7 +1,7 @@
 """Fixed 128x256x128 MLS/WDRA48 pipeline for E4M3FN and FP32 K128 scales.
 
 Tile geometry, LDS buffering and partition resources form one implementation.
-Select a different pipeline to change them; get_mls_wdra_launch_config is not a tile tuner.
+Select a different pipeline to change them; get_launch_config is not a tile tuner.
 """
 
 from triton.experimental import gluon as g
@@ -371,7 +371,7 @@ def _gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16_bm128_bn256_bk128_kernel(
     )
 
 
-def get_mls_wdra_launch_config():
+def get_launch_config():
     """Fixed MLS pipeline configuration for complete tiles."""
     # Native interleave2 B/C mappings avoid register shuffles at both transfers.
     sb = MlsSharedLayout(1, (128, 64), alt=1, order=(0, 1))
@@ -394,4 +394,4 @@ def get_mls_wdra_launch_config():
 
 def launch_gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16_bm128_bn256_bk128(config, problem, a, b, a_scale, b_scale, out):
     _gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16_bm128_bn256_bk128_kernel[(problem.m // config.block_m, problem.n // config.block_n)](
-        a, b, a_scale, b_scale, out, N=problem.n, K=problem.k, **get_mls_wdra_launch_config())
+        a, b, a_scale, b_scale, out, N=problem.n, K=problem.k, **get_launch_config())

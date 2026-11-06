@@ -59,8 +59,11 @@ class GemmProblem:
     groups: GroupSpec | None = None
     a_aligned_16: bool = True
     b_aligned_16: bool = True
+    num_cus: int | None = None
 
     def __post_init__(self):
+        if self.num_cus is not None and (type(self.num_cus) is not int or self.num_cus <= 0):
+            raise ValueError("num_cus must be a positive integer when specified")
         if self.kind not in ("dense", "batched", "grouped") or min(self.m, self.n, self.k) < 0:
             raise ValueError("invalid GEMM kind or shape")
         if self.batch <= 0 or (self.kind != "batched" and self.batch != 1):

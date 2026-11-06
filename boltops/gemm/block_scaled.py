@@ -66,6 +66,7 @@ def gemm_block_scaled(a, b, a_scale, b_scale, *,
             problem = GemmProblem(
                 kind="dense", m=m, n=n, k=k, a=OperandSpec(a.dtype, strides=tuple(a.stride())), b=OperandSpec(b.dtype, strides=tuple(b.stride())),
                 out_dtype=out_dtype, arch=triton.runtime.driver.active.get_current_target().arch,
+                num_cus=torch.cuda.get_device_properties(a.device).multi_processor_count,
                 a_scale=ScaleSpec(a_scale.dtype, recipe[0], scale_encodings[0]),
                 b_scale=ScaleSpec(b_scale.dtype, recipe[1], scale_encodings[1]),
                 a_aligned_16=a.data_ptr() % 16 == 0, b_aligned_16=b.data_ptr() % 16 == 0,

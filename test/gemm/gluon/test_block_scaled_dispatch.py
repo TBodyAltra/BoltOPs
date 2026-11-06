@@ -12,20 +12,20 @@ from boltops.gemm.registry import (
 
 def problem(shape=(128, 256, 256), *, aligned=True, dtype=torch.float8_e4m3fn,
             scale_dtype=torch.float32, out_dtype=torch.bfloat16,
-            recipe=((1, 128), (128, 128)), arch="gfx946", encodings=("numeric", "numeric")):
+            recipe=((1, 128), (128, 128)), arch="gfx946", encodings=("numeric", "numeric"), num_cus=48):
     m, n, k = shape
     return GemmProblem("dense", m, n, k,
                        OperandSpec(dtype, strides=(k, 1)), OperandSpec(dtype, strides=(k, 1)),
                        out_dtype, arch, ScaleSpec(scale_dtype, recipe[0], encodings[0]),
                        ScaleSpec(scale_dtype, recipe[1], encodings[1]),
-                       a_aligned_16=aligned)
+                       a_aligned_16=aligned, num_cus=num_cus)
 
 
 
 @pytest.mark.parametrize("shape", [(128, 256, 256), (256, 512, 6144)])
 def test_complete_tiles_select_fixed_mls_pipeline(shape):
     plan = select_plan(problem(shape))
-    assert plan.implementation.name == "gluon.block_scaled.128x256x128"
+    assert plan.implementation.name == "gluon.fp8e4m3fn.fp32scale.a1x128_b128x128.to_bf16"
     assert plan.config == KernelConfig(128, 256, 128)
 
 
@@ -59,7 +59,7 @@ def test_general_dot_chunk_respects_common_scale_boundaries(recipe, bk):
 
 
 def test_optimized_pipeline_is_target_specific():
-    assert select_plan(problem(arch="gfx938")).implementation.name != "gluon.block_scaled.128x256x128"
+    assert select_plan(problem(arch="gfx938")).implementation.name != "gluon.fp8e4m3fn.fp32scale.a1x128_b128x128.to_bf16"
 
 
 def test_invalid_tile_cannot_launch_a_fixed_pipeline():

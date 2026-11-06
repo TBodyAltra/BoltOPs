@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from boltops.gemm import performance_map
-from boltops.gemm.registry import select_plan
+from boltops.gemm.registry import KernelConfig, select_plan
 from test_block_scaled_dispatch import problem
 
 
@@ -16,6 +16,7 @@ def test_empty_performance_map_uses_triton(monkeypatch):
 
 @pytest.mark.parametrize("changes", [
     {"arch": "gfx90a"}, {"out_dtype": torch.float32},
+    {"num_cus": 96}, {"num_cus": 192}, {"num_cus": None},
     {"a_aligned_16": False}, {"m": 127}, {"n": 255}, {"k": 6400},
 ])
 def test_unmeasured_contracts_never_select_gluon(changes):
@@ -26,9 +27,15 @@ def test_unmeasured_contracts_never_select_gluon(changes):
     assert select_plan(replace(base, **changes)).implementation.backend == "triton"
 
 
-def test_bad_map_tile_cannot_reconfigure_fixed_gluon_pipeline(monkeypatch):
+def test_tile_is_selected_then_checked_by_implementation(monkeypatch):
     import copy
     entries = copy.deepcopy(performance_map._entries())
-    entries[0]["block_size"] = [256, 256, 64]
+    matching_conditions = copy.deepcopy(entries[0]["match"])
+    entries[0]["config"]["block_size"] = [256, 256, 64]
     monkeypatch.setattr(performance_map, "_entries", lambda: entries)
+    assert entries[0]["match"] == matching_conditions
+    assert performance_map.tuned_configs(
+        problem(), entries[0]["config"]["implementation"]
+    ) == (KernelConfig(256, 256, 64),)
+    # The map selected a tile; the fixed implementation still cannot execute it.
     assert select_plan(problem()).implementation.backend == "triton"

@@ -4,7 +4,7 @@ from ...performance_map import tuned_configs
 
 
 def _configurations(problem):
-    return tuned_configs(problem, "gluon.block_scaled.128x256x128")
+    return tuned_configs(problem, "gluon.fp8e4m3fn.fp32scale.a1x128_b128x128.to_bf16")
 
 
 def _supports(problem, config):
@@ -13,8 +13,8 @@ def _supports(problem, config):
 
 
 IMPLEMENTATIONS = (
-    Implementation("gluon.block_scaled.128x256x128", "dense",
-                   "boltops.gemm.gluon.dense.kernels.mls_wdra",
+    Implementation("gluon.fp8e4m3fn.fp32scale.a1x128_b128x128.to_bf16", "dense",
+                   "boltops.gemm.gluon.dense.kernels.gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16",
                    "launch_gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16_bm128_bn256_bk128",
                    _configurations, _supports, backend="gluon"),
 )

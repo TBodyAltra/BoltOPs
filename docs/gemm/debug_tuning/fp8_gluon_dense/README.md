@@ -20,17 +20,19 @@ numeric uint8 保持数值解释。scale 运算采用 FP32，FP64 输入或 scal
 
 ## 调度
 
-`boltops/gemm/configs/block_scaled_dispatch.json` 是调度映射表，只记录架构、
-输入/输出 dtype、scale dtype/encoding/recipe、MNK 适用条件、实现标识和 tile 配置。
-不保存耗时、机器信息、commit 或产物路径。增加已经调好的配置时增加对应条目。
+`boltops/gemm/configs/block_scaled_dispatch.json` 是调度映射表，分为 `match` 与 `config` 两部分：
+`match` 记录架构、`num_cus`、输入/输出 dtype、scale dtype/encoding/recipe 和 MNK 条件；
+`config` 记录选出的实现标识和 tile。tile 不属于请求条件。
+不保存实测 cycles、频率、commit 或产物路径；`num_cus` 只作为匹配条件。增加已经调好的配置时增加对应条目。
 
 - 命中表且满足固定 kernel 契约：调度 Gluon 已优化实现。
 - 未命中：调度 Triton 通用 block-scaled GEMM。
 - 不捕获编译/执行异常再切换实现，错误如实报告。
 
-当前 Gluon 条目为 gfx946、E4M3FN×E4M3FN、FP32 A1×128/B128×128 scale、BF16 输出、
+当前 Gluon 条目匹配 gfx946、48 CU、E4M3FN×E4M3FN、FP32 A1×128/B128×128 scale、BF16 输出、
 BM/BN/BK=128/256/128；M 为128倍数、N为256倍数、K为256倍数且256≤K≤6144，
-A/B 基址16字节对齐。其他尺寸、精度或 recipe 统一走 Triton，包括尾块和不同 A/B K 分组。
+A/B 基址16字节对齐。`num_cus` 读取当前输入设备的 `multi_processor_count`；
+CU 数不同或未知时不匹配该条目，不能仅按架构推定 CU 数。其他尺寸、精度或 recipe 统一走 Triton，包括尾块和不同 A/B K 分组。
 通用路径按 gcd(A_K,B_K) 划分共同区间，每区间原生 dot 后乘 scale 并累加，支持非整除尺寸。
 这不代表完整业务尺寸均已验收或通用配置已经调优。
 
