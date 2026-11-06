@@ -18,7 +18,7 @@
 
 通用版当前精度判据以 `autotune/scripts/tune_lib.py::worker()` 为准：CPU FP32 参考为 `ref`，先舍入成 BF16 得到 `gold`，再用 `torch.isclose(got, gold, atol=0.02, rtol=0.01)` 统计 `mismatches`，要求为 0；同时要求 `mean(|got-ref|) ≤ 1.05 × mean(|gold-ref|) + 1e-6`、输出全为有限值、输出前后各 128 个哨兵值不变。`repro_generic` 设置 `full_check=True`，检查全部输出；autotune 未设置时只对抽样点计算参考与误差，有限值及哨兵仍检查全输出。`repro.py` 本地记录上述容差，`tune_lib.py` 不导出精度常量，也不再输出最大绝对误差。
 
-特化版保留独立的历史判据：BF16 输出对未舍入 FP32 参考检查 `rtol=0.01, atol=0.001`，另检查 FP32 partial（`rtol=atol=1e-4`）、保护区和计数器复位；本次未重测。两版判据及输入不同（通用版为未缩放 `randn`，特化版缩放 0.25），不能声称精度口径统一。
+R014 fused split-K 特化版保留独立的历史判据：BF16 输出对未舍入 FP32 参考检查 `rtol=0.01, atol=0.001`，另检查 FP32 partial（`rtol=atol=1e-4`）、保护区和计数器复位；本次未重测。它与通用版判据及输入不同（通用版为未缩放 `randn`，R014 特化版缩放 0.25），不能声称精度口径统一。R004 新增 `specialized_static_mnk_strides/` 则使用与 `repro_generic` 一致的种子 29 / 30、未缩放输入、全量 BF16 gold / 平均误差 / finite / 128 哨兵判据；两类特化包的判据不能混用。
 
 ## 目录约定
 
@@ -60,6 +60,7 @@ bash run.sh R014_12x64x2048 --config ../autotune/results_TT_dyn/shapes/R014_12x6
 
 | 编号 | M × N × K | 通用版 | 特化版 | 目录 |
 | --- | --- | --- | --- | --- |
+| R004 / R023 | 6656 × 64 × 2048 | 当前判据 PASS；TT 29.486050 µs，TN 38.909784 µs | 无（通用版） | [R004_6656x64x2048](R004_6656x64x2048/README.md) |
 | R014（旧 G256） | 12 × 64 × 2048 | 当前判据 PASS；TT 7.537531 µs，TN 7.180128 µs | fused split-K，历史 6.59 µs（TT，独立判据，未重测） | [R014_12x64x2048](R014_12x64x2048/README.md) |
 | R015（旧 G261） | 12 × 2048 × 4096 | 当前判据 PASS；TT 14.472869 µs，TN 14.512681 µs | 无（通用版） | [R015_12x2048x4096](R015_12x2048x4096/README.md) |
 
