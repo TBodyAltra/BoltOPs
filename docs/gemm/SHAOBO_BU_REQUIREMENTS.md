@@ -566,7 +566,6 @@ FP4、MXFP4 均需覆盖；输出 latency、算力、带宽、MFU、MBU。
 | [R399](#r399)<a name="r399"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `out_proj` | 53248 × 4096 × 1024 | — | prefill | 1 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过 |
 
 
-[来源与核对记录](debug_tuning/requirements_audit_20261104/README.md)
 
 [fn-bmm]: ../../boltops/gemm/triton/batched_gemm_bf16.py#L323
 [fn-a16]: ../../boltops/gemm/triton/gemm_a16w16.py#L33
