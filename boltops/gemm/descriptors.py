@@ -1,4 +1,7 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: MIT
 """GEMM semantics shared across dense, batched and grouped implementations."""
+from __future__ import annotations
 from dataclasses import dataclass
 
 import torch
@@ -60,6 +63,8 @@ class GemmProblem:
     a_aligned_16: bool = True
     b_aligned_16: bool = True
     num_cus: int | None = None
+    activation_quantization: str | None = None
+    has_bias: bool = False
 
     def __post_init__(self):
         if self.num_cus is not None and (type(self.num_cus) is not int or self.num_cus <= 0):
@@ -72,6 +77,18 @@ class GemmProblem:
             raise ValueError("group metadata belongs only to grouped GEMM")
         if self.groups and self.groups.mode == "equal" and self.m % self.groups.count:
             raise ValueError("equal groups must divide the total M rows")
+
+    @property
+    def interface(self):
+        if self.b.packing == "awq":
+            return "awq"
+        if self.a.format == self.b.format == "fp4":
+            return "mxfp4"
+        if self.kind == "batched" and self.activation_quantization == "mxfp4":
+            return "batched_a16wfp4"
+        if self.kind in ("batched", "grouped"):
+            return self.kind
+        return "dense" if self.unscaled else "scaled"
 
     @property
     def a_dtype(self):

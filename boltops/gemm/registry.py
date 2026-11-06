@@ -1,4 +1,7 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: MIT
 """Implementation registry independent of operator family, dtype and side tensors."""
+from __future__ import annotations
 from dataclasses import dataclass
 from importlib import import_module
 from typing import Callable
@@ -26,7 +29,7 @@ class Implementation:
     entry: str
     configurations: Callable[[GemmProblem], tuple[KernelConfig, ...]]
     supports: Callable[[GemmProblem, KernelConfig], bool]
-    backend: str = "gluon"
+    backend: str
 
     def matches(self, problem, config):
         return self.family == problem.kind and self.supports(problem, config)
@@ -41,8 +44,7 @@ class ExecutionPlan:
 def select_plan(problem, implementations=None, *, backend="auto"):
     from .catalog import BACKENDS, available, implementations as load, validate_backend
     validate_backend(backend)
-    interface = ("grouped" if problem.kind == "grouped" else
-                 "dense" if problem.unscaled else "scaled")
+    interface = problem.interface
     if implementations is None:
         candidates = []
         for owner in BACKENDS if backend == "auto" else (backend,):

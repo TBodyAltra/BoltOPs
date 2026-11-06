@@ -72,7 +72,7 @@ def test_invalid_tile_cannot_launch_a_fixed_pipeline():
 def test_a_new_implementation_needs_no_dispatch_branches():
     config = KernelConfig(64, 64, 64)
     implementation = Implementation("test", "dense", "not_imported", "launch",
-                                    lambda p: (config,), lambda p, c: c == config)
+                                    lambda p: (config,), lambda p, c: c == config, backend="gluon")
     plan = select_plan(problem(), implementations=(implementation,))
     assert plan.implementation is implementation and plan.config == config
 

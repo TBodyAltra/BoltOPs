@@ -5,40 +5,19 @@
 
 当前验收状态见 [GEMM 总体支持能力](../gemm/README.md)，需求见 [少伯 BU 支持需求](../gemm/SHAOBO_BU_REQUIREMENTS.md)，关键调优与资源约束见 [调优记录](../gemm/debug_tuning/TUNING.md)。
 
-## 当前支持一览
+## 公开接口
 
-| 公开 API | 精度 / 量化 | 布局要点 | 来源 | 备注 |
-| --- | --- | --- | --- | --- |
-| `matmul_persistent` | FP16 / BF16 / FP32 | `C = A @ B`（NN） | vLLM | LDS≤64KiB 自动降 tile |
-| `gemm_dense` | FP16/BF16/FP32，无 scale | A[M,K]、B[N,K] | 复用已有 Triton | gfx946 FP16 可匹配已有调优配置 |
-| `gemm_grouped` | 等长 native16 或等长/ragged FP8×FP4 | E 或 offsets 显式给出 | 复用已有 Triton | 不包含 MoE 路由 |
-| `gemm_scaled` | 独立 A/B block scale | A[M,K]、B[N,K] | Triton / Gluon 统一调度 | 映射命中走已优化 Gluon，否则通用 Triton |
-| `gemm_a16w16` | FP16 / BF16 | `Y = X @ W^T`，`W[N,K]` | aiter | 可选 epilogue activation |
-| `awq_gemm_triton` | W4A16（AWQ packed） | int4 `qweight` | vLLM | HCU JSON：`K100_AI` / `BW200` |
-| `gemm_a8wfp4` | FP8 E4M3 × FP4 E2M1 | packed W[N,ceil(K/2)] | boltOps，参考 aiter 布局 | K32 分组普通 dot 后乘 scale |
-| `grouped_gemm_a8wfp4` | FP8 E4M3 × FP4 E2M1 grouped | 等长 / ragged 专家分组 | boltOps | 支持空专家 |
-| `gemm_afp4wfp4` | MXFP4 | `Y = X @ W^T` | aiter | 需 `is_fp4_avail()` |
-| `batched_gemm_a16wfp4` | A16WFP4 batched | `Y[i] = X[i] @ W[i]^T` | aiter | 需 FP4 |
-| `batched_gemm_bf16` | BF16 / FP16 batched | `Y[i] = X[i] @ W[i]^T`，`W[B,N,K]` | aiter | HCU JSON：`K100_AI` / `BW200` |
-| `w8a8_block_int8_matmul` | INT8 block-scale | `B[N,K]` | SGLang | HCU JSON：`BW200` / `gfx938` |
-
-未公开：`gemm_fp16`（内部 HCU WASP/WDRA 实验）。
+公开入口及旧接口迁移表见 [GEMM dispatch](gemm-dispatch.md)。
 
 ```python
 from boltops.gemm import (
-    matmul_persistent,
-    gemm_a16w16,
-    gemm_scaled,
-    gemm_dense,
-    gemm_grouped,
-    awq_gemm_triton,
-    gemm_afp4wfp4,
-    batched_gemm_a16wfp4,
-    batched_gemm_bf16,
-    w8a8_block_int8_matmul,
+    gemm_dense, gemm_scaled, gemm_batched, gemm_grouped,
+    gemm_awq, gemm_mxfp4, gemm_batched_a16wfp4,
 )
-# 或 from boltops.gemm import ...
 ```
+
+下文沿用原 kernel 名称的章节记录后端实现与历史测试；这些名字不再从
+`boltops.gemm` 公开导出。需要后端专用参数时直接从 `boltops.gemm.triton` 的具体模块导入。
 
 测试统一目录：
 
@@ -366,7 +345,7 @@ HCU JSON：`triton/configs/w8a8_block_int8_matmul/`（`BW200` / `gfx938`，来�
 ## FP8 × FP4：gemm_a8wfp4 / grouped_gemm_a8wfp4
 
 ```python
-from boltops.gemm import gemm_a8wfp4, grouped_gemm_a8wfp4
+from boltops.gemm.triton.gemm_a8wfp4 import gemm_a8wfp4, grouped_gemm_a8wfp4
 
 # x[M,K], w[N,ceil(K/2)]
 y = gemm_a8wfp4(x, w, x_scales, w_scales, activation_group_size=128)
@@ -427,7 +406,7 @@ Dense 默认输出为输入 dtype；FP16/BF16 输入可选择 FP16/BF16/FP32 输
 Grouped 无 scale 的等长 FP16/BF16 目前输出 FP16/BF16；FP8×FP4 输出 FP16/BF16/FP32。
 Grouped scale recipe/encoding 独立指定，numeric uint8 不隐式解释为 E8M0；没有现成原生实现的组合明确报错。
 旧 gemm_block_scaled 名称由 gemm_scaled 取代，不保留兼容别名。其他专项算子的已有接口保持原有边界。
-调度和当前支持范围见 [三类统一入口](../gemm/README.md)。
+调度和当前支持范围见 [统一接口](../gemm/README.md)。
 
 三个统一入口均支持 `backend="auto" | "triton" | "gluon" | "tilelang"`；显式指定不会跨后端回退。
 TileLang 当前只注册框架扩展点，所有未实现组合明确报错。具体支持矩阵见 [GEMM 总览](../gemm/README.md)。

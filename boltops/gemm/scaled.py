@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: MIT
 """Native block-scaled dense GEMM with independent A/B scale blocks."""
 import operator
 
@@ -25,7 +27,7 @@ def _parse_recipe(scale_recipe):
 
 def gemm_scaled(a, b, a_scale, b_scale, *,
                       scale_recipe=((1, 128), (128, 128)),
-                      scale_encodings=("numeric", "numeric"), out_dtype=None, b_format="native", backend="auto"):
+                      scale_encodings=("numeric", "numeric"), out_dtype=None, b_format="native", bias=None, backend="auto"):
     """Compute block-scaled A[M,K] @ B[N,K].T using native dot operations.
 
     Scale shapes are [ceil(M/A_M),ceil(K/A_K)] and
@@ -45,6 +47,10 @@ def gemm_scaled(a, b, a_scale, b_scale, *,
     packed = b_format == "fp4_e2m1"
     if packed and b.dtype != torch.uint8:
         raise TypeError("fp4_e2m1 requires packed uint8 storage")
+    if bias is not None and (tuple(bias.shape) != (b.shape[0],) or not bias.is_floating_point()):
+        raise ValueError("scaled bias must be floating point [N]")
+    if bias is not None and (not bias.is_cuda or bias.device != a.device):
+        raise ValueError("bias must be on the input GPU")
     recipe = _parse_recipe(scale_recipe)
     if (not isinstance(scale_encodings, (tuple, list)) or len(scale_encodings) != 2 or
             any(e not in ("numeric", "e8m0") for e in scale_encodings)):
@@ -77,16 +83,16 @@ def gemm_scaled(a, b, a_scale, b_scale, *,
         if m == 0 or n == 0:
             return out
         if k == 0:
-            out.zero_()
+            out.zero_() if bias is None else out.copy_(bias.expand_as(out))
         else:
             problem = GemmProblem(
                 kind="dense", m=m, n=n, k=k, a=OperandSpec(a.dtype, strides=tuple(a.stride())), b=(OperandSpec(b.dtype, "fp4", "e2m1_low_high", -1, 2, strides=tuple(b.stride()))
                     if packed else OperandSpec(b.dtype, strides=tuple(b.stride()))),
-                out_dtype=out_dtype, arch=get_device_info(a.device).arch,
+                has_bias=bias is not None, out_dtype=out_dtype, arch=get_device_info(a.device).arch,
                 num_cus=get_device_info(a.device).cu_count,
                 a_scale=ScaleSpec(a_scale.dtype, recipe[0], scale_encodings[0]),
                 b_scale=ScaleSpec(b_scale.dtype, recipe[1], scale_encodings[1]),
                 a_aligned_16=a.data_ptr() % 16 == 0, b_aligned_16=b.data_ptr() % 16 == 0,
             )
-            launch(select_plan(problem, backend=backend), problem, a=a, b=b, a_scale=a_scale, b_scale=b_scale, out=out)
+            launch(select_plan(problem, backend=backend), problem, a=a, b=b, a_scale=a_scale, b_scale=b_scale, out=out, **({"bias": bias} if bias is not None else {}))
     return out

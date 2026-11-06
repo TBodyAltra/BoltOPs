@@ -28,7 +28,7 @@ def test_auto_prefers_mapped_gluon_over_general_triton():
         select_plan(replace(problem(), num_cus=96), backend='gluon')
 
 
-@pytest.mark.parametrize('interface', ['scaled', 'dense', 'grouped'])
+@pytest.mark.parametrize('interface', ['scaled', 'dense', 'batched', 'grouped'])
 def test_tilelang_has_explicit_empty_capabilities(interface):
     assert catalog.implementations('tilelang', interface) == ()
 
@@ -85,9 +85,9 @@ for name in list(sys.modules):
     if name.split('.')[0] in ('triton', 'tilelang', 'tvm'):
         del sys.modules[name]
 sys.meta_path.insert(0, BlockDSL())
-from boltops.gemm import scaled, dense, grouped
+from boltops.gemm import scaled, dense, batched, grouped, specialized
 from boltops.gemm.catalog import implementations
-assert all(implementations('tilelang', i) == () for i in ('scaled', 'dense', 'grouped'))
+assert all(implementations('tilelang', i) == () for i in ('scaled', 'dense', 'batched', 'grouped', 'awq', 'mxfp4', 'batched_a16wfp4'))
 '''
     subprocess.run([sys.executable, '-c', code], check=True, env=os.environ.copy())
 

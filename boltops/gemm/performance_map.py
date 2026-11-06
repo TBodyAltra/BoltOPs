@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: MIT
 """Read measured configuration contracts; never infer support from timing alone."""
 import json
 from functools import lru_cache
@@ -9,9 +11,9 @@ from .registry import KernelConfig
 _CONFIG_DIR = Path(__file__).with_name("configs")
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=7)
 def _entries(interface):
-    if interface not in ("scaled", "dense", "grouped"):
+    if interface not in ("scaled", "dense", "batched", "grouped", "awq", "mxfp4", "batched_a16wfp4"):
         raise ValueError(f"unknown GEMM configuration interface: {interface}")
     name = f"gemm_{interface}"
     data = json.loads((_CONFIG_DIR / f"{name}.json").read_text())
@@ -24,7 +26,7 @@ def _entries(interface):
 
 def tuned_configs(problem, implementation, *, backend=None):
     p = problem
-    interface = "grouped" if p.kind == "grouped" else "dense" if p.unscaled else "scaled"
+    interface = p.interface
     entries = _entries(interface)
     if (p.kind != "dense" or not p.native_operands or
             min(p.m, p.n, p.k) <= 0):
@@ -34,6 +36,8 @@ def tuned_configs(problem, implementation, *, backend=None):
         if backend is not None and entry["config"]["backend"] != backend:
             continue
         match = entry["match"]
+        if p.has_bias != match.get("has_bias", False):
+            continue
         if p.arch != match["arch"] or p.num_cus != match["num_cus"]:
             continue
         if p.a.strides != (p.k, 1):

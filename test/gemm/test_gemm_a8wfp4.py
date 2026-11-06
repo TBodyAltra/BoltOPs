@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from boltops.gemm import gemm_a8wfp4, grouped_gemm_a8wfp4
+from boltops.gemm.triton.gemm_a8wfp4 import gemm_a8wfp4, grouped_gemm_a8wfp4
 
 
 VALUES = torch.tensor([0., .5, 1., 1.5, 2., 3., 4., 6.,

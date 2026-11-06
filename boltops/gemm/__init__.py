@@ -1,227 +1,17 @@
-"""GEMM operator package.
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: MIT
+"""GEMM entry points grouped by computation, independently of backend kernels."""
 
-Public signatures live here. Block-scaled GEMM uses a performance map to
-select measured Gluon specializations or the general Triton implementation.
-
-Public APIs (aligned with vLLM / aiter call sites); docs/tests are per-family
-like ``fused_moe`` / ``moe_activation``:
-
-* docs: ``docs/ops/gemm.md``
-* tests: ``test/gemm/``
-
-Public operators:
-
-* ``matmul_persistent``
-* ``gemm_a16w16``
-* ``gemm_scaled``
-* ``gemm_dense``
-* ``gemm_grouped``
-* ``awq_gemm_triton``
-* ``gemm_a8wfp4``
-* ``grouped_gemm_a8wfp4``
-* ``gemm_afp4wfp4``
-* ``batched_gemm_a16wfp4``
-* ``batched_gemm_bf16``
-* ``w8a8_block_int8_matmul``
-
-Internal-only (not exported): ``gemm_fp16`` (HCU WASP/WDRA).
-"""
-
-from __future__ import annotations
-
-from typing import Optional
-
-import torch
-
-
-def matmul_persistent(
-    a: torch.Tensor,
-    b: torch.Tensor,
-    bias: Optional[torch.Tensor] = None,
-) -> torch.Tensor:
-    """vLLM Triton persistent GEMM: ``C = A @ B [+ bias]`` (NN)."""
-    from boltops.gemm.triton.matmul_persistent import matmul_persistent as impl
-
-    return impl(a, b, bias)
-
-
-def gemm_a16w16(
-    x: torch.Tensor,
-    w: torch.Tensor,
-    bias: Optional[torch.Tensor] = None,
-    dtype: Optional[torch.dtype] = None,
-    y: Optional[torch.Tensor] = None,
-    config: Optional[dict] = None,
-    activation: Optional[str] = None,
-    skip_reduce: bool = False,
-    kernel_type: str = "bandwidth_bound",
-    backend: Optional[str] = None,
-) -> torch.Tensor:
-    """aiter / vLLM ROCm Triton GEMM: ``Y = X @ W^T`` with ``W[N, K]``."""
-    from boltops.gemm.triton.gemm_a16w16 import gemm_a16w16 as impl
-
-    return impl(
-        x,
-        w,
-        bias=bias,
-        dtype=dtype,
-        y=y,
-        config=config,
-        activation=activation,
-        skip_reduce=skip_reduce,
-        kernel_type=kernel_type,
-        backend=backend,
-    )
-
-
-def awq_gemm_triton(
-    input: torch.Tensor,
-    qweight: torch.Tensor,
-    scales: torch.Tensor,
-    qzeros: torch.Tensor,
-    split_k_iters: int,
-    config=None,
-) -> torch.Tensor:
-    """vLLM Triton AWQ GEMM (int4 packed weights)."""
-    from boltops.gemm.triton.awq_gemm_triton import awq_gemm_triton as impl
-
-    return impl(input, qweight, scales, qzeros, split_k_iters, config)
-
-
-def gemm_afp4wfp4(
-    x: torch.Tensor,
-    w: torch.Tensor,
-    x_scales: torch.Tensor,
-    w_scales: torch.Tensor,
-    dtype: Optional[torch.dtype] = torch.bfloat16,
-    y: Optional[torch.Tensor] = None,
-    config: Optional[dict] = None,
-    skip_reduce: bool = False,
-) -> torch.Tensor:
-    """aiter Triton MXFP4 GEMM: ``Y = X @ W^T`` (requires FP4-capable GPU)."""
-    from boltops.gemm.triton.gemm_afp4wfp4 import gemm_afp4wfp4 as impl
-
-    return impl(
-        x,
-        w,
-        x_scales,
-        w_scales,
-        dtype=dtype,
-        y=y,
-        config=config,
-        skip_reduce=skip_reduce,
-    )
-
-
-def batched_gemm_a16wfp4(
-    x: torch.Tensor,
-    w: torch.Tensor,
-    w_scales: torch.Tensor,
-    dtype: Optional[torch.dtype] = torch.bfloat16,
-    y: Optional[torch.Tensor] = None,
-    config: Optional[dict] = None,
-    transpose_bm: bool = False,
-    prequant: bool = True,
-    y_scale: Optional[torch.Tensor] = None,
-) -> torch.Tensor:
-    """aiter Triton batched A16WFP4 GEMM (requires FP4-capable GPU)."""
-    from boltops.gemm.triton.batched_gemm_a16wfp4 import batched_gemm_a16wfp4 as impl
-
-    return impl(
-        x,
-        w,
-        w_scales,
-        dtype=dtype,
-        y=y,
-        config=config,
-        transpose_bm=transpose_bm,
-        prequant=prequant,
-        y_scale=y_scale,
-    )
-
-
-def batched_gemm_bf16(
-    x: torch.Tensor,
-    w: torch.Tensor,
-    bias: Optional[torch.Tensor] = None,
-    dtype: Optional[torch.dtype] = torch.bfloat16,
-    splitK: Optional[int] = None,
-    y: Optional[torch.Tensor] = None,
-    config: Optional[dict] = None,
-) -> torch.Tensor:
-    """Triton batched BF16/FP16 GEMM with inferred TN/TT weight storage."""
-    from boltops.gemm.triton.batched_gemm_bf16 import batched_gemm_bf16 as impl
-
-    return impl(
-        x,
-        w,
-        bias=bias,
-        dtype=dtype,
-        splitK=splitK,
-        y=y,
-        config=config,
-    )
-
-
-def w8a8_block_int8_matmul(
-    A: torch.Tensor,
-    B: torch.Tensor,
-    As: torch.Tensor,
-    Bs: torch.Tensor,
-    block_size: list[int],
-    output_dtype: torch.dtype = torch.float16,
-) -> torch.Tensor:
-    """SGLang Triton W8A8 block-scaled INT8 matmul."""
-    from boltops.gemm.triton.w8a8_block_int8_matmul import (
-        w8a8_block_int8_matmul as impl,
-    )
-
-    return impl(A, B, As, Bs, block_size, output_dtype)
-
-
-__all__ = [
-    "gemm_scaled",
-    "gemm_dense",
-    "gemm_grouped",
-    "awq_gemm_triton",
-    "batched_gemm_a16wfp4",
-    "batched_gemm_bf16",
-    "gemm_a16w16",
-    "gemm_afp4wfp4",
-    "gemm_a8wfp4",
-    "grouped_gemm_a8wfp4",
-    "matmul_persistent",
-    "w8a8_block_int8_matmul",
-]
-
-
-def gemm_a8wfp4(
-    x, w, x_scales, w_scales, *, activation_group_size=128,
-    dtype=torch.bfloat16, y=None, config=None,
-):
-    """FP8 x packed E2M1 GEMM; see docs/ops/gemm.md for layouts."""
-    from boltops.gemm.triton.gemm_a8wfp4 import gemm_a8wfp4 as impl
-    return impl(x, w, x_scales, w_scales, activation_group_size=activation_group_size,
-                dtype=dtype, y=y, config=config)
-
-
-def grouped_gemm_a8wfp4(
-    x, w, x_scales, w_scales, *, expert_offsets=None,
-    activation_group_size=128, dtype=torch.bfloat16, y=None, config=None,
-):
-    """Dense or ragged expert-grouped FP8 x packed E2M1 GEMM."""
-    from boltops.gemm.triton.gemm_a8wfp4 import grouped_gemm_a8wfp4 as impl
-    return impl(x, w, x_scales, w_scales, expert_offsets=expert_offsets,
-                activation_group_size=activation_group_size, dtype=dtype, y=y,
-                config=config)
+__all__ = ["gemm_dense", "gemm_scaled", "gemm_batched", "gemm_grouped",
+           "gemm_awq", "gemm_mxfp4", "gemm_batched_a16wfp4"]
 
 
 def gemm_scaled(a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 128)),
-                      scale_encodings=("numeric", "numeric"), out_dtype=None, b_format="native", backend="auto"):
+                      scale_encodings=("numeric", "numeric"), out_dtype=None, b_format="native", bias=None, backend="auto"):
     """Native dense GEMM with independent scale blocks/encodings and selectable output dtype."""
     from boltops.gemm.scaled import gemm_scaled as impl
     return impl(a, b, a_scale, b_scale, scale_recipe=scale_recipe,
-                scale_encodings=scale_encodings, out_dtype=out_dtype, b_format=b_format, backend=backend)
+                scale_encodings=scale_encodings, out_dtype=out_dtype, b_format=b_format, bias=bias, backend=backend)
 
 
 def gemm_dense(a, b, *, bias=None, out_dtype=None, backend="auto"):
@@ -239,3 +29,27 @@ def gemm_grouped(a, b, *, group_offsets=None, a_scale=None, b_scale=None,
     return impl(a, b, group_offsets=group_offsets, a_scale=a_scale, b_scale=b_scale,
                 scale_recipe=scale_recipe, scale_encodings=scale_encodings,
                 b_format=b_format, bias=bias, out_dtype=out_dtype, backend=backend)
+
+
+def gemm_batched(a, b, *, bias=None, out_dtype=None, backend="auto"):
+    """Native batched A[B,M,K] @ B[B,N,K].T."""
+    from .batched import gemm_batched as impl
+    return impl(a, b, bias=bias, out_dtype=out_dtype, backend=backend)
+
+
+def gemm_awq(a, packed_b, b_scale, b_zero_points, *, group_size, backend="auto"):
+    """AWQ INT4 with explicit group size, packed weights and zero points."""
+    from .specialized import gemm_awq as impl
+    return impl(a, packed_b, b_scale, b_zero_points, group_size=group_size, backend=backend)
+
+
+def gemm_mxfp4(a, b, a_scale, b_scale, *, out_dtype=None, backend="auto"):
+    """Prequantized E2M1 x E2M1, with uint8 E8M0 K32 scales."""
+    from .specialized import gemm_mxfp4 as impl
+    return impl(a, b, a_scale, b_scale, out_dtype=out_dtype, backend=backend)
+
+
+def gemm_batched_a16wfp4(a, b, b_scale, *, out_dtype=None, backend="auto"):
+    """Batched A16WFP4 with the existing online MXFP4 activation quantization."""
+    from .specialized import gemm_batched_a16wfp4 as impl
+    return impl(a, b, b_scale, out_dtype=out_dtype, backend=backend)

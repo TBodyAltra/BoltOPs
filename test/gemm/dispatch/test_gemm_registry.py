@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: MIT
 """Framework contracts do not imply additional executable GEMM implementations."""
 import pytest
 import torch
@@ -61,7 +63,6 @@ def test_group_count_requires_an_integer():
 def test_public_scaled_interface_is_unified():
     import boltops.gemm as gemm
 
-    assert all(x in gemm.__all__ for x in ("gemm_scaled", "gemm_dense", "gemm_grouped"))
-    assert not hasattr(gemm, "gemm_block_scaled")
-    for old in ("gemm_a8w8_blockscale", "w8a8_triton_block_scaled_mm", "triton_scaled_mm"):
-        assert old not in gemm.__all__ and not hasattr(gemm, old)
+    assert all(x in gemm.__all__ for x in ("gemm_scaled", "gemm_dense", "gemm_batched", "gemm_grouped"))
+    for existing in ("gemm_a8w8_blockscale", "w8a8_triton_block_scaled_mm", "triton_scaled_mm"):
+        assert existing not in gemm.__all__ and not hasattr(gemm, existing)

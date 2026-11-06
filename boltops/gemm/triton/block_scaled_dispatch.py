@@ -5,7 +5,7 @@ from ..registry import Implementation, KernelConfig
 
 
 def _configurations(p):
-    if (p.kind != "dense" or not p.native_operands or
+    if (p.has_bias or p.kind != "dense" or not p.native_operands or
             p.a_scale is None or p.b_scale is None):
         return ()
     q = math.gcd(p.a_scale.block[1], p.b_scale.block[1])
@@ -22,7 +22,7 @@ def _supports(p, config):
 
 def _fp4(p, config):
     from .grouped_dispatch import _fp4_types
-    return (p.kind == "dense" and _fp4_types(p) and config == KernelConfig(16, 32, 32)
+    return (not p.has_bias and p.kind == "dense" and _fp4_types(p) and config == KernelConfig(16, 32, 32)
             and all(strides is not None and all(s > 0 for s in strides)
                     for strides in (p.a.strides, p.b.strides)))
 

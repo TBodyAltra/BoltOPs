@@ -4,7 +4,7 @@ from ...performance_map import tuned_configs
 
 
 def _configurations(problem):
-    return tuned_configs(problem, "gluon.fp8e4m3fn.fp32scale.a1x128_b128x128.to_bf16", backend="gluon")
+    return () if problem.has_bias else tuned_configs(problem, "gluon.fp8e4m3fn.fp32scale.a1x128_b128x128.to_bf16", backend="gluon")
 
 
 def _supports(problem, config):
