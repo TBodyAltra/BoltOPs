@@ -148,6 +148,9 @@ def ready_scale(i, GROUP: gl.constexpr):
         abarrier_wait(7 + (i % 2) * 4, (i // 2) % 2)
     # ACK means readiness observed, not completion of pending LDS reads.
     # Scale slices are immutable; producer writes the following distinct slice.
+    # TODO: use abarrier_arrive(14, 1) once LLVM supports this readiness-only
+    # ACK without inserting lgkmcnt(0), which drains A/B prefetch and breaks
+    # overlap. This ACK does not publish or release LDS storage.
     gl.inline_asm_elementwise(
         "s_abarrier_arrive $0, 14, 1",
         constraints="=s",
