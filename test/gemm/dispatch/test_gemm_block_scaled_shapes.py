@@ -4,7 +4,7 @@ import torch
 import triton
 
 pytest.importorskip("triton.experimental.gluon.language.amd.hcu")
-from boltops.gemm import gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16
+from boltops.gemm import gemm_scaled
 
 
 @pytest.mark.parametrize("shape", [
@@ -30,7 +30,7 @@ def test_dense_shapes(shape):
         lo, hi = i * 128, min((i + 1) * 128, k)
         ref += ((a[:, lo:hi].float() @ b[:, lo:hi].float().T)
                 * sa[:, i, None] * sb[:, i].repeat_interleave(128)[:n][None, :])
-    out = gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(*(x.cuda() for x in (a, b, sa, sb)))
+    out = gemm_scaled(*(x.cuda() for x in (a, b, sa, sb)))
     torch.testing.assert_close(out.cpu(), ref.bfloat16(), atol=0, rtol=0)
 
 
@@ -38,27 +38,14 @@ def test_reject_mismatched_k():
     a = torch.empty((2, 3), dtype=torch.float8_e4m3fn)
     b = torch.empty((4, 5), dtype=torch.float8_e4m3fn)
     with pytest.raises(ValueError, match="matching K"):
-        gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(a, b, a, b)
+        gemm_scaled(a, b, a, b)
 
 
-@pytest.mark.parametrize("recipe", [((1, 32), (128, 32)), ((128, 128), (128, 128)),
-                                   ((1, 128), (1, 128)), None, (128, 128)])
-def test_reject_scale_recipe(recipe):
-    # Recipe errors are rejected before tensors, GPU initialization or launch.
-    with pytest.raises(ValueError, match="only scale_recipe"):
-        gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(None, None, None, None, scale_recipe=recipe)
-
-
-@pytest.mark.parametrize("index,dtype", [(0, torch.float16), (1, torch.float8_e5m2),
-    (2, torch.float16), (2, torch.bfloat16), (3, torch.uint8), (3, torch.bfloat16)])
-def test_reject_precision(index, dtype):
-    args = [torch.empty((2, 256), dtype=torch.float8_e4m3fn),
-            torch.empty((129, 256), dtype=torch.float8_e4m3fn),
-            torch.empty((2, 2), dtype=torch.float32), torch.empty((2, 2), dtype=torch.float32)]
-    args[index] = torch.empty(args[index].shape, dtype=dtype)
-    name = ("a", "b", "a_scale", "b_scale")[index]
-    with pytest.raises(ValueError, match=f"{name} must have dtype"):
-        gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(*args)
+@pytest.mark.parametrize("recipe", [((1, 0), (128, 32)), ((-1, 128), (128, 128)),
+                                   ((1, 128),), None, (128, 128)])
+def test_reject_invalid_scale_recipe(recipe):
+    with pytest.raises(ValueError, match="scale_recipe must be"):
+        gemm_scaled(None, None, None, None, scale_recipe=recipe)
 
 
 @pytest.mark.parametrize("index,shape", [(2, (1,)), (2, (1, 2)), (2, (2, 8)),
@@ -69,4 +56,4 @@ def test_reject_scale_shape(index, shape):
             torch.empty((2, 2), dtype=torch.float32), torch.empty((2, 2), dtype=torch.float32)]
     args[index] = torch.empty(shape, dtype=torch.float32)
     with pytest.raises(ValueError, match="must have shape.*scale_recipe"):
-        gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(*args)
+        gemm_scaled(*args)

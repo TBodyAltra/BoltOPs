@@ -1,44 +1,23 @@
 # Gemm 系列算子说明
 
-`boltops.gemm` 公开 Triton GEMM 族（布局对齐 vLLM / aiter / SGLang 调用侧）。
-实现位于 `boltops/gemm/triton/`；维护人 Triton @xukang。
+`boltops.gemm` 提供统一 GEMM 入口；block-scaled GEMM 按映射选择 Triton 或 Gluon 实现。
+实现分别位于 `boltops/gemm/triton/` 和 `boltops/gemm/gluon/`。
 
 当前验收状态见 [GEMM 总体支持能力](../gemm/README.md)，需求见 [少伯 BU 支持需求](../gemm/SHAOBO_BU_REQUIREMENTS.md)，关键调优与资源约束见 [调优记录](../gemm/debug_tuning/TUNING.md)。
 
-## 当前支持一览
+## 公开接口
 
-| 公开 API | 精度 / 量化 | 布局要点 | 来源 | 备注 |
-| --- | --- | --- | --- | --- |
-| `matmul_persistent` | FP16 / BF16 / FP32 | `C = A @ B`（NN） | vLLM | LDS≤64KiB 自动降 tile |
-| `gemm_a16w16` | FP16 / BF16 | `Y = X @ W^T`，`W[N,K]` | aiter | 可选 epilogue activation |
-| `w8a8_triton_block_scaled_mm` | FP8 / INT8 block-scale | `B[N,K]`，`block_size=[bn,bk]` | vLLM | |
-| `triton_scaled_mm` | INT8 / FP8 + scale | `C = (A @ B) * sa * sb`（NN） | vLLM | per-tensor / per-channel scale |
-| `awq_gemm_triton` | W4A16（AWQ packed） | int4 `qweight` | vLLM | HCU JSON：`K100_AI` / `BW200` |
-| `gemm_a8w8_blockscale` | A8W8 block-scale | `Y = X @ W^T` | aiter | |
-| `gemm_a8wfp4` | FP8 E4M3 × FP4 E2M1 | packed W[N,ceil(K/2)] | boltOps，参考 aiter 布局 | K32 分组普通 dot 后乘 scale |
-| `grouped_gemm_a8wfp4` | FP8 E4M3 × FP4 E2M1 grouped | 等长 / ragged 专家分组 | boltOps | 支持空专家 |
-| `gemm_afp4wfp4` | MXFP4 | `Y = X @ W^T` | aiter | 需 `is_fp4_avail()` |
-| `batched_gemm_a16wfp4` | A16WFP4 batched | `Y[i] = X[i] @ W[i]^T` | aiter | 需 FP4 |
-| `batched_gemm_bf16` | BF16 / FP16 batched | `Y[i] = X[i] @ W[i]^T`，`W[B,N,K]` | aiter | HCU JSON：`K100_AI` / `BW200` |
-| `w8a8_block_int8_matmul` | INT8 block-scale | `B[N,K]` | SGLang | HCU JSON：`BW200` / `gfx938` |
-
-未公开：`gemm_fp16`（内部 HCU WASP/WDRA 实验）。
+公开入口及旧接口迁移表见 [GEMM dispatch](gemm-dispatch.md)。
 
 ```python
 from boltops.gemm import (
-    matmul_persistent,
-    gemm_a16w16,
-    w8a8_triton_block_scaled_mm,
-    triton_scaled_mm,
-    awq_gemm_triton,
-    gemm_a8w8_blockscale,
-    gemm_afp4wfp4,
-    batched_gemm_a16wfp4,
-    batched_gemm_bf16,
-    w8a8_block_int8_matmul,
+    gemm_dense, gemm_scaled, gemm_batched, gemm_grouped,
+    gemm_batched_a16wfp4_online_quant,
 )
-# 或 from boltops.gemm import ...
 ```
+
+下文沿用原 kernel 名称的章节记录后端实现与历史测试；这些名字不再从
+`boltops.gemm` 公开导出。需要后端专用参数时直接从 `boltops.gemm.triton` 的具体模块导入。
 
 测试统一目录：
 
@@ -83,29 +62,6 @@ y = gemm_a16w16(x, weight, bias=None, dtype=None, config=None, activation=None)
 
 ---
 
-## `w8a8_triton_block_scaled_mm`
-
-vLLM Triton W8A8 / FP8 **block-scale**：`B` 布局 `[N, K]`，`block_size=[bn, bk]`。
-
-```python
-C = w8a8_triton_block_scaled_mm(A, B, As, Bs, [128, 128], output_dtype=torch.float16)
-```
-
-实现：`triton/w8a8_triton_block_scaled_mm.py`。溯源：vLLM `fp8_utils.py`。
-
----
-
-## `triton_scaled_mm`
-
-vLLM compressed-tensors scaled matmul：`C = (A @ B) * scale_a * scale_b [+ bias]`。
-
-- `a`：`[M, K]`；`b`：`[K, N]`（NN）
-- `scale_a`：scalar 或 `[M, 1]`；`scale_b`：scalar 或 `[N, 1]`
-
-实现：`triton/triton_scaled_mm.py`。溯源：vLLM `triton_scaled_mm.py`。
-
----
-
 ## `awq_gemm_triton`
 
 vLLM Triton AWQ（int4 packed weights）。
@@ -118,21 +74,6 @@ out = awq_gemm_triton(input, qweight, scales, qzeros, split_k_iters, config=None
 - HCU JSON：`triton/configs/awq_gemm_triton/`（`K100_AI` / `BW200`）
 
 实现：`triton/awq_gemm_triton.py`。溯源：vLLM `awq_triton.py`。
-
----
-
-## `gemm_a8w8_blockscale`
-
-aiter Triton A8W8 block-scale：`Y = X @ W^T`。
-
-```python
-y = gemm_a8w8_blockscale(x, w, x_scale, w_scale, dtype=torch.bfloat16)
-```
-
-`GROUP_K`（由 scale 推导）须等于 launch `BLOCK_SIZE_K`。默认见
-`builtin_gemm_configs.py`。
-
-实现：`triton/gemm_a8w8_blockscale.py` + `_op.py`。溯源：aiter `gemm_a8w8_blockscale`。
 
 ---
 
@@ -404,7 +345,7 @@ HCU JSON：`triton/configs/w8a8_block_int8_matmul/`（`BW200` / `gfx938`，来�
 ## FP8 × FP4：gemm_a8wfp4 / grouped_gemm_a8wfp4
 
 ```python
-from boltops.gemm import gemm_a8wfp4, grouped_gemm_a8wfp4
+from boltops.gemm.triton.gemm_a8wfp4 import gemm_a8wfp4, grouped_gemm_a8wfp4
 
 # x[M,K], w[N,ceil(K/2)]
 y = gemm_a8wfp4(x, w, x_scales, w_scales, activation_group_size=128)
@@ -435,3 +376,37 @@ config 支持 BLOCK_SIZE_M、BLOCK_SIZE_N（2 的幂且 ≥16）、num_warps。
 
 实现：triton/gemm_a8wfp4.py。参考来源和实测记录：
 [FP8×FP4 支持与验证](../gemm/README.md)。
+
+## `gemm_scaled`
+
+```python
+y = gemm_scaled(a, b, a_scale, b_scale,
+                      scale_recipe=((1, 128), (128, 128)),
+                      scale_encodings=("numeric", "numeric"), out_dtype=torch.bfloat16, backend="auto")
+```
+
+A[M,K]、B[N,K] 连续存储。逐行 scale 使用 A recipe (1,K)，逐输出通道 scale 使用 B recipe (1,K)；
+整张量 scale 分别使用 (M,K)、(N,K)，scale shape 均为 (1,1)。B 必须传 [N,K]，不再接受旧 NN 包装的 [K,N]。
+接口由 gemm/scaled.py 统一校验，调度映射命中时调用已优化 Gluon，其余走通用 Triton。
+scale_recipe 和 scale_encodings 显式传递，不再从 scale shape 猜测分组或把 numeric uint8 隐式当 E8M0。
+原三个上游包装只保留内部实现文件，公开入口统一为此函数；不保留兼容别名。
+详细能力与布局约定见 [统一接口](../gemm/debug_tuning/fp8_gluon_dense/README.md)。
+
+## `gemm_dense` / `gemm_grouped`
+
+```python
+c = gemm_dense(a, b, bias=bias, out_dtype=torch.bfloat16)  # A[M,K], B[N,K]
+y = gemm_grouped(a_groups, b_groups)  # A[E,M,K], B[E,N,K], same-size groups
+y = gemm_grouped(a_rows, packed_b, group_offsets=offsets,
+                 a_scale=as_, b_scale=bs_, b_format="fp4_e2m1",
+                 scale_recipe=((1,128),(1,32)))
+```
+
+Dense 默认输出为输入 dtype；FP16/BF16 输入可选择 FP16/BF16/FP32 输出，FP32 目前输出 FP32。
+Grouped 无 scale 的等长 FP16/BF16 目前输出 FP16/BF16；FP8×FP4 输出 FP16/BF16/FP32。
+Grouped scale recipe/encoding 独立指定，numeric uint8 不隐式解释为 E8M0；没有现成原生实现的组合明确报错。
+旧 gemm_block_scaled 名称由 gemm_scaled 取代，不保留兼容别名。其他专项算子的已有接口保持原有边界。
+调度和当前支持范围见 [统一接口](../gemm/README.md)。
+
+三个统一入口均支持 `backend="auto" | "triton" | "gluon" | "tilelang"`；显式指定不会跨后端回退。
+TileLang 当前只注册框架扩展点，所有未实现组合明确报错。具体支持矩阵见 [GEMM 总览](../gemm/README.md)。

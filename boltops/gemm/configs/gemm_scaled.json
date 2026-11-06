@@ -1,0 +1,51 @@
+{
+  "schema_version": 3,
+  "interface": "gemm_scaled",
+  "entries": [
+    {
+      "match": {
+        "arch": "gfx946",
+        "dtypes": [
+          "float8_e4m3fn",
+          "float8_e4m3fn",
+          "bfloat16"
+        ],
+        "scales": [
+          {
+            "dtype": "float32",
+            "block": [
+              1,
+              128
+            ],
+            "encoding": "numeric"
+          },
+          {
+            "dtype": "float32",
+            "block": [
+              128,
+              128
+            ],
+            "encoding": "numeric"
+          }
+        ],
+        "shape_contract": {
+          "m_multiple": 128,
+          "n_multiple": 256,
+          "k_multiple": 256,
+          "k_min": 256,
+          "k_max": 6144
+        },
+        "num_cus": 48
+      },
+      "config": {
+        "implementation": "gluon.fp8e4m3fn.fp32scale.a1x128_b128x128.to_bf16",
+        "block_size": [
+          128,
+          256,
+          128
+        ],
+        "backend": "gluon"
+      }
+    }
+  ]
+}
