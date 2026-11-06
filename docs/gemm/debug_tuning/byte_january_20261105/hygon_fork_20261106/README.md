@@ -4,7 +4,7 @@
 
 ## 当前需求口径
 
-- Basic INT8 默认输出 BF16，普通 FP8 采用已有 LMSlim BF16 输出约定；Basic BF16 输出 BF16。Basic FP4 的输出 dtype 原表未规定，仍保留待确认。
+- Basic INT8 默认输出 BF16，普通 FP8 采用已有 LMSlim BF16 输出约定；Basic BF16 输出 BF16。Basic FP4 的输出 dtype 原表未规定，按用户约定默认 BF16。
 - 未提供的量化 scale：A 使用 FP32 `[M]`，按 token；B/W 使用 FP32 `[N]`，按输出通道。此为用户于 2026-11-06 指定的实现默认值。普通 FP4 沿用此默认，不擅自解释为 NVFP4。
 - Basic BF16 不需要量化 scale。quant_matmul BF16 若沿用其统一 scale 接口，按 FP32 token/输出通道默认值列出，不表示 BF16 数据发生了低精度量化。
 - MXFP8 / MXFP4 的 scale 已由标准规定为 E8M0、每 32 元素共享，保留该已知约定；矩阵分组轴、物理布局和 scale 动态/静态生成策略未由现有实现确定，不用 FP32 默认值覆盖。

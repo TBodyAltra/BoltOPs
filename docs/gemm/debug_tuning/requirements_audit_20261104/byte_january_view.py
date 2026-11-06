@@ -31,7 +31,7 @@ def integrate(text, projected, stats):
         mlabel='M₇₂' if excelrow==72 else 'M₈₆'
         section+=f'`{mlabel}` = `'+', '.join(map(str,M))+'`。每行覆盖此列表全部 M；矩阵维度统一写为 **M × N × K**。\n\n'
         if excelrow==72:
-            section+='Excel 的 KN 按 **K、N** 解释：A[M,K] × B[K,N] → C[M,N]；FP4 为“如有”条件项。输出每组 shape 的算力。本文 BF16、INT8、FP8 默认输出 BF16；Basic FP4 的输出类型仍未规定。精度与 scale 采用下表口径，不表示相应 GPU 实现已验收。\n\n'
+            section+='Excel 的 KN 按 **K、N** 解释：A[M,K] × B[K,N] → C[M,N]；FP4 为“如有”条件项。输出每组 shape 的算力。本文 BF16、INT8、FP8、FP4 默认输出 BF16。精度与 scale 采用下表口径，不表示相应 GPU 实现已验收。\n\n'
         else:
             section+='`sp_size=1`，M=`num_tokens`、K=`hidden_size`、N=`new_hidden_size`。表内精度顺序为 **输入 / 权重 / 计算 / 输出**。\n\n'
             section+='FP4、MXFP4 均需覆盖；输出 latency、算力、带宽、MFU、MBU。\n\n'
@@ -101,7 +101,7 @@ def integrate(text, projected, stats):
     stats['priorities']=['P0','P1','P2']
     stats.update(model_table_rows=399,independent_requirement_IDs=399,display_numbering='R001-R399',january_requirement_groups=40,january_expanded_cases=1328,january_required_cases=1272,january_conditional_FP4_cases=56)
     for filename,dtypes in [('basic-required.json',source['basic']['dtypes'][:3]),('basic-fp4-optional.json',['float4'])]:
-        (AUDIT/filename).write_text(json.dumps(dict(cases=[dict(arg_type='default',dtype=dtypes,**({'dst_dtype':'bfloat16'} if filename=='basic-required.json' else {}),**{'K.N':source['basic']['KN'],'M':source['basic']['M']})]),ensure_ascii=False,indent=2)+'\n')
+        (AUDIT/filename).write_text(json.dumps(dict(cases=[dict(arg_type='default',dtype=dtypes,dst_dtype='bfloat16',**{'K.N':source['basic']['KN'],'M':source['basic']['M']})]),ensure_ascii=False,indent=2)+'\n')
     (AUDIT/'quant-matmul.json').write_text(json.dumps(dict(quant_matmul=[dict(arg_type='llm',**{'dtype.w_dtype.compute_dtype.dst_dtype':source['quant']['dtypes'],'sp_size.hidden_size.new_hidden_size':source['quant']['sp_K_N'],'num_tokens':source['quant']['num_tokens']})]),ensure_ascii=False,indent=2)+'\n')
     with (AUDIT/'expanded-cases.csv').open('w',newline='') as f:
         w=csv.DictWriter(f,fieldnames=list(expanded[0]),lineterminator='\n');w.writeheader();w.writerows(expanded)

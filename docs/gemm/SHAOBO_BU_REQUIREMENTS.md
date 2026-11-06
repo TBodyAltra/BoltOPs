@@ -122,7 +122,7 @@
 
 `M₇₂` = `4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768`。每行覆盖此列表全部 M；矩阵维度统一写为 **M × N × K**。
 
-Excel 的 KN 按 **K、N** 解释：A[M,K] × B[K,N] → C[M,N]；FP4 为“如有”条件项。输出每组 shape 的算力。本文 BF16、INT8、FP8 默认输出 BF16；Basic FP4 的输出类型仍未规定。精度与 scale 采用下表口径，不表示相应 GPU 实现已验收。
+Excel 的 KN 按 **K、N** 解释：A[M,K] × B[K,N] → C[M,N]；FP4 为“如有”条件项。输出每组 shape 的算力。本文 BF16、INT8、FP8、FP4 默认输出 BF16。精度与 scale 采用下表口径，不表示相应 GPU 实现已验收。
 
 | 编号 | 算子 / 精度 | 层 / 算子名 | M × N × K | batch / E | 阶段 | 来源数 | A scale | B scale | 接口参考 / 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -138,10 +138,10 @@ Excel 的 KN 按 **K、N** 解释：A[M,K] × B[K,N] → C[M,N]；FP4 为“如�
 | [R056](#r056)<a name="r056"></a> | gemm<br>float8 × float8 → bfloat16 | `gemm` | M₇₂ × 8192 × 8192 | — | — | 1 | FP32 / token（默认） | FP32 / 输出通道（默认） | [`triton_scaled_mm`](../../boltops/gemm/triton/triton_scaled_mm.py)<br>14 组 MNK；待验收 |
 | [R057](#r057)<a name="r057"></a> | gemm<br>float8 × float8 → bfloat16 | `gemm` | M₇₂ × 1024 × 8192 | — | — | 1 | FP32 / token（默认） | FP32 / 输出通道（默认） | [`triton_scaled_mm`](../../boltops/gemm/triton/triton_scaled_mm.py)<br>14 组 MNK；待验收 |
 | [R058](#r058)<a name="r058"></a> | gemm<br>float8 × float8 → bfloat16 | `gemm` | M₇₂ × 8192 × 1024 | — | — | 1 | FP32 / token（默认） | FP32 / 输出通道（默认） | [`triton_scaled_mm`](../../boltops/gemm/triton/triton_scaled_mm.py)<br>14 组 MNK；待验收 |
-| [R059](#r059)<a name="r059"></a> | gemm<br>float4 × float4 → Excel 未指定 | `gemm` | M₇₂ × 4096 × 4096 | — | — | 1 | FP32 / token（默认） | FP32 / 输出通道（默认） | 待实现<br>14 组 MNK；FP4 如有；普通 FP4 / FP32 scale 接口待实现 |
-| [R060](#r060)<a name="r060"></a> | gemm<br>float4 × float4 → Excel 未指定 | `gemm` | M₇₂ × 8192 × 8192 | — | — | 1 | FP32 / token（默认） | FP32 / 输出通道（默认） | 待实现<br>14 组 MNK；FP4 如有；普通 FP4 / FP32 scale 接口待实现 |
-| [R061](#r061)<a name="r061"></a> | gemm<br>float4 × float4 → Excel 未指定 | `gemm` | M₇₂ × 1024 × 8192 | — | — | 1 | FP32 / token（默认） | FP32 / 输出通道（默认） | 待实现<br>14 组 MNK；FP4 如有；普通 FP4 / FP32 scale 接口待实现 |
-| [R062](#r062)<a name="r062"></a> | gemm<br>float4 × float4 → Excel 未指定 | `gemm` | M₇₂ × 8192 × 1024 | — | — | 1 | FP32 / token（默认） | FP32 / 输出通道（默认） | 待实现<br>14 组 MNK；FP4 如有；普通 FP4 / FP32 scale 接口待实现 |
+| [R059](#r059)<a name="r059"></a> | gemm<br>float4 × float4 → bfloat16 | `gemm` | M₇₂ × 4096 × 4096 | — | — | 1 | FP32 / token（默认） | FP32 / 输出通道（默认） | 待实现<br>14 组 MNK；FP4 如有；普通 FP4 / FP32 scale 接口待实现 |
+| [R060](#r060)<a name="r060"></a> | gemm<br>float4 × float4 → bfloat16 | `gemm` | M₇₂ × 8192 × 8192 | — | — | 1 | FP32 / token（默认） | FP32 / 输出通道（默认） | 待实现<br>14 组 MNK；FP4 如有；普通 FP4 / FP32 scale 接口待实现 |
+| [R061](#r061)<a name="r061"></a> | gemm<br>float4 × float4 → bfloat16 | `gemm` | M₇₂ × 1024 × 8192 | — | — | 1 | FP32 / token（默认） | FP32 / 输出通道（默认） | 待实现<br>14 组 MNK；FP4 如有；普通 FP4 / FP32 scale 接口待实现 |
+| [R062](#r062)<a name="r062"></a> | gemm<br>float4 × float4 → bfloat16 | `gemm` | M₇₂ × 8192 × 1024 | — | — | 1 | FP32 / token（默认） | FP32 / 输出通道（默认） | 待实现<br>14 组 MNK；FP4 如有；普通 FP4 / FP32 scale 接口待实现 |
 
 <a name="model-byte-quant"></a>
 
