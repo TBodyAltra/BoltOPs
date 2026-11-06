@@ -10,16 +10,17 @@ under `boltops/gemm/configs/`. All providers are independent (`triton`,
 | `gemm_scaled` | Native block-scale or whole-K tensor/row/channel scale; FP8, INT8, FP16/BF16 where registered | `gemm_a8w8_blockscale`, `w8a8_triton_block_scaled_mm`, `triton_scaled_mm`, `w8a8_block_int8_matmul` |
 | `gemm_batched` | Exact native A[B,M,K] @ B[B,N,K].T, optional [B,1,N] bias | `batched_gemm_bf16` |
 | `gemm_grouped` | Group-addressed GEMM; equal groups or explicitly registered addressing modes | Independent grouped contracts |
-| `gemm_awq` | A16 + packed INT4, explicit zero points, AWQ nibble order | `awq_gemm_triton` |
-| `gemm_mxfp4` | Prequantized packed E2M1 A/B and E8M0 K32 scales | `gemm_afp4wfp4` |
-| `gemm_batched_a16wfp4` | Existing online MXFP4 activation quantization + packed FP4 B | `batched_gemm_a16wfp4` |
+| `gemm_scaled(..., b_format="awq_int4")` | A16 + packed INT4, optional zero points (default zero), AWQ nibble order | `awq_gemm_triton` |
+| `gemm_scaled(..., a_format="fp4_e2m1", b_format="fp4_e2m1")` | Prequantized packed E2M1 A/B and E8M0 K32 scales | `gemm_afp4wfp4` |
+| `gemm_batched_a16wfp4_online_quant` | Existing online MXFP4 activation quantization + packed FP4 B | `batched_gemm_a16wfp4` |
 
-The last three computations are intentionally separate: AWQ has zero points
-and a different storage contract; MXFP4 inputs are already quantized;
-A16WFP4 performs lossy online activation quantization. The latter is not an
-exact unquantized A16 x FP4 GEMM. Registering an adapter does not establish
-hardware or simulator support. Missing native instructions fail unchanged;
-there is no emulation fallback.
+AWQ and prequantized MXFP4 are formats/recipes of `gemm_scaled`, not separate
+public operations. Online A16WFP4 remains separate because it performs lossy
+activation quantization inside the GEMM K loop. Each row/K32 group derives
+its dynamic E8M0 scale and FP4 values, then immediately calls native scaled
+dot; it does not materialize a whole quantized A in global memory. This is not
+exact unquantized A16 x FP4 multiplication. Missing native support still fails
+without emulation or backend retries.
 
 Old public wrappers are removed without compatibility aliases. Existing
 implementation functions remain in `boltops.gemm.triton.*` for backend-specific
@@ -29,11 +30,25 @@ GEMM operations. NN callers of `matmul_persistent(a,b)` migrate to
 `gemm_dense(a,b.T)`. `triton_scaled_mm` callers also transpose B and supply an
 explicit scale recipe. Plain batched does not broadcast batch dimensions.
 
-`gemm_awq` takes A[M,K], packed B[K,N/8], scales[K/G,N] and zeros[K/G,N/8],
-all contiguous, plus explicit `group_size=G`. Its output dtype is the scale
-dtype. `gemm_mxfp4` takes uint8 packed A[M,K/2], B[N,K/2] and uint8 E8M0
-scales [M|N,K/32]. `gemm_batched_a16wfp4` takes A[B,M,K], packed uint8
-B[B,N,K/2] and E8M0 scales[B,N,K/32]. The packed paths require K divisible by 32.
+Scaled format examples:
+
+```python
+# AWQ storage is explicitly [K,N/8], [K/G,N], [K/G,N/8], all contiguous.
+# A has no scale; its recipe entry is unused. Missing zero points mean zero.
+y = gemm_scaled(a16, packed_b, b_scale=scales, b_zero_points=zeros,
+                b_format="awq_int4", scale_recipe=((1, 1), (1, G)))
+
+# E2M1 inputs store two values per byte: A[M,K/2], B[N,K/2].
+# Both scales are uint8 E8M0 with shapes [M,K/32] and [N,K/32].
+y = gemm_scaled(a4, b4, a_scale, b_scale,
+                a_format="fp4_e2m1", b_format="fp4_e2m1",
+                scale_recipe=((1, 32), (1, 32)), scale_encodings=("e8m0", "e8m0"))
+```
+
+AWQ output dtype equals its scale dtype. MXFP4 output defaults to BF16.
+`gemm_batched_a16wfp4_online_quant` takes A[B,M,K], packed B[B,N,K/2], E8M0 B scales
+[B,N,K/32]; A scales are generated in the kernel. Both sides use recipe
+(1,32), and packed paths require K divisible by 32.
 
 All interfaces accept `backend="auto"`, `"triton"`, `"gluon"`, `"tilelang"`.
 Automatic selection queries the selected operation's own configuration file
@@ -41,9 +56,8 @@ before defaults. Explicit backend selection never retries another backend on
 compile/execute failure. Unsupported combinations raise NotImplementedError;
 a registered backend missing its runtime raises ImportError. Gluon retains the optimized E4M3FN/FP32 scale recipe. TileLang remains an empty registration point.
 
-The seven files are `gemm_dense.json`, `gemm_scaled.json`, `gemm_batched.json`,
-`gemm_grouped.json`, `gemm_awq.json`, `gemm_mxfp4.json`, and
-`gemm_batched_a16wfp4.json`. Each carries its interface identifier. Schema 3
+The five files are `gemm_dense.json`, `gemm_scaled.json`, `gemm_batched.json`,
+`gemm_grouped.json`, and `gemm_batched_a16wfp4_online_quant.json`. Each carries its interface identifier. Schema 3
 separates `match` (arch, num_cus, MNK, dtype/scale/layout contracts) from
 `config` (backend, implementation, tile and optional existing config file).
 Tile is not a matching condition. No measurements, frequency, commit IDs or

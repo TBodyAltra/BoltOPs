@@ -12,9 +12,9 @@
 | dense，FP16/BF16×同精度→FP16/BF16/FP32 | `gemm_dense` | BF16→BF16 S05、BF16→FP32 S06 PASS；FP16 另有流水及成本配对测试；尚无全尺寸验收 |
 | dense，FP32×FP32→FP32 | `gemm_dense` | S03 修复后 PASS，64³ max_abs≈1.05e-7；已修正编译器 FP32 布局选择，真实 LTS 路径通过 |
 | dense，FP8×FP8→BF16/FP16/FP32 | `gemm_scaled` | 统一 scale recipe/encoding；映射命中走已优化 Gluon，其余走通用 Triton |
-| dense，BF16×INT4→BF16 | `gemm_awq` | S18 PASS；仅验证对应 AWQ 打包、scale/zero-point，不能泛化所有 INT4 格式 |
+| dense，BF16×INT4→BF16 | `gemm_scaled`（AWQ 格式） | S18 PASS；仅验证对应 AWQ 打包、scale/zero-point，不能泛化所有 INT4 格式 |
 | dense / grouped，FP8×FP4→BF16/FP16/FP32 | `gemm_scaled` / `gemm_grouped` | 15/15 回归及 9/9 接口 smoke PASS（含复用）；等长、ragged、空组、尾块和 stride 已有覆盖；34/34 完整需求仅编译通过，精度队列暂停 |
-| native FP4×FP4；batched FP16/BF16×FP4 | `gemm_mxfp4` / `gemm_batched_a16wfp4` | S34–S37 原生路径小尺寸 PASS；需要已修复的 ROCDL translation 构建环境 |
+| native FP4×FP4；batched FP16/BF16×FP4 | `gemm_scaled`（MXFP4 格式） / `gemm_batched_a16wfp4_online_quant` | S34–S37 原生路径小尺寸 PASS；需要已修复的 ROCDL translation 构建环境 |
 
 表 8 作为 grouped FP8×FP4 GEMM 需求：保留原 M/N/K、分组数 E、dtype、A/W scale、阶段及频次；E 对应来源中的 experts，不改变数值。不从来源 M 推断所有组等长，变长各组 M 与偏移须另行提供。上层路由、在线量化、激活和结果合并均不在本目录验收范围。
 
@@ -34,8 +34,8 @@
 | `gemm_grouped` | 等长 A[E,M,K] 或带 offsets 的 A[T,K] | 等长 FP16/BF16 复用 batched kernel；FP8×FP4 复用已有等长/ragged kernel |
 
 全部公开入口均接受 `backend="auto"`（默认）或显式的 `"triton"`、`"gluon"`、`"tilelang"`。
-另保留 `gemm_awq`（AWQ 零点/打包契约）、`gemm_mxfp4`（预量化 A/B）、
-`gemm_batched_a16wfp4`（在线 MXFP4 A 量化）三个不重复的入口。旧公开包装已移除，
+AWQ 和预量化 MXFP4 已合入 `gemm_scaled`，由格式、recipe 和 zero-point 参数区分。
+另保留 `gemm_batched_a16wfp4_online_quant`，明确表示在线 MXFP4 A 量化。旧公开包装已移除，
 旧 kernel/实现函数保留在后端模块。迁移表见 [统一接口](../ops/gemm-dispatch.md)。
 
 三个后端独立注册各接口的实现；公共参数校验与设备查询不导入具体 DSL。
@@ -51,7 +51,7 @@
 编译或执行错误直接向上传递，不捕获后换后端。TileLang 本轮仅接入框架，没有新增 kernel 或正确性通过声明。
 
 公共框架按 MNK、输入/输出 dtype、scale、布局、arch 和 num_cus 分派；tile 是选出的配置。
-每个接口只读取 `configs/` 下同名的 JSON 文件，校验 interface 标识；包括普通四接口及三个独立量化接口，共七份文件。
+每个接口只读取 `configs/` 下同名的 JSON 文件，校验 interface 标识；包括普通四接口及在线量化 batched 接口，共五份文件。
 schema 3 的 match/config 分离，config 显式包含 backend 和 implementation，不存统计、频率、commit 或证据路径。
 当前只登记 48 CU 上可接入的配置，不推定 96/192 CU 已调优；未命中的请求使用对应已有通用实现。
 其他既有专项算子仍保留原接口；三个统一入口不依赖这些公开包装，直接复用后端实现。
@@ -67,7 +67,7 @@ gemm/
   configs/gemm_dense.json      # gemm_dense 的跨后端配置
   configs/gemm_grouped.json    # gemm_grouped 的跨后端配置
   configs/gemm_batched.json
-  configs/gemm_awq.json / gemm_mxfp4.json / gemm_batched_a16wfp4.json
+  configs/gemm_batched_a16wfp4_online_quant.json
   triton/
     dispatch.py               # 独立注册 scaled / dense / grouped
     gemm_block_scaled.py / block_scaled_dispatch.py

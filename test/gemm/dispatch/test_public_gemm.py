@@ -15,12 +15,12 @@ def require_hcu():
 
 def test_public_surface_has_no_legacy_duplicates():
     expected = {'gemm_dense', 'gemm_scaled', 'gemm_batched', 'gemm_grouped',
-                'gemm_awq', 'gemm_mxfp4', 'gemm_batched_a16wfp4'}
+                'gemm_batched_a16wfp4_online_quant'}
     assert set(gemm.__all__) == expected
     assert all(callable(getattr(gemm, name)) for name in expected)
     for old in ('matmul_persistent', 'gemm_a16w16', 'gemm_a8w8_blockscale',
                 'w8a8_triton_block_scaled_mm', 'triton_scaled_mm', 'w8a8_block_int8_matmul',
-                'awq_gemm_triton', 'gemm_afp4wfp4', 'batched_gemm_bf16', 'batched_gemm_a16wfp4'):
+                'awq_gemm_triton', 'gemm_afp4wfp4', 'gemm_awq', 'gemm_mxfp4', 'gemm_batched_a16wfp4', 'batched_gemm_bf16', 'batched_gemm_a16wfp4'):
         assert not hasattr(gemm, old)
 
 
@@ -61,7 +61,8 @@ def test_awq_explicit_zero_points():
     w = torch.full((64, 8), 0x33333333, dtype=torch.int32, device='cuda')
     z = torch.full((1, 8), 0x11111111, dtype=torch.int32, device='cuda')
     s = torch.full((1, 64), .5, dtype=torch.float16, device='cuda')
-    y = gemm.gemm_awq(a, w, s, z, group_size=64)
+    y = gemm.gemm_scaled(a, w, b_scale=s, b_zero_points=z, b_format="awq_int4",
+                         scale_recipe=((1, 1), (1, 64)))
     torch.testing.assert_close(y.cpu(), torch.full((2, 64), 16., dtype=torch.float16), atol=0, rtol=0)
 
 
@@ -74,3 +75,31 @@ def test_batched_and_grouped_use_distinct_plans():
     assert select_plan(p).implementation.name == 'triton.batched.native16'
     q = replace(p, kind='grouped', batch=1, m=6, groups=GroupSpec('equal', 2))
     assert select_plan(q).implementation.name == 'triton.grouped.native16'
+
+
+def test_awq_zero_point_defaults_to_zero():
+    require_hcu()
+    a = torch.full((2, 64), .25, dtype=torch.float16, device='cuda')
+    w = torch.full((64, 8), 0x33333333, dtype=torch.int32, device='cuda')
+    s = torch.full((1, 64), .5, dtype=torch.float16, device='cuda')
+    y = gemm.gemm_scaled(a, w, b_scale=s, b_format='awq_int4', scale_recipe=((1, 1), (1, 64)))
+    torch.testing.assert_close(y.cpu(), torch.full((2, 64), 24., dtype=torch.float16), atol=0, rtol=0)
+
+
+def test_scaled_prequantized_mxfp4():
+    require_hcu()
+    a = torch.full((16, 32), 0x22, dtype=torch.uint8, device='cuda')
+    b = torch.full((16, 32), 0x22, dtype=torch.uint8, device='cuda')
+    scale = torch.full((16, 2), 127, dtype=torch.uint8, device='cuda')
+    y = gemm.gemm_scaled(a, b, scale, scale, a_format='fp4_e2m1', b_format='fp4_e2m1',
+                         scale_recipe=((1, 32), (1, 32)), scale_encodings=('e8m0', 'e8m0'))
+    torch.testing.assert_close(y.cpu(), torch.full((16, 16), 64., dtype=torch.bfloat16), atol=0, rtol=0)
+
+
+def test_batched_a16wfp4_online_quant():
+    require_hcu()
+    a = torch.ones((1, 16, 64), dtype=torch.bfloat16, device='cuda')
+    b = torch.full((1, 16, 32), 0x22, dtype=torch.uint8, device='cuda')
+    scale = torch.full((1, 16, 2), 127, dtype=torch.uint8, device='cuda')
+    y = gemm.gemm_batched_a16wfp4_online_quant(a, b, scale)
+    torch.testing.assert_close(y.cpu(), torch.full((1, 16, 16), 64., dtype=torch.bfloat16), atol=0, rtol=0)

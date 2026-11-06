@@ -87,7 +87,7 @@ for name in list(sys.modules):
 sys.meta_path.insert(0, BlockDSL())
 from boltops.gemm import scaled, dense, batched, grouped, specialized
 from boltops.gemm.catalog import implementations
-assert all(implementations('tilelang', i) == () for i in ('scaled', 'dense', 'batched', 'grouped', 'awq', 'mxfp4', 'batched_a16wfp4'))
+assert all(implementations('tilelang', i) == () for i in ('scaled', 'dense', 'batched', 'grouped', 'batched_a16wfp4_online_quant'))
 '''
     subprocess.run([sys.executable, '-c', code], check=True, env=os.environ.copy())
 

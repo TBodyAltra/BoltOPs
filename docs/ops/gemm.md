@@ -12,7 +12,7 @@
 ```python
 from boltops.gemm import (
     gemm_dense, gemm_scaled, gemm_batched, gemm_grouped,
-    gemm_awq, gemm_mxfp4, gemm_batched_a16wfp4,
+    gemm_batched_a16wfp4_online_quant,
 )
 ```
 

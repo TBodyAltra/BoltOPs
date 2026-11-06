@@ -17,7 +17,7 @@ def _check_device(a, tensors):
             raise ValueError("specialized quantized inputs must use the documented contiguous storage")
 
 
-def gemm_awq(a, packed_b, b_scale, b_zero_points, *, group_size, backend="auto"):
+def _awq_scaled(a, packed_b, b_scale, b_zero_points, *, group_size, backend="auto"):
     """AWQ: A[M,K], packed B[K,N/8], scales[K/G,N], zeros[K/G,N/8].
 
     Weights/zero points use the existing AWQ nibble order. Output dtype equals
@@ -33,11 +33,15 @@ def gemm_awq(a, packed_b, b_scale, b_zero_points, *, group_size, backend="auto")
             group_size not in (32, 64, 128, k)):
         raise ValueError("AWQ requires positive K/N and a dividing group size of 32/64/128 or K")
     if (a.dtype not in (torch.float16, torch.bfloat16) or b_scale.dtype != a.dtype or
-            packed_b.dtype != torch.int32 or b_zero_points.dtype != torch.int32):
+            packed_b.dtype != torch.int32 or (b_zero_points is not None and b_zero_points.dtype != torch.int32)):
         raise TypeError("AWQ requires matching 16-bit A/scales and int32 packed B/zero points")
-    if tuple(b_scale.shape) != (k // group_size, n) or tuple(b_zero_points.shape) != (k // group_size, n // 8):
+    if (tuple(b_scale.shape) != (k // group_size, n) or
+            (b_zero_points is not None and tuple(b_zero_points.shape) != (k // group_size, n // 8))):
         raise ValueError("AWQ scale/zero-point shapes must match explicit group_size")
-    _check_device(a, (a, packed_b, b_scale, b_zero_points))
+    _check_device(a, (a, packed_b, b_scale))
+    if b_zero_points is None:
+        b_zero_points = torch.zeros((k // group_size, n // 8), dtype=torch.int32, device=a.device)
+    _check_device(a, (b_zero_points,))
     with torch.cuda.device(a.device):
         out = torch.empty((m, n), dtype=b_scale.dtype, device=a.device)
         if not m:
@@ -52,7 +56,7 @@ def gemm_awq(a, packed_b, b_scale, b_zero_points, *, group_size, backend="auto")
     return out
 
 
-def gemm_mxfp4(a, b, a_scale, b_scale, *, out_dtype=None, backend="auto"):
+def _mxfp4_scaled(a, b, a_scale, b_scale, *, out_dtype=None, backend="auto"):
     """Packed E2M1 A[M,K/2], B[N,K/2], uint8 E8M0 scales [M|N,K/32]."""
     validate_backend(backend)
     if a.ndim != 2 or b.ndim != 2 or a.shape[1] != b.shape[1]:
@@ -79,7 +83,7 @@ def gemm_mxfp4(a, b, a_scale, b_scale, *, out_dtype=None, backend="auto"):
     return out
 
 
-def gemm_batched_a16wfp4(a, b, b_scale, *, out_dtype=None, backend="auto"):
+def gemm_batched_a16wfp4_online_quant(a, b, b_scale, *, out_dtype=None, backend="auto"):
     """A[B,M,K] is quantized online to MXFP4; B[B,N,K/2] is already packed.
 
     This intentionally retains the legacy quantization algorithm. It is not

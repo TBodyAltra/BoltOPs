@@ -30,7 +30,7 @@ from boltops.mqa_logits import (
 )
 from boltops.gemm import (
     gemm_dense, gemm_scaled, gemm_batched, gemm_grouped,
-    gemm_awq, gemm_mxfp4, gemm_batched_a16wfp4,
+    gemm_batched_a16wfp4_online_quant,
 )
 from boltops.mla import decode_attention_fwd, compute_num_kv_splits
 from boltops.sparse_gqa import (
@@ -106,9 +106,7 @@ def test_operator_package_exports():
     assert callable(gemm_dense)
     assert callable(gemm_grouped)
     assert callable(gemm_batched)
-    assert callable(gemm_awq)
-    assert callable(gemm_mxfp4)
-    assert callable(gemm_batched_a16wfp4)
+    assert callable(gemm_batched_a16wfp4_online_quant)
     assert callable(moe_activation)
     assert callable(moe_activation_output_size)
     assert callable(normalize_moe_activation)

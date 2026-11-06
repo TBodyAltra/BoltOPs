@@ -11,9 +11,9 @@ from .registry import KernelConfig
 _CONFIG_DIR = Path(__file__).with_name("configs")
 
 
-@lru_cache(maxsize=7)
+@lru_cache(maxsize=5)
 def _entries(interface):
-    if interface not in ("scaled", "dense", "batched", "grouped", "awq", "mxfp4", "batched_a16wfp4"):
+    if interface not in ("scaled", "dense", "batched", "grouped", "batched_a16wfp4_online_quant"):
         raise ValueError(f"unknown GEMM configuration interface: {interface}")
     name = f"gemm_{interface}"
     data = json.loads((_CONFIG_DIR / f"{name}.json").read_text())

@@ -80,12 +80,8 @@ class GemmProblem:
 
     @property
     def interface(self):
-        if self.b.packing == "awq":
-            return "awq"
-        if self.a.format == self.b.format == "fp4":
-            return "mxfp4"
         if self.kind == "batched" and self.activation_quantization == "mxfp4":
-            return "batched_a16wfp4"
+            return "batched_a16wfp4_online_quant"
         if self.kind in ("batched", "grouped"):
             return self.kind
         return "dense" if self.unscaled else "scaled"

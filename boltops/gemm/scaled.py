@@ -25,9 +25,10 @@ def _parse_recipe(scale_recipe):
     return recipe
 
 
-def gemm_scaled(a, b, a_scale, b_scale, *,
+def gemm_scaled(a, b, a_scale=None, b_scale=None, *,
                       scale_recipe=((1, 128), (128, 128)),
-                      scale_encodings=("numeric", "numeric"), out_dtype=None, b_format="native", bias=None, backend="auto"):
+                      scale_encodings=("numeric", "numeric"), out_dtype=None, a_format="native", b_format="native",
+                      b_zero_points=None, bias=None, backend="auto"):
     """Compute block-scaled A[M,K] @ B[N,K].T using native dot operations.
 
     Scale shapes are [ceil(M/A_M),ceil(K/A_K)] and
@@ -36,14 +37,40 @@ def gemm_scaled(a, b, a_scale, b_scale, *,
     E8M0 requires uint8 storage; uint8 remains numeric by default.
     Input/accumulator legality is checked by the selected target compiler;
     unsupported combinations raise compiler errors, without input upcasting.
-    Output dtype defaults to BF16 and may be selected explicitly. Scale
+    AWQ uses a_scale=None, b_format="awq_int4", explicit per-channel B
+    recipe and optional packed b_zero_points (defaults to zero). Its B/scale/
+    zero-point storage is [K,N/8], [K/G,N], [K/G,N/8]. MXFP4 sets both
+    formats to "fp4_e2m1" with recipe ((1,32),(1,32)) and E8M0 encodings.
+    Output dtype defaults to BF16 (AWQ: B scale dtype). Scale
     arithmetic uses FP32, promoted to FP64 for FP64 inputs or scales.
     Automatic selection consults a versioned cross-backend performance map,
     then registered general implementations. An explicit backend never falls back.
     """
     validate_backend(backend)
-    if b_format not in ("native", "fp4_e2m1"):
-        raise ValueError("b_format must be native or fp4_e2m1")
+    recipe = _parse_recipe(scale_recipe)
+    if (not isinstance(scale_encodings, (tuple, list)) or len(scale_encodings) != 2 or
+            any(e not in ("numeric", "e8m0") for e in scale_encodings)):
+        raise ValueError('scale_encodings must be a pair of "numeric" or "e8m0"')
+    if b_format == "awq_int4":
+        if (a_format != "native" or a_scale is not None or recipe[1][0] != 1 or
+                tuple(scale_encodings) != ("numeric", "numeric") or bias is not None):
+            raise ValueError("AWQ requires native unscaled A, per-channel B scales, numeric encoding and no bias")
+        if b_scale is None or (out_dtype is not None and out_dtype != b_scale.dtype):
+            raise ValueError("AWQ output dtype must equal B scale dtype")
+        from .specialized import _awq_scaled
+        return _awq_scaled(a, b, b_scale, b_zero_points, group_size=recipe[1][1], backend=backend)
+    if a_format == "fp4_e2m1":
+        if (b_format != "fp4_e2m1" or recipe != ((1, 32), (1, 32)) or
+                tuple(scale_encodings) != ("e8m0", "e8m0") or b_zero_points is not None or bias is not None):
+            raise ValueError("MXFP4 requires E2M1 A/B, E8M0 recipe ((1,32),(1,32)), no zero points/bias")
+        if a_scale is None or b_scale is None:
+            raise ValueError("prequantized MXFP4 requires both scales")
+        from .specialized import _mxfp4_scaled
+        return _mxfp4_scaled(a, b, a_scale, b_scale, out_dtype=out_dtype, backend=backend)
+    if a_format != "native" or b_format not in ("native", "fp4_e2m1") or b_zero_points is not None:
+        raise ValueError("unsupported operand format or zero-point contract")
+    if a_scale is None or b_scale is None:
+        raise ValueError("this scaled implementation requires both A/B scales")
     packed = b_format == "fp4_e2m1"
     if packed and b.dtype != torch.uint8:
         raise TypeError("fp4_e2m1 requires packed uint8 storage")
@@ -51,10 +78,6 @@ def gemm_scaled(a, b, a_scale, b_scale, *,
         raise ValueError("scaled bias must be floating point [N]")
     if bias is not None and (not bias.is_cuda or bias.device != a.device):
         raise ValueError("bias must be on the input GPU")
-    recipe = _parse_recipe(scale_recipe)
-    if (not isinstance(scale_encodings, (tuple, list)) or len(scale_encodings) != 2 or
-            any(e not in ("numeric", "e8m0") for e in scale_encodings)):
-        raise ValueError('scale_encodings must be a pair of "numeric" or "e8m0"')
     for tensor, encoding in zip((a_scale, b_scale), scale_encodings):
         if encoding == "e8m0" and tensor.dtype != torch.uint8:
             raise ValueError("e8m0 scale encoding requires uint8 storage")
