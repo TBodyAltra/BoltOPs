@@ -187,6 +187,7 @@ def scales(
     base = base + lane_m_byte
     sa = gl.load(base.to(gl.uint64).to(gl.pointer_type(gl.float32, 3)) + (m // 4) * 4)
     bp = get_lds_slice_address(smBS.index(i))
+    # Keep the native b64 read: gl.load currently increases LGKM stalls.
     sb = gl.inline_asm_elementwise(
         "ds_read_b64 $0, $1",
         constraints="=v,v,~{memory}",
@@ -202,14 +203,8 @@ def scales(
 def select_bs(sb, bs_group):
     lo = sb.to(gl.uint32)
     hi = (sb >> 32).to(gl.uint32)
-    selected = gl.inline_asm_elementwise(
-        "s_waitcnt lgkmcnt(0)\n\tv_cmp_ne_u32_e64 vcc, 0, $3\n\tv_cndmask_b32_e32 $0, $1, $2, vcc",
-        constraints="=v,v,v,v,~{vcc},~{memory}",
-        args=[lo, hi, bs_group],
-        dtype=gl.uint32,
-        is_pure=False,
-        pack=1,
-    )
+    wait_lgkmcnt(0)
+    selected = gl.where(bs_group != 0, hi, lo)
     return selected.to(gl.float32, bitcast=True)
 
 
@@ -234,6 +229,7 @@ def consumer(
     initialize(wave)
     RF: gl.constexpr = MmacInterleave2Layout(F)
     acc = gl.full((64, 256), 0, gl.float32, RF)
+    # Keep a persistent VGPR zero fragment; gl.full rematerializes it in the loop.
     zero_mmac = gl.inline_asm_elementwise(
         "v_mov_b32 $0, 0\n\tv_mov_b32 $1, 0\n\tv_mov_b32 $2, 0\n\tv_mov_b32 $3, 0",
         constraints="=v,=v,=v,=v,v,v,v,v",
@@ -244,6 +240,7 @@ def consumer(
     )
     m = gl.arange(0, 64, layout=gl.SliceLayout(1, RF))
     bs_group = (wave % 4) // 2
+    # Generic row-index addressing currently adds registers and LDS/VALU work.
     lane_m_byte = gl.inline_asm_elementwise(
         "v_mbcnt_lo_u32_b32 $0, -1, 0\n\tv_mbcnt_hi_u32_b32 $0, -1, $0\n\tv_bfe_u32 $0, $0, 4, 2\n\tv_lshlrev_b32 $0, 2, $0",
         constraints="=v",
