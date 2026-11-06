@@ -4,7 +4,8 @@ import operator
 import torch
 import triton
 
-from ._block_scaled_dispatch import launch, select_config
+from .dispatch import launch, select_plan
+from .descriptors import DenseProblem, ScaleSpec
 
 
 def _parse_recipe(scale_recipe):
@@ -18,12 +19,14 @@ def _parse_recipe(scale_recipe):
 
 
 def gemm_block_scaled(a, b, a_scale, b_scale, *,
-                      scale_recipe=((1, 128), (128, 128)), out_dtype=None):
+                      scale_recipe=((1, 128), (128, 128)),
+                      scale_encodings=("numeric", "numeric"), out_dtype=None):
     """Compute block-scaled A[M,K] @ B[N,K].T using native MMAC.
 
     Scale shapes are [ceil(M/A_M),ceil(K/A_K)] and
     [ceil(N/B_N),ceil(K/B_K)]. Blocks may differ; K-group is contiguous.
-    Scales contain numeric values (uint8 is numeric, not implicitly E8M0).
+    Scale encoding is explicit per input: "numeric" (default) or "e8m0".
+    E8M0 requires uint8 storage; uint8 remains numeric by default.
     Input/accumulator legality is queried from the target MMAC database;
     unsupported combinations raise compiler errors, without input upcasting.
     Output dtype defaults to BF16 and may be selected explicitly. Scale
@@ -32,6 +35,12 @@ def gemm_block_scaled(a, b, a_scale, b_scale, *,
     use a general masked native-MMAC kernel with no performance claim.
     """
     recipe = _parse_recipe(scale_recipe)
+    if (not isinstance(scale_encodings, (tuple, list)) or len(scale_encodings) != 2 or
+            any(e not in ("numeric", "e8m0") for e in scale_encodings)):
+        raise ValueError('scale_encodings must be a pair of "numeric" or "e8m0"')
+    for tensor, encoding in zip((a_scale, b_scale), scale_encodings):
+        if encoding == "e8m0" and tensor.dtype != torch.uint8:
+            raise ValueError("e8m0 scale encoding requires uint8 storage")
     if a.ndim != 2 or b.ndim != 2 or a.shape[1] != b.shape[1]:
         raise ValueError("expected A[M,K] and B[N,K] with matching K")
     m, k = a.shape
@@ -54,6 +63,12 @@ def gemm_block_scaled(a, b, a_scale, b_scale, *,
         if k == 0:
             out.zero_()
         else:
-            config = select_config(a, b, a_scale, b_scale, recipe, out_dtype)
-            launch(config, a, b, a_scale, b_scale, out, recipe=recipe)
+            problem = DenseProblem(
+                m, n, k, a.dtype, b.dtype, out_dtype,
+                ScaleSpec(a_scale.dtype, recipe[0], scale_encodings[0]),
+                ScaleSpec(b_scale.dtype, recipe[1], scale_encodings[1]),
+                triton.runtime.driver.active.get_current_target().arch,
+                a.data_ptr() % 16 == 0, b.data_ptr() % 16 == 0,
+            )
+            launch(select_plan(problem), problem, a, b, a_scale, b_scale, out)
     return out

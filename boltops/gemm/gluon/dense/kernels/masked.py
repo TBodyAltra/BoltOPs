@@ -3,13 +3,14 @@ import math
 import triton
 from triton.experimental import gluon as g
 from triton.experimental.gluon import language as gl
+from ...scales import decode_scale
 from triton.experimental.gluon.language.amd.hcu import (
     MmacLayout, get_mmac_instruction, packed_scale_fma,
 )
 
 
 @g.jit
-def _masked_kernel(A, B, AS, BS, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr):
+def _masked_fp8_fp32(A, B, AS, BS, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr):
     F: gl.constexpr = gl.amd.AMDMFMALayout(
         version=4,
         instr_shape=[16, 16, 32],
@@ -54,10 +55,11 @@ def _masked_kernel(A, B, AS, BS, C, M: gl.constexpr, N: gl.constexpr, K: gl.cons
 
 
 @g.jit
-def _block_scaled_kernel(A, B, AS, BS, C, M: gl.constexpr, N: gl.constexpr,
+def _masked_block_scaled(A, B, AS, BS, C, M: gl.constexpr, N: gl.constexpr,
                          K: gl.constexpr, AM: gl.constexpr, AK: gl.constexpr,
                          BN: gl.constexpr, BK_SCALE: gl.constexpr,
-                         Q: gl.constexpr, DOT_BK: gl.constexpr):
+                         Q: gl.constexpr, DOT_BK: gl.constexpr,
+                         A_E8M0: gl.constexpr = False, B_E8M0: gl.constexpr = False):
     DOT_ACC: gl.constexpr = (gl.float64 if A.dtype.element_ty == gl.float64 else
                             gl.int32 if A.dtype.element_ty.is_int() else gl.float32)
     MATH_ACC: gl.constexpr = (gl.float64 if DOT_ACC == gl.float64 or
@@ -106,12 +108,12 @@ def _block_scaled_kernel(A, B, AS, BS, C, M: gl.constexpr, N: gl.constexpr,
         ib = (rn // BN).to(gl.int64) * gl.cdiv(K, BK_SCALE) + lo // BK_SCALE
         if AS.dtype.element_ty.primitive_bitwidth == 8:
             sa_bits = gl.load(AS.to(gl.pointer_type(gl.uint8)) + ia, rm < M, other=0)
-            sa = sa_bits.to(AS.dtype.element_ty, bitcast=True).to(MATH_ACC)
+            sa = decode_scale(sa_bits.to(AS.dtype.element_ty, bitcast=True), A_E8M0).to(MATH_ACC)
         else:
             sa = gl.load(AS + ia, rm < M, other=0).to(MATH_ACC)
         if BS.dtype.element_ty.primitive_bitwidth == 8:
             sb_bits = gl.load(BS.to(gl.pointer_type(gl.uint8)) + ib, rn < N, other=0)
-            sb = sb_bits.to(BS.dtype.element_ty, bitcast=True).to(MATH_ACC)
+            sb = decode_scale(sb_bits.to(BS.dtype.element_ty, bitcast=True), B_E8M0).to(MATH_ACC)
         else:
             sb = gl.load(BS + ib, rn < N, other=0).to(MATH_ACC)
         acc = gl.fma(partial.to(MATH_ACC) * sa[:, None], sb[None, :], acc)
@@ -120,18 +122,17 @@ def _block_scaled_kernel(A, B, AS, BS, C, M: gl.constexpr, N: gl.constexpr,
 
 
 
-def launch_fp8(config, a, b, a_scale, b_scale, out, *, recipe):
-    m, k = a.shape
-    n = b.shape[0]
-    _masked_kernel[(triton.cdiv(m, config.block_m), triton.cdiv(n, config.block_n))](
-        a, b, a_scale, b_scale, out, M=m, N=n, K=k, num_warps=4, num_stages=1)
+def launch_fp8(config, problem, a, b, a_scale, b_scale, out):
+    _masked_fp8_fp32[(triton.cdiv(problem.m, config.block_m), triton.cdiv(problem.n, config.block_n))](
+        a, b, a_scale, b_scale, out, M=problem.m, N=problem.n, K=problem.k,
+        num_warps=4, num_stages=1)
 
 
-def launch_general(config, a, b, a_scale, b_scale, out, *, recipe):
-    m, k = a.shape
-    n = b.shape[0]
-    (am, ak), (bn, bk) = recipe
-    _block_scaled_kernel[(triton.cdiv(m, config.block_m), triton.cdiv(n, config.block_n))](
-        a, b, a_scale, b_scale, out, M=m, N=n, K=k,
+def launch_general(config, problem, a, b, a_scale, b_scale, out):
+    am, ak = problem.a_scale.block
+    bn, bk = problem.b_scale.block
+    _masked_block_scaled[(triton.cdiv(problem.m, config.block_m), triton.cdiv(problem.n, config.block_n))](
+        a, b, a_scale, b_scale, out, M=problem.m, N=problem.n, K=problem.k,
         AM=am, AK=ak, BN=bn, BK_SCALE=bk, Q=math.gcd(ak, bk), DOT_BK=config.block_k,
+        A_E8M0=problem.a_scale.encoding == "e8m0", B_E8M0=problem.b_scale.encoding == "e8m0",
         num_warps=4, num_stages=1)

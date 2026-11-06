@@ -323,7 +323,7 @@ def consumer(
 
 
 @g.jit
-def kernel(
+def _mls_128x256x128(
     A,
     B,
     AS,
@@ -393,8 +393,6 @@ def launch_config():
     )
 
 
-def launch(config, a, b, a_scale, b_scale, out, *, recipe):
-    m, k = a.shape
-    n = b.shape[0]
-    kernel[(m // config.block_m, n // config.block_n)](
-        a, b, a_scale, b_scale, out, N=n, K=k, **launch_config())
+def launch(config, problem, a, b, a_scale, b_scale, out):
+    _mls_128x256x128[(problem.m // config.block_m, problem.n // config.block_n)](
+        a, b, a_scale, b_scale, out, N=problem.n, K=problem.k, **launch_config())

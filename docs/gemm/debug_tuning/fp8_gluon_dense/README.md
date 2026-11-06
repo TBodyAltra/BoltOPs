@@ -6,13 +6,16 @@
 ```python
 c = gemm_block_scaled(
     a, b, a_scale, b_scale,
-    scale_recipe=((1, 128), (128, 128)), out_dtype=torch.bfloat16,
+    scale_recipe=((1, 128), (128, 128)),
+    scale_encodings=("numeric", "numeric"), out_dtype=torch.bfloat16,
 )
 ```
 
 `scale_recipe=((A_M,A_K),(B_N,B_K))` 接受两组正整数，A/B 的 K 分组可以不同。
 scale shape 分别为 `[ceil(M/A_M),ceil(K/A_K)]` 和 `[ceil(N/B_N),ceil(K/B_K)]`，
-K-group 连续。scale 中保存数值：uint8 按普通整数解释，不隐式解码成 E8M0。
+K-group 连续。A/B 可独立指定 `scale_encodings`：默认 `numeric` 按数值解释（含 uint8）；
+`e8m0` 要求 uint8 存储，按 E8M0 指数码解码，0 为 2^-127、255 为 NaN。
+这与输入 FP8 格式、scale 存储 dtype、分组粒度分别描述，不根据模型名或 dtype 猜测编码。
 通用路径按 `gcd(A_K,B_K)` 划分共同区间，各区间执行原生 MMAC 后乘 scale 并累加；
 累加和 scale 运算采用 FP32，FP64 输入或 scale 对应的运算提升为 FP64。
 区间划分不同可能改变浮点舍入顺序。
@@ -31,15 +34,45 @@ M/N/K 可为非负值；空 M/N 返回空矩阵，K=0 返回零。
 - 其他 dtype/recipe/output 使用 32×64 masked 原生 MMAC 路径，处理尾块和独立 scale 分组。
   此通用路径尚未调优。现有算子 dispatch、默认 config 和已优化流水保持不变。
 
+## 需求组合与能力边界
+
+当前 `SHAOBO_BU_REQUIREMENTS.md` 有 359 条 R 编号：329 条 dense、30 条 BMM。
+其中 FP8×FP8 有四类 scale 组合：
+
+| 需求 | A scale | B scale | Gluon 路径 |
+| --- | --- | --- | --- |
+| R005 等，共24条 | FP32、1×128 | BF16、128×128 | 通用 masked；未专项调优 |
+| R062 等，共61条 | FP32、1×128 | E8M0、128×128 | 显式 `("numeric","e8m0")`；通用 masked |
+| R216 等，共51条 | FP32、1×128 | FP32*、128×128 | 完整 tile 可用已优化 MLS，其余 masked |
+| R317 等，共18条 | FP32、1×K | FP32*、逐输出通道 | `scale_recipe=((1,K),(1,K))`；通用 masked |
+
+`*` 沿用需求原文标记，不增加来源确定性。这里的路径说明不代表全部 R 编号已实测。
+无 scale 的 BF16/FP32 dense、BMM、BF16×INT4 仍由各自已有算子处理；没有为它们
+新增空壳 Gluon 接口，也不把 packed INT4/FP4 当作普通 uint8 输入。Grouped 仍为独立算子族，
+不把路由或专家语义塞进 dense kernel。后续各算子族可在 `gluon/` 下独立组织。
+
 ## 实现组织
 
-- `gluon/gemm_block_scaled.py` 负责公开接口、shape/scale 校验和空矩阵处理。
-- `gluon/_block_scaled_dispatch.py` 根据 MNK、dtype、recipe 和对齐条件选择流水及合法 tile 配置；
-  目前保留既有选择条件，不加载外部调优文件，也不新增架构支持声明。
-- `gluon/pipelines/block_scaled_mls_wdra48_128x256x128.py` 是固定 128×256×128 的优化实现，
-  tile、LDS、partition 和寄存器预算作为一套流水维护。其他 tile 流水应注册为独立实现，
-  不能仅修改此实现的 launch 参数来替换 tile。
-- `gluon/pipelines/block_scaled_masked.py` 包含默认 FP8 recipe 和通用 recipe 的 masked 实现。
+```text
+gluon/
+  scales.py                  # 共用的 scale 存储解码
+  dense/
+    block_scaled.py          # 对外语义、shape/encoding 校验
+    descriptors.py           # DenseProblem、ScaleSpec，与 tile 无关
+    dispatch.py              # KernelConfig、实现能力、配置与执行计划
+    kernels/
+      mls_wdra.py            # MLS/WDRA 调度族，目前有 128×256×128 变体
+      masked.py              # FP32-scale FP8 特化与通用 masked kernel
+```
+
+公开入口保持 `from boltops.gemm import gemm_block_scaled`，不提供旧模块兼容转发。
+实现按调度策略命名，固定 tile 体现在内部 kernel 名及配置，不以某一个 dtype/recipe
+命名整个模块。注册项声明配置候选和能力条件（目标、dtype、scale 编码/分组、对齐及资源范围）；
+分派循环只匹配这些条件。launch 再次验证配置，避免把其他 tile 的配置套入固定流水。
+原生指令合法性最终仍由目标 MMAC 数据库裁定，不能把通用 fallback 理解为所有组合都支持。
+
+本轮不加载外部 JSON、不做 autotune、不增加尚未实现的 BMM/grouped/packed-format 路径。
+未来调优记录应选择已注册且能力校验通过的实现和配置，而不是任意覆盖固定 kernel 的 tile。
 
 ## Native ebarrier API migration (2026-11-05)
 

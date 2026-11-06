@@ -293,7 +293,9 @@ def grouped_gemm_a8wfp4(
                 config=config)
 
 
-def gemm_block_scaled(a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 128)), out_dtype=None):
-    """Native dense GEMM with independent A/B scale blocks and selectable output dtype."""
-    from boltops.gemm.gluon.gemm_block_scaled import gemm_block_scaled as impl
-    return impl(a, b, a_scale, b_scale, scale_recipe=scale_recipe, out_dtype=out_dtype)
+def gemm_block_scaled(a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 128)),
+                      scale_encodings=("numeric", "numeric"), out_dtype=None):
+    """Native dense GEMM with independent scale blocks/encodings and selectable output dtype."""
+    from boltops.gemm.gluon.dense.block_scaled import gemm_block_scaled as impl
+    return impl(a, b, a_scale, b_scale, scale_recipe=scale_recipe,
+                scale_encodings=scale_encodings, out_dtype=out_dtype)
