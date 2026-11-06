@@ -31,6 +31,17 @@ M/N/K 可为非负值；空 M/N 返回空矩阵，K=0 返回零。
 - 其他 dtype/recipe/output 使用 32×64 masked 原生 MMAC 路径，处理尾块和独立 scale 分组。
   此通用路径尚未调优。现有算子 dispatch、默认 config 和已优化流水保持不变。
 
+## 实现组织
+
+- `gluon/gemm_block_scaled.py` 负责公开接口、shape/scale 校验和空矩阵处理。
+- `gluon/_block_scaled_dispatch.py` 根据 MNK、dtype、recipe 和对齐条件选择流水及合法 tile 配置；
+  目前保留既有选择条件，不加载外部调优文件，也不新增架构支持声明。
+- `gluon/pipelines/block_scaled_mls_wdra48_128x256x128.py` 是固定 128×256×128 的优化实现，
+  tile、LDS、partition 和寄存器预算作为一套流水维护。其他 tile 流水应注册为独立实现，
+  不能仅修改此实现的 launch 参数来替换 tile。
+- `gluon/pipelines/block_scaled_masked.py` 包含默认 FP8 recipe 和通用 recipe 的 masked 实现。
+- 旧长名称文件只保留兼容转发，不再容纳 kernel 或配置。
+
 ## Native ebarrier API migration (2026-11-05)
 
 The optimized kernel now uses `ebarrier_arrive` / `ebarrier_sync` from
