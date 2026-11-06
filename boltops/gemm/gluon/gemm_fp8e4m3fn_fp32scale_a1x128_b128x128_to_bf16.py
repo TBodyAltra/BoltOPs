@@ -187,15 +187,7 @@ def scales(
     base = base + lane_m_byte
     sa = gl.load(base.to(gl.uint64).to(gl.pointer_type(gl.float32, 3)) + (m // 4) * 4)
     bp = get_lds_slice_address(smBS.index(i))
-    # Keep the native b64 read: gl.load currently increases LGKM stalls.
-    sb = gl.inline_asm_elementwise(
-        "ds_read_b64 $0, $1",
-        constraints="=v,v,~{memory}",
-        args=[bp],
-        dtype=gl.uint64,
-        is_pure=False,
-        pack=1,
-    )
+    sb = gl.load(bp.to(gl.uint64).to(gl.pointer_type(gl.uint64, 3)))
     return sa, sb
 
 
@@ -229,7 +221,8 @@ def consumer(
     initialize(wave)
     RF: gl.constexpr = MmacInterleave2Layout(F)
     acc = gl.full((64, 256), 0, gl.float32, RF)
-    # Keep a persistent VGPR zero fragment; gl.full rematerializes it in the loop.
+    # TODO: replace with gl.full once LLVM keeps the zero VGPR tuple outside
+    # the loop instead of rematerializing it and repacking registers per MMAC.
     zero_mmac = gl.inline_asm_elementwise(
         "v_mov_b32 $0, 0\n\tv_mov_b32 $1, 0\n\tv_mov_b32 $2, 0\n\tv_mov_b32 $3, 0",
         constraints="=v,=v,=v,=v,v,v,v,v",
@@ -240,15 +233,8 @@ def consumer(
     )
     m = gl.arange(0, 64, layout=gl.SliceLayout(1, RF))
     bs_group = (wave % 4) // 2
-    # Generic row-index addressing currently adds registers and LDS/VALU work.
-    lane_m_byte = gl.inline_asm_elementwise(
-        "v_mbcnt_lo_u32_b32 $0, -1, 0\n\tv_mbcnt_hi_u32_b32 $0, -1, $0\n\tv_bfe_u32 $0, $0, 4, 2\n\tv_lshlrev_b32 $0, 2, $0",
-        constraints="=v",
-        args=[],
-        dtype=gl.int32,
-        is_pure=True,
-        pack=1,
-    )
+    # Preserve a common lane base so A-scale reads combine into ds_read2.
+    lane_m_byte = (m % 4) * 4
     ready_a(0, GROUP)
     a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
     ready_b(0)
@@ -280,6 +266,8 @@ def consumer(
         next_sa, next_sb = scales(
             smAS0, smAS1, smBS, j, m, lane_m_byte, bs_group, GROUP, RF
         )
+        # Keep next-scale reads ahead of the current scale arithmetic.
+        sched_barrier(0)
         acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
         release(j, GROUP)
         sa = next_sa
@@ -308,6 +296,8 @@ def consumer(
             next_sa, next_sb = scales(
                 smAS0, smAS1, smBS, j, m, lane_m_byte, bs_group, GROUP, RF
             )
+            # Keep next-scale reads ahead of the current scale arithmetic.
+            sched_barrier(0)
             acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
             release(j, GROUP)
             sa = next_sa
@@ -317,6 +307,8 @@ def consumer(
     dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
     turn(GROUP, False)
     selected_bs = select_bs(sb, bs_group)
+    # Keep scale reads ahead of the final scale arithmetic.
+    sched_barrier(0)
     acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
     packed = acc.to(gl.bfloat16).to(gl.float16, bitcast=True)
     matrix_store(
