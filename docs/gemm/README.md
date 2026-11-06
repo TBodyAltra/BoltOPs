@@ -32,8 +32,21 @@
 | `gemm_dense` | 无 scale 的 A[M,K] @ B[N,K].T，可带 bias[N] | gfx946 FP16 匹配已有配置时复用 gemm_fp16；其他 FP16/BF16 走 a16w16，FP32 走 persistent |
 | `gemm_grouped` | 等长 A[E,M,K] 或带 offsets 的 A[T,K] | 等长 FP16/BF16 复用 batched kernel；FP8×FP4 复用已有等长/ragged kernel |
 
+三个入口均接受 `backend="auto"`（默认）或显式的 `"triton"`、`"gluon"`、`"tilelang"`。
+三个后端独立注册各接口的实现；公共参数校验与设备查询不导入具体 DSL。
+
+| 后端 | scaled | dense | grouped |
+| --- | --- | --- | --- |
+| Triton | 通用 native block scale、已有 FP8×FP4 | 已有 FP16/BF16/FP32 | 已有等长 native16、等长/offsets FP8×FP4 |
+| Gluon | 已优化 E4M3FN + FP32 A1×128/B128×128 → BF16 | 未注册 | 未注册 |
+| TileLang | 未注册 | 未注册 | 未注册 |
+
+自动调度先跨后端查统一性能映射，再选择已安装后端的通用实现。
+显式指定后端时只考虑该后端；没有对应组合报 `NotImplementedError`，已注册后端缺运行时依赖报 `ImportError`。
+编译或执行错误直接向上传递，不捕获后换后端。TileLang 本轮仅接入框架，没有新增 kernel 或正确性通过声明。
+
 公共框架按 MNK、输入/输出 dtype、scale、布局、arch 和 num_cus 分派；tile 是选出的配置。
-`configs/gemm_dispatch.json` 的 match/config 分离，不存统计、频率、commit 或证据路径。
+`configs/gemm_dispatch.json` schema 3 的 match/config 分离，config 显式包含 backend 和 implementation，不存统计、频率、commit 或证据路径。
 当前只登记 48 CU 上可接入的配置，不推定 96/192 CU 已调优；未命中的请求使用对应已有通用实现。
 其他既有专项算子仍保留原接口；三个统一入口不依赖这些公开包装，直接复用后端实现。
 
@@ -45,14 +58,21 @@ gemm/
   descriptors.py / registry.py / catalog.py
   performance_map.py / configs/gemm_dispatch.json
   triton/
+    dispatch.py               # 独立注册 scaled / dense / grouped
     gemm_block_scaled.py / block_scaled_dispatch.py
     dense_dispatch.py         # 适配已有 gemm_fp16、a16w16、persistent
     grouped_dispatch.py       # 适配已有 native16、FP8×FP4 grouped
     configs/gemm_fp16/gfx946/  # 复用原配置，不改其内容
-  gluon/dense/
-    dispatch.py
-    kernels/gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16.py
+  gluon/
+    dispatch.py               # 仅注册已有 scaled 特化
+    dense/dispatch.py
+    dense/kernels/gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16.py
+  tilelang/dispatch.py         # 三接口扩展点，当前能力为空
 ```
+
+新增后端实现时，在对应 `dispatch.py` 的 `INTERFACES` 中注册 `Implementation`，
+声明 backend、配置生成与支持条件；支持条件匹配后才加载选中的 kernel。
+优化后的配置可以加入统一映射，tile 仍是配置而非问题匹配条件。
 
 FP16 已有配置需要区分输入布局：旧 kernel 接受 B[K,N]，统一入口接受 B[N,K]，adapter 只做转置 view。
 映射中的 k_contiguous/n_contiguous 指统一入口 B 的实际内存连续方向，不是数学转置开关。

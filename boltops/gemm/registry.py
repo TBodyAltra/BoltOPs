@@ -38,17 +38,40 @@ class ExecutionPlan:
     config: KernelConfig
 
 
-def select_plan(problem, implementations=None):
+def select_plan(problem, implementations=None, *, backend="auto"):
+    from .catalog import BACKENDS, available, implementations as load, validate_backend
+    validate_backend(backend)
+    interface = ("grouped" if problem.kind == "grouped" else
+                 "dense" if problem.unscaled else "scaled")
     if implementations is None:
-        from .catalog import IMPLEMENTATIONS
-        implementations = IMPLEMENTATIONS
-    for implementation in implementations:
+        candidates = []
+        for owner in BACKENDS if backend == "auto" else (backend,):
+            registered = load(owner, interface)
+            if not registered:
+                continue
+            if not available(owner):
+                if backend != "auto":
+                    raise ImportError(f"GEMM backend {owner} is not installed")
+                continue
+            candidates.extend(registered)
+    else:
+        candidates = [impl for impl in implementations
+                      if backend == "auto" or impl.backend == backend]
+    # Consult the shared performance map across all backends before defaults.
+    # Compilation/execution failures are never caught to select a fallback.
+    from .performance_map import tuned_configs
+    for implementation in candidates:
+        for config in tuned_configs(problem, implementation.name, backend=implementation.backend):
+            if implementation.matches(problem, config):
+                return ExecutionPlan(implementation, config)
+    for implementation in candidates:
         if implementation.family != problem.kind:
             continue
         for config in implementation.configurations(problem):
             if implementation.matches(problem, config):
                 return ExecutionPlan(implementation, config)
-    raise NotImplementedError(f"no registered {problem.kind} GEMM implements {problem}")
+    raise NotImplementedError(
+        f"no registered {problem.kind} GEMM implements {problem} (interface={interface}, backend={backend})")
 
 
 def launch(plan, problem, **tensors):

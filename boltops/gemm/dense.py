@@ -1,13 +1,15 @@
 """Unscaled dense GEMM through existing Triton implementations."""
 import torch
-import triton
+from boltops.utility.arch_info import get_device_info
 
 from .descriptors import GemmProblem, OperandSpec
 from .registry import launch, select_plan
+from .catalog import validate_backend
 
 
-def gemm_dense(a, b, *, bias=None, out_dtype=None):
+def gemm_dense(a, b, *, bias=None, out_dtype=None, backend="auto"):
     """Compute A[M,K] @ B[N,K].T; positive noncontiguous strides are allowed."""
+    validate_backend(backend)
     if a.ndim != 2 or b.ndim != 2 or a.shape[1] != b.shape[1]:
         raise ValueError("dense expects A[M,K] and B[N,K] with matching K")
     if a.dtype != b.dtype:
@@ -32,9 +34,9 @@ def gemm_dense(a, b, *, bias=None, out_dtype=None):
         problem = GemmProblem(
             "dense", m, n, k, OperandSpec(a.dtype, strides=tuple(a.stride())),
             OperandSpec(b.dtype, strides=tuple(b.stride())), out_dtype,
-            triton.runtime.driver.active.get_current_target().arch,
-            num_cus=torch.cuda.get_device_properties(a.device).multi_processor_count,
+            get_device_info(a.device).arch,
+            num_cus=get_device_info(a.device).cu_count,
             a_aligned_16=a.data_ptr() % 16 == 0, b_aligned_16=b.data_ptr() % 16 == 0,
         )
-        launch(select_plan(problem), problem, a=a, b=b, bias=bias, out=out)
+        launch(select_plan(problem, backend=backend), problem, a=a, b=b, bias=bias, out=out)
     return out

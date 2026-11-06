@@ -23,15 +23,18 @@ def _native_config(p):
     return (KernelConfig(*(cfg['BLOCK_SIZE_' + d] for d in ('M', 'N', 'K'))),)
 
 
-def _fp4(p):
+def _fp4_types(p):
     scales = (p.a_scale, p.b_scale)
-    return (p.kind == 'grouped' and p.groups.mode in ('equal', 'offsets') and
-            p.a_dtype == torch.float8_e4m3fn and p.b_dtype == torch.uint8 and
+    return (p.a_dtype == torch.float8_e4m3fn and p.b_dtype == torch.uint8 and
             p.a.format == 'native' and p.b.format == 'fp4' and p.b.packing == 'e2m1_low_high' and
             all(s is not None and ((s.encoding == 'e8m0' and s.dtype == torch.uint8) or
                 (s.encoding == 'numeric' and s.dtype in (torch.float16, torch.bfloat16, torch.float32))) for s in scales) and
             p.a_scale.block in ((1, 32), (1, 128)) and p.b_scale.block == (1, 32) and
             p.out_dtype in (torch.float16, torch.bfloat16, torch.float32))
+
+
+def _fp4(p):
+    return p.kind == 'grouped' and p.groups.mode in ('equal', 'offsets') and _fp4_types(p)
 
 
 def launch_grouped_native(config, problem, a, b, a_scale, b_scale, group_offsets, bias, out):

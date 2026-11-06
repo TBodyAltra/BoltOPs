@@ -10,18 +10,20 @@ from .registry import KernelConfig
 def _entries():
     path = Path(__file__).with_name("configs") / "gemm_dispatch.json"
     data = json.loads(path.read_text())
-    if data["schema_version"] != 2:
+    if data["schema_version"] != 3:
         raise ValueError("unsupported GEMM performance-map schema")
     return data["entries"]
 
 
-def tuned_configs(problem, implementation):
+def tuned_configs(problem, implementation, *, backend=None):
     p = problem
     if (p.kind != "dense" or not p.native_operands or
             min(p.m, p.n, p.k) <= 0):
         return ()
     configs = []
     for entry in _entries():
+        if backend is not None and entry["config"]["backend"] != backend:
+            continue
         match = entry["match"]
         if p.arch != match["arch"] or p.num_cus != match["num_cus"]:
             continue

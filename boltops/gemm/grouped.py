@@ -1,22 +1,28 @@
 """Grouped interface over existing native 16-bit and packed FP4 implementations."""
 import torch
-import triton
+from boltops.utility.arch_info import get_device_info
 
 from .descriptors import GemmProblem, GroupSpec, OperandSpec, ScaleSpec
 from .registry import launch, select_plan
+from .catalog import validate_backend
 from .scaled import _parse_recipe
+
+
+def _cdiv(x, y):
+    return (x + y - 1) // y
 
 
 def gemm_grouped(a, b, *, group_offsets=None, a_scale=None, b_scale=None,
                  scale_recipe=((1, 128), (1, 32)),
                  scale_encodings=("numeric", "numeric"), b_format="native",
-                 bias=None, out_dtype=None):
+                 bias=None, out_dtype=None, backend="auto"):
     """Equal A[E,M,K]/B[E,N,K] or offset-grouped A[T,K].
 
     Packed E2M1 weights use b_format='fp4_e2m1' and B[E,N,ceil(K/2)].
     Offsets must be contiguous int32/int64 [E+1], nondecreasing from 0 to T;
     callers supply already grouped rows. No routing or expert-level tuning runs.
     """
+    validate_backend(backend)
     if b_format not in ("native", "fp4_e2m1"):
         raise ValueError("b_format must be native or fp4_e2m1")
     ragged = group_offsets is not None
@@ -27,7 +33,7 @@ def gemm_grouped(a, b, *, group_offsets=None, a_scale=None, b_scale=None,
     if e < 1 or (not ragged and a.shape[0] != e):
         raise ValueError("A/B must have matching positive group count")
     packed = b_format == "fp4_e2m1"
-    if stored_k != (triton.cdiv(k, 2) if packed else k):
+    if stored_k != (_cdiv(k, 2) if packed else k):
         raise ValueError("incompatible B storage and logical K")
     t = a.shape[0] if ragged else e * a.shape[1]
     if ragged and (group_offsets.shape != (e + 1,) or
@@ -41,9 +47,9 @@ def gemm_grouped(a, b, *, group_offsets=None, a_scale=None, b_scale=None,
             any(x not in ("numeric", "e8m0") for x in scale_encodings)):
         raise ValueError("scale_encodings must contain two numeric/e8m0 values")
     if recipe is not None:
-        shapes = ((t, triton.cdiv(k, recipe[0][1])) if ragged else
-                  (e, a.shape[1], triton.cdiv(k, recipe[0][1])),
-                  (e, triton.cdiv(n, recipe[1][0]), triton.cdiv(k, recipe[1][1])))
+        shapes = ((t, _cdiv(k, recipe[0][1])) if ragged else
+                  (e, a.shape[1], _cdiv(k, recipe[0][1])),
+                  (e, _cdiv(n, recipe[1][0]), _cdiv(k, recipe[1][1])))
         if recipe[0][0] != 1 or tuple(a_scale.shape) != shapes[0] or tuple(b_scale.shape) != shapes[1]:
             raise ValueError("grouped scale shapes must match the explicit recipe")
         for scale, encoding in zip((a_scale, b_scale), scale_encodings):
@@ -73,12 +79,12 @@ def gemm_grouped(a, b, *, group_offsets=None, a_scale=None, b_scale=None,
                              strides=tuple(b.stride())) if packed else OperandSpec(b.dtype, strides=tuple(b.stride()))
         problem = GemmProblem(
             "grouped", t, n, k, a_spec, b_spec, out_dtype,
-            triton.runtime.driver.active.get_current_target().arch,
+            get_device_info(a.device).arch,
             groups=GroupSpec("offsets" if ragged else "equal", e),
             a_scale=None if recipe is None else ScaleSpec(a_scale.dtype, recipe[0], scale_encodings[0]),
             b_scale=None if recipe is None else ScaleSpec(b_scale.dtype, recipe[1], scale_encodings[1]),
-            num_cus=torch.cuda.get_device_properties(a.device).multi_processor_count,
+            num_cus=get_device_info(a.device).cu_count,
         )
-        launch(select_plan(problem), problem, a=a, b=b, a_scale=a_scale, b_scale=b_scale,
+        launch(select_plan(problem, backend=backend), problem, a=a, b=b, a_scale=a_scale, b_scale=b_scale,
                group_offsets=group_offsets, bias=bias, out=out)
     return out

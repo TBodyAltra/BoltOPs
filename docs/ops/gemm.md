@@ -403,7 +403,7 @@ config 支持 BLOCK_SIZE_M、BLOCK_SIZE_N（2 的幂且 ≥16）、num_warps。
 ```python
 y = gemm_scaled(a, b, a_scale, b_scale,
                       scale_recipe=((1, 128), (128, 128)),
-                      scale_encodings=("numeric", "numeric"), out_dtype=torch.bfloat16)
+                      scale_encodings=("numeric", "numeric"), out_dtype=torch.bfloat16, backend="auto")
 ```
 
 A[M,K]、B[N,K] 连续存储。逐行 scale 使用 A recipe (1,K)，逐输出通道 scale 使用 B recipe (1,K)；
@@ -428,3 +428,6 @@ Grouped 无 scale 的等长 FP16/BF16 目前输出 FP16/BF16；FP8×FP4 输出 F
 Grouped scale recipe/encoding 独立指定，numeric uint8 不隐式解释为 E8M0；没有现成原生实现的组合明确报错。
 旧 gemm_block_scaled 名称由 gemm_scaled 取代，不保留兼容别名。其他专项算子的已有接口保持原有边界。
 调度和当前支持范围见 [三类统一入口](../gemm/README.md)。
+
+三个统一入口均支持 `backend="auto" | "triton" | "gluon" | "tilelang"`；显式指定不会跨后端回退。
+TileLang 当前只注册框架扩展点，所有未实现组合明确报错。具体支持矩阵见 [GEMM 总览](../gemm/README.md)。

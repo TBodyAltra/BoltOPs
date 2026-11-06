@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 
 import torch
-import triton
 
 from ..performance_map import tuned_configs
 from ..registry import Implementation, KernelConfig
@@ -16,7 +15,7 @@ def _native_dense(p):
 
 
 def _tuned_configurations(p):
-    return tuned_configs(p, _TUNED) if _native_dense(p) else ()
+    return tuned_configs(p, _TUNED, backend="triton") if _native_dense(p) else ()
 
 
 def _general_config(p):
@@ -48,7 +47,7 @@ def launch_dense(config, problem, a, b, bias, out):
     else:
         from .matmul_persistent import matmul_kernel_persistent
         cfg = _general_config(problem)
-        grid = (min(problem.num_cus, triton.cdiv(problem.m, config.block_m) * triton.cdiv(problem.n, config.block_n)),)
+        grid = (min(problem.num_cus, ((problem.m + config.block_m - 1) // config.block_m) * ((problem.n + config.block_n - 1) // config.block_n)),)
         matmul_kernel_persistent[grid](
             a, b.T, out, bias, problem.m, problem.n, problem.k,
             *a.stride(), *b.T.stride(), *out.stride(), NUM_SMS=problem.num_cus,
