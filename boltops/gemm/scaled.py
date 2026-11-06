@@ -18,9 +18,9 @@ def _parse_recipe(scale_recipe):
     return recipe
 
 
-def gemm_block_scaled(a, b, a_scale, b_scale, *,
+def gemm_scaled(a, b, a_scale, b_scale, *,
                       scale_recipe=((1, 128), (128, 128)),
-                      scale_encodings=("numeric", "numeric"), out_dtype=None):
+                      scale_encodings=("numeric", "numeric"), out_dtype=None, b_format="native"):
     """Compute block-scaled A[M,K] @ B[N,K].T using native dot operations.
 
     Scale shapes are [ceil(M/A_M),ceil(K/A_K)] and
@@ -34,6 +34,16 @@ def gemm_block_scaled(a, b, a_scale, b_scale, *,
     A versioned performance map selects measured Gluon configurations.
     Requests outside those contracts use the general Triton implementation.
     """
+    if b_format == "fp4_e2m1":
+        from .grouped import gemm_grouped
+        if any(t.ndim != 2 for t in (a, b, a_scale, b_scale)):
+            raise ValueError("scaled FP4 expects rank-two inputs and scales")
+        return gemm_grouped(a.unsqueeze(0), b.unsqueeze(0), a_scale=a_scale.unsqueeze(0),
+                            b_scale=b_scale.unsqueeze(0), scale_recipe=scale_recipe,
+                            scale_encodings=scale_encodings, b_format=b_format,
+                            out_dtype=out_dtype).squeeze(0)
+    if b_format != "native":
+        raise ValueError("b_format must be native or fp4_e2m1")
     recipe = _parse_recipe(scale_recipe)
     if (not isinstance(scale_encodings, (tuple, list)) or len(scale_encodings) != 2 or
             any(e not in ("numeric", "e8m0") for e in scale_encodings)):

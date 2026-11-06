@@ -33,7 +33,9 @@ from boltops.gemm import (
     batched_gemm_a16wfp4,
     batched_gemm_bf16,
     gemm_a16w16,
-    gemm_block_scaled,
+    gemm_scaled,
+    gemm_dense,
+    gemm_grouped,
     gemm_afp4wfp4,
     matmul_persistent,
     w8a8_block_int8_matmul,
@@ -111,7 +113,9 @@ def test_operator_package_exports():
     assert callable(matmul_persistent)
     assert callable(gemm_a16w16)
     assert callable(awq_gemm_triton)
-    assert callable(gemm_block_scaled)
+    assert callable(gemm_scaled)
+    assert callable(gemm_dense)
+    assert callable(gemm_grouped)
     assert callable(gemm_afp4wfp4)
     assert callable(batched_gemm_a16wfp4)
     assert callable(batched_gemm_bf16)

@@ -1,9 +1,9 @@
 # 统一 block-scaled dense GEMM
 
-唯一公开入口：`from boltops.gemm import gemm_block_scaled`。
+带 scale 的统一入口：`from boltops.gemm import gemm_scaled`。
 
 ```python
-c = gemm_block_scaled(
+c = gemm_scaled(
     a, b, a_scale, b_scale,
     scale_recipe=((1, 128), (128, 128)),
     scale_encodings=("numeric", "numeric"), out_dtype=torch.bfloat16,
@@ -20,7 +20,7 @@ numeric uint8 保持数值解释。scale 运算采用 FP32，FP64 输入或 scal
 
 ## 调度
 
-`boltops/gemm/configs/block_scaled_dispatch.json` 是调度映射表，分为 `match` 与 `config` 两部分：
+`boltops/gemm/configs/gemm_dispatch.json` 是调度映射表，分为 `match` 与 `config` 两部分：
 `match` 记录架构、`num_cus`、输入/输出 dtype、scale dtype/encoding/recipe 和 MNK 条件；
 `config` 记录选出的实现标识和 tile。tile 不属于请求条件。
 不保存实测 cycles、频率、commit 或产物路径；`num_cus` 只作为匹配条件。增加已经调好的配置时增加对应条目。
@@ -44,7 +44,7 @@ CU 数不同或未知时不匹配该条目，不能仅按架构推定 CU 数。�
 
 | 层次 | 名称 |
 | --- | --- |
-| 公开计算接口 | `gemm_block_scaled` |
+| 公开计算接口 | `gemm_scaled` |
 | 通用 Triton kernel | `_gemm_block_scaled_kernel` |
 | 专用 Gluon kernel | `_gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16_bm128_bn256_bk128_kernel` |
 
@@ -58,3 +58,9 @@ Gluon 当前只保留已优化 TG 实现，不提供另一套通用/尾块 kerne
 launch 不重复声明寄存器配额；后端保留硬件规范化和 spill 反馈机制。
 scale ACK 与持久零 VGPR 的两处内联汇编及 TODO 保留。
 不运行 autotune 或 split-K，不调优 E；其他 GEMM 算子族沿用各自已有接口。
+
+## 与其他入口的关系
+
+无 scale GEMM 使用 gemm_dense，分组 GEMM 使用 gemm_grouped；三者共用描述和注册机制。
+本页的 FP8 优化流水仍只用于 gemm_scaled 的已匹配场景。
+FP8×FP4 dense 可显式指定 b_format='fp4_e2m1'、scale_recipe=((1,128),(1,32))，复用已有原生 kernel。

@@ -6,7 +6,7 @@ import torch
 import triton
 import triton.language as tl
 
-from boltops.gemm import gemm_block_scaled
+from boltops.gemm import gemm_scaled
 from boltops.gemm.triton.gemm_block_scaled import _decode_block_scale
 
 
@@ -62,7 +62,7 @@ def test_requirement_scale_combinations(scale_dtypes, encodings, recipe, k):
         aa = decoded[0][torch.arange(m) // recipe[0][0], lo // recipe[0][1]]
         bb = decoded[1][torch.arange(n) // recipe[1][0], lo // recipe[1][1]]
         ref += (a[:, lo:lo+q].float() @ b[:, lo:lo+q].float().T) * aa[:, None] * bb[None, :]
-    out = gemm_block_scaled(*(x.cuda() for x in (a, b, *scales)),
+    out = gemm_scaled(*(x.cuda() for x in (a, b, *scales)),
                             scale_recipe=recipe, scale_encodings=encodings)
     torch.testing.assert_close(out.cpu(), ref.bfloat16(), atol=0, rtol=0)
 
@@ -70,10 +70,10 @@ def test_requirement_scale_combinations(scale_dtypes, encodings, recipe, k):
 @pytest.mark.parametrize("encodings", ["e8m0", ("numeric",), ("numeric", "unknown")])
 def test_invalid_encoding_is_rejected(encodings):
     with pytest.raises(ValueError, match="scale_encodings"):
-        gemm_block_scaled(None, None, None, None, scale_encodings=encodings)
+        gemm_scaled(None, None, None, None, scale_encodings=encodings)
 
 
 def test_e8m0_requires_byte_storage():
     x = torch.ones(1)
     with pytest.raises(ValueError, match="uint8 storage"):
-        gemm_block_scaled(x, x, x, x, scale_encodings=("numeric", "e8m0"))
+        gemm_scaled(x, x, x, x, scale_encodings=("numeric", "e8m0"))

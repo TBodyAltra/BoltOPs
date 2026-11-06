@@ -1,4 +1,4 @@
-"""INT8 K-group coverage for the unified gemm_block_scaled API."""
+"""INT8 K-group coverage for the unified gemm_scaled API."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import torch
 
 pytest.importorskip("triton")
 
-from boltops.gemm import gemm_block_scaled  # noqa: E402
+from boltops.gemm import gemm_scaled  # noqa: E402
 
 DEVICE = "cuda"
 GPU_REQUIRED = pytest.mark.skipif(
@@ -53,7 +53,7 @@ def test_gemm_a8w8_blockscale_correctness():
     w_scale = torch.rand((N // block_n, K // block_k), dtype=torch.float32) * 0.05 + 0.01
     golden = _a8w8_blockscale_golden(x, w, x_scale, w_scale, block_k, block_n)
 
-    out = gemm_block_scaled(
+    out = gemm_scaled(
         x.to(DEVICE),
         w.to(DEVICE),
         x_scale.to(DEVICE),

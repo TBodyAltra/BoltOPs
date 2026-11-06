@@ -13,7 +13,9 @@ Public operators:
 
 * ``matmul_persistent``
 * ``gemm_a16w16``
-* ``gemm_block_scaled``
+* ``gemm_scaled``
+* ``gemm_dense``
+* ``gemm_grouped``
 * ``awq_gemm_triton``
 * ``gemm_a8wfp4``
 * ``grouped_gemm_a8wfp4``
@@ -178,7 +180,9 @@ def w8a8_block_int8_matmul(
 
 
 __all__ = [
-    "gemm_block_scaled",
+    "gemm_scaled",
+    "gemm_dense",
+    "gemm_grouped",
     "awq_gemm_triton",
     "batched_gemm_a16wfp4",
     "batched_gemm_bf16",
@@ -212,9 +216,26 @@ def grouped_gemm_a8wfp4(
                 config=config)
 
 
-def gemm_block_scaled(a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 128)),
-                      scale_encodings=("numeric", "numeric"), out_dtype=None):
+def gemm_scaled(a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 128)),
+                      scale_encodings=("numeric", "numeric"), out_dtype=None, b_format="native"):
     """Native dense GEMM with independent scale blocks/encodings and selectable output dtype."""
-    from boltops.gemm.block_scaled import gemm_block_scaled as impl
+    from boltops.gemm.scaled import gemm_scaled as impl
     return impl(a, b, a_scale, b_scale, scale_recipe=scale_recipe,
-                scale_encodings=scale_encodings, out_dtype=out_dtype)
+                scale_encodings=scale_encodings, out_dtype=out_dtype, b_format=b_format)
+
+
+def gemm_dense(a, b, *, bias=None, out_dtype=None):
+    """Unscaled A[M,K] @ B[N,K].T with optional bias[N]."""
+    from boltops.gemm.dense import gemm_dense as impl
+    return impl(a, b, bias=bias, out_dtype=out_dtype)
+
+
+def gemm_grouped(a, b, *, group_offsets=None, a_scale=None, b_scale=None,
+                 scale_recipe=((1, 128), (1, 32)),
+                 scale_encodings=("numeric", "numeric"), b_format="native",
+                 bias=None, out_dtype=None):
+    """Equal or offset-grouped GEMM; scale and packed format are explicit."""
+    from boltops.gemm.grouped import gemm_grouped as impl
+    return impl(a, b, group_offsets=group_offsets, a_scale=a_scale, b_scale=b_scale,
+                scale_recipe=scale_recipe, scale_encodings=scale_encodings,
+                b_format=b_format, bias=bias, out_dtype=out_dtype)

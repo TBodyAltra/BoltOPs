@@ -10,7 +10,9 @@
 | 公开 API | 精度 / 量化 | 布局要点 | 来源 | 备注 |
 | --- | --- | --- | --- | --- |
 | `matmul_persistent` | FP16 / BF16 / FP32 | `C = A @ B`（NN） | vLLM | LDS≤64KiB 自动降 tile |
-| `gemm_block_scaled` | 独立 A/B block scale | A[M,K]、B[N,K] | Triton / Gluon 统一调度 | 映射命中走已优化 Gluon，否则通用 Triton |
+| `gemm_dense` | FP16/BF16/FP32，无 scale | A[M,K]、B[N,K] | 复用已有 Triton | gfx946 FP16 可匹配已有调优配置 |
+| `gemm_grouped` | 等长 native16 或等长/ragged FP8×FP4 | E 或 offsets 显式给出 | 复用已有 Triton | 不包含 MoE 路由 |
+| `gemm_scaled` | 独立 A/B block scale | A[M,K]、B[N,K] | Triton / Gluon 统一调度 | 映射命中走已优化 Gluon，否则通用 Triton |
 | `gemm_a16w16` | FP16 / BF16 | `Y = X @ W^T`，`W[N,K]` | aiter | 可选 epilogue activation |
 | `awq_gemm_triton` | W4A16（AWQ packed） | int4 `qweight` | vLLM | HCU JSON：`K100_AI` / `BW200` |
 | `gemm_a8wfp4` | FP8 E4M3 × FP4 E2M1 | packed W[N,ceil(K/2)] | boltOps，参考 aiter 布局 | K32 分组普通 dot 后乘 scale |
@@ -26,7 +28,9 @@
 from boltops.gemm import (
     matmul_persistent,
     gemm_a16w16,
-    gemm_block_scaled,
+    gemm_scaled,
+    gemm_dense,
+    gemm_grouped,
     awq_gemm_triton,
     gemm_afp4wfp4,
     batched_gemm_a16wfp4,
@@ -394,17 +398,33 @@ config 支持 BLOCK_SIZE_M、BLOCK_SIZE_N（2 的幂且 ≥16）、num_warps。
 实现：triton/gemm_a8wfp4.py。参考来源和实测记录：
 [FP8×FP4 支持与验证](../gemm/README.md)。
 
-## `gemm_block_scaled`
+## `gemm_scaled`
 
 ```python
-y = gemm_block_scaled(a, b, a_scale, b_scale,
+y = gemm_scaled(a, b, a_scale, b_scale,
                       scale_recipe=((1, 128), (128, 128)),
                       scale_encodings=("numeric", "numeric"), out_dtype=torch.bfloat16)
 ```
 
 A[M,K]、B[N,K] 连续存储。逐行 scale 使用 A recipe (1,K)，逐输出通道 scale 使用 B recipe (1,K)；
 整张量 scale 分别使用 (M,K)、(N,K)，scale shape 均为 (1,1)。B 必须传 [N,K]，不再接受旧 NN 包装的 [K,N]。
-接口由 gemm/block_scaled.py 统一校验，调度映射命中时调用已优化 Gluon，其余走通用 Triton。
+接口由 gemm/scaled.py 统一校验，调度映射命中时调用已优化 Gluon，其余走通用 Triton。
 scale_recipe 和 scale_encodings 显式传递，不再从 scale shape 猜测分组或把 numeric uint8 隐式当 E8M0。
 原三个上游包装只保留内部实现文件，公开入口统一为此函数；不保留兼容别名。
 详细能力与布局约定见 [统一接口](../gemm/debug_tuning/fp8_gluon_dense/README.md)。
+
+## `gemm_dense` / `gemm_grouped`
+
+```python
+c = gemm_dense(a, b, bias=bias, out_dtype=torch.bfloat16)  # A[M,K], B[N,K]
+y = gemm_grouped(a_groups, b_groups)  # A[E,M,K], B[E,N,K], same-size groups
+y = gemm_grouped(a_rows, packed_b, group_offsets=offsets,
+                 a_scale=as_, b_scale=bs_, b_format="fp4_e2m1",
+                 scale_recipe=((1,128),(1,32)))
+```
+
+Dense 默认输出为输入 dtype；FP16/BF16 输入可选择 FP16/BF16/FP32 输出，FP32 目前输出 FP32。
+Grouped 无 scale 的等长 FP16/BF16 目前输出 FP16/BF16；FP8×FP4 输出 FP16/BF16/FP32。
+Grouped scale recipe/encoding 独立指定，numeric uint8 不隐式解释为 E8M0；没有现成原生实现的组合明确报错。
+旧 gemm_block_scaled 名称由 gemm_scaled 取代，不保留兼容别名。其他专项算子的已有接口保持原有边界。
+调度和当前支持范围见 [三类统一入口](../gemm/README.md)。

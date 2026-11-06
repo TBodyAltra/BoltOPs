@@ -11,6 +11,7 @@ class KernelConfig:
     block_m: int
     block_n: int
     block_k: int
+    source_config: str | None = None
 
     def __post_init__(self):
         if any(type(v) is not int or v <= 0 for v in (self.block_m, self.block_n, self.block_k)):

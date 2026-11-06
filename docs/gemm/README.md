@@ -1,6 +1,6 @@
 # GEMM 当前支持能力
 
-接口状态更新：2026-10-20；需求来源核对：2026-10-23。统一开发分支为 `perf/gemm-optimization`。本页汇总当前接口能力与限制；完整形状、scale、模型映射和逐行状态见 [少伯 BU 支持需求](SHAOBO_BU_REQUIREMENTS.md)。接口细节与调用示例见 [GEMM API](../ops/gemm.md)。
+接口结构更新：2026-11-06；需求来源核对：2026-10-23。统一开发分支为 `perf/gemm-optimization`。本页汇总当前接口能力与限制；完整形状、scale、模型映射和逐行状态见 [少伯 BU 支持需求](SHAOBO_BU_REQUIREMENTS.md)。接口细节与调用示例见 [GEMM API](../ops/gemm.md)。
 
 ## 支持与验证边界
 
@@ -9,9 +9,9 @@
 | 算子族 / dtype | 当前接口 | 已有证据与限制 |
 | --- | --- | --- |
 | BMM，BF16×BF16→BF16 | `batched_gemm_bf16` | S24 PASS；权重布局 `[batch,N,K]`，需匹配 stride |
-| dense，FP16/BF16×同精度→FP16/BF16/FP32 | `gemm_a16w16` | BF16→BF16 S05、BF16→FP32 S06 PASS；FP16 另有流水及成本配对测试；尚无全尺寸验收 |
-| dense，FP32×FP32→FP32 | `matmul_persistent` | S03 修复后 PASS，64³ max_abs≈1.05e-7；已修正编译器 FP32 布局选择，真实 LTS 路径通过 |
-| dense，FP8×FP8→BF16/FP16/FP32 | `gemm_block_scaled` | 统一 scale recipe/encoding；映射命中走已优化 Gluon，其余走通用 Triton |
+| dense，FP16/BF16×同精度→FP16/BF16/FP32 | `gemm_dense` | BF16→BF16 S05、BF16→FP32 S06 PASS；FP16 另有流水及成本配对测试；尚无全尺寸验收 |
+| dense，FP32×FP32→FP32 | `gemm_dense` | S03 修复后 PASS，64³ max_abs≈1.05e-7；已修正编译器 FP32 布局选择，真实 LTS 路径通过 |
+| dense，FP8×FP8→BF16/FP16/FP32 | `gemm_scaled` | 统一 scale recipe/encoding；映射命中走已优化 Gluon，其余走通用 Triton |
 | dense，BF16×INT4→BF16 | `awq_gemm_triton` | S18 PASS；仅验证对应 AWQ 打包、scale/zero-point，不能泛化所有 INT4 格式 |
 | dense / grouped，FP8×FP4→BF16/FP16/FP32 | `gemm_a8wfp4` / `grouped_gemm_a8wfp4` | 15/15 回归及 9/9 接口 smoke PASS（含复用）；等长、ragged、空组、尾块和 stride 已有覆盖；34/34 完整需求仅编译通过，精度队列暂停 |
 | native FP4×FP4；batched FP16/BF16×FP4 | `gemm_afp4wfp4` / `batched_gemm_a16wfp4` | S34–S37 原生路径小尺寸 PASS；需要已修复的 ROCDL translation 构建环境 |
@@ -20,41 +20,54 @@
 
 少伯 BU 当前业务需求按业务/模型保留 R 编号，来源和精度/scale 字段见 [需求清单](SHAOBO_BU_REQUIREMENTS.md)。接口 smoke 状态不代表这些完整尺寸均已通过；既有 grouped FP8×FP4 支持范围仍单独记录。
 
-公开入口 `gemm_block_scaled` 支持不同 M/N/K、多CTA和尾块、独立 A/B scale 分组及指定输出 dtype，不限定 E4M3FN/FP32 scale/固定 recipe/BF16 输出；实际能力由目标指令和 PMD 决定。统一接口的 A/B scale 编码通过 `scale_encodings` 独立指定，E8M0 使用显式 uint8 指数码，不与普通数值 uint8 混用。完整说明见 [接口说明](debug_tuning/fp8_gluon_dense/README.md)。
+公开入口 `gemm_scaled` 支持不同 M/N/K、多CTA和尾块、独立 A/B scale 分组及指定输出 dtype，不限定 E4M3FN/FP32 scale/固定 recipe/BF16 输出；实际能力由目标指令和 PMD 决定。统一接口的 A/B scale 编码通过 `scale_encodings` 独立指定，E8M0 使用显式 uint8 指数码，不与普通数值 uint8 混用。完整说明见 [接口说明](debug_tuning/fp8_gluon_dense/README.md)。
 
 <a name="gluon-layout"></a>
 
-## 统一 GEMM 调度框架
+## 三类统一 GEMM 接口
 
-block-scaled GEMM 只保留 `gemm_block_scaled` 公开入口，按映射选择已经调好的 Gluon 实现，
-其他场景使用 Triton 通用实现。映射分 `match` / `config`：前者匹配架构、`num_cus`、
-dtype、scale recipe 和 MNK，后者给出实现与 tile，不把 tile 作为问题条件。
+| 接口 | 场景 | 当前实现 |
+| --- | --- | --- |
+| `gemm_scaled` | 单个带 scale 的 GEMM，显式指定 recipe、编码及打包格式 | 命中表的 FP8×FP8 使用优化 Gluon；其他 native 组合走通用 Triton；FP8×FP4 复用原生混合格式实现 |
+| `gemm_dense` | 无 scale 的 A[M,K] @ B[N,K].T，可带 bias[N] | gfx946 FP16 匹配已有配置时复用 gemm_fp16；其他 FP16/BF16 走 a16w16，FP32 走 persistent |
+| `gemm_grouped` | 等长 A[E,M,K] 或带 offsets 的 A[T,K] | 等长 FP16/BF16 复用 batched kernel；FP8×FP4 复用已有等长/ragged kernel |
+
+公共框架按 MNK、输入/输出 dtype、scale、布局、arch 和 num_cus 分派；tile 是选出的配置。
+`configs/gemm_dispatch.json` 的 match/config 分离，不存统计、频率、commit 或证据路径。
+当前只登记 48 CU 上可接入的配置，不推定 96/192 CU 已调优；未命中的请求使用对应已有通用实现。
+其他既有专项算子仍保留原接口；三个统一入口不依赖这些公开包装，直接复用后端实现。
 
 ```text
 gemm/
-  block_scaled.py             # 唯一 block-scaled 语义入口
-  descriptors.py              # 算子、dtype/packing、scale、batch/group 描述
-  registry.py                 # 实现能力、配置与具名张量 launch
-  catalog.py                  # 组合 Triton / Gluon 注册项
-  performance_map.py          # 匹配调度表
-  configs/block_scaled_dispatch.json
+  scaled.py                   # gemm_scaled
+  dense.py                    # gemm_dense
+  grouped.py                  # gemm_grouped
+  descriptors.py / registry.py / catalog.py
+  performance_map.py / configs/gemm_dispatch.json
   triton/
-    block_scaled_dispatch.py
-    gemm_block_scaled.py       # 通用实现，含尾块与独立 scale recipe
+    gemm_block_scaled.py / block_scaled_dispatch.py
+    dense_dispatch.py         # 适配已有 gemm_fp16、a16w16、persistent
+    grouped_dispatch.py       # 适配已有 native16、FP8×FP4 grouped
+    configs/gemm_fp16/gfx946/  # 复用原配置，不改其内容
   gluon/dense/
-    dispatch.py               # 只注册已优化实现
+    dispatch.py
     kernels/gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16.py
 ```
 
-`gemm_a8w8_blockscale`、`w8a8_triton_block_scaled_mm`、`triton_scaled_mm` 不再公开导出。
-不新增无 scale GEMM/BMM 实现；grouped 与 packed FP4/INT4 仍由各自既有算子处理。
-公共描述为未来扩展提供契约，不代表已实现对应 kernel，也不对编译/运行失败作软件替代。
+FP16 已有配置需要区分输入布局：旧 kernel 接受 B[K,N]，统一入口接受 B[N,K]，adapter 只做转置 view。
+映射中的 k_contiguous/n_contiguous 指统一入口 B 的实际内存连续方向，不是数学转置开关。
+已接入复核通过的现有 256×256×64 TT 配置。旧 128×128×128 MLS 配置在当前编译器指令选择中失败，
+TN 256×256×64 复核进程发生段错误，原因尚未定位；这两类暂未登记，仍由已有通用实现处理。
+文档中的单 TG 实验地图包含专用 kernel/frontend 依赖，保留为调优材料，不直接当生产配置加载。
+
+当前 grouped 的普通 offsets/ragged FP16/BF16、group mask/indexed 等组合没有注册实现，会明确报错。
+不通过逐专家调用 dense 或软件解包凑出支持，不新增 MoE 路由或 E 维调优。
 
 ## FP8 接口与 scale
 
 | 统一入口 | scale 语义 |
 | --- | --- |
-| `gemm_block_scaled` | 独立指定 A/B block recipe；支持 K 分组、逐行、逐输出通道及整张量 scale；numeric/E8M0 显式区分 |
+| `gemm_scaled` | 独立指定 A/B block recipe；支持 K 分组、逐行、逐输出通道及整张量 scale；numeric/E8M0 显式区分 |
 
 统一实现按共同 K 区间执行 dot 后乘 scale 并累加，不要求 tl.dot_scaled。
 Excel 缺失的 scale 信息按公开模型/框架配置补齐并标“网补”，不统一假设 E8M0。2026-10-23 核对发现，GLM/Qwen/DeepSeek 的公开 block-FP8 权重为 N128/K128，Hy3 为 per-tensor，不能统一解释成 N1/K128。以 Excel 明确字段优先；Q35 MXFP4 的 A 保留 FP8，Hy3 的 A 保留 Excel 逐行布局，缺失字段采用网补。静态 scalar 可由框架复制为 [M,1]，不能据 shape 判定动态/静态冲突。checkpoint dtype 与框架转换路径分开记录，详见 [模型配置与冲突](SHAOBO_BU_REQUIREMENTS.md#requirements-cross-check)。此前 G171 的 FP32 A + E8M0/N1 B 性能结果只适用于该实验组合。

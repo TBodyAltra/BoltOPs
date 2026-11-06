@@ -3,7 +3,7 @@ import math
 import pytest
 import torch
 import triton
-from boltops.gemm import gemm_block_scaled
+from boltops.gemm import gemm_scaled
 
 
 CASES = [
@@ -49,7 +49,7 @@ def data(case):
 def test_numeric_dtypes_and_recipes(case):
     require_hcu()
     args, ref = data(case)
-    actual = gemm_block_scaled(*(x.cuda() for x in args), scale_recipe=case[-1], out_dtype=case[4])
+    actual = gemm_scaled(*(x.cuda() for x in args), scale_recipe=case[-1], out_dtype=case[4])
     assert actual.dtype == case[4]
     torch.testing.assert_close(actual.cpu(), ref, atol=0, rtol=0)
 
@@ -61,7 +61,7 @@ def test_general_empty(shape):
     args=[torch.empty((m,k),dtype=torch.float16),torch.empty((n,k),dtype=torch.float16),
           torch.empty((triton.cdiv(m,2),triton.cdiv(k,3))),
           torch.empty((triton.cdiv(n,4),triton.cdiv(k,5)))]
-    out=gemm_block_scaled(*(x.cuda() for x in args),scale_recipe=((2,3),(4,5)),out_dtype=torch.float32)
+    out=gemm_scaled(*(x.cuda() for x in args),scale_recipe=((2,3),(4,5)),out_dtype=torch.float32)
     assert out.shape==(m,n) and out.dtype==torch.float32
     if k==0:assert torch.equal(out.cpu(),torch.zeros((m,n)))
 
@@ -74,7 +74,7 @@ def test_unsupported_native_input_reports_capability(dtypes,capfd):
           torch.empty((3,32),dtype=dtypes[1],device='cuda'),
           torch.ones((2,1),device='cuda'),torch.ones((1,1),device='cuda')]
     with pytest.raises((triton.CompilationError, ValueError, RuntimeError)) as error:
-        gemm_block_scaled(*args,out_dtype=torch.float32)
+        gemm_scaled(*args,out_dtype=torch.float32)
     captured=capfd.readouterr()
     message=str(error.value)+captured.err+captured.out
     assert any(text in message for text in (

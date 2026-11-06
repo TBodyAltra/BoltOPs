@@ -6,22 +6,29 @@ from boltops.gemm.descriptors import GemmProblem, GroupSpec, OperandSpec, ScaleS
 from boltops.gemm.registry import KernelConfig, select_plan
 
 
-@pytest.mark.parametrize("kind", ["dense", "batched"])
-def test_unscaled_families_have_no_registered_implementation(kind):
-    p = GemmProblem(kind, 32, 64, 64, OperandSpec(torch.bfloat16),
-                    OperandSpec(torch.bfloat16), torch.float32, "gfx946",
-                    batch=2 if kind == "batched" else 1)
+def test_unscaled_dense_uses_existing_native_kernel():
+    p = GemmProblem("dense", 32, 64, 64, OperandSpec(torch.bfloat16),
+                    OperandSpec(torch.bfloat16), torch.float32, "gfx946", num_cus=48)
     assert p.unscaled
-    with pytest.raises(NotImplementedError, match=f"no registered {kind} GEMM"):
+    assert select_plan(p).implementation.name == "triton.dense.native"
+
+
+def test_batched_is_not_silently_reinterpreted_as_grouped():
+    p = GemmProblem("batched", 32, 64, 64, OperandSpec(torch.bfloat16),
+                    OperandSpec(torch.bfloat16), torch.float32, "gfx946", batch=2)
+    with pytest.raises(NotImplementedError, match="no registered batched GEMM"):
         select_plan(p)
 
 
 @pytest.mark.parametrize("mode", ["equal", "offsets", "masked", "indexed"])
 def test_unimplemented_group_addressing_never_uses_dense(mode):
-    p = GemmProblem("grouped", 32, 64, 64, OperandSpec(torch.bfloat16),
-                    OperandSpec(torch.bfloat16), torch.bfloat16, "gfx946", groups=GroupSpec(mode, 2))
-    with pytest.raises(NotImplementedError, match="no registered grouped GEMM"):
-        select_plan(p)
+    p = GemmProblem("grouped", 32, 64, 64, OperandSpec(torch.bfloat16, strides=(1024, 64, 1)),
+                    OperandSpec(torch.bfloat16, strides=(4096, 64, 1)), torch.bfloat16, "gfx946", groups=GroupSpec(mode, 2))
+    if mode == "equal":
+        assert select_plan(p).implementation.name == "triton.grouped.native16"
+    else:
+        with pytest.raises(NotImplementedError, match="no registered grouped GEMM"):
+            select_plan(p)
 
 
 @pytest.mark.parametrize("format,packing,dtype,factor", [
@@ -54,6 +61,7 @@ def test_group_count_requires_an_integer():
 def test_public_scaled_interface_is_unified():
     import boltops.gemm as gemm
 
-    assert "gemm_block_scaled" in gemm.__all__
+    assert all(x in gemm.__all__ for x in ("gemm_scaled", "gemm_dense", "gemm_grouped"))
+    assert not hasattr(gemm, "gemm_block_scaled")
     for old in ("gemm_a8w8_blockscale", "w8a8_triton_block_scaled_mm", "triton_scaled_mm"):
         assert old not in gemm.__all__ and not hasattr(gemm, old)

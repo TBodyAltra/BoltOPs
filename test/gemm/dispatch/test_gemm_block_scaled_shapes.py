@@ -4,7 +4,7 @@ import torch
 import triton
 
 pytest.importorskip("triton.experimental.gluon.language.amd.hcu")
-from boltops.gemm import gemm_block_scaled
+from boltops.gemm import gemm_scaled
 
 
 @pytest.mark.parametrize("shape", [
@@ -30,7 +30,7 @@ def test_dense_shapes(shape):
         lo, hi = i * 128, min((i + 1) * 128, k)
         ref += ((a[:, lo:hi].float() @ b[:, lo:hi].float().T)
                 * sa[:, i, None] * sb[:, i].repeat_interleave(128)[:n][None, :])
-    out = gemm_block_scaled(*(x.cuda() for x in (a, b, sa, sb)))
+    out = gemm_scaled(*(x.cuda() for x in (a, b, sa, sb)))
     torch.testing.assert_close(out.cpu(), ref.bfloat16(), atol=0, rtol=0)
 
 
@@ -38,14 +38,14 @@ def test_reject_mismatched_k():
     a = torch.empty((2, 3), dtype=torch.float8_e4m3fn)
     b = torch.empty((4, 5), dtype=torch.float8_e4m3fn)
     with pytest.raises(ValueError, match="matching K"):
-        gemm_block_scaled(a, b, a, b)
+        gemm_scaled(a, b, a, b)
 
 
 @pytest.mark.parametrize("recipe", [((1, 0), (128, 32)), ((-1, 128), (128, 128)),
                                    ((1, 128),), None, (128, 128)])
 def test_reject_invalid_scale_recipe(recipe):
     with pytest.raises(ValueError, match="scale_recipe must be"):
-        gemm_block_scaled(None, None, None, None, scale_recipe=recipe)
+        gemm_scaled(None, None, None, None, scale_recipe=recipe)
 
 
 @pytest.mark.parametrize("index,shape", [(2, (1,)), (2, (1, 2)), (2, (2, 8)),
@@ -56,4 +56,4 @@ def test_reject_scale_shape(index, shape):
             torch.empty((2, 2), dtype=torch.float32), torch.empty((2, 2), dtype=torch.float32)]
     args[index] = torch.empty(shape, dtype=torch.float32)
     with pytest.raises(ValueError, match="must have shape.*scale_recipe"):
-        gemm_block_scaled(*args)
+        gemm_scaled(*args)
