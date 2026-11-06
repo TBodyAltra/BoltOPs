@@ -2,8 +2,8 @@
 import pytest
 import torch
 
-from boltops.gemm.gluon.descriptors import GemmProblem, GroupSpec, OperandSpec, ScaleSpec
-from boltops.gemm.gluon.registry import KernelConfig, select_plan
+from boltops.gemm.descriptors import GemmProblem, GroupSpec, OperandSpec, ScaleSpec
+from boltops.gemm.registry import KernelConfig, select_plan
 
 
 @pytest.mark.parametrize("kind", ["dense", "batched"])
@@ -51,8 +51,9 @@ def test_group_count_requires_an_integer():
         GroupSpec("equal", 2.5)
 
 
-def test_public_gluon_exports_only_block_scaled():
-    import boltops.gemm.gluon as gluon
+def test_public_scaled_interface_is_unified():
+    import boltops.gemm as gemm
 
-    assert gluon.__all__ == ["gemm_block_scaled"]
-    assert not hasattr(gluon, "gemm") and not hasattr(gluon, "bmm")
+    assert "gemm_block_scaled" in gemm.__all__
+    for old in ("gemm_a8w8_blockscale", "w8a8_triton_block_scaled_mm", "triton_scaled_mm"):
+        assert old not in gemm.__all__ and not hasattr(gemm, old)

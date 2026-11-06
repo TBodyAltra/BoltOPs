@@ -11,7 +11,7 @@
 | BMM，BF16×BF16→BF16 | `batched_gemm_bf16` | S24 PASS；权重布局 `[batch,N,K]`，需匹配 stride |
 | dense，FP16/BF16×同精度→FP16/BF16/FP32 | `gemm_a16w16` | BF16→BF16 S05、BF16→FP32 S06 PASS；FP16 另有流水及成本配对测试；尚无全尺寸验收 |
 | dense，FP32×FP32→FP32 | `matmul_persistent` | S03 修复后 PASS，64³ max_abs≈1.05e-7；已修正编译器 FP32 布局选择，真实 LTS 路径通过 |
-| dense，FP8×FP8→BF16/FP16/FP32 | 下表三个接口 | 46/46 smoke PASS，max_abs=0、mismatch=0；需求表 2 只映射前两个接口 |
+| dense，FP8×FP8→BF16/FP16/FP32 | `gemm_block_scaled` | 统一 scale recipe/encoding；映射命中走已优化 Gluon，其余走通用 Triton |
 | dense，BF16×INT4→BF16 | `awq_gemm_triton` | S18 PASS；仅验证对应 AWQ 打包、scale/zero-point，不能泛化所有 INT4 格式 |
 | dense / grouped，FP8×FP4→BF16/FP16/FP32 | `gemm_a8wfp4` / `grouped_gemm_a8wfp4` | 15/15 回归及 9/9 接口 smoke PASS（含复用）；等长、ragged、空组、尾块和 stride 已有覆盖；34/34 完整需求仅编译通过，精度队列暂停 |
 | native FP4×FP4；batched FP16/BF16×FP4 | `gemm_afp4wfp4` / `batched_gemm_a16wfp4` | S34–S37 原生路径小尺寸 PASS；需要已修复的 ROCDL translation 构建环境 |
@@ -20,42 +20,34 @@
 
 少伯 BU 当前业务需求按业务/模型保留 R 编号，来源和精度/scale 字段见 [需求清单](SHAOBO_BU_REQUIREMENTS.md)。接口 smoke 状态不代表这些完整尺寸均已通过；既有 grouped FP8×FP4 支持范围仍单独记录。
 
-公开入口 `gemm_block_scaled` 支持不同 M/N/K、多CTA和尾块、独立 A/B scale 分组及指定输出 dtype，不限定 E4M3FN/FP32 scale/固定 recipe/BF16 输出；实际能力由目标指令和 PMD 决定。Gluon 的 A/B scale 编码通过 `scale_encodings` 独立指定，E8M0 使用显式 uint8 指数码，不与普通数值 uint8 混用。完整说明见 [接口说明](debug_tuning/fp8_gluon_dense/README.md)。
+公开入口 `gemm_block_scaled` 支持不同 M/N/K、多CTA和尾块、独立 A/B scale 分组及指定输出 dtype，不限定 E4M3FN/FP32 scale/固定 recipe/BF16 输出；实际能力由目标指令和 PMD 决定。统一接口的 A/B scale 编码通过 `scale_encodings` 独立指定，E8M0 使用显式 uint8 指数码，不与普通数值 uint8 混用。完整说明见 [接口说明](debug_tuning/fp8_gluon_dense/README.md)。
 
 <a name="gluon-layout"></a>
 
-## Gluon GEMM 框架
+## 统一 GEMM 调度框架
 
-本次提交搭建通用框架，并保留当前 block-scaled 接口、通用 masked 实现和最佳 MLS TG 流水。
-不新增无 scale GEMM/BMM kernel，也不改变既有 Triton 算子的默认实现。
+block-scaled GEMM 只保留 `gemm_block_scaled` 公开入口，按映射选择已经调好的 Gluon 实现，
+其他场景使用 Triton 通用实现。映射只保存调度条件与配置，不保存实测统计或环境信息。
 
 ```text
-gluon/
-  descriptors.py             # 公共语义：算子族、storage/packing、可选 scale、batch/group
-  registry.py                # 实现契约、tile 配置、选择与具名 tensor launch
-  catalog.py                 # 仅组合已实现的注册项
-  scales.py                  # block-scaled 所用 scale 解码
-  dense/
-    block_scaled.py          # 当前唯一 Gluon 对外接口
-    dispatch.py              # block-scaled masked / MLS 实现注册
-    kernels/{masked,mls_wdra}.py
+gemm/
+  block_scaled.py             # 唯一 block-scaled 语义入口
+  descriptors.py              # 算子、dtype/packing、scale、batch/group 描述
+  registry.py                 # 实现能力、配置与具名张量 launch
+  catalog.py                  # 组合 Triton / Gluon 注册项
+  performance_map.py          # 匹配调度表
+  configs/block_scaled_dispatch.json
+  triton/
+    block_scaled_dispatch.py
+    gemm_block_scaled.py       # 通用实现，含尾块与独立 scale recipe
+  gluon/dense/
+    dispatch.py               # 只注册已优化实现
+    kernels/mls_wdra.py        # 当前固定 TG 流水
 ```
 
-`GemmProblem` 不强制存在 scale；`OperandSpec` 区分存储 dtype、packing、轴/因子、zero-point 类型和 strides；
-`ScaleSpec` 独立记录 scale dtype/block/encoding；`GroupSpec` 描述 grouped 寻址模式。
-这些描述为后续算子扩展提供共同契约，不表示已经实现对应 Gluon kernel。
-分派先匹配算子族，再校验实现能力和 tile 配置；具名 side tensors 可承接未来的 offsets、indices、zero points。
-未注册的普通 dense、BMM、grouped、packed INT4/FP4 请求明确拒绝，不路由到 block-scaled kernel。
-
-| 本次实际保留 | 边界 |
-| --- | --- |
-| `gemm_block_scaled` 通用接口 | 独立 A/B scale recipe/encoding、已有 dtype/output 组合、尾块和多 CTA；原生指令能力仍由后端裁定 |
-| 通用 masked 与默认 FP8 masked 实现 | 沿用当前 block-scaled 正确性路径，不扩展为无 scale GEMM/BMM 接口 |
-| MLS/WDRA `128×256×128` TG | 已优化组合和资源条件保持不变，两个汇编 TODO 保留 |
-| 其他 GEMM 类型 | 只保留公共描述/扩展机制，不新增 kernel、空壳接口或 PASS 声明；继续使用各自既有 Triton 算子 |
-
-新增实现时可按算子族建立目录并注册自己的能力及配置，不必修改公共选择循环或复用不适合的 FP8 流水。
-当前不创建未实现算子族的占位目录，不加载 JSON 调优文件、不扫描或调优 E。
+`gemm_a8w8_blockscale`、`w8a8_triton_block_scaled_mm`、`triton_scaled_mm` 不再公开导出。
+不新增无 scale GEMM/BMM 实现；grouped 与 packed FP4/INT4 仍由各自既有算子处理。
+公共描述为未来扩展提供契约，不代表已实现对应 kernel，也不对编译/运行失败作软件替代。
 
 ## FP8 接口与 scale
 

@@ -323,7 +323,7 @@ def _consume_ab_and_accumulate(
 
 
 @g.jit
-def _gemm_block_scaled_fp8_fp32_mls_wdra_128x256x128_kernel(
+def _gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16_bm128_bn256_bk128_kernel(
     A,
     B,
     AS,
@@ -392,6 +392,6 @@ def get_mls_wdra_launch_config():
     )
 
 
-def launch_gemm_block_scaled_mls_wdra(config, problem, a, b, a_scale, b_scale, out):
-    _gemm_block_scaled_fp8_fp32_mls_wdra_128x256x128_kernel[(problem.m // config.block_m, problem.n // config.block_n)](
+def launch_gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16_bm128_bn256_bk128(config, problem, a, b, a_scale, b_scale, out):
+    _gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16_bm128_bn256_bk128_kernel[(problem.m // config.block_m, problem.n // config.block_n)](
         a, b, a_scale, b_scale, out, N=problem.n, K=problem.k, **get_mls_wdra_launch_config())

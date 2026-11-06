@@ -1,5 +1,1 @@
-"""Gluon GEMM framework; block-scaled implementations only."""
-from .dense.block_scaled import gemm_block_scaled
-
-
-__all__ = ["gemm_block_scaled"]
+"""Gluon GEMM implementations selected by boltops.gemm.gemm_block_scaled."""

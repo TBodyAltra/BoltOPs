@@ -67,7 +67,7 @@ def _golden(a, w, sa, sw):
 @pytest.mark.parametrize("a_encoded,b_encoded", [(True, False), (False, True),
                                                 (True, True), (False, False)])
 def test_fp8_gemm_post_dot_e8m0_scales(a_encoded, b_encoded, splits):
-    from boltops.gemm import gemm_a8w8_blockscale
+    from boltops.gemm.triton.gemm_a8w8_blockscale import gemm_a8w8_blockscale
     from boltops.utility import arch_info
     if not arch_info.is_fp8_avail():
         pytest.skip("FP8 dot is unavailable")
@@ -87,7 +87,7 @@ def test_fp8_gemm_post_dot_e8m0_scales(a_encoded, b_encoded, splits):
 
 
 def test_vllm_block_scaled_fp8_e8m0_scales():
-    from boltops.gemm import w8a8_triton_block_scaled_mm
+    from boltops.gemm.triton.w8a8_triton_block_scaled_mm import w8a8_triton_block_scaled_mm
     from boltops.utility import arch_info
     if not arch_info.is_fp8_avail():
         pytest.skip("FP8 dot is unavailable")

@@ -25,6 +25,7 @@ class Implementation:
     entry: str
     configurations: Callable[[GemmProblem], tuple[KernelConfig, ...]]
     supports: Callable[[GemmProblem, KernelConfig], bool]
+    backend: str = "gluon"
 
     def matches(self, problem, config):
         return self.family == problem.kind and self.supports(problem, config)

@@ -33,12 +33,10 @@ from boltops.gemm import (
     batched_gemm_a16wfp4,
     batched_gemm_bf16,
     gemm_a16w16,
-    gemm_a8w8_blockscale,
+    gemm_block_scaled,
     gemm_afp4wfp4,
     matmul_persistent,
-    triton_scaled_mm,
     w8a8_block_int8_matmul,
-    w8a8_triton_block_scaled_mm,
 )
 from boltops.mla import decode_attention_fwd, compute_num_kv_splits
 from boltops.sparse_gqa import (
@@ -112,10 +110,8 @@ def test_operator_package_exports():
     assert callable(fused_experts)
     assert callable(matmul_persistent)
     assert callable(gemm_a16w16)
-    assert callable(w8a8_triton_block_scaled_mm)
-    assert callable(triton_scaled_mm)
     assert callable(awq_gemm_triton)
-    assert callable(gemm_a8w8_blockscale)
+    assert callable(gemm_block_scaled)
     assert callable(gemm_afp4wfp4)
     assert callable(batched_gemm_a16wfp4)
     assert callable(batched_gemm_bf16)

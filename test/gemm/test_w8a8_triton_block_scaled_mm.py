@@ -1,4 +1,4 @@
-"""Correctness tests for ``w8a8_triton_block_scaled_mm``."""
+"""FP8 block-scale coverage for the unified gemm_block_scaled API."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import torch
 
 pytest.importorskip("triton")
 
-from boltops.gemm import w8a8_triton_block_scaled_mm  # noqa: E402
+from boltops.gemm import gemm_block_scaled  # noqa: E402
 
 DEVICE = "cuda"
 GPU_REQUIRED = pytest.mark.skipif(
@@ -59,12 +59,12 @@ def test_w8a8_triton_block_scaled_mm_correctness(M: int, N: int, K: int):
     b_s = torch.rand((N // block_n, K // block_k), dtype=torch.float32) * 0.1 + 0.01
     golden = _block_scale_golden(a, b, a_s, b_s, block_n, block_k)
 
-    out = w8a8_triton_block_scaled_mm(
+    out = gemm_block_scaled(
         a.contiguous().to(DEVICE),
         b.contiguous().to(DEVICE),
         a_s.to(DEVICE),
         b_s.to(DEVICE),
-        [block_n, block_k],
-        output_dtype=torch.float16,
+        scale_recipe=((1, block_k), (block_n, block_k)),
+        out_dtype=torch.float16,
     )
     torch.testing.assert_close(out.cpu().float(), golden, atol=5e-2, rtol=5e-2)

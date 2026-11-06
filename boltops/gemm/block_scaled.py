@@ -4,8 +4,8 @@ import operator
 import torch
 import triton
 
-from ..registry import launch, select_plan
-from ..descriptors import GemmProblem, OperandSpec, ScaleSpec
+from .registry import launch, select_plan
+from .descriptors import GemmProblem, OperandSpec, ScaleSpec
 
 
 def _parse_recipe(scale_recipe):
@@ -21,18 +21,18 @@ def _parse_recipe(scale_recipe):
 def gemm_block_scaled(a, b, a_scale, b_scale, *,
                       scale_recipe=((1, 128), (128, 128)),
                       scale_encodings=("numeric", "numeric"), out_dtype=None):
-    """Compute block-scaled A[M,K] @ B[N,K].T using native MMAC.
+    """Compute block-scaled A[M,K] @ B[N,K].T using native dot operations.
 
     Scale shapes are [ceil(M/A_M),ceil(K/A_K)] and
     [ceil(N/B_N),ceil(K/B_K)]. Blocks may differ; K-group is contiguous.
     Scale encoding is explicit per input: "numeric" (default) or "e8m0".
     E8M0 requires uint8 storage; uint8 remains numeric by default.
-    Input/accumulator legality is queried from the target MMAC database;
+    Input/accumulator legality is checked by the selected target compiler;
     unsupported combinations raise compiler errors, without input upcasting.
     Output dtype defaults to BF16 and may be selected explicitly. Scale
     arithmetic uses FP32, promoted to FP64 for FP64 inputs or scales.
-    The existing tuned recipe uses its MLS/masked kernels; other combinations
-    use a general masked native-MMAC kernel with no performance claim.
+    A versioned performance map selects measured Gluon configurations.
+    Requests outside those contracts use the general Triton implementation.
     """
     recipe = _parse_recipe(scale_recipe)
     if (not isinstance(scale_encodings, (tuple, list)) or len(scale_encodings) != 2 or

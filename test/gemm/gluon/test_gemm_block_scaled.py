@@ -77,4 +77,7 @@ def test_unsupported_native_input_reports_capability(dtypes,capfd):
         gemm_block_scaled(*args,out_dtype=torch.float32)
     captured=capfd.readouterr()
     message=str(error.value)+captured.err+captured.out
-    assert 'native MMAC' in message or 'not supported in this architecture' in message
+    assert any(text in message for text in (
+        'native MMAC', 'not supported in this architecture',
+        'Both operands must be same dtype',
+    ))

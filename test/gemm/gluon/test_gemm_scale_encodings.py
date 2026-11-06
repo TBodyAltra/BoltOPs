@@ -4,11 +4,10 @@ import math
 import pytest
 import torch
 import triton
-from triton.experimental import gluon as g
-from triton.experimental.gluon import language as gl
+import triton.language as tl
 
 from boltops.gemm import gemm_block_scaled
-from boltops.gemm.gluon.scales import decode_block_scale
+from boltops.gemm.triton.gemm_block_scaled import _decode_block_scale
 
 
 def require_hcu():
@@ -16,11 +15,11 @@ def require_hcu():
         pytest.skip("requires gfx946")
 
 
-@g.jit
+@triton.jit
 def decode_kernel(X, Y):
-    i = gl.arange(0, 256, layout=gl.BlockedLayout([1], [64], [4], [0]))
-    value = decode_block_scale(gl.load(X + i), True)
-    gl.store(Y + i, value.to(gl.int32, bitcast=True))
+    i = tl.arange(0, 256)
+    value = _decode_block_scale(tl.load(X + i), True)
+    tl.store(Y + i, value.to(tl.int32, bitcast=True))
 
 
 def test_all_e8m0_codes_preserve_exact_fp32_bits():

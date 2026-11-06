@@ -1,8 +1,7 @@
 """GEMM operator package.
 
-Public signature and ship-time backend selection live here (not a runtime
-``backend=`` switch). Change the lazy-import target below after Triton /
-TileLang bake-off.
+Public signatures live here. Block-scaled GEMM uses a performance map to
+select measured Gluon specializations or the general Triton implementation.
 
 Public APIs (aligned with vLLM / aiter call sites); docs/tests are per-family
 like ``fused_moe`` / ``moe_activation``:
@@ -15,10 +14,7 @@ Public operators:
 * ``matmul_persistent``
 * ``gemm_a16w16``
 * ``gemm_block_scaled``
-* ``w8a8_triton_block_scaled_mm``
-* ``triton_scaled_mm``
 * ``awq_gemm_triton``
-* ``gemm_a8w8_blockscale``
 * ``gemm_a8wfp4``
 * ``grouped_gemm_a8wfp4``
 * ``gemm_afp4wfp4``
@@ -76,51 +72,6 @@ def gemm_a16w16(
     )
 
 
-def w8a8_triton_block_scaled_mm(
-    A: torch.Tensor,
-    B: torch.Tensor,
-    As: torch.Tensor,
-    Bs: torch.Tensor,
-    block_size: list[int],
-    output_dtype: torch.dtype = torch.float16,
-) -> torch.Tensor:
-    """vLLM Triton W8A8 / FP8 block-scaled matmul."""
-    from boltops.gemm.triton.w8a8_triton_block_scaled_mm import (
-        w8a8_triton_block_scaled_mm as impl,
-    )
-
-    return impl(A, B, As, Bs, block_size, output_dtype)
-
-
-def triton_scaled_mm(
-    input: torch.Tensor,
-    weight: torch.Tensor,
-    scale_a: torch.Tensor,
-    scale_b: torch.Tensor,
-    out_dtype: type[torch.dtype] | torch.dtype,
-    bias: Optional[torch.Tensor] = None,
-    block_size_m: int = 32,
-    block_size_n: int = 32,
-    block_size_k: int = 32,
-    use_heuristic: bool = True,
-) -> torch.Tensor:
-    """vLLM compressed-tensors Triton scaled matmul."""
-    from boltops.gemm.triton.triton_scaled_mm import triton_scaled_mm as impl
-
-    return impl(
-        input,
-        weight,
-        scale_a,
-        scale_b,
-        out_dtype,
-        bias=bias,
-        block_size_m=block_size_m,
-        block_size_n=block_size_n,
-        block_size_k=block_size_k,
-        use_heuristic=use_heuristic,
-    )
-
-
 def awq_gemm_triton(
     input: torch.Tensor,
     qweight: torch.Tensor,
@@ -133,35 +84,6 @@ def awq_gemm_triton(
     from boltops.gemm.triton.awq_gemm_triton import awq_gemm_triton as impl
 
     return impl(input, qweight, scales, qzeros, split_k_iters, config)
-
-
-def gemm_a8w8_blockscale(
-    x: torch.Tensor,
-    w: torch.Tensor,
-    x_scale: torch.Tensor,
-    w_scale: torch.Tensor,
-    dtype: Optional[torch.dtype] = torch.bfloat16,
-    y: Optional[torch.Tensor] = None,
-    config: Optional[dict] = None,
-    skip_reduce: bool = False,
-    kernel_type: str = "bandwidth_bound",
-    backend: Optional[str] = None,
-) -> torch.Tensor:
-    """aiter Triton A8W8 block-scale GEMM: ``Y = X @ W^T``."""
-    from boltops.gemm.triton.gemm_a8w8_blockscale import gemm_a8w8_blockscale as impl
-
-    return impl(
-        x,
-        w,
-        x_scale,
-        w_scale,
-        dtype=dtype,
-        y=y,
-        config=config,
-        skip_reduce=skip_reduce,
-        kernel_type=kernel_type,
-        backend=backend,
-    )
 
 
 def gemm_afp4wfp4(
@@ -261,14 +183,11 @@ __all__ = [
     "batched_gemm_a16wfp4",
     "batched_gemm_bf16",
     "gemm_a16w16",
-    "gemm_a8w8_blockscale",
     "gemm_afp4wfp4",
     "gemm_a8wfp4",
     "grouped_gemm_a8wfp4",
     "matmul_persistent",
-    "triton_scaled_mm",
     "w8a8_block_int8_matmul",
-    "w8a8_triton_block_scaled_mm",
 ]
 
 
@@ -296,6 +215,6 @@ def grouped_gemm_a8wfp4(
 def gemm_block_scaled(a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 128)),
                       scale_encodings=("numeric", "numeric"), out_dtype=None):
     """Native dense GEMM with independent scale blocks/encodings and selectable output dtype."""
-    from boltops.gemm.gluon.dense.block_scaled import gemm_block_scaled as impl
+    from boltops.gemm.block_scaled import gemm_block_scaled as impl
     return impl(a, b, a_scale, b_scale, scale_recipe=scale_recipe,
                 scale_encodings=scale_encodings, out_dtype=out_dtype)

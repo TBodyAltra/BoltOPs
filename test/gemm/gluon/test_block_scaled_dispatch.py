@@ -4,8 +4,8 @@ from dataclasses import replace
 import pytest
 import torch
 
-from boltops.gemm.gluon.descriptors import GemmProblem, OperandSpec, ScaleSpec
-from boltops.gemm.gluon.registry import (
+from boltops.gemm.descriptors import GemmProblem, OperandSpec, ScaleSpec
+from boltops.gemm.registry import (
     Implementation, KernelConfig, launch, select_plan,
 )
 
@@ -25,7 +25,7 @@ def problem(shape=(128, 256, 256), *, aligned=True, dtype=torch.float8_e4m3fn,
 @pytest.mark.parametrize("shape", [(128, 256, 256), (256, 512, 6144)])
 def test_complete_tiles_select_fixed_mls_pipeline(shape):
     plan = select_plan(problem(shape))
-    assert plan.implementation.name == "mls_wdra"
+    assert plan.implementation.name == "gluon.block_scaled.128x256x128"
     assert plan.config == KernelConfig(128, 256, 128)
 
 
@@ -33,12 +33,12 @@ def test_complete_tiles_select_fixed_mls_pipeline(shape):
     (127, 256, 256), (128, 255, 256), (128, 256, 128),
     (128, 256, 257), (128, 256, 6400),
 ])
-def test_incomplete_or_over_capacity_tiles_use_masked_fp8(shape):
-    assert select_plan(problem(shape)).implementation.name == "masked_fp8"
+def test_incomplete_or_over_capacity_tiles_use_triton(shape):
+    assert select_plan(problem(shape)).implementation.name == "triton.block_scaled"
 
 
 def test_unaligned_inputs_do_not_select_mls():
-    assert select_plan(problem(aligned=False)).implementation.name == "masked_fp8"
+    assert select_plan(problem(aligned=False)).implementation.name == "triton.block_scaled"
 
 
 @pytest.mark.parametrize("kwargs", [
@@ -47,7 +47,7 @@ def test_unaligned_inputs_do_not_select_mls():
     {"scale_dtype": torch.uint8, "encodings": ("numeric", "e8m0")},
 ])
 def test_other_recipes_and_dtypes_keep_general_native_path(kwargs):
-    assert select_plan(problem(**kwargs)).implementation.name == "block_scaled"
+    assert select_plan(problem(**kwargs)).implementation.name == "triton.block_scaled"
 
 
 @pytest.mark.parametrize("recipe,bk", [
@@ -59,7 +59,7 @@ def test_general_dot_chunk_respects_common_scale_boundaries(recipe, bk):
 
 
 def test_optimized_pipeline_is_target_specific():
-    assert select_plan(problem(arch="gfx938")).implementation.name != "mls_wdra"
+    assert select_plan(problem(arch="gfx938")).implementation.name != "gluon.block_scaled.128x256x128"
 
 
 def test_invalid_tile_cannot_launch_a_fixed_pipeline():
