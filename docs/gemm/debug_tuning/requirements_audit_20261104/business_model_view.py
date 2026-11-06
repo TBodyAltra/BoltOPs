@@ -4,10 +4,11 @@ Legacy G/source mappings are retained in the audit CSV only.
 """
 from collections import Counter
 import re
+import html
 
 BUSINESSES = [
     ('december-bu-p0', '12 月 BU 性能测试', 'P0'),
-    ('follow-up-p1', '后续支持', 'P1'),
+    ('follow-up-p2', '后续支持', 'P2'),
 ]
 MODELS = [
     ('q35-fp8', 'Qwen3.5-35B-A3B FP8', ('X09',), 'P0', 'quant-q35',
@@ -16,24 +17,30 @@ MODELS = [
      '128k/1k、s150；TP1，单卡实例，chunk 6656。'),
     ('qwen3-vl-8b', 'Qwen3-VL-8B BF16', ('X14',), 'P0', None,
      '主干输入 226 token、输出 300；文本 30 token + 448×448 图像；TP1/bs512。文件保留 s150 标签。'),
-    ('ds-flash', 'DeepSeek-V4-Flash', ('X01','X02','X03','X04'), 'P1', 'quant-flash',
+    ('ds-flash', 'DeepSeek-V4-Flash', ('X01','X02','X03','X04'), 'P2', 'quant-flash',
      '64k/128k × s150/s2000；各文件部署方案分别保留。'),
-    ('ds-pro', 'DeepSeek-V4-Pro', ('X05','X06'), 'P1', 'quant-pro',
+    ('ds-pro', 'DeepSeek-V4-Pro', ('X05','X06'), 'P2', 'quant-pro',
      '128k/1k、s2000；P 侧 a/b 两种方案，分别为 16 卡 PP2 与 8 卡方案。'),
-    ('glm51-fp8', 'GLM-5.1 FP8', ('X07','X08'), 'P1', 'quant-glm',
+    ('glm51-fp8', 'GLM-5.1 FP8', ('X07','X08'), 'P2', 'quant-glm',
      '128k/64k、s2000；原表头 5.2/5.1 的命名歧义保留，以第 3 行描述 5.1 为准。'),
-    ('kimi26-w4a16', 'Kimi-2.6 W4A16', ('X11',), 'P1', 'quant-kimi',
+    ('kimi26-w4a16', 'Kimi-2.6 W4A16', ('X11',), 'P2', 'quant-kimi',
      '128k/1k、s2000；包含 EAGLE3 draft。'),
-    ('hy3-fp8', 'Hunyuan-V3 FP8', ('X12',), 'P1', 'quant-hy3',
+    ('hy3-fp8', 'Hunyuan-V3 FP8', ('X12',), 'P2', 'quant-hy3',
      '128k/1k、s2000；激活 FP32/token/dyn，权重 scale 为 FP32*/channel，以新版标签为准。'),
-    ('q397-fp8', 'Qwen3.5-397B-A17B FP8', ('X13',), 'P1', 'quant-q397',
-     '128k/1k、s2000；本模型属于后续支持 P1，不在本轮三个 Qwen P0 配置内。'),
+    ('q397-fp8', 'Qwen3.5-397B-A17B FP8', ('X13',), 'P2', 'quant-q397',
+     '128k/1k、s2000；本模型属于后续支持 P2，不在本轮三个 Qwen P0 配置内。'),
 ]
 TABLE_ORDER = {'3':0,'2':1,'1':2,'4':3,'5':4,'6':5,'9':6,'8':7}
 
 
 def row(cells):
     return '| ' + ' | '.join(str(x) for x in cells) + ' |'
+
+
+def scale_cell(value):
+    # Keep starred Excel scales literal; GitHub otherwise treats *@128 as a user mention.
+    return '<br>'.join('<code>'+html.escape(part)+'</code>' if re.search(r'\*@[A-Za-z0-9]', part) else part
+                      for part in value.split('<br>'))
 
 
 def anchor(name):
@@ -102,7 +109,7 @@ def render(cases, gaps, file_to_x, manifest, canonical, effective_a, effective_b
             cellop = key[0]+'<br>'+dtype
             block += row([label,cellop,'<br>'.join('`'+x+'`' for x in ops),
                 ' × '.join(map(str,key[1:4])),key[4] if key[0]!='linear' else '—',
-                phase,len(rs),aa,bb,interface+'<br>'+status])+'\n'
+                phase,len(rs),scale_cell(aa),scale_cell(bb),interface+'<br>'+status])+'\n'
             projected.append(dict(requirement_id=requirement_id,business=business,priority=prio,model=name,model_id=slug,
                 legacy_row_id=item_id,legacy_G=item_id if table!='gap' else '',table=table,anchor=target,
                 op=key[0],M=key[1],N=key[2],K=key[3],batch_or_E=key[4],
@@ -128,7 +135,7 @@ def render(cases, gaps, file_to_x, manifest, canonical, effective_a, effective_b
     assert sum(r['actual_excel_sources'] for r in summary)==1566
     assert sum(r['compatibility_source_reuse'] for r in summary)==0
     assert all(r['op'] != 'grouped_gemm' for r in projected)
-    assert {r['priority'] for r in projected}=={'P0','P1'}
+    assert {r['priority'] for r in projected}=={'P0','P2'}
 
     text = '# 少伯 BU GEMM 支持需求\n\n需求来源：`shaobob0_shapes_1102/` 目录中的新版 Excel。\n\n'
     text += anchor('business-model-index') + '\n' + anchor('p0-快速索引') + '\n\n'
@@ -158,5 +165,6 @@ def render(cases, gaps, file_to_x, manifest, canonical, effective_a, effective_b
         excluded_MoE_actual_sources=960,excluded_MoE_compatibility_source_reuse=304,
         each_source_projected_to_exactly_one_model=True,shared_ID_scale_and_frequency_filtered_by_model=True,
         independent_requirement_IDs=len(projected),display_numbering=f'R001-R{len(projected):03}',
-        legacy_G_mappings_in_audit_only=True,priority_only_P0_or_P1=True)
-    return text,projected,stats
+        legacy_G_mappings_in_audit_only=True,priority_only_P0_or_P2=True)
+    from byte_january_view import integrate
+    return integrate(text,projected,stats)

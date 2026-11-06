@@ -1,0 +1,1768 @@
+{
+  "captured_at": "2026-11-05T03:26:49.714609+00:00",
+  "repository": "https://github.com/bytedance/xpu-perf",
+  "commit": "71a12101509635421d02c3d28c9202951ded7745",
+  "workload_sha256": "ecf70af8739072cc67a7d06ae534ee59d4e5998d685edf82f8ccb9010033a979",
+  "script_sha256": "7b8c4d448ba650c02f74975c27e343fa1f2fd7b60147acfe1e2d4c9ac7a46962",
+  "environment": {
+    "hostname": "SH-3SQXPV3",
+    "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "torch": "2.14.1+cpu",
+    "python": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+    "device": "CPU",
+    "cuda_available": false
+  },
+  "expanded_case_count": 1104,
+  "per_precision": {
+    "bfloat16": {
+      "rejected": 184
+    },
+    "int8": {
+      "accepted": 184
+    },
+    "float8": {
+      "rejected": 184
+    },
+    "float4": {
+      "rejected": 184
+    },
+    "mxfloat8": {
+      "rejected": 184
+    },
+    "mxfloat4": {
+      "rejected": 184
+    }
+  },
+  "executions": [
+    {
+      "args": {
+        "arg_type": "llm",
+        "num_tokens": 1,
+        "dtype": "int8",
+        "w_dtype": "int8",
+        "compute_dtype": "int8",
+        "dst_dtype": "bfloat16",
+        "sp_size": 1,
+        "hidden_size": 4096,
+        "new_hidden_size": 4096
+      },
+      "status": "EXECUTED",
+      "inputs": {
+        "hidden_states": {
+          "shape": [
+            1,
+            4096
+          ],
+          "dtype": "torch.int8",
+          "stride": [
+            4096,
+            1
+          ],
+          "bytes": 4096
+        },
+        "per_token_scale": {
+          "shape": [
+            1
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 4
+        },
+        "expert_weight": {
+          "shape": [
+            4096,
+            4096
+          ],
+          "dtype": "torch.int8",
+          "stride": [
+            4096,
+            1
+          ],
+          "bytes": 16777216
+        },
+        "expert_scale": {
+          "shape": [
+            4096
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 16384
+        }
+      },
+      "scales": {
+        "per_token_scale": {
+          "shape": [
+            1
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 4,
+          "values": [
+            1.0
+          ]
+        },
+        "expert_scale": {
+          "shape": [
+            4096
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 16384,
+          "values": [
+            1.0
+          ]
+        }
+      },
+      "output": {
+        "shape": [
+          1,
+          4096
+        ],
+        "dtype": "torch.bfloat16",
+        "stride": [
+          4096,
+          1
+        ],
+        "bytes": 8192
+      },
+      "trace": [
+        {
+          "op": "aten.transpose.int",
+          "inputs": [
+            {
+              "shape": [
+                4096,
+                4096
+              ],
+              "dtype": "torch.int8",
+              "stride": [
+                4096,
+                1
+              ],
+              "bytes": 16777216
+            },
+            "0",
+            "1"
+          ],
+          "output": {
+            "shape": [
+              4096,
+              4096
+            ],
+            "dtype": "torch.int8",
+            "stride": [
+              1,
+              4096
+            ],
+            "bytes": 16777216
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                4096
+              ],
+              "dtype": "torch.int8",
+              "stride": [
+                4096,
+                1
+              ],
+              "bytes": 4096
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              4096
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              4096,
+              1
+            ],
+            "bytes": 8192
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                4096,
+                4096
+              ],
+              "dtype": "torch.int8",
+              "stride": [
+                1,
+                4096
+              ],
+              "bytes": 16777216
+            }
+          ],
+          "output": {
+            "shape": [
+              4096,
+              4096
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              1,
+              4096
+            ],
+            "bytes": 33554432
+          }
+        },
+        {
+          "op": "aten.mm.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                4096
+              ],
+              "dtype": "torch.bfloat16",
+              "stride": [
+                4096,
+                1
+              ],
+              "bytes": 8192
+            },
+            {
+              "shape": [
+                4096,
+                4096
+              ],
+              "dtype": "torch.bfloat16",
+              "stride": [
+                1,
+                4096
+              ],
+              "bytes": 33554432
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              4096
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              4096,
+              1
+            ],
+            "bytes": 8192
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                4096
+              ],
+              "dtype": "torch.bfloat16",
+              "stride": [
+                4096,
+                1
+              ],
+              "bytes": 8192
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              4096
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              4096,
+              1
+            ],
+            "bytes": 16384
+          }
+        },
+        {
+          "op": "aten.unsqueeze.default",
+          "inputs": [
+            {
+              "shape": [
+                1
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1
+              ],
+              "bytes": 4
+            },
+            "-1"
+          ],
+          "output": {
+            "shape": [
+              1,
+              1
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              1,
+              1
+            ],
+            "bytes": 4
+          }
+        },
+        {
+          "op": "aten.mul.Tensor",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                4096
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                4096,
+                1
+              ],
+              "bytes": 16384
+            },
+            {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1,
+                1
+              ],
+              "bytes": 4
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              4096
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              4096,
+              1
+            ],
+            "bytes": 16384
+          }
+        },
+        {
+          "op": "aten.unsqueeze.default",
+          "inputs": [
+            {
+              "shape": [
+                4096
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1
+              ],
+              "bytes": 16384
+            },
+            "0"
+          ],
+          "output": {
+            "shape": [
+              1,
+              4096
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              4096,
+              1
+            ],
+            "bytes": 16384
+          }
+        },
+        {
+          "op": "aten.mul.Tensor",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                4096
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                4096,
+                1
+              ],
+              "bytes": 16384
+            },
+            {
+              "shape": [
+                1,
+                4096
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                4096,
+                1
+              ],
+              "bytes": 16384
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              4096
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              4096,
+              1
+            ],
+            "bytes": 16384
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                4096
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                4096,
+                1
+              ],
+              "bytes": 16384
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              4096
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              4096,
+              1
+            ],
+            "bytes": 8192
+          }
+        }
+      ],
+      "calc_flops": 33554432,
+      "read_bytes": 16797700,
+      "write_bytes": 8192,
+      "input_pattern": "upstream zeros inputs, ones scales"
+    },
+    {
+      "args": {
+        "arg_type": "llm",
+        "num_tokens": 1,
+        "dtype": "int8",
+        "w_dtype": "int8",
+        "compute_dtype": "int8",
+        "dst_dtype": "bfloat16",
+        "sp_size": 1,
+        "hidden_size": 8192,
+        "new_hidden_size": 8192
+      },
+      "status": "EXECUTED",
+      "inputs": {
+        "hidden_states": {
+          "shape": [
+            1,
+            8192
+          ],
+          "dtype": "torch.int8",
+          "stride": [
+            8192,
+            1
+          ],
+          "bytes": 8192
+        },
+        "per_token_scale": {
+          "shape": [
+            1
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 4
+        },
+        "expert_weight": {
+          "shape": [
+            8192,
+            8192
+          ],
+          "dtype": "torch.int8",
+          "stride": [
+            8192,
+            1
+          ],
+          "bytes": 67108864
+        },
+        "expert_scale": {
+          "shape": [
+            8192
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 32768
+        }
+      },
+      "scales": {
+        "per_token_scale": {
+          "shape": [
+            1
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 4,
+          "values": [
+            1.0
+          ]
+        },
+        "expert_scale": {
+          "shape": [
+            8192
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 32768,
+          "values": [
+            1.0
+          ]
+        }
+      },
+      "output": {
+        "shape": [
+          1,
+          8192
+        ],
+        "dtype": "torch.bfloat16",
+        "stride": [
+          8192,
+          1
+        ],
+        "bytes": 16384
+      },
+      "trace": [
+        {
+          "op": "aten.transpose.int",
+          "inputs": [
+            {
+              "shape": [
+                8192,
+                8192
+              ],
+              "dtype": "torch.int8",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 67108864
+            },
+            "0",
+            "1"
+          ],
+          "output": {
+            "shape": [
+              8192,
+              8192
+            ],
+            "dtype": "torch.int8",
+            "stride": [
+              1,
+              8192
+            ],
+            "bytes": 67108864
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.int8",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 8192
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 16384
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                8192,
+                8192
+              ],
+              "dtype": "torch.int8",
+              "stride": [
+                1,
+                8192
+              ],
+              "bytes": 67108864
+            }
+          ],
+          "output": {
+            "shape": [
+              8192,
+              8192
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              1,
+              8192
+            ],
+            "bytes": 134217728
+          }
+        },
+        {
+          "op": "aten.mm.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.bfloat16",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 16384
+            },
+            {
+              "shape": [
+                8192,
+                8192
+              ],
+              "dtype": "torch.bfloat16",
+              "stride": [
+                1,
+                8192
+              ],
+              "bytes": 134217728
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 16384
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.bfloat16",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 16384
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 32768
+          }
+        },
+        {
+          "op": "aten.unsqueeze.default",
+          "inputs": [
+            {
+              "shape": [
+                1
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1
+              ],
+              "bytes": 4
+            },
+            "-1"
+          ],
+          "output": {
+            "shape": [
+              1,
+              1
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              1,
+              1
+            ],
+            "bytes": 4
+          }
+        },
+        {
+          "op": "aten.mul.Tensor",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 32768
+            },
+            {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1,
+                1
+              ],
+              "bytes": 4
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 32768
+          }
+        },
+        {
+          "op": "aten.unsqueeze.default",
+          "inputs": [
+            {
+              "shape": [
+                8192
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1
+              ],
+              "bytes": 32768
+            },
+            "0"
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 32768
+          }
+        },
+        {
+          "op": "aten.mul.Tensor",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 32768
+            },
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 32768
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 32768
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 32768
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 16384
+          }
+        }
+      ],
+      "calc_flops": 134217728,
+      "read_bytes": 67149828,
+      "write_bytes": 16384,
+      "input_pattern": "upstream zeros inputs, ones scales"
+    },
+    {
+      "args": {
+        "arg_type": "llm",
+        "num_tokens": 1,
+        "dtype": "int8",
+        "w_dtype": "int8",
+        "compute_dtype": "int8",
+        "dst_dtype": "bfloat16",
+        "sp_size": 1,
+        "hidden_size": 8192,
+        "new_hidden_size": 1024
+      },
+      "status": "EXECUTED",
+      "inputs": {
+        "hidden_states": {
+          "shape": [
+            1,
+            8192
+          ],
+          "dtype": "torch.int8",
+          "stride": [
+            8192,
+            1
+          ],
+          "bytes": 8192
+        },
+        "per_token_scale": {
+          "shape": [
+            1
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 4
+        },
+        "expert_weight": {
+          "shape": [
+            1024,
+            8192
+          ],
+          "dtype": "torch.int8",
+          "stride": [
+            8192,
+            1
+          ],
+          "bytes": 8388608
+        },
+        "expert_scale": {
+          "shape": [
+            1024
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 4096
+        }
+      },
+      "scales": {
+        "per_token_scale": {
+          "shape": [
+            1
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 4,
+          "values": [
+            1.0
+          ]
+        },
+        "expert_scale": {
+          "shape": [
+            1024
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 4096,
+          "values": [
+            1.0
+          ]
+        }
+      },
+      "output": {
+        "shape": [
+          1,
+          1024
+        ],
+        "dtype": "torch.bfloat16",
+        "stride": [
+          1024,
+          1
+        ],
+        "bytes": 2048
+      },
+      "trace": [
+        {
+          "op": "aten.transpose.int",
+          "inputs": [
+            {
+              "shape": [
+                1024,
+                8192
+              ],
+              "dtype": "torch.int8",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 8388608
+            },
+            "0",
+            "1"
+          ],
+          "output": {
+            "shape": [
+              8192,
+              1024
+            ],
+            "dtype": "torch.int8",
+            "stride": [
+              1,
+              8192
+            ],
+            "bytes": 8388608
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.int8",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 8192
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 16384
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                8192,
+                1024
+              ],
+              "dtype": "torch.int8",
+              "stride": [
+                1,
+                8192
+              ],
+              "bytes": 8388608
+            }
+          ],
+          "output": {
+            "shape": [
+              8192,
+              1024
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              1,
+              8192
+            ],
+            "bytes": 16777216
+          }
+        },
+        {
+          "op": "aten.mm.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.bfloat16",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 16384
+            },
+            {
+              "shape": [
+                8192,
+                1024
+              ],
+              "dtype": "torch.bfloat16",
+              "stride": [
+                1,
+                8192
+              ],
+              "bytes": 16777216
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              1024
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              1024,
+              1
+            ],
+            "bytes": 2048
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                1024
+              ],
+              "dtype": "torch.bfloat16",
+              "stride": [
+                1024,
+                1
+              ],
+              "bytes": 2048
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              1024
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              1024,
+              1
+            ],
+            "bytes": 4096
+          }
+        },
+        {
+          "op": "aten.unsqueeze.default",
+          "inputs": [
+            {
+              "shape": [
+                1
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1
+              ],
+              "bytes": 4
+            },
+            "-1"
+          ],
+          "output": {
+            "shape": [
+              1,
+              1
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              1,
+              1
+            ],
+            "bytes": 4
+          }
+        },
+        {
+          "op": "aten.mul.Tensor",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                1024
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1024,
+                1
+              ],
+              "bytes": 4096
+            },
+            {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1,
+                1
+              ],
+              "bytes": 4
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              1024
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              1024,
+              1
+            ],
+            "bytes": 4096
+          }
+        },
+        {
+          "op": "aten.unsqueeze.default",
+          "inputs": [
+            {
+              "shape": [
+                1024
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1
+              ],
+              "bytes": 4096
+            },
+            "0"
+          ],
+          "output": {
+            "shape": [
+              1,
+              1024
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              1024,
+              1
+            ],
+            "bytes": 4096
+          }
+        },
+        {
+          "op": "aten.mul.Tensor",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                1024
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1024,
+                1
+              ],
+              "bytes": 4096
+            },
+            {
+              "shape": [
+                1,
+                1024
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1024,
+                1
+              ],
+              "bytes": 4096
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              1024
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              1024,
+              1
+            ],
+            "bytes": 4096
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                1024
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1024,
+                1
+              ],
+              "bytes": 4096
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              1024
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              1024,
+              1
+            ],
+            "bytes": 2048
+          }
+        }
+      ],
+      "calc_flops": 16777216,
+      "read_bytes": 8400900,
+      "write_bytes": 2048,
+      "input_pattern": "upstream zeros inputs, ones scales"
+    },
+    {
+      "args": {
+        "arg_type": "llm",
+        "num_tokens": 1,
+        "dtype": "int8",
+        "w_dtype": "int8",
+        "compute_dtype": "int8",
+        "dst_dtype": "bfloat16",
+        "sp_size": 1,
+        "hidden_size": 1024,
+        "new_hidden_size": 8192
+      },
+      "status": "EXECUTED",
+      "inputs": {
+        "hidden_states": {
+          "shape": [
+            1,
+            1024
+          ],
+          "dtype": "torch.int8",
+          "stride": [
+            1024,
+            1
+          ],
+          "bytes": 1024
+        },
+        "per_token_scale": {
+          "shape": [
+            1
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 4
+        },
+        "expert_weight": {
+          "shape": [
+            8192,
+            1024
+          ],
+          "dtype": "torch.int8",
+          "stride": [
+            1024,
+            1
+          ],
+          "bytes": 8388608
+        },
+        "expert_scale": {
+          "shape": [
+            8192
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 32768
+        }
+      },
+      "scales": {
+        "per_token_scale": {
+          "shape": [
+            1
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 4,
+          "values": [
+            1.0
+          ]
+        },
+        "expert_scale": {
+          "shape": [
+            8192
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            1
+          ],
+          "bytes": 32768,
+          "values": [
+            1.0
+          ]
+        }
+      },
+      "output": {
+        "shape": [
+          1,
+          8192
+        ],
+        "dtype": "torch.bfloat16",
+        "stride": [
+          8192,
+          1
+        ],
+        "bytes": 16384
+      },
+      "trace": [
+        {
+          "op": "aten.transpose.int",
+          "inputs": [
+            {
+              "shape": [
+                8192,
+                1024
+              ],
+              "dtype": "torch.int8",
+              "stride": [
+                1024,
+                1
+              ],
+              "bytes": 8388608
+            },
+            "0",
+            "1"
+          ],
+          "output": {
+            "shape": [
+              1024,
+              8192
+            ],
+            "dtype": "torch.int8",
+            "stride": [
+              1,
+              1024
+            ],
+            "bytes": 8388608
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                1024
+              ],
+              "dtype": "torch.int8",
+              "stride": [
+                1024,
+                1
+              ],
+              "bytes": 1024
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              1024
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              1024,
+              1
+            ],
+            "bytes": 2048
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1024,
+                8192
+              ],
+              "dtype": "torch.int8",
+              "stride": [
+                1,
+                1024
+              ],
+              "bytes": 8388608
+            }
+          ],
+          "output": {
+            "shape": [
+              1024,
+              8192
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              1,
+              1024
+            ],
+            "bytes": 16777216
+          }
+        },
+        {
+          "op": "aten.mm.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                1024
+              ],
+              "dtype": "torch.bfloat16",
+              "stride": [
+                1024,
+                1
+              ],
+              "bytes": 2048
+            },
+            {
+              "shape": [
+                1024,
+                8192
+              ],
+              "dtype": "torch.bfloat16",
+              "stride": [
+                1,
+                1024
+              ],
+              "bytes": 16777216
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 16384
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.bfloat16",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 16384
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 32768
+          }
+        },
+        {
+          "op": "aten.unsqueeze.default",
+          "inputs": [
+            {
+              "shape": [
+                1
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1
+              ],
+              "bytes": 4
+            },
+            "-1"
+          ],
+          "output": {
+            "shape": [
+              1,
+              1
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              1,
+              1
+            ],
+            "bytes": 4
+          }
+        },
+        {
+          "op": "aten.mul.Tensor",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 32768
+            },
+            {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1,
+                1
+              ],
+              "bytes": 4
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 32768
+          }
+        },
+        {
+          "op": "aten.unsqueeze.default",
+          "inputs": [
+            {
+              "shape": [
+                8192
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                1
+              ],
+              "bytes": 32768
+            },
+            "0"
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 32768
+          }
+        },
+        {
+          "op": "aten.mul.Tensor",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 32768
+            },
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 32768
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.float32",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 32768
+          }
+        },
+        {
+          "op": "aten._to_copy.default",
+          "inputs": [
+            {
+              "shape": [
+                1,
+                8192
+              ],
+              "dtype": "torch.float32",
+              "stride": [
+                8192,
+                1
+              ],
+              "bytes": 32768
+            }
+          ],
+          "output": {
+            "shape": [
+              1,
+              8192
+            ],
+            "dtype": "torch.bfloat16",
+            "stride": [
+              8192,
+              1
+            ],
+            "bytes": 16384
+          }
+        }
+      ],
+      "calc_flops": 16777216,
+      "read_bytes": 8422404,
+      "write_bytes": 16384,
+      "input_pattern": "upstream zeros inputs, ones scales"
+    }
+  ],
+  "GPU_benchmarks_run": false,
+  "full_launch_run": false
+}
