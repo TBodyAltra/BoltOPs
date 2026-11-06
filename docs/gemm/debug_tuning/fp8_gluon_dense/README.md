@@ -21,7 +21,7 @@ K-group 连续。scale 中保存数值：uint8 按普通整数解释，不隐式
 指定，默认 BF16。实际输入/累加组合和指令几何由目标 MMAC 指令表判断，非法组合明确报错，
 不做输入上转型或软件模拟替代。不意味着 PMD 已支持所有硬件指令。
 M/N/K 可为非负值；空 M/N 返回空矩阵，K=0 返回零。
-旧长名称入口保留兼容，转发到此接口，仍保留原默认参数；新调用应使用通用名称。
+统一使用 `gemm_block_scaled`，不保留旧长名称入口。
 
 ## 调度
 
@@ -40,7 +40,6 @@ M/N/K 可为非负值；空 M/N 返回空矩阵，K=0 返回零。
   tile、LDS、partition 和寄存器预算作为一套流水维护。其他 tile 流水应注册为独立实现，
   不能仅修改此实现的 launch 参数来替换 tile。
 - `gluon/pipelines/block_scaled_masked.py` 包含默认 FP8 recipe 和通用 recipe 的 masked 实现。
-- 旧长名称文件只保留兼容转发，不再容纳 kernel 或配置。
 
 ## Native ebarrier API migration (2026-11-05)
 

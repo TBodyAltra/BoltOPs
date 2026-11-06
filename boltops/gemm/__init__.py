@@ -15,7 +15,6 @@ Public operators:
 * ``matmul_persistent``
 * ``gemm_a16w16``
 * ``gemm_block_scaled``
-* ``gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16`` (compatibility alias)
 * ``w8a8_triton_block_scaled_mm``
 * ``triton_scaled_mm``
 * ``awq_gemm_triton``
@@ -257,7 +256,6 @@ def w8a8_block_int8_matmul(
 
 
 __all__ = [
-    "gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16",
     "gemm_block_scaled",
     "awq_gemm_triton",
     "batched_gemm_a16wfp4",
@@ -299,10 +297,3 @@ def gemm_block_scaled(a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 1
     """Native dense GEMM with independent A/B scale blocks and selectable output dtype."""
     from boltops.gemm.gluon.gemm_block_scaled import gemm_block_scaled as impl
     return impl(a, b, a_scale, b_scale, scale_recipe=scale_recipe, out_dtype=out_dtype)
-
-
-def gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(
-    a, b, a_scale, b_scale, *, scale_recipe=((1, 128), (128, 128)), out_dtype=None
-):
-    """Compatibility alias for gemm_block_scaled, retaining the original defaults."""
-    return gemm_block_scaled(a, b, a_scale, b_scale, scale_recipe=scale_recipe, out_dtype=out_dtype)

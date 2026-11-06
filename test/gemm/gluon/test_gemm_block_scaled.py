@@ -3,7 +3,7 @@ import math
 import pytest
 import torch
 import triton
-from boltops.gemm import gemm_block_scaled, gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16
+from boltops.gemm import gemm_block_scaled
 
 
 CASES = [
@@ -51,15 +51,6 @@ def test_numeric_dtypes_and_recipes(case):
     args, ref = data(case)
     actual = gemm_block_scaled(*(x.cuda() for x in args), scale_recipe=case[-1], out_dtype=case[4])
     assert actual.dtype == case[4]
-    torch.testing.assert_close(actual.cpu(), ref, atol=0, rtol=0)
-
-
-def test_legacy_name_forwards_nondefault_recipe():
-    require_hcu()
-    case = next(case for case in CASES if case[0] == torch.float16)
-    args, ref = data(case)
-    actual = gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(
-        *(x.cuda() for x in args), scale_recipe=case[-1], out_dtype=case[4])
     torch.testing.assert_close(actual.cpu(), ref, atol=0, rtol=0)
 
 

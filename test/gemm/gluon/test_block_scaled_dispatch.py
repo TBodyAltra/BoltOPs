@@ -51,23 +51,3 @@ def test_other_recipes_and_dtypes_keep_general_native_path(kwargs):
 def test_general_dot_chunk_respects_common_scale_boundaries(recipe, bk):
     config = select(recipe=recipe, out_dtype=torch.float32)
     assert (config.block_m, config.block_n, config.block_k) == (32, 64, bk)
-
-
-def test_legacy_module_is_only_a_forwarder(monkeypatch):
-    from importlib import import_module
-
-    public = import_module("boltops.gemm.gluon.gemm_block_scaled")
-    legacy = import_module(
-        "boltops.gemm.gluon.gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16")
-    sentinel = object()
-    args = (object(), object(), object(), object())
-    recipe = ((2, 32), (4, 64))
-
-    def implementation(*actual_args, **kwargs):
-        assert actual_args == args
-        assert kwargs == {"scale_recipe": recipe, "out_dtype": torch.float32}
-        return sentinel
-
-    monkeypatch.setattr(public, "gemm_block_scaled", implementation)
-    assert legacy.gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16(
-        *args, scale_recipe=recipe, out_dtype=torch.float32) is sentinel
