@@ -388,7 +388,6 @@ def launch_config():
         num_warps=4,
         num_stages=2,
         wasp_partition_warps=(4, 4, 4, 4),
-        wasp_partition_regs=(8, 8, 240, 240),
         wasp_wdra=True,
     )
 

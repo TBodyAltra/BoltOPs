@@ -18,7 +18,7 @@
 
 表 8 作为 grouped FP8×FP4 GEMM 需求：保留原 M/N/K、分组数 E、dtype、A/W scale、阶段及频次；E 对应来源中的 experts，不改变数值。不从来源 M 推断所有组等长，变长各组 M 与偏移须另行提供。上层路由、在线量化、激活和结果合并均不在本目录验收范围。
 
-少伯 BU 当前业务需求视图为 359 条 R 编号：329 条 dense、30 条 BMM，来源和精度/scale 字段见 [需求清单](SHAOBO_BU_REQUIREMENTS.md)。接口 smoke 状态不代表这些完整尺寸均已通过；既有 grouped FP8×FP4 支持范围仍单独记录。
+少伯 BU 当前业务需求按业务/模型保留 R 编号，来源和精度/scale 字段见 [需求清单](SHAOBO_BU_REQUIREMENTS.md)。接口 smoke 状态不代表这些完整尺寸均已通过；既有 grouped FP8×FP4 支持范围仍单独记录。
 
 公开入口 `gemm_block_scaled` 支持不同 M/N/K、多CTA和尾块、独立 A/B scale 分组及指定输出 dtype，不限定 E4M3FN/FP32 scale/固定 recipe/BF16 输出；实际能力由目标指令和 PMD 决定。Gluon 的 A/B scale 编码通过 `scale_encodings` 独立指定，E8M0 使用显式 uint8 指数码，不与普通数值 uint8 混用。完整说明见 [接口说明](debug_tuning/fp8_gluon_dense/README.md)。
 

@@ -36,15 +36,15 @@ M/N/K 可为非负值；空 M/N 返回空矩阵，K=0 返回零。
 
 ## 需求组合与能力边界
 
-当前 `SHAOBO_BU_REQUIREMENTS.md` 有 359 条 R 编号：329 条 dense、30 条 BMM。
-其中 FP8×FP8 有四类 scale 组合：
+下表列出当前 Gluon 已做小尺寸验证的四类 FP8×FP8 scale 组合；
+完整业务需求和新增组合以最新 `SHAOBO_BU_REQUIREMENTS.md` 为准：
 
 | 需求 | A scale | B scale | Gluon 路径 |
 | --- | --- | --- | --- |
-| R005 等，共24条 | FP32、1×128 | BF16、128×128 | 通用 masked；未专项调优 |
-| R062 等，共61条 | FP32、1×128 | E8M0、128×128 | 显式 `("numeric","e8m0")`；通用 masked |
-| R216 等，共51条 | FP32、1×128 | FP32*、128×128 | 完整 tile 可用已优化 MLS，其余 masked |
-| R317 等，共18条 | FP32、1×K | FP32*、逐输出通道 | `scale_recipe=((1,K),(1,K))`；通用 masked |
+| FP32 / BF16 block scale | FP32、1×128 | BF16、128×128 | 通用 masked；未专项调优 |
+| FP32 / E8M0 block scale | FP32、1×128 | E8M0、128×128 | 显式 `("numeric","e8m0")`；通用 masked |
+| FP32 / FP32 block scale | FP32、1×128 | FP32*、128×128 | 完整 tile 可用已优化 MLS，其余 masked |
+| 逐行 / 逐输出通道 scale | FP32、1×K | FP32*、逐输出通道 | `scale_recipe=((1,K),(1,K))`；通用 masked |
 
 `*` 沿用需求原文标记，不增加来源确定性。这里的路径说明不代表全部 R 编号已实测。
 无 scale 的 BF16/FP32 dense、BMM、BF16×INT4 仍由各自已有算子处理；没有为它们
@@ -61,6 +61,14 @@ M/N/K 可为非负值；空 M/N 返回空矩阵，K=0 返回零。
 MLS 128×256×128 的 tile、LDS、partition 和寄存器预算保持为一套固定配置；更换 tile 必须匹配
 具体实现契约，不能任意覆盖 launch 参数。这里的两个内联汇编 TODO 保留。
 当前不加载 JSON 调优文件、不运行 autotune 或 split-K。
+
+## 显式分区寄存器配额
+
+当前流水仅在 `gl.warp_specialize` 中声明 `[8,8,240,240]`，launch_config 不再重复传
+`wasp_partition_regs`。需要包含源码配额读取更新的 Triton !520 后端；编译 metadata 的
+`wasp_partition_regs_source` 为 `warp_specialize`，`requested` 保存原声明，实际生效值仍经过
+原有硬件对齐/容量校验及 spill 反馈重编机制。若 launch 仍传配额，只作一致性校验，必须与
+源码原始声明相同；多个显式 region 也必须声明相同配额。自动 TL WASP 估算不受此策略影响。
 
 ## Native ebarrier API migration (2026-11-05)
 
