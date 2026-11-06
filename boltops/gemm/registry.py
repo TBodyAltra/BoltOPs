@@ -57,7 +57,7 @@ def select_plan(problem, implementations=None, *, backend="auto"):
     else:
         candidates = [impl for impl in implementations
                       if backend == "auto" or impl.backend == backend]
-    # Consult the shared performance map across all backends before defaults.
+    # Consult this interface's map across all backends before defaults.
     # Compilation/execution failures are never caught to select a fallback.
     from .performance_map import tuned_configs
     for implementation in candidates:

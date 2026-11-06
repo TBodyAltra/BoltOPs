@@ -46,7 +46,8 @@
 编译或执行错误直接向上传递，不捕获后换后端。TileLang 本轮仅接入框架，没有新增 kernel 或正确性通过声明。
 
 公共框架按 MNK、输入/输出 dtype、scale、布局、arch 和 num_cus 分派；tile 是选出的配置。
-`configs/gemm_dispatch.json` schema 3 的 match/config 分离，config 显式包含 backend 和 implementation，不存统计、频率、commit 或证据路径。
+每个接口只读取 `configs/` 下同名的 `gemm_scaled.json`、`gemm_dense.json` 或 `gemm_grouped.json`，并校验文件的 interface 标识。
+schema 3 的 match/config 分离，config 显式包含 backend 和 implementation，不存统计、频率、commit 或证据路径。
 当前只登记 48 CU 上可接入的配置，不推定 96/192 CU 已调优；未命中的请求使用对应已有通用实现。
 其他既有专项算子仍保留原接口；三个统一入口不依赖这些公开包装，直接复用后端实现。
 
@@ -56,7 +57,10 @@ gemm/
   dense.py                    # gemm_dense
   grouped.py                  # gemm_grouped
   descriptors.py / registry.py / catalog.py
-  performance_map.py / configs/gemm_dispatch.json
+  performance_map.py
+  configs/gemm_scaled.json     # gemm_scaled 的跨后端配置
+  configs/gemm_dense.json      # gemm_dense 的跨后端配置
+  configs/gemm_grouped.json    # gemm_grouped 的跨后端配置
   triton/
     dispatch.py               # 独立注册 scaled / dense / grouped
     gemm_block_scaled.py / block_scaled_dispatch.py

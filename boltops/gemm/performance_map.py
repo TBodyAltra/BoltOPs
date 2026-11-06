@@ -6,22 +6,31 @@ from pathlib import Path
 from .registry import KernelConfig
 
 
-@lru_cache(maxsize=1)
-def _entries():
-    path = Path(__file__).with_name("configs") / "gemm_dispatch.json"
-    data = json.loads(path.read_text())
+_CONFIG_DIR = Path(__file__).with_name("configs")
+
+
+@lru_cache(maxsize=3)
+def _entries(interface):
+    if interface not in ("scaled", "dense", "grouped"):
+        raise ValueError(f"unknown GEMM configuration interface: {interface}")
+    name = f"gemm_{interface}"
+    data = json.loads((_CONFIG_DIR / f"{name}.json").read_text())
     if data["schema_version"] != 3:
         raise ValueError("unsupported GEMM performance-map schema")
+    if data["interface"] != name:
+        raise ValueError(f"configuration file must belong to {name}")
     return data["entries"]
 
 
 def tuned_configs(problem, implementation, *, backend=None):
     p = problem
+    interface = "grouped" if p.kind == "grouped" else "dense" if p.unscaled else "scaled"
+    entries = _entries(interface)
     if (p.kind != "dense" or not p.native_operands or
             min(p.m, p.n, p.k) <= 0):
         return ()
     configs = []
-    for entry in _entries():
+    for entry in entries:
         if backend is not None and entry["config"]["backend"] != backend:
             continue
         match = entry["match"]

@@ -20,7 +20,7 @@ numeric uint8 保持数值解释。scale 运算采用 FP32，FP64 输入或 scal
 
 ## 调度
 
-`boltops/gemm/configs/gemm_dispatch.json` 是调度映射表，分为 `match` 与 `config` 两部分：
+`boltops/gemm/configs/gemm_scaled.json` 是调度映射表，分为 `match` 与 `config` 两部分：
 `match` 记录架构、`num_cus`、输入/输出 dtype、scale dtype/encoding/recipe 和 MNK 条件；
 `config` 记录选出的实现标识和 tile。tile 不属于请求条件。
 不保存实测 cycles、频率、commit 或产物路径；`num_cus` 只作为匹配条件。增加已经调好的配置时增加对应条目。

@@ -106,10 +106,10 @@ def test_scaled_fp4_is_registered_under_scaled_interface():
 
 def test_map_configuration_cannot_change_implementation_owner(monkeypatch):
     from boltops.gemm import performance_map
-    entry = next(e for e in performance_map._entries()
+    entry = next(e for e in performance_map._entries("scaled")
                  if e['config']['backend'] == 'gluon')
     wrong = {**entry, 'config': {**entry['config'], 'backend': 'tilelang'}}
-    monkeypatch.setattr(performance_map, '_entries', lambda: [wrong])
+    monkeypatch.setattr(performance_map, '_entries', lambda interface: [wrong] if interface == "scaled" else [])
     assert select_plan(problem()).implementation.backend == 'triton'
     with pytest.raises(NotImplementedError, match='backend=gluon'):
         select_plan(problem(), backend='gluon')
