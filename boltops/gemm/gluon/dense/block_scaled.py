@@ -4,8 +4,8 @@ import operator
 import torch
 import triton
 
-from .dispatch import launch, select_plan
-from .descriptors import DenseProblem, ScaleSpec
+from ..registry import launch, select_plan
+from ..descriptors import GemmProblem, OperandSpec, ScaleSpec
 
 
 def _parse_recipe(scale_recipe):
@@ -63,12 +63,12 @@ def gemm_block_scaled(a, b, a_scale, b_scale, *,
         if k == 0:
             out.zero_()
         else:
-            problem = DenseProblem(
-                m, n, k, a.dtype, b.dtype, out_dtype,
-                ScaleSpec(a_scale.dtype, recipe[0], scale_encodings[0]),
-                ScaleSpec(b_scale.dtype, recipe[1], scale_encodings[1]),
-                triton.runtime.driver.active.get_current_target().arch,
-                a.data_ptr() % 16 == 0, b.data_ptr() % 16 == 0,
+            problem = GemmProblem(
+                kind="dense", m=m, n=n, k=k, a=OperandSpec(a.dtype, strides=tuple(a.stride())), b=OperandSpec(b.dtype, strides=tuple(b.stride())),
+                out_dtype=out_dtype, arch=triton.runtime.driver.active.get_current_target().arch,
+                a_scale=ScaleSpec(a_scale.dtype, recipe[0], scale_encodings[0]),
+                b_scale=ScaleSpec(b_scale.dtype, recipe[1], scale_encodings[1]),
+                a_aligned_16=a.data_ptr() % 16 == 0, b_aligned_16=b.data_ptr() % 16 == 0,
             )
-            launch(select_plan(problem), problem, a, b, a_scale, b_scale, out)
+            launch(select_plan(problem), problem, a=a, b=b, a_scale=a_scale, b_scale=b_scale, out=out)
     return out

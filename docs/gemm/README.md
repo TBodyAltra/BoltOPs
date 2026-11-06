@@ -22,6 +22,41 @@
 
 公开入口 `gemm_block_scaled` 支持不同 M/N/K、多CTA和尾块、独立 A/B scale 分组及指定输出 dtype，不限定 E4M3FN/FP32 scale/固定 recipe/BF16 输出；实际能力由目标指令和 PMD 决定。Gluon 的 A/B scale 编码通过 `scale_encodings` 独立指定，E8M0 使用显式 uint8 指数码，不与普通数值 uint8 混用。完整说明见 [接口说明](debug_tuning/fp8_gluon_dense/README.md)。
 
+<a name="gluon-layout"></a>
+
+## Gluon GEMM 框架
+
+本次提交搭建通用框架，并保留当前 block-scaled 接口、通用 masked 实现和最佳 MLS TG 流水。
+不新增无 scale GEMM/BMM kernel，也不改变既有 Triton 算子的默认实现。
+
+```text
+gluon/
+  descriptors.py             # 公共语义：算子族、storage/packing、可选 scale、batch/group
+  registry.py                # 实现契约、tile 配置、选择与具名 tensor launch
+  catalog.py                 # 仅组合已实现的注册项
+  scales.py                  # block-scaled 所用 scale 解码
+  dense/
+    block_scaled.py          # 当前唯一 Gluon 对外接口
+    dispatch.py              # block-scaled masked / MLS 实现注册
+    kernels/{masked,mls_wdra}.py
+```
+
+`GemmProblem` 不强制存在 scale；`OperandSpec` 区分存储 dtype、packing、轴/因子、zero-point 类型和 strides；
+`ScaleSpec` 独立记录 scale dtype/block/encoding；`GroupSpec` 描述 grouped 寻址模式。
+这些描述为后续算子扩展提供共同契约，不表示已经实现对应 Gluon kernel。
+分派先匹配算子族，再校验实现能力和 tile 配置；具名 side tensors 可承接未来的 offsets、indices、zero points。
+未注册的普通 dense、BMM、grouped、packed INT4/FP4 请求明确拒绝，不路由到 block-scaled kernel。
+
+| 本次实际保留 | 边界 |
+| --- | --- |
+| `gemm_block_scaled` 通用接口 | 独立 A/B scale recipe/encoding、已有 dtype/output 组合、尾块和多 CTA；原生指令能力仍由后端裁定 |
+| 通用 masked 与默认 FP8 masked 实现 | 沿用当前 block-scaled 正确性路径，不扩展为无 scale GEMM/BMM 接口 |
+| MLS/WDRA `128×256×128` TG | 已优化组合和资源条件保持不变，两个汇编 TODO 保留 |
+| 其他 GEMM 类型 | 只保留公共描述/扩展机制，不新增 kernel、空壳接口或 PASS 声明；继续使用各自既有 Triton 算子 |
+
+新增实现时可按算子族建立目录并注册自己的能力及配置，不必修改公共选择循环或复用不适合的 FP8 流水。
+当前不创建未实现算子族的占位目录，不加载 JSON 调优文件、不扫描或调优 E。
+
 ## FP8 接口与 scale
 
 | 接口 | scale 语义与用途 |

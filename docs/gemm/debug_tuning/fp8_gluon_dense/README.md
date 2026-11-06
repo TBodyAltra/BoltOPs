@@ -53,26 +53,14 @@ M/N/K 可为非负值；空 M/N 返回空矩阵，K=0 返回零。
 
 ## 实现组织
 
-```text
-gluon/
-  scales.py                  # 共用的 scale 存储解码
-  dense/
-    block_scaled.py          # 对外语义、shape/encoding 校验
-    descriptors.py           # DenseProblem、ScaleSpec，与 tile 无关
-    dispatch.py              # KernelConfig、实现能力、配置与执行计划
-    kernels/
-      mls_wdra.py            # MLS/WDRA 调度族，目前有 128×256×128 变体
-      masked.py              # FP32-scale FP8 特化与通用 masked kernel
-```
+公共 GEMM 描述、注册机制和目录组织见 [总体框架](../../README.md#gluon-layout)。
+本接口位于 `gluon/dense/block_scaled.py`，构造包含两组 ScaleSpec 的 dense GemmProblem；
+无 scale GEMM 可由框架描述，但本次不提供其 Gluon kernel 或接口。
 
-公开入口保持 `from boltops.gemm import gemm_block_scaled`，不提供旧模块兼容转发。
-实现按调度策略命名，固定 tile 体现在内部 kernel 名及配置，不以某一个 dtype/recipe
-命名整个模块。注册项声明配置候选和能力条件（目标、dtype、scale 编码/分组、对齐及资源范围）；
-分派循环只匹配这些条件。launch 再次验证配置，避免把其他 tile 的配置套入固定流水。
-原生指令合法性最终仍由目标 MMAC 数据库裁定，不能把通用 fallback 理解为所有组合都支持。
-
-本轮不加载外部 JSON、不做 autotune、不增加尚未实现的 BMM/grouped/packed-format 路径。
-未来调优记录应选择已注册且能力校验通过的实现和配置，而不是任意覆盖固定 kernel 的 tile。
+`dense/dispatch.py` 注册 masked 和 MLS/WDRA 实现，具名张量由公共 registry 交给所选 launcher。
+MLS 128×256×128 的 tile、LDS、partition 和寄存器预算保持为一套固定配置；更换 tile 必须匹配
+具体实现契约，不能任意覆盖 launch 参数。这里的两个内联汇编 TODO 保留。
+当前不加载 JSON 调优文件、不运行 autotune 或 split-K。
 
 ## Native ebarrier API migration (2026-11-05)
 

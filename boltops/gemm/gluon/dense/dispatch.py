@@ -1,39 +1,25 @@
-"""Capability-driven dense kernel selection; tile choices belong to implementations."""
-from dataclasses import dataclass
-from importlib import import_module
+"""Registered block-scaled implementations under the shared GEMM framework."""
 import math
-from typing import Callable
 
 import torch
 import triton
 
-from .descriptors import DenseProblem
+from ..registry import Implementation, KernelConfig
 
 
-@dataclass(frozen=True)
-class KernelConfig:
-    block_m: int
-    block_n: int
-    block_k: int
+def _row_major(strides, rows, cols):
+    return (strides is not None and len(strides) == 2 and
+            (rows == 1 or strides[0] == cols) and (cols == 1 or strides[1] == 1))
 
 
-@dataclass(frozen=True)
-class Implementation:
-    name: str
-    module: str
-    entry: str
-    configurations: Callable[[DenseProblem], tuple[KernelConfig, ...]]
-    supports: Callable[[DenseProblem, KernelConfig], bool]
-
-
-@dataclass(frozen=True)
-class ExecutionPlan:
-    implementation: Implementation
-    config: KernelConfig
+def _scaled_dense_layout(p):
+    return (p.native_operands and _row_major(p.a.strides, p.m, p.k) and
+            _row_major(p.b.strides, p.n, p.k))
 
 
 def _fp8_fp32_k128(p):
-    return (p.a_dtype == p.b_dtype == torch.float8_e4m3fn and
+    return (_scaled_dense_layout(p) and p.a_scale is not None and p.b_scale is not None and
+            p.a_dtype == p.b_dtype == torch.float8_e4m3fn and
             p.out_dtype == torch.bfloat16 and
             p.a_scale.dtype == p.b_scale.dtype == torch.float32 and
             p.a_scale.encoding == p.b_scale.encoding == "numeric" and
@@ -57,6 +43,8 @@ def _supports_masked_fp8(p, config):
 
 
 def _general_configs(p):
+    if not _scaled_dense_layout(p) or p.a_scale is None or p.b_scale is None:
+        return ()
     q = math.gcd(p.a_scale.block[1], p.b_scale.block[1])
     return (KernelConfig(32, 64, max(32, min(128, triton.next_power_of_2(q)))),)
 
@@ -70,27 +58,10 @@ def _supports_general(p, config):
 
 
 IMPLEMENTATIONS = (
-    Implementation("mls_wdra", "mls_wdra", "launch",
+    Implementation("mls_wdra", "dense", "boltops.gemm.gluon.dense.kernels.mls_wdra", "launch",
                    lambda p: (_MLS_CONFIG,), _supports_mls),
-    Implementation("masked_fp8", "masked", "launch_fp8",
+    Implementation("masked_fp8", "dense", "boltops.gemm.gluon.dense.kernels.masked", "launch_fp8",
                    lambda p: (_FP8_CONFIG,), _supports_masked_fp8),
-    Implementation("masked", "masked", "launch_general",
+    Implementation("block_scaled", "dense", "boltops.gemm.gluon.dense.kernels.masked", "launch_general",
                    _general_configs, _supports_general),
 )
-
-
-def select_plan(problem, implementations=IMPLEMENTATIONS):
-    """First eligible implementation wins; no operator-specific branches here."""
-    for implementation in implementations:
-        for config in implementation.configurations(problem):
-            if implementation.supports(problem, config):
-                return ExecutionPlan(implementation, config)
-    raise NotImplementedError(f"no dense kernel implements {problem}")
-
-
-def launch(plan, problem, a, b, a_scale, b_scale, out):
-    implementation = plan.implementation
-    if not implementation.supports(problem, plan.config):
-        raise ValueError(f"configuration {plan.config} is incompatible with {implementation.name}")
-    module = import_module(".kernels." + implementation.module, __package__)
-    getattr(module, implementation.entry)(plan.config, problem, a, b, a_scale, b_scale, out)

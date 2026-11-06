@@ -4,8 +4,8 @@ from dataclasses import replace
 import pytest
 import torch
 
-from boltops.gemm.gluon.dense.descriptors import DenseProblem, ScaleSpec
-from boltops.gemm.gluon.dense.dispatch import (
+from boltops.gemm.gluon.descriptors import GemmProblem, OperandSpec, ScaleSpec
+from boltops.gemm.gluon.registry import (
     Implementation, KernelConfig, launch, select_plan,
 )
 
@@ -14,9 +14,12 @@ def problem(shape=(128, 256, 256), *, aligned=True, dtype=torch.float8_e4m3fn,
             scale_dtype=torch.float32, out_dtype=torch.bfloat16,
             recipe=((1, 128), (128, 128)), arch="gfx946", encodings=("numeric", "numeric")):
     m, n, k = shape
-    return DenseProblem(m, n, k, dtype, dtype, out_dtype,
-                        ScaleSpec(scale_dtype, recipe[0], encodings[0]),
-                        ScaleSpec(scale_dtype, recipe[1], encodings[1]), arch, aligned, True)
+    return GemmProblem("dense", m, n, k,
+                       OperandSpec(dtype, strides=(k, 1)), OperandSpec(dtype, strides=(k, 1)),
+                       out_dtype, arch, ScaleSpec(scale_dtype, recipe[0], encodings[0]),
+                       ScaleSpec(scale_dtype, recipe[1], encodings[1]),
+                       a_aligned_16=aligned)
+
 
 
 @pytest.mark.parametrize("shape", [(128, 256, 256), (256, 512, 6144)])
@@ -44,7 +47,7 @@ def test_unaligned_inputs_do_not_select_mls():
     {"scale_dtype": torch.uint8, "encodings": ("numeric", "e8m0")},
 ])
 def test_other_recipes_and_dtypes_keep_general_native_path(kwargs):
-    assert select_plan(problem(**kwargs)).implementation.name == "masked"
+    assert select_plan(problem(**kwargs)).implementation.name == "block_scaled"
 
 
 @pytest.mark.parametrize("recipe,bk", [
@@ -63,22 +66,22 @@ def test_invalid_tile_cannot_launch_a_fixed_pipeline():
     p = problem()
     plan = replace(select_plan(p), config=KernelConfig(256, 256, 64))
     with pytest.raises(ValueError, match="incompatible"):
-        launch(plan, p, None, None, None, None, None)
+        launch(plan, p, a=None, b=None, a_scale=None, b_scale=None, out=None)
 
 
 def test_a_new_implementation_needs_no_dispatch_branches():
     config = KernelConfig(64, 64, 64)
-    implementation = Implementation("test", "not_imported", "launch",
+    implementation = Implementation("test", "dense", "not_imported", "launch",
                                     lambda p: (config,), lambda p, c: c == config)
     plan = select_plan(problem(), implementations=(implementation,))
     assert plan.implementation is implementation and plan.config == config
 
 
 def test_missing_implementation_is_reported():
-    with pytest.raises(NotImplementedError, match="no dense kernel"):
+    with pytest.raises(NotImplementedError, match="no registered dense GEMM"):
         select_plan(problem(), implementations=())
 
 
 def test_registry_rejects_e8m0_with_nonbyte_storage():
-    with pytest.raises(NotImplementedError, match="no dense kernel"):
+    with pytest.raises(NotImplementedError, match="no registered dense GEMM"):
         select_plan(problem(encodings=("numeric", "e8m0")))
