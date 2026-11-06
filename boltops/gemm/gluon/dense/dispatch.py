@@ -58,10 +58,10 @@ def _supports_general(p, config):
 
 
 IMPLEMENTATIONS = (
-    Implementation("mls_wdra", "dense", "boltops.gemm.gluon.dense.kernels.mls_wdra", "launch",
+    Implementation("mls_wdra", "dense", "boltops.gemm.gluon.dense.kernels.mls_wdra", "launch_gemm_block_scaled_mls_wdra",
                    lambda p: (_MLS_CONFIG,), _supports_mls),
-    Implementation("masked_fp8", "dense", "boltops.gemm.gluon.dense.kernels.masked", "launch_fp8",
+    Implementation("masked_fp8", "dense", "boltops.gemm.gluon.dense.kernels.masked", "launch_gemm_block_scaled_fp8_fp32_masked",
                    lambda p: (_FP8_CONFIG,), _supports_masked_fp8),
-    Implementation("block_scaled", "dense", "boltops.gemm.gluon.dense.kernels.masked", "launch_general",
+    Implementation("block_scaled", "dense", "boltops.gemm.gluon.dense.kernels.masked", "launch_gemm_block_scaled_masked",
                    _general_configs, _supports_general),
 )

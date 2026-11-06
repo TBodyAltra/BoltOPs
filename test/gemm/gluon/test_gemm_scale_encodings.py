@@ -8,7 +8,7 @@ from triton.experimental import gluon as g
 from triton.experimental.gluon import language as gl
 
 from boltops.gemm import gemm_block_scaled
-from boltops.gemm.gluon.scales import decode_scale
+from boltops.gemm.gluon.scales import decode_block_scale
 
 
 def require_hcu():
@@ -19,7 +19,7 @@ def require_hcu():
 @g.jit
 def decode_kernel(X, Y):
     i = gl.arange(0, 256, layout=gl.BlockedLayout([1], [64], [4], [0]))
-    value = decode_scale(gl.load(X + i), True)
+    value = decode_block_scale(gl.load(X + i), True)
     gl.store(Y + i, value.to(gl.int32, bitcast=True))
 
 

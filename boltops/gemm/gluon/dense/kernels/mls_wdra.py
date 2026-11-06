@@ -1,7 +1,7 @@
 """Fixed 128x256x128 MLS/WDRA48 pipeline for E4M3FN and FP32 K128 scales.
 
 Tile geometry, LDS buffering and partition resources form one implementation.
-Select a different pipeline to change them; launch_config is not a tile tuner.
+Select a different pipeline to change them; get_mls_wdra_launch_config is not a tile tuner.
 """
 
 from triton.experimental import gluon as g
@@ -29,7 +29,7 @@ from triton.experimental.gluon.language.amd.hcu import (
 
 
 @g.jit
-def initialize(wave):
+def _initialize_pipeline_barriers(wave):
     if wave == 0:
         abarrier_init(0, 4)
         abarrier_init(1, 4)
@@ -50,12 +50,12 @@ def initialize(wave):
 
 
 @g.jit
-def drain():
+def _wait_all_lds_reads():
     wait_lgkmcnt(0)
 
 
 @g.jit
-def turn(GROUP: gl.constexpr, WAIT: gl.constexpr):
+def _synchronize_mmac_turn(GROUP: gl.constexpr, WAIT: gl.constexpr):
     if WAIT:
         ebarrier_sync(8 + GROUP, 8)
     else:
@@ -64,12 +64,12 @@ def turn(GROUP: gl.constexpr, WAIT: gl.constexpr):
 
 
 @g.jit
-def empty():
+def _idle_default_partition():
     pass
 
 
 @g.jit
-def producer(
+def _produce_ab_and_scales(
     A,
     B,
     AS,
@@ -85,7 +85,7 @@ def producer(
     GROUP: gl.constexpr,
 ):
     wave = get_wave_id()
-    initialize(wave)
+    _initialize_pipeline_barriers(wave)
     SL: gl.constexpr = gl.BlockedLayout([1], [64], [4], [0])
     for i in range(K // 128):
         if i % 2 == 0:
@@ -122,13 +122,13 @@ def producer(
 
 
 @g.jit
-def wait_ab():
+def _wait_ab_reads_and_raise_priority():
     set_priority(3)
     wait_lgkmcnt(9)
 
 
 @g.jit
-def ready_a(i, GROUP: gl.constexpr):
+def _wait_a_tile_ready(i, GROUP: gl.constexpr):
     if GROUP == 0:
         abarrier_wait((i % 2) * 2 + 1, (i // 2) % 2)
     else:
@@ -136,16 +136,16 @@ def ready_a(i, GROUP: gl.constexpr):
 
 
 @g.jit
-def ready_b(i):
+def _wait_b_tile_ready(i):
     abarrier_wait(9 + (i % 2) * 4, (i // 2) % 2)
 
 
 @g.jit
-def ready_scale(i, GROUP: gl.constexpr):
+def _ack_scale_tile_ready(i, GROUP: gl.constexpr):
     if GROUP == 0:
         abarrier_wait(7 + (i % 2) * 4, (i // 2) % 2)
     # ACK means readiness observed, not completion of pending LDS reads.
-    # Scale slices are immutable; producer writes the following distinct slice.
+    # Scale slices are immutable; the producer writes the following distinct slice.
     # TODO: use abarrier_arrive(14, 1) once LLVM supports this readiness-only
     # ACK without inserting lgkmcnt(0), which drains A/B prefetch and breaks
     # overlap. This ACK does not publish or release LDS storage.
@@ -160,8 +160,8 @@ def ready_scale(i, GROUP: gl.constexpr):
 
 
 @g.jit
-def release(i, GROUP: gl.constexpr):
-    wait_ab()
+def _release_ab_lds_slots(i, GROUP: gl.constexpr):
+    _wait_ab_reads_and_raise_priority()
     if GROUP == 0:
         abarrier_arrive((i % 2) * 2)
     else:
@@ -170,7 +170,7 @@ def release(i, GROUP: gl.constexpr):
 
 
 @g.jit
-def scales(
+def _prefetch_scale_tile(
     smAS0,
     smAS1,
     smBS,
@@ -190,7 +190,7 @@ def scales(
 
 
 @g.jit
-def select_bs(sb, bs_group):
+def _select_b_scale_for_wave(sb, bs_group):
     lo = sb.to(gl.uint32)
     hi = (sb >> 32).to(gl.uint32)
     wait_lgkmcnt(0)
@@ -199,7 +199,7 @@ def select_bs(sb, bs_group):
 
 
 @g.jit
-def consumer(
+def _consume_ab_and_accumulate(
     AS,
     BS,
     C,
@@ -216,7 +216,7 @@ def consumer(
     F: gl.constexpr,
 ):
     wave = get_wave_id()
-    initialize(wave)
+    _initialize_pipeline_barriers(wave)
     RF: gl.constexpr = MmacInterleave2Layout(F)
     acc = gl.full((64, 256), 0, gl.float32, RF)
     # TODO: replace with gl.full once LLVM keeps the zero VGPR tuple outside
@@ -233,78 +233,78 @@ def consumer(
     bs_group = (wave % 4) // 2
     # Preserve a common lane base so A-scale reads combine into ds_read2.
     lane_m_byte = (m % 4) * 4
-    ready_a(0, GROUP)
+    _wait_a_tile_ready(0, GROUP)
     a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
-    ready_b(0)
+    _wait_b_tile_ready(0)
     b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
     sched_barrier(0)
-    ready_scale(0, GROUP)
-    sa, sb = scales(smAS0, smAS1, smBS, 0, m, lane_m_byte, bs_group, GROUP, RF)
-    release(0, GROUP)
+    _ack_scale_tile_ready(0, GROUP)
+    sa, sb = _prefetch_scale_tile(smAS0, smAS1, smBS, 0, m, lane_m_byte, bs_group, GROUP, RF)
+    _release_ab_lds_slots(0, GROUP)
     for pair in range(K // 256):
         i = pair * 2
         sched_barrier(0)
-        turn(GROUP, True)
+        _synchronize_mmac_turn(GROUP, True)
         dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
-        turn(GROUP, False)
-        selected_bs = select_bs(sb, bs_group)
+        _synchronize_mmac_turn(GROUP, False)
+        selected_bs = _select_b_scale_for_wave(sb, bs_group)
         j = i + 1
-        ready_a(j, GROUP)
+        _wait_a_tile_ready(j, GROUP)
         if j % 2 == 0:
             a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
         else:
             a = async_copy.load_shared_relaxed(smA1, gl.DotOperandLayout(0, F, 8))
-        ready_b(j)
+        _wait_b_tile_ready(j)
         if j % 2 == 0:
             b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
         else:
             b = async_copy.load_shared_relaxed(smB1, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
         sched_barrier(0)
-        ready_scale(j, GROUP)
-        next_sa, next_sb = scales(
+        _ack_scale_tile_ready(j, GROUP)
+        next_sa, next_sb = _prefetch_scale_tile(
             smAS0, smAS1, smBS, j, m, lane_m_byte, bs_group, GROUP, RF
         )
         # Keep next-scale reads ahead of the current scale arithmetic.
         sched_barrier(0)
         acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
-        release(j, GROUP)
+        _release_ab_lds_slots(j, GROUP)
         sa = next_sa
         sb = next_sb
         sched_barrier(0)
         if pair + 1 < K // 256:
             i = pair * 2 + 1
             sched_barrier(0)
-            turn(GROUP, True)
+            _synchronize_mmac_turn(GROUP, True)
             dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
-            turn(GROUP, False)
-            selected_bs = select_bs(sb, bs_group)
+            _synchronize_mmac_turn(GROUP, False)
+            selected_bs = _select_b_scale_for_wave(sb, bs_group)
             j = i + 1
-            ready_a(j, GROUP)
+            _wait_a_tile_ready(j, GROUP)
             if j % 2 == 0:
                 a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
             else:
                 a = async_copy.load_shared_relaxed(smA1, gl.DotOperandLayout(0, F, 8))
-            ready_b(j)
+            _wait_b_tile_ready(j)
             if j % 2 == 0:
                 b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
             else:
                 b = async_copy.load_shared_relaxed(smB1, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
             sched_barrier(0)
-            ready_scale(j, GROUP)
-            next_sa, next_sb = scales(
+            _ack_scale_tile_ready(j, GROUP)
+            next_sa, next_sb = _prefetch_scale_tile(
                 smAS0, smAS1, smBS, j, m, lane_m_byte, bs_group, GROUP, RF
             )
             # Keep next-scale reads ahead of the current scale arithmetic.
             sched_barrier(0)
             acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
-            release(j, GROUP)
+            _release_ab_lds_slots(j, GROUP)
             sa = next_sa
             sb = next_sb
             sched_barrier(0)
-    turn(GROUP, True)
+    _synchronize_mmac_turn(GROUP, True)
     dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
-    turn(GROUP, False)
-    selected_bs = select_bs(sb, bs_group)
+    _synchronize_mmac_turn(GROUP, False)
+    selected_bs = _select_b_scale_for_wave(sb, bs_group)
     # Keep scale reads ahead of the final scale arithmetic.
     sched_barrier(0)
     acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
@@ -323,7 +323,7 @@ def consumer(
 
 
 @g.jit
-def _mls_128x256x128(
+def _gemm_block_scaled_fp8_fp32_mls_wdra_128x256x128_kernel(
     A,
     B,
     AS,
@@ -354,15 +354,15 @@ def _mls_128x256x128(
     b = gl.allocate_shared_memory(gl.float8e4nv, (128, 256), SB)
     gl.warp_specialize(
         [
-            (empty, ()),
-            (producer, (A, B, AS, BS, sas0, sas1, sbs, a0, a0_next, b, b_next, K, 0)),
-            (producer, (A, B, AS, BS, sas0, sas1, sbs, a1, a1_next, b, b_next, K, 1)),
+            (_idle_default_partition, ()),
+            (_produce_ab_and_scales, (A, B, AS, BS, sas0, sas1, sbs, a0, a0_next, b, b_next, K, 0)),
+            (_produce_ab_and_scales, (A, B, AS, BS, sas0, sas1, sbs, a1, a1_next, b, b_next, K, 1)),
             (
-                consumer,
+                _consume_ab_and_accumulate,
                 (AS, BS, C, sas0, sas1, sbs, a0, a0_next, b, b_next, K, N, 0, F),
             ),
             (
-                consumer,
+                _consume_ab_and_accumulate,
                 (AS, BS, C, sas0, sas1, sbs, a1, a1_next, b, b_next, K, N, 1, F),
             ),
         ],
@@ -371,7 +371,7 @@ def _mls_128x256x128(
     )
 
 
-def launch_config():
+def get_mls_wdra_launch_config():
     """Fixed MLS pipeline configuration for complete tiles."""
     # Native interleave2 B/C mappings avoid register shuffles at both transfers.
     sb = MlsSharedLayout(1, (128, 64), alt=1, order=(0, 1))
@@ -392,6 +392,6 @@ def launch_config():
     )
 
 
-def launch(config, problem, a, b, a_scale, b_scale, out):
-    _mls_128x256x128[(problem.m // config.block_m, problem.n // config.block_n)](
-        a, b, a_scale, b_scale, out, N=problem.n, K=problem.k, **launch_config())
+def launch_gemm_block_scaled_mls_wdra(config, problem, a, b, a_scale, b_scale, out):
+    _gemm_block_scaled_fp8_fp32_mls_wdra_128x256x128_kernel[(problem.m // config.block_m, problem.n // config.block_n)](
+        a, b, a_scale, b_scale, out, N=problem.n, K=problem.k, **get_mls_wdra_launch_config())

@@ -1,6 +1,6 @@
 # Gluon block-scaled dense GEMM
 
-公开入口：`from boltops.gemm import gemm_block_scaled`。依赖 Triton !520 的 HCU Gluon API。
+公开入口：`from boltops.gemm import gemm_block_scaled`。依赖 Triton !541、!542、!543 的 HCU Gluon API。
 输入为连续的 A[M,K]、B[N,K]，计算 A @ B.T；四个输入须位于同一 GPU。
 
 ```python
@@ -64,8 +64,8 @@ MLS 128×256×128 的 tile、LDS、partition 和寄存器预算保持为一套�
 
 ## 显式分区寄存器配额
 
-当前流水仅在 `gl.warp_specialize` 中声明 `[8,8,240,240]`，launch_config 不再重复传
-`wasp_partition_regs`。需要包含源码配额读取更新的 Triton !520 后端；编译 metadata 的
+当前流水仅在 `gl.warp_specialize` 中声明 `[8,8,240,240]`，get_mls_wdra_launch_config 不再重复传
+`wasp_partition_regs`。需要包含源码配额读取更新的 Triton !541 后端；编译 metadata 的
 `wasp_partition_regs_source` 为 `warp_specialize`，`requested` 保存原声明，实际生效值仍经过
 原有硬件对齐/容量校验及 spill 反馈重编机制。若 launch 仍传配额，只作一致性校验，必须与
 源码原始声明相同；多个显式 region 也必须声明相同配额。自动 TL WASP 估算不受此策略影响。
@@ -194,3 +194,19 @@ Triton 测试扫描到 50 处旧参数调用（8 个文件），已迁移。MFMA
 8 次输出 max_abs=0、mismatch=0、spill=0；与上版提取的指令序列一致。
 环境仍为 gfx946/sb、单 die 48 CU、455ps shader/cache 时钟；LLVM 96fd797，编译参数/环境同前。
 本轮 Triton 提交 97e683db29abed7e6b82cb01e4521b7e63379dba；完整编译日志、环境脚本和配对结果在上述仓库外目录。
+
+## 函数命名
+
+公开算子入口仍为 `gemm_block_scaled`，表达 block-scaled A @ B.T，与具体 tile、dtype 和流水分离。
+内部 `launch_gemm_block_scaled_*` 是宿主侧启动函数，`_gemm_block_scaled_*_kernel` 是设备入口；
+`fp8_fp32` 表示 E4M3FN 输入与 FP32 scale，具体 recipe 为 A1×128/B128×128、BF16 输出。
+
+| 路径 | 宿主启动函数 | 设备 kernel |
+| --- | --- | --- |
+| 固定 MLS/WDRA | `launch_gemm_block_scaled_mls_wdra` | `_gemm_block_scaled_fp8_fp32_mls_wdra_128x256x128_kernel` |
+| 同 recipe 的 masked 路径 | `launch_gemm_block_scaled_fp8_fp32_masked` | `_gemm_block_scaled_fp8_fp32_masked_kernel` |
+| 通用 masked 路径 | `launch_gemm_block_scaled_masked` | `_gemm_block_scaled_masked_kernel` |
+
+MLS 内部辅助函数使用动作名，例如 `_produce_ab_and_scales`、`_consume_ab_and_accumulate`、
+`_wait_a_tile_ready`、`_release_ab_lds_slots`；`_ack_scale_tile_ready` 是就绪确认，不表示读取完成。
+`decode_block_scale` 解码 scale 存储：E8M0 转 FP32，numeric 原样返回；它不做量化或 GEMM。

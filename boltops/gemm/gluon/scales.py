@@ -4,7 +4,8 @@ from triton.experimental.gluon import language as gl
 
 
 @g.jit
-def decode_scale(value, E8M0: gl.constexpr):
+def decode_block_scale(value, E8M0: gl.constexpr):
+    """Decode E8M0 storage to FP32, or return an already numeric block scale."""
     # Same E8M0 value contract as boltops.utility.fp8_scale.decode_fp8_scale.
     if E8M0:
         exponent = value.to(gl.uint32)
