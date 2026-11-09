@@ -11,7 +11,6 @@ import torch
 import triton
 
 from boltops.gemm.triton.batched_gemm_a16w16 import (
-    _get_config,
     batched_gemm_a16w16,
 )
 
@@ -30,6 +29,18 @@ INITIAL_CONFIG = {
     "BATCH_LAST_GRID": False,
 }
 
+
+
+def selected_config(batch, m, n, k, dtype, layout):
+    from boltops.gemm.descriptors import GemmProblem, OperandSpec
+    from boltops.gemm.dispatch import select_plan
+    from boltops.utility.arch_info import get_device_info
+    device = get_device_info()
+    p = GemmProblem('batched', m, n, k,
+        OperandSpec(dtype, strides=(m*k, k, 1)),
+        OperandSpec(dtype, strides=(n*k, k, 1) if layout == 'tn' else (n*k, 1, n)),
+        dtype, device.arch, batch=batch, num_cus=device.cu_count)
+    return select_plan(p, backend='triton').config.params
 
 def bench_case(b: int, m: int, n: int, k: int, layout: str, config: dict) -> float:
     x = torch.empty((b, m, k), device="cuda", dtype=torch.float16)
@@ -60,7 +71,7 @@ def main() -> None:
     for stage, b, m, n, k in SHAPES:
         cases = [("initial-tn", "tn", dict(INITIAL_CONFIG))]
         for layout in ("tn", "tt"):
-            tuned = _get_config(m, n, k, torch.float16, B=b, layout=layout)
+            tuned = selected_config(b, m, n, k, torch.float16, layout)
             cases.append((f"tuned-{layout}", layout, tuned))
             grid_only = dict(tuned)
             grid_only["BATCH_LAST_GRID"] = True

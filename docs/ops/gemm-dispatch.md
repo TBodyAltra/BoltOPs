@@ -57,7 +57,7 @@ compile/execute failure. Unsupported combinations raise NotImplementedError;
 a registered backend missing its runtime raises ImportError. Gluon retains the optimized E4M3FN/FP32 scale recipe. TileLang currently has no implementation rows.
 
 The five files are `gemm_dense.json`, `gemm_scaled.json`, `gemm_batched.json`,
-`gemm_grouped.json`, and `gemm_batched_a16wfp4_online_quant.json`. Each carries its interface identifier. Schema 7
+`gemm_grouped.json`, and `gemm_batched_a16wfp4_online_quant.json`. Each carries its interface identifier. Schema 8
 separates `match` (arch, num_cus, MNK, dtype/scale/layout contracts) from
 `config` (backend, implementation, tile and optional existing config file).
 Tile is not a matching condition. No measurements, frequency, commit IDs or
@@ -104,23 +104,34 @@ Configuration queries and the launch function live in the actual implementation
 module; there is no intermediate adapter file. The selected plan contains an
 implementation name string and its configuration, not a registration object.
 
-## Selection order
+## Backend selection and configuration
 
-Schema 7 files contain only `schema_version`, `interface`, and `entries`.
-Each entry contains `match` and `config` (backend, implementation and full params).
-Entries are checked in file order. The first matching entry for an available
-backend is used. Put exact-shape exceptions before broad rules. A selected
-stale/unsupported configuration is an error; launch failures propagate.
+Schema 8 files contain `schema_version`, `interface`, `auto_backend`, and
+`entries`. The file's `auto_backend` is used for shapes with no matching rule.
+Entries are checked in order; the first matching entry is used:
 
-If no record matches, implementations are tried in the order declared in the
-single implementation table. The first supported default is selected, skipping
-unavailable backends. Shape-dependent default configuration is computed by the
-implementation. With no supported implementation, the call raises an error.
-An explicit `backend=` restricts both steps to that backend.
+```json
+{
+  "match": {"arch": "gfx946", "num_cus": 48, "m": 128, "n": 256, "k": 256},
+  "auto_backend": "gluon",
+  "configs": {
+    "triton": null,
+    "gluon": {"implementation": "gluon.example", "params": {"BLOCK_SIZE_M": 128, "BLOCK_SIZE_N": 256, "BLOCK_SIZE_K": 128}},
+    "tilelang": null
+  }
+}
+```
 
-There is no backend-priority list or numeric rule/implementation priority.
-The table's default order is visible in the source; the optional `names`
-argument restricts implementations without reordering them.
+`backend="auto"` uses the matching rule's `auto_backend`; explicit backend
+selection overrides it and reads only that backend's config. A null config
+uses that backend's default implementation and parameters. Defaults are tried
+in implementation-table order within the selected backend. An unavailable
+backend, unsupported default or invalid recorded config raises an error;
+there is no cross-backend retry. Put exact exceptions before broad rules.
+
+There are no numeric priorities or backend priority lists. Saving a tuning
+winner updates just its backend's config, keeps other exact backend configs,
+sets auto_backend to that winner's backend and moves the exact rule to the front.
 
 ## Explicit autotune utility
 
@@ -174,7 +185,7 @@ scan is run as part of ordinary regression validation.
 
 ## Generic match conditions
 
-Schema 7 matches the attributes of `GemmProblem` directly. Nested objects use
+Schema 8 matches the attributes of `GemmProblem` directly. Nested objects use
 partial matching; omitted fields are unconstrained. Arrays and null are exact
 values. Dtypes use names without the `torch.` prefix. For example:
 
@@ -259,3 +270,10 @@ quantized adapter modules. Batched and equal grouped A16W16 use the same launche
 FP32 dense and INT8 block-scaled implementations have their own dispatch rows;
 launchers do not perform another dtype dispatch. Existing direct backend callers
 may omit `problem`; the unified dispatcher always supplies it and a full config.
+
+Native batched and equal grouped A16W16 launchers require an explicit config.
+They do not read backend-specific JSON, choose nearest M, or apply a size
+heuristic. Both expose fixed default parameters in the implementation table.
+The recorded BW200/gfx936 80-CU batched shapes are stored in gemm_batched.json;
+FP16 recipes also serve BF16 at their recorded shapes. Unrecorded shapes use
+the fixed defaults. The tuning CLI publishes gemm_batched.json in the same format.

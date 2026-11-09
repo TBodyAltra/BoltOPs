@@ -35,11 +35,11 @@ def test_tile_is_selected_then_checked_by_implementation(monkeypatch):
     import copy
     entries = copy.deepcopy(performance_map._entries("scaled"))
     matching_conditions = copy.deepcopy(entries[0]["match"])
-    entries[0]["config"]["params"].update(BLOCK_SIZE_M=256, BLOCK_SIZE_N=256, BLOCK_SIZE_K=64)
+    entries[0]["configs"]["gluon"]["params"].update(BLOCK_SIZE_M=256, BLOCK_SIZE_N=256, BLOCK_SIZE_K=64)
     monkeypatch.setattr(performance_map, "_entries", lambda interface: entries if interface == "scaled" else [])
     assert entries[0]["match"] == matching_conditions
     assert performance_map.tuned_configs(
-        problem(), entries[0]["config"]["implementation"]
+        problem(), entries[0]["configs"]["gluon"]["implementation"]
     ) == (KernelConfig(256, 256, 64, num_warps=4, num_stages=2,
                        wasp_partition_warps=[4, 4, 4, 4], wasp_wdra=True),)
     # A stale measured winner must be diagnosed, not silently replaced.

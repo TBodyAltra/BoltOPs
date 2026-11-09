@@ -65,6 +65,7 @@ def save_winner(problem, plan, path):
 
 def _save_winner(problem, plan, path):
     """Atomically publish configuration only, keeping unrelated records intact."""
+    from .dispatch import BACKENDS as dispatch_backends
     from .performance_map import (document, _validate_document,
                                   exact_match, clear_cache)
     if not supports(plan.implementation, problem, plan.config):
@@ -76,12 +77,12 @@ def _save_winner(problem, plan, path):
             deepcopy(document(problem.interface)))
     _validate_document(data, problem.interface)
     match = exact_match(problem)
-    # Put the exact winner before broader rules; preserve other rules' order.
+    # Update one backend without losing other backends' exact configurations.
+    previous = next((e for e in data['entries'] if e['match'] == match), None)
+    configs = deepcopy(previous['configs']) if previous else dict.fromkeys(dispatch_backends)
+    configs[plan.backend] = {'implementation': plan.implementation, 'params': plan.config.params}
     others = [e for e in data['entries'] if e['match'] != match]
-    c = plan.config
-    config = {'backend': plan.backend, 'implementation': plan.implementation,
-              'params': c.params}
-    data['entries'] = [{'match': match, 'config': config}] + others
+    data['entries'] = [{'match': match, 'auto_backend': plan.backend, 'configs': configs}] + others
     target.parent.mkdir(parents=True, exist_ok=True)
     mode = target.stat().st_mode & 0o777 if target.exists() else 0o644
     temporary = None

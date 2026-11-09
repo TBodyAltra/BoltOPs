@@ -20,6 +20,16 @@ from boltops.gemm.triton.batched_gemm_a16w16 import batched_gemm_a16w16
 AITer_M_VALUES = (1, 8, 16, 32, 64, 128, 192, 256, 320, 512, 1024, 2048, 4096, 8192, 16384)
 
 
+
+def problem_for_shape(batch, m, n, k, layout):
+    from boltops.gemm.descriptors import GemmProblem, OperandSpec
+    from boltops.utility.arch_info import get_device_info
+    device = get_device_info()
+    return GemmProblem('batched', m, n, k,
+        OperandSpec(torch.float16, strides=(m*k, k, 1)),
+        OperandSpec(torch.float16, strides=(n*k, k, 1) if layout == 'tn' else (n*k, 1, n)),
+        torch.float16, device.arch, batch=batch, num_cus=device.cu_count)
+
 def candidates(
     m: int,
     optimize_epilogue: bool = False,
@@ -188,15 +198,23 @@ def main() -> None:
     pingpong_mode = "on" if args.block_pingpong else args.block_pingpong_mode
     use_block_pingpong = {"both": None, "on": True, "off": False}[pingpong_mode]
 
+    if args.output.name != 'gemm_batched.json':
+        parser.error('--output must name gemm_batched.json')
+    from boltops.gemm.autotune import save_winner
+    from boltops.gemm.descriptors import KernelConfig
+    from boltops.gemm.dispatch import ExecutionPlan
+    from boltops.gemm.performance_map import exact_match
+
     timing_path = args.output.with_suffix(".timings.json")
-    output = {}
+    output = {"entries": []}
     timing = {}
     if args.resume and args.output.exists():
         output = json.loads(args.output.read_text())
         if timing_path.exists():
             timing = json.loads(timing_path.read_text())
     for m in args.m_values:
-        if str(m) in output and str(m) in timing:
+        problem = problem_for_shape(args.b, m, args.n, args.k, args.layout)
+        if any(e['match'] == exact_match(problem) for e in output['entries']) and str(m) in timing:
             print(f"SKIP B={args.b} M={m} N={args.n} K={args.k}", flush=True)
             continue
         print(f"TUNING B={args.b} M={m} N={args.n} K={args.k}", flush=True)
@@ -213,11 +231,12 @@ def main() -> None:
             args.layout,
             args.batch_last_grid,
         )
-        output[str(m)] = cfg
+        plan = ExecutionPlan('triton.batched.native16', KernelConfig.from_params(cfg))
+        save_winner(problem, plan, args.output)
+        output = json.loads(args.output.read_text())
         timing[str(m)] = ms
         print(f"BEST M={m}: {ms:.6f} ms {cfg}", flush=True)
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(output, indent=4) + "\n")
         timing_path.write_text(json.dumps(timing, indent=4) + "\n")
 
 

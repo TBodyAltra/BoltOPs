@@ -23,6 +23,18 @@ _SHAPES = [
 ]
 
 
+
+def selected_config(batch, m, n, k, dtype, layout):
+    from boltops.gemm.descriptors import GemmProblem, OperandSpec
+    from boltops.gemm.dispatch import select_plan
+    from boltops.utility.arch_info import get_device_info
+    device = get_device_info()
+    p = GemmProblem('batched', m, n, k,
+        OperandSpec(dtype, strides=(m*k, k, 1)),
+        OperandSpec(dtype, strides=(n*k, k, 1) if layout == 'tn' else (n*k, 1, n)),
+        dtype, device.arch, batch=batch, num_cus=device.cu_count)
+    return select_plan(p, backend='triton').config.params
+
 def _golden(
     x: torch.Tensor,
     weight: torch.Tensor,
@@ -163,7 +175,6 @@ def test_bench_batched_gemm_a16w16(
     bench_repeat: int,
 ) -> None:
     """Time the shipped tuned config on both NT and TT layouts."""
-    from boltops.gemm.triton.batched_gemm_a16w16 import _get_config
 
     torch.manual_seed(223)
     x = torch.randn((B, M, K), device=DEVICE, dtype=_BENCH_DTYPE) * 0.05
@@ -175,7 +186,7 @@ def test_bench_batched_gemm_a16w16(
             .transpose(1, 2)
         )
     output = torch.empty((B, M, N), device=DEVICE, dtype=_BENCH_DTYPE)
-    config = _get_config(M, N, K, _BENCH_DTYPE, B=B, layout=layout)
+    config = selected_config(B, M, N, K, _BENCH_DTYPE, layout)
     config["BATCH_LAST_GRID"] = True
 
     def run() -> None:

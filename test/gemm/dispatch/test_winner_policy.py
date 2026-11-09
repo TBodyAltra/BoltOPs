@@ -23,7 +23,7 @@ def policy(tmp_path, monkeypatch):
     maps.clear_cache()
     for name in ('dense', 'scaled', 'batched', 'grouped', 'batched_a16wfp4_online_quant'):
         (tmp_path / f'gemm_{name}.json').write_text(json.dumps({
-            'schema_version': 7, 'interface': f'gemm_{name}',
+            'schema_version': 8, 'auto_backend': 'triton', 'interface': f'gemm_{name}',
             'entries': []}))
     yield tmp_path
     maps.clear_cache()
@@ -43,9 +43,10 @@ def choices(add_impl):
 
 
 def record(p, impl):
-    return {'match': maps.exact_match(p),
-            'config': {'backend': dispatch.IMPLEMENTATIONS[impl]['backend'], 'implementation': impl,
-                       'params': KernelConfig(32, 64, 32).params}}
+    backend = dispatch.IMPLEMENTATIONS[impl]['backend']
+    return {'match': maps.exact_match(p), 'auto_backend': backend,
+            'configs': {b: ({'implementation': impl, 'params': KernelConfig(32, 64, 32).params}
+                            if b == backend else None) for b in dispatch.BACKENDS}}
 
 
 def write(policy, p, entries):
@@ -70,7 +71,7 @@ def test_first_matching_record_wins(policy, reverse, choices):
     records = [record(p, choices[0]), record(p, choices[1])]
     records = records[::-1] if reverse else records
     write(policy, p, records)
-    assert select_plan(p, choices).implementation == records[0]['config']['implementation']
+    assert select_plan(p, choices).implementation == records[0]['configs'][records[0]['auto_backend']]['implementation']
     assert select_plan(p, choices, backend='gluon').implementation == choices[1]
 
 
@@ -100,17 +101,18 @@ def test_default_order_is_not_alphabetical(policy, choices, add_impl):
 def test_stale_measured_record_is_not_silently_replaced(policy, what, choices):
     p = problem()
     entry = record(p, choices[1])
-    entry['config']['implementation' if what == 'unknown_implementation' else 'params'] = (
+    entry['configs'][entry['auto_backend']]['implementation' if what == 'unknown_implementation' else 'params'] = (
         'gluon.absent' if what == 'unknown_implementation' else KernelConfig(64, 64, 32).params)
     write(policy, p, [entry])
     with pytest.raises(ValueError, match='registered implementation|winner is unsupported'):
         select_plan(p, choices)
 
 
-def test_unavailable_backend_record_uses_available_defaults(policy, choices):
+def test_selected_backend_without_implementation_does_not_switch(policy, choices):
     p = problem()
     write(policy, p, [record(p, choices[2])])
-    assert select_plan(p, choices[:2]).implementation == choices[0]
+    with pytest.raises(ValueError, match='registered implementation'):
+        select_plan(p, choices[:2])
 
 
 @pytest.mark.parametrize('order', [['triton', 'triton', 'gluon'], ['gluon'], 'triton'])
@@ -178,8 +180,8 @@ def test_tuning_writes_one_exact_winner_without_measurements(policy, choices):
     assert result.winner.implementation == choices[1]
     data = json.loads(path.read_text())
     assert len(data['entries']) == 1
-    assert set(data['entries'][0]) == {'match', 'config'}
-    assert set(data['entries'][0]['config']) == {'backend', 'implementation', 'params'}
+    assert set(data['entries'][0]) == {'match', 'auto_backend', 'configs'}
+    assert set(data['entries'][0]['configs'][data['entries'][0]['auto_backend']]) == {'implementation', 'params'}
     assert select_plan(p, choices[::-1]).implementation == choices[1]
     save_winner(p, result.winner, path)
     assert json.loads(path.read_text()) == data
@@ -195,7 +197,7 @@ def test_tuned_exact_override_preserves_other_shapes_and_range_record(policy, ch
     save_winner(p, plan, path)
     data = json.loads(path.read_text())
     assert data['entries'][1:] == [broad, unrelated]
-    assert data['entries'][0]['config']['implementation'] == choices[1]
+    assert data['entries'][0]['configs'][data['entries'][0]['auto_backend']]['implementation'] == choices[1]
     assert select_plan(p, choices).implementation == choices[1]
     assert select_plan(replace(p, m=48), choices).implementation == choices[0]
 
@@ -304,9 +306,9 @@ def test_tuning_publishes_complete_non_tile_parameters(policy, add_impl):
     path = policy / 'gemm_scaled.json'
     result = autotune(p, names=(name,), validate=lambda plan: True,
                       benchmark=lambda plan: 1, output_path=path)
-    saved = json.loads(path.read_text())['entries'][0]['config']
+    saved = json.loads(path.read_text())['entries'][0]['configs']['triton']
     assert saved['params'] == config.params
-    assert set(saved) == {'backend', 'implementation', 'params'}
+    assert set(saved) == {'implementation', 'params'}
     assert select_plan(p, names=(name,)) == result.winner
 
 
@@ -315,5 +317,49 @@ def test_removed_entry_priority_is_rejected(policy, choices):
     entry = record(p, choices[0])
     entry['priority'] = 1
     write(policy, p, [entry])
-    with pytest.raises(ValueError, match='match and config only'):
+    with pytest.raises(ValueError, match='match, auto_backend and configs only'):
         select_plan(p, choices)
+
+
+def test_one_rule_keeps_independent_backend_configs(policy, choices):
+    p = problem()
+    entry = record(p, choices[1])
+    entry['configs']['triton'] = record(p, choices[0])['configs']['triton']
+    write(policy, p, [entry])
+    assert select_plan(p, choices).implementation == choices[1]
+    assert select_plan(p, choices, backend='triton').implementation == choices[0]
+    assert select_plan(p, choices, backend='gluon').implementation == choices[1]
+    # A null config uses only the explicitly chosen backend's defaults.
+    assert select_plan(p, choices, backend='tilelang').implementation == choices[2]
+
+
+def test_file_auto_backend_controls_unmatched_shapes(policy, choices):
+    p = problem()
+    path = write(policy, p, [])
+    data = json.loads(path.read_text())
+    data['auto_backend'] = 'gluon'
+    path.write_text(json.dumps(data))
+    maps.clear_cache()
+    assert select_plan(p, choices).implementation == choices[1]
+    assert select_plan(p, choices, backend='triton').implementation == choices[0]
+
+
+def test_publishing_keeps_other_backend_configuration(policy, choices):
+    p = problem()
+    entry = record(p, choices[0])
+    path = write(policy, p, [entry])
+    save_winner(p, ExecutionPlan(choices[1], KernelConfig(32, 64, 32)), path)
+    data = json.loads(path.read_text())['entries'][0]
+    assert data['auto_backend'] == 'gluon'
+    assert data['configs']['triton'] == entry['configs']['triton']
+    assert select_plan(p, choices).implementation == choices[1]
+    assert select_plan(p, choices, backend='triton').implementation == choices[0]
+
+
+def test_auto_selected_missing_backend_never_switches(policy, choices, monkeypatch):
+    p = problem()
+    write(policy, p, [record(p, choices[1])])
+    monkeypatch.setattr(dispatch, 'available', lambda b: b != 'gluon')
+    with pytest.raises(ImportError, match='gluon is not installed'):
+        select_plan(p, choices)
+    assert select_plan(p, choices, backend='triton').implementation == choices[0]

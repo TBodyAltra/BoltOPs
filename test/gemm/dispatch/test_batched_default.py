@@ -34,8 +34,7 @@ def test_recorded_parameters_override_default(monkeypatch):
     params = dict(dispatch.IMPLEMENTATIONS['triton.batched.native16']['default_config'],
                   BLOCK_SIZE_M=32, BLOCK_SIZE_N=64, num_warps=4, num_stages=1,
                   BATCH_LAST_GRID=True)
-    record = {'match': performance_map.exact_match(p), 'config': {
-        'backend': 'triton', 'implementation': 'triton.batched.native16', 'params': params}}
+    record = {'match': performance_map.exact_match(p), 'auto_backend': 'triton', 'configs': {'triton': ({'implementation': 'triton.batched.native16', 'params': params} if 'triton' == 'triton' else None), 'gluon': ({'implementation': 'triton.batched.native16', 'params': params} if 'triton' == 'gluon' else None), 'tilelang': ({'implementation': 'triton.batched.native16', 'params': params} if 'triton' == 'tilelang' else None)}}
     monkeypatch.setattr(performance_map, '_entries', lambda interface: (record,))
     assert dispatch.select_plan(p).config.params == params
 
@@ -70,9 +69,6 @@ def test_launcher_preserves_both_operands_and_selected_options(monkeypatch, batc
             return run
     from boltops.gemm.triton import batched_gemm_a16w16 as implementation
     monkeypatch.setattr(implementation, '_batched_gemm_a16w16_kernel', Kernel())
-    def unexpected_lookup(*args, **kwargs):
-        raise AssertionError('explicit config must not be reselected')
-    monkeypatch.setattr(implementation, '_get_config', unexpected_lookup)
     params = dict(dispatch.IMPLEMENTATIONS['triton.batched.native16']['default_config'],
                   BLOCK_SIZE_M=32, BLOCK_SIZE_N=64, num_stages=3, BATCH_LAST_GRID=batch_last)
     plan = dispatch.ExecutionPlan("triton.batched.native16", KernelConfig.from_params(params))
@@ -82,3 +78,18 @@ def test_launcher_preserves_both_operands_and_selected_options(monkeypatch, batc
     assert args[7:13] == (*a.stride(),b.stride(0),b.stride(2),b.stride(1))
     assert actual == params
     assert grid == ((1,1,2) if batch_last else (2,1))
+
+
+@pytest.mark.parametrize('dtype', [torch.float16, torch.bfloat16])
+def test_migrated_bw200_record_and_unrecorded_m(dtype):
+    def request(m, arch='gfx936', cus=80):
+        return GemmProblem('batched', m, 8192, 1024,
+            OperandSpec(dtype, strides=(m*1024, 1024, 1)),
+            OperandSpec(dtype, strides=(8192*1024, 1024, 1)), dtype, arch,
+            batch=16, num_cus=cus)
+    tuned = dispatch.select_plan(request(1), backend='triton').config
+    assert (tuned.block_m, tuned.block_n, tuned.block_k) == (8, 64, 128)
+    default = dispatch.IMPLEMENTATIONS['triton.batched.native16']['default_config']
+    # No nearest-M extrapolation, and no BW200 recipe applied on gfx946.
+    assert dispatch.select_plan(request(9), backend='triton').config.params == default
+    assert dispatch.select_plan(request(1, 'gfx946', 48), backend='triton').config.params == default

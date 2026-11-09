@@ -63,6 +63,6 @@ def test_dense_launcher_consumes_inline_options(monkeypatch):
 def test_old_config_indirection_is_rejected():
     from copy import deepcopy
     data = deepcopy(maps.document('dense'))
-    data['entries'][0]['config']['source_config'] = 'unused.json'
+    data['entries'][0]['configs'][data['entries'][0]['auto_backend']]['source_config'] = 'unused.json'
     with pytest.raises(ValueError, match='params only'):
         maps._validate_document(data, 'dense')

@@ -31,7 +31,7 @@ def problem(interface):
 @pytest.mark.parametrize('interface', ['scaled', 'dense', 'batched', 'grouped'])
 def test_only_own_configuration_file_is_required(config_dir, interface):
     (config_dir / f'gemm_{interface}.json').write_text(json.dumps(
-        {'schema_version': 7, 'interface': f'gemm_{interface}', 'entries': []}))
+        {'schema_version': 8, 'auto_backend': 'triton', 'interface': f'gemm_{interface}', 'entries': []}))
     # The other interfaces' files deliberately do not exist.
     assert performance_map.tuned_configs(problem(interface), 'unregistered') == ()
 
@@ -39,6 +39,6 @@ def test_only_own_configuration_file_is_required(config_dir, interface):
 @pytest.mark.parametrize('interface', ['scaled', 'dense', 'batched', 'grouped'])
 def test_configuration_cannot_belong_to_a_different_interface(config_dir, interface):
     (config_dir / f'gemm_{interface}.json').write_text(json.dumps(
-        {'schema_version': 7, 'interface': 'another_interface', 'entries': []}))
+        {'schema_version': 8, 'auto_backend': 'triton', 'interface': 'another_interface', 'entries': []}))
     with pytest.raises(ValueError, match=f'configuration file must belong to gemm_{interface}'):
         performance_map.tuned_configs(problem(interface), 'unregistered')

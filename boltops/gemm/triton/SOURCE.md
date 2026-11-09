@@ -23,7 +23,7 @@ Internal (vendored, not in `boltops` / `boltops.gemm` `__all__`)
 Configs (on disk, HCU only where available)
 - `configs/awq_gemm_triton/` — vLLM-style `AWQ_{N}_{K}_{K100_AI|BW200}.json`
 - `configs/w8a8_block_int8_matmul/` — hygon aiter `block_w8a8` (`BW200` / `gfx938`)
-- `configs/batched_gemm_bf16/` — optional `BATCHED_BF16-N={N}-K={K}_{bf16|fp16}_{device}.json`
+- `../configs/gemm_batched.json` — interface-level batched A16W16 recipes
 
 Note: hygon aiter `awq_w4a16/` tables target aiter `gemm_a16w4` (different
 schema) and are **not** wired to `awq_gemm_triton`. Other kernels use

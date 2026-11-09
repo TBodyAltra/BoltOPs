@@ -31,25 +31,31 @@ def config_path(interface):
 
 
 def _validate_document(data, interface):
-    if data["schema_version"] != 7:
+    if data["schema_version"] != 8:
         raise ValueError("unsupported GEMM performance-map schema")
     if data["interface"] != f"gemm_{interface}":
         raise ValueError(f"configuration file must belong to gemm_{interface}")
-    if set(data) != {"schema_version", "interface", "entries"}:
-        raise ValueError("GEMM document requires schema_version, interface and entries only")
+    if set(data) != {"schema_version", "interface", "auto_backend", "entries"}:
+        raise ValueError("GEMM document requires schema_version, interface, auto_backend and entries only")
+    if data["auto_backend"] not in _BACKENDS:
+        raise ValueError("unknown auto_backend")
     if not isinstance(data["entries"], list):
         raise ValueError("GEMM entries must be a list")
     for entry in data["entries"]:
-        if set(entry) != {"match", "config"}:
-            raise ValueError("GEMM entry requires match and config only")
-        if set(entry["config"]) != {"backend", "implementation", "params"}:
-            raise ValueError("configuration requires backend, implementation and params only")
-        entry_config(entry)
+        if set(entry) != {"match", "auto_backend", "configs"}:
+            raise ValueError("GEMM entry requires match, auto_backend and configs only")
+        if entry["auto_backend"] not in _BACKENDS:
+            raise ValueError("unknown auto_backend")
+        if not isinstance(entry["configs"], dict) or set(entry["configs"]) != set(_BACKENDS):
+            raise ValueError("configs must contain triton, gluon and tilelang")
+        for backend, config in entry["configs"].items():
+            if config is not None:
+                if set(config) != {"implementation", "params"}:
+                    raise ValueError("configuration requires implementation and params only")
+                entry_config(entry, backend)
         _validate_condition(entry["match"], _PROBLEM_SCHEMA)
         if not {"arch", "num_cus"}.issubset(entry["match"]):
             raise ValueError("GEMM match requires explicit arch and num_cus")
-        if entry["config"]["backend"] not in _BACKENDS:
-            raise ValueError("unknown backend in GEMM winner configuration")
     return data
 
 
@@ -176,17 +182,21 @@ def _matches(p, match):
 
 
 def matching_entries(problem, *, backend="auto"):
-    return tuple(e for e in _entries(problem.interface)
-                 if (backend == "auto" or e["config"]["backend"] == backend)
-                 and _matches(problem, e["match"]))
+    # Matching describes the computation, independently of backend selection.
+    return tuple(e for e in _entries(problem.interface) if _matches(problem, e["match"]))
 
 
-def entry_config(entry):
-    c = entry["config"]
+def entry_config(entry, backend=None):
+    c = entry["configs"][backend or entry["auto_backend"]]
+    if c is None:
+        raise ValueError("null backend configuration uses implementation defaults")
     return KernelConfig.from_params(c["params"])
 
 
 def tuned_configs(problem, implementation, *, backend=None):
-    """Capabilities may query records; winner resolution belongs to dispatch."""
-    return tuple(entry_config(e) for e in matching_entries(problem, backend=backend or "auto")
-                 if e["config"]["implementation"] == implementation)
+    result = []
+    for entry in matching_entries(problem):
+        for name, config in entry["configs"].items():
+            if (backend is None or name == backend) and config is not None and config["implementation"] == implementation:
+                result.append(entry_config(entry, name))
+    return tuple(result)

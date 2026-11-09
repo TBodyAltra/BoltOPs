@@ -67,11 +67,15 @@ IMPLEMENTATIONS = {
         },
     },
     'triton.grouped.native16': {
-        'backend': 'triton',
-        'interface': 'grouped',
+        'backend': 'triton', 'interface': 'grouped',
         'module': 'boltops.gemm.triton.batched_gemm_a16w16',
         'launcher': 'batched_gemm_a16w16',
-        'configs': '_native_config',
+        'default_config': {
+            'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 32,
+            'GROUP_SIZE_M': 1, 'num_warps': 8, 'num_stages': 2,
+            'BATCH_LAST_GRID': False,
+        },
+        'supports': '_supports_grouped',
     },
     'triton.scaled.awq': {
         'backend': 'triton',
@@ -202,24 +206,29 @@ def candidate_plans(problem, names=None, *, backend="auto", tuning=False):
 
 
 def select_plan(problem, names=None, *, backend="auto"):
-    from .performance_map import matching_entries, entry_config
-    choices = _names(problem, names, backend)
-    owners = {IMPLEMENTATIONS[name]["backend"] for name in choices}
-    records = [e for e in matching_entries(problem, backend=backend) if e["config"]["backend"] in owners]
-    if records:
-        c = records[0]["config"]
-        name = c["implementation"]
-        if name not in choices or IMPLEMENTATIONS[name]["backend"] != c["backend"]:
-            raise ValueError(f"GEMM winner must identify one registered implementation: {c}")
-        config = entry_config(records[0])
+    from .performance_map import document, matching_entries, entry_config
+    validate_backend(backend)
+    records = matching_entries(problem)
+    entry = records[0] if records else None
+    selected = backend if backend != "auto" else (
+        entry["auto_backend"] if entry else document(problem.interface)["auto_backend"])
+    if not available(selected):
+        raise ImportError(f"GEMM backend {selected} is not installed")
+    choices = _names(problem, names, selected)
+    recorded = entry["configs"][selected] if entry else None
+    if recorded is not None:
+        name = recorded["implementation"]
+        if name not in choices:
+            raise ValueError(f"GEMM winner must identify one registered implementation for {selected}: {recorded}")
+        config = entry_config(entry, selected)
         if not supports(name, problem, config):
-            raise ValueError(f"recorded GEMM winner is unsupported: {c}")
+            raise ValueError(f"recorded GEMM winner is unsupported: {recorded}")
         return ExecutionPlan(name, config)
-    plan = next(candidate_plans(problem, choices, backend=backend), None)
+    plan = next(candidate_plans(problem, choices, backend=selected), None)
     if plan is not None:
         return plan
     raise NotImplementedError(
-        f"no registered {problem.kind} GEMM implements {problem} (interface={problem.interface}, backend={backend})")
+        f"no registered {problem.kind} GEMM implements {problem} (interface={problem.interface}, backend={selected})")
 
 
 def launch(plan, problem, **tensors):

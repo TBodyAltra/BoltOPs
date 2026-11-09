@@ -75,12 +75,12 @@ def test_a_new_implementation_needs_no_dispatch_branches(add_impl):
     config = KernelConfig(64, 64, 64)
     name = add_impl('test', backend='gluon', configs=lambda p: (config,),
                     supports=lambda p, c: c == config)
-    plan = select_plan(replace(problem(), n=64), names=(name,))
+    plan = select_plan(replace(problem(), n=64), names=(name,), backend="gluon")
     assert plan.implementation == name and plan.config == config
 
 
 def test_missing_implementation_is_reported():
-    with pytest.raises(NotImplementedError, match="no registered dense GEMM"):
+    with pytest.raises(ValueError, match="registered implementation"):
         select_plan(problem(), names=())
 
 

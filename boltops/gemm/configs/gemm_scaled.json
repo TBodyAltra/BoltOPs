@@ -1,5 +1,5 @@
 {
-  "schema_version": 7,
+  "schema_version": 8,
   "interface": "gemm_scaled",
   "entries": [
     {
@@ -54,24 +54,29 @@
           "multiple_of": 256
         }
       },
-      "config": {
-        "implementation": "gluon.fp8e4m3fn.fp32scale.a1x128_b128x128.to_bf16",
-        "backend": "gluon",
-        "params": {
-          "BLOCK_SIZE_M": 128,
-          "BLOCK_SIZE_N": 256,
-          "BLOCK_SIZE_K": 128,
-          "num_warps": 4,
-          "num_stages": 2,
-          "wasp_partition_warps": [
-            4,
-            4,
-            4,
-            4
-          ],
-          "wasp_wdra": true
-        }
+      "auto_backend": "gluon",
+      "configs": {
+        "triton": null,
+        "gluon": {
+          "implementation": "gluon.fp8e4m3fn.fp32scale.a1x128_b128x128.to_bf16",
+          "params": {
+            "BLOCK_SIZE_M": 128,
+            "BLOCK_SIZE_N": 256,
+            "BLOCK_SIZE_K": 128,
+            "num_warps": 4,
+            "num_stages": 2,
+            "wasp_partition_warps": [
+              4,
+              4,
+              4,
+              4
+            ],
+            "wasp_wdra": true
+          }
+        },
+        "tilelang": null
       }
     }
-  ]
+  ],
+  "auto_backend": "triton"
 }

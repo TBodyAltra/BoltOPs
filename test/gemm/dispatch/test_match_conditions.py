@@ -99,9 +99,8 @@ def test_packaged_rules_are_valid_and_keep_dense_layout_and_scaled_range():
 
 
 def test_document_rejects_unknown_rule_even_without_matching_backend():
-    d = {'schema_version': 7, 'interface': 'gemm_dense',
-         'entries': [{'match': {'arch': 'other', 'num_cus': 48, 'bad': 1},
-                      'config': {'backend': 'tilelang', 'implementation': 'test', 'params': {'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32}}}]}
+    d = {'schema_version': 8, 'auto_backend': 'triton', 'interface': 'gemm_dense',
+         'entries': [{'match': {'arch': 'other', 'num_cus': 48, 'bad': 1}, 'auto_backend': 'tilelang', 'configs': {'triton': ({'implementation': 'test', 'params': {'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32}} if 'tilelang' == 'triton' else None), 'gluon': ({'implementation': 'test', 'params': {'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32}} if 'tilelang' == 'gluon' else None), 'tilelang': ({'implementation': 'test', 'params': {'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32}} if 'tilelang' == 'tilelang' else None)}}]}
     with pytest.raises(ValueError, match='unknown GEMM match field'):
         maps._validate_document(d, 'dense')
     d['entries'][0]['match'] = {'arch': 'gfx946'}

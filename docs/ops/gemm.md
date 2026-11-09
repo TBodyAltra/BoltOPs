@@ -172,13 +172,8 @@ rocBLAS，warmup 10 次、测量 50 次。TFLOPS 为按 GEMM FLOP 数计算的�
 | | 当前 Triton TT | 0.5014 | 158.66 | 1.54x |
 | | rocBLAS 0814 TT | 0.5141 | 154.74 | 1.50x |
 - `dtype`：`bfloat16` / `float16`；`splitK` 必须为 `None`
-- HCU JSON（可选）：`triton/configs/batched_gemm_bf16/`  
-  - batch 专用：`BATCHED_BF16-B={B}-N={N}-K={K}_{bf16|fp16}_{device}.json`
-  - shape 通用：`BATCHED_BF16-N={N}-K={K}_{bf16|fp16}_{device}.json`
-  - 设备默认：`BATCHED_BF16-DEFAULT_{bf16|fp16}_{device}.json`
-  - TT 布局使用独立的 `BATCHED_BF16-TT-...` 文件，避免与 NT tile 混用
+- 统一配置：`configs/gemm_batched.json`；按实际 shape 和布局匹配，未命中使用固定 default_config。
   - 按上述顺序回退，表内选择最接近的 `M`
-- 无 JSON 时静默使用内置 large/small tile（`M+N >= 4096` → large）
 
 ### BW200 FP16 性能记录
 

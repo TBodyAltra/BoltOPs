@@ -34,7 +34,8 @@ def test_tilelang_has_explicit_empty_capabilities(interface):
                    for row in dispatch.IMPLEMENTATIONS.values())
 
 
-def test_unimplemented_tilelang_does_not_delegate():
+def test_unimplemented_tilelang_does_not_delegate(monkeypatch):
+    monkeypatch.setattr(dispatch, "available", lambda backend: True)
     with pytest.raises(NotImplementedError, match='backend=tilelang'):
         select_plan(problem(), backend='tilelang')
 
@@ -48,7 +49,7 @@ def test_explicit_missing_runtime_is_reported(monkeypatch):
     monkeypatch.setattr(dispatch, 'available', lambda name: False)
     with pytest.raises(ImportError, match='triton is not installed'):
         select_plan(problem(), backend='triton')
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ImportError, match='is not installed'):
         select_plan(problem())
 
 
@@ -103,12 +104,14 @@ def test_scaled_fp4_is_registered_under_scaled_interface():
 def test_map_configuration_cannot_change_implementation_owner(monkeypatch):
     from boltops.gemm import performance_map
     entry = next(e for e in performance_map._entries("scaled")
-                 if e['config']['backend'] == 'gluon')
-    wrong = {**entry, 'config': {**entry['config'], 'backend': 'tilelang'}}
+                 if e['auto_backend'] == 'gluon')
+    wrong = {**entry, 'auto_backend': 'tilelang', 'configs': {**entry['configs'], 'tilelang': entry['configs']['gluon']}}
     monkeypatch.setattr(performance_map, '_entries', lambda interface: [wrong] if interface == "scaled" else [])
-    assert select_plan(problem()).backend == 'triton'
-    # The foreign record cannot claim Gluon, but an explicit request can still
-    # use Gluon's independently declared legal default configuration.
+    monkeypatch.setattr(dispatch, 'available', lambda backend: True)
+    with pytest.raises(ValueError, match='registered implementation for tilelang'):
+        select_plan(problem())
+    assert select_plan(problem(), backend='triton').backend == 'triton'
+    # Explicit Gluon uses its own slot, independently of auto_backend.
     assert select_plan(problem(), backend='gluon').backend == 'gluon'
 
 
