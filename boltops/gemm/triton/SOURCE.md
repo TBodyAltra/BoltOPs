@@ -3,7 +3,7 @@ Vendored Triton GEMM sources (flat layout, no vendor subpackages):
 FP16 / BF16
 - `matmul_persistent.py` — vLLM / SGLang `batch_invariant`
 - `gemm_a16w16.py` / `gemm_a16w16_op.py` — ROCm/aiter GEMM-A16W16
-- `batched_gemm_bf16.py` — ROCm/aiter batched A16W16 (`batched_gemm_bf16`)
+- `batched_gemm_a16w16.py` — ROCm/aiter batched A16W16 (`batched_gemm_a16w16`)
 
 Quantized (vLLM / SGLang) — public
 - `w8a8_triton_block_scaled_mm.py` — vLLM `fp8_utils`

@@ -105,12 +105,12 @@ y = batched_gemm_a16wfp4(x, w, w_scales, dtype=torch.bfloat16)
 
 ---
 
-## `batched_gemm_bf16`
+## `batched_gemm_a16w16`
 
 aiter Triton batched BF16/FP16 GEMM：`Y[i] = X[i] @ W[i]^T`。
 
 ```python
-y = batched_gemm_bf16(
+y = batched_gemm_a16w16(
     x, w, bias=None, dtype=torch.bfloat16, y=None, config=None
 )
 ```
@@ -324,7 +324,7 @@ TFLOPS 按 `2*B*M*N*K / latency` 计算。以上数据来自 xprof PMC replay，
 单 kernel 的硬件利用率；由于计数器 replay/SQTT 会扰动执行时间，不作为无 profiler
 端到端 benchmark 的性能门槛。
 
-实现：`triton/batched_gemm_bf16.py`。溯源：aiter `batched_gemm_bf16`。
+实现：`triton/batched_gemm_a16w16.py`。溯源：aiter `batched_gemm_bf16`。
 
 ---
 

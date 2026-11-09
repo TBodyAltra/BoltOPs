@@ -53,22 +53,32 @@ def test_launcher_preserves_both_operands_and_selected_options(monkeypatch, batc
     from boltops.gemm.triton.batched import launch_native
     p = problem('m','n')
     class Tensor:
-        def __init__(self, strides): self.strides=strides
+        def __init__(self, shape, strides, storage=None):
+            self.shape, self.strides, self.storage = shape, strides, storage or object()
+            self.ndim, self.dtype = len(shape), torch.float16
+        def transpose(self, x, y):
+            shape, strides = list(self.shape), list(self.strides)
+            shape[x], shape[y] = shape[y], shape[x]
+            strides[x], strides[y] = strides[y], strides[x]
+            return Tensor(tuple(shape), tuple(strides), self.storage)
         def stride(self, dim=None): return self.strides if dim is None else self.strides[dim]
         def contiguous(self): raise AssertionError('unexpected input copy')
-    a,b,out=Tensor(p.a.strides),Tensor(p.b.strides),Tensor((15,5,1))
+    a,b,out=Tensor((2,3,32),p.a.strides),Tensor((2,5,32),p.b.strides),Tensor((2,3,5),(15,5,1))
     calls=[]
     class Kernel:
         def __getitem__(self, grid):
             def run(*args, **params): calls.append((grid(params),args,params))
             return run
-    monkeypatch.setitem(sys.modules, 'boltops.gemm.triton.batched_gemm_bf16',
-                        SimpleNamespace(_batched_gemm_bf16_kernel=Kernel()))
+    from boltops.gemm.triton import batched_gemm_a16w16 as implementation
+    monkeypatch.setattr(implementation, '_batched_gemm_a16w16_kernel', Kernel())
+    def unexpected_lookup(*args, **kwargs):
+        raise AssertionError('explicit config must not be reselected')
+    monkeypatch.setattr(implementation, '_get_config', unexpected_lookup)
     params = dict(dispatch.IMPLEMENTATIONS['triton.batched.native16']['default_config'],
                   BLOCK_SIZE_M=32, BLOCK_SIZE_N=64, num_stages=3, BATCH_LAST_GRID=batch_last)
     launch_native(KernelConfig.from_params(params),p,a,b,None,out)
     grid,args,actual=calls[0]
-    assert args[0] is a and args[1] is b
+    assert args[0] is a and args[1].storage is b.storage
     assert args[7:13] == (*a.stride(),b.stride(0),b.stride(2),b.stride(1))
     assert actual == params
     assert grid == ((1,1,2) if batch_last else (2,1))

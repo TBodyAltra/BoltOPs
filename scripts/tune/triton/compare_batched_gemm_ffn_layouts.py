@@ -10,9 +10,9 @@ from pathlib import Path
 import torch
 import triton
 
-from boltops.gemm.triton.batched_gemm_bf16 import (
+from boltops.gemm.triton.batched_gemm_a16w16 import (
     _get_config,
-    batched_gemm_bf16,
+    batched_gemm_a16w16,
 )
 
 
@@ -42,7 +42,7 @@ def bench_case(b: int, m: int, n: int, k: int, layout: str, config: dict) -> flo
     y = torch.empty((b, m, n), device="cuda", dtype=torch.float16)
 
     def run() -> None:
-        batched_gemm_bf16(
+        batched_gemm_a16w16(
             x, w, dtype=torch.float16, y=y, config=config
         )
 

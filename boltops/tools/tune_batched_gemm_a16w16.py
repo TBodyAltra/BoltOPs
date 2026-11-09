@@ -14,7 +14,7 @@ from pathlib import Path
 import torch
 import triton
 
-from boltops.gemm.triton.batched_gemm_bf16 import batched_gemm_bf16
+from boltops.gemm.triton.batched_gemm_a16w16 import batched_gemm_a16w16
 
 
 AITer_M_VALUES = (1, 8, 16, 32, 64, 128, 192, 256, 320, 512, 1024, 2048, 4096, 8192, 16384)
@@ -132,7 +132,7 @@ def tune_shape(
         1,
     ):
         try:
-            fn = lambda cfg=cfg: batched_gemm_bf16(
+            fn = lambda cfg=cfg: batched_gemm_a16w16(
                 x, w, dtype=torch.float16, y=y, config=cfg
             )
             ms = bench(fn, warmup_ms, rep_ms)

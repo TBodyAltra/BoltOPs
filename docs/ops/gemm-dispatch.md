@@ -86,15 +86,13 @@ IMPLEMENTATIONS = {
             "BATCH_LAST_GRID": False
         },
         "capabilities": {"input_dtype": ("float16", "bfloat16")},
-        "validate_config": "validate_config",
     },
 }
 ```
 
 Rows use module/function names to keep optional DSLs unloaded until needed.
 `default_config` can directly supply a fixed parameter dictionary;
-`capabilities` lists supported descriptor values and `validate_config` checks
-implementation parameters. Existing shape-dependent implementations may still
+`capabilities` lists supported descriptor values. Existing shape-dependent implementations may still
 use `configs(problem)`. An optional
 `supports(problem, config)` function can validate a configuration independently;
 when omitted, membership in the declared configurations is checked. An optional
@@ -267,6 +265,10 @@ The public entry checks shapes, batch/K/dtype consistency, devices and bias.
 Its descriptor records both A and B continuity independently. The native16
 implementation accepts A K/M-contiguous and B K/N-contiguous storage in all four
 combinations, and launches the existing kernel with the original strides without
-copying A to contiguous storage. Backend-specific dtype/layout capabilities are
-checked during implementation selection; configuration validation is separate
-from input validation. The selected complete params are passed to the kernel.
+copying A to contiguous storage. Backend-specific dtype/layout capabilities are checked during implementation
+selection. Parameter binding and compilation diagnose invalid launch options;
+there is no duplicate host parameter whitelist. The selected complete params
+are passed to the shared launcher in `triton/batched_gemm_a16w16.py`. The lazy
+adapter contains no grid construction or kernel launch. The implementation
+supports FP16/BF16 inputs and outputs; other precisions require their own
+backend implementation.

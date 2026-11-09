@@ -101,7 +101,7 @@ def _filter_launch_config(config: dict) -> dict:
 
 
 @functools.lru_cache
-def get_batched_gemm_bf16_configs(
+def get_batched_gemm_a16w16_configs(
     B: int, N: int, K: int, dtype_tag: str, layout: str = "tn"
 ) -> Optional[dict[int, Any]]:
     """Load the most specialized HCU table available for ``(B, N, K)``.
@@ -158,7 +158,7 @@ def _get_config(
     B: int = 1,
     layout: str = "tn",
 ) -> dict:
-    configs = get_batched_gemm_bf16_configs(B, N, K, _dtype_tag(dtype), layout)
+    configs = get_batched_gemm_a16w16_configs(B, N, K, _dtype_tag(dtype), layout)
     if configs:
         return _filter_launch_config(
             configs[min(configs.keys(), key=lambda x: abs(x - M))]
@@ -194,7 +194,7 @@ def _infer_weight_layout(x: torch.Tensor, w: torch.Tensor) -> str:
     }
 )
 @triton.jit
-def _batched_gemm_bf16_kernel(
+def _batched_gemm_a16w16_kernel(
     a_ptr,
     b_ptr,
     c_ptr,
@@ -320,7 +320,7 @@ def _batched_gemm_bf16_kernel(
     tl.store(c_ptrs, c, mask=c_mask)
 
 
-def batched_gemm_bf16(
+def batched_gemm_a16w16(
     x: torch.Tensor,
     w: torch.Tensor,
     bias: Optional[torch.Tensor] = None,
@@ -329,12 +329,12 @@ def batched_gemm_bf16(
     y: Optional[torch.Tensor] = None,
     config: Optional[dict] = None,
 ) -> torch.Tensor:
-    """Batched GEMM ``Y[i] = X[i] @ W[i]`` (+ optional bias).
+    """FP16/BF16 batched GEMM ``Y[i] = X[i] @ W[i].T`` (+ optional bias).
 
     Args:
         x: ``[B, M, K]`` BF16/FP16
-        w: logical ``[B, N, K]`` tensor. K-contiguous storage selects TN;
-            N-contiguous storage selects TT.
+        w: logical ``[B, N, K]`` tensor. Both operand strides are preserved.
+            Explicit configurations support A K/M-contiguous and B K/N-contiguous storage.
         bias: optional ``[B, 1, N]``
         dtype: output dtype (``bfloat16`` or ``float16``)
         splitK: must be ``None`` (unsupported on this Triton path)
@@ -343,15 +343,15 @@ def batched_gemm_bf16(
     """
     assert x.ndim == 3 and w.ndim == 3, "x and w must be rank-3 tensors"
     assert x.shape[0] == w.shape[0], "Incompatible Batch dimensions!!!"
-    layout = _infer_weight_layout(x, w)
-    x = x.contiguous()
+    assert x.shape[2] == w.shape[2], "Incompatible K dimensions"
 
     assert dtype in [
         torch.bfloat16,
         torch.float16,
-    ], f"Output {dtype=} is currently not supported in batched_gemm_bf16"
+    ], f"Output {dtype=} is currently not supported in batched_gemm_a16w16"
     assert splitK is None, "Currently, there isn't any support for splitK on Triton"
 
+    weight_layout = _infer_weight_layout(x, w) if config is None else None
     w = w.transpose(1, 2)
 
     B = x.shape[0]
@@ -364,9 +364,9 @@ def batched_gemm_bf16(
         y = torch.empty((B, M, N), dtype=dtype, device=x.device)
 
     if config is None:
-        config = _get_config(M, N, K, dtype, B=B, layout=layout)
+        config = _get_config(M, N, K, dtype, B=B, layout=weight_layout)
     else:
-        config = _filter_launch_config(config)
+        config = dict(config)
 
     # Triton needs a real pointer; unused when HAS_BIAS is False.
     bias_arg = bias if has_bias else y
@@ -382,7 +382,7 @@ def batched_gemm_bf16(
 
     config.setdefault("BATCH_LAST_GRID", False)
 
-    _batched_gemm_bf16_kernel[grid](
+    _batched_gemm_a16w16_kernel[grid](
         x,
         w,
         y,

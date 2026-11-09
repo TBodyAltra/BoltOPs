@@ -1,4 +1,4 @@
-"""Correctness tests for ``batched_gemm_bf16`` (aiter Triton batched A16W16)."""
+"""Correctness tests for ``batched_gemm_a16w16`` (aiter Triton batched A16W16)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 triton = pytest.importorskip("triton")
 
-from boltops.gemm.triton.batched_gemm_bf16 import batched_gemm_bf16  # noqa: E402
+from boltops.gemm.triton.batched_gemm_a16w16 import batched_gemm_a16w16  # noqa: E402
 
 DEVICE = "cuda"
 GPU_REQUIRED = pytest.mark.skipif(
@@ -50,7 +50,7 @@ def _assert_close(actual: torch.Tensor, expected: torch.Tensor) -> None:
 @pytest.mark.parametrize("B,M,N,K", _SHAPES)
 @pytest.mark.parametrize("prealloc", [False, True])
 @pytest.mark.parametrize("layout", ["tn", "tt"])
-def test_batched_gemm_bf16_correctness(
+def test_batched_gemm_a16w16_correctness(
     dtype: torch.dtype,
     use_bias: bool,
     B: int,
@@ -84,7 +84,7 @@ def test_batched_gemm_bf16_correctness(
         if layout == "tn"
         else w.transpose(1, 2).contiguous().transpose(1, 2)
     )
-    out = batched_gemm_bf16(
+    out = batched_gemm_a16w16(
         x, stored_w, bias, dtype=dtype, y=y, config=config
     )
     golden = _golden(x, w, bias, dtype)
@@ -93,15 +93,15 @@ def test_batched_gemm_bf16_correctness(
 
 
 @GPU_REQUIRED
-def test_batched_gemm_bf16_splitk_rejected():
+def test_batched_gemm_a16w16_splitk_rejected():
     x = torch.randn((2, 16, 32), dtype=torch.bfloat16, device=DEVICE)
     w = torch.randn((2, 64, 32), dtype=torch.bfloat16, device=DEVICE)
     with pytest.raises(AssertionError, match="splitK"):
-        batched_gemm_bf16(x, w, dtype=torch.bfloat16, splitK=2)
+        batched_gemm_a16w16(x, w, dtype=torch.bfloat16, splitK=2)
 
 
 @GPU_REQUIRED
-def test_batched_gemm_bf16_batch_last_grid():
+def test_batched_gemm_a16w16_batch_last_grid():
     """The rocBLAS-aligned grid order preserves batched GEMM semantics."""
     B, M, N, K = 3, 17, 48, 32
     x = torch.randn((B, M, K), dtype=torch.float16, device=DEVICE)
@@ -116,7 +116,7 @@ def test_batched_gemm_bf16_batch_last_grid():
         "num_stages": 2,
         "BATCH_LAST_GRID": True,
     }
-    out = batched_gemm_bf16(x, w, dtype=torch.float16, config=config)
+    out = batched_gemm_a16w16(x, w, dtype=torch.float16, config=config)
     torch.testing.assert_close(out, torch.bmm(x, w_kn), atol=1e-2, rtol=1e-2)
 
 
@@ -152,7 +152,7 @@ _BENCH_CASES = [
         for B, M, N, K, layout in _BENCH_CASES
     ],
 )
-def test_bench_batched_gemm_bf16(
+def test_bench_batched_gemm_a16w16(
     B: int,
     M: int,
     N: int,
@@ -163,7 +163,7 @@ def test_bench_batched_gemm_bf16(
     bench_repeat: int,
 ) -> None:
     """Time the shipped tuned config on both NT and TT layouts."""
-    from boltops.gemm.triton.batched_gemm_bf16 import _get_config
+    from boltops.gemm.triton.batched_gemm_a16w16 import _get_config
 
     torch.manual_seed(223)
     x = torch.randn((B, M, K), device=DEVICE, dtype=_BENCH_DTYPE) * 0.05
@@ -179,7 +179,7 @@ def test_bench_batched_gemm_bf16(
     config["BATCH_LAST_GRID"] = True
 
     def run() -> None:
-        batched_gemm_bf16(x, weight, dtype=_BENCH_DTYPE, y=output, config=config)
+        batched_gemm_a16w16(x, weight, dtype=_BENCH_DTYPE, y=output, config=config)
 
     run()
     assert output.shape == (B, M, N)
@@ -187,6 +187,6 @@ def test_bench_batched_gemm_bf16(
     ms = time_ms(run, bench_warmup, bench_repeat)
     flops = 2.0 * B * M * N * K
     print(
-        f"[bench] batched_gemm_bf16 {layout} B={B} M={M} N={N} K={K}: "
+        f"[bench] batched_gemm_a16w16 {layout} B={B} M={M} N={N} K={K}: "
         f"{ms:.6f} ms, {flops / (ms * 1e9):.2f} TFLOPS"
     )

@@ -57,7 +57,6 @@ IMPLEMENTATIONS = {
             'a_layout': ('k_contiguous', 'm_contiguous'),
             'b_layout': ('k_contiguous', 'n_contiguous'),
         },
-        'validate_config': 'validate_config',
     },
     'triton.grouped.native16': {
         'backend': 'triton',
@@ -171,10 +170,10 @@ def supports(name, problem, config):
             value = str(value).removeprefix("torch.")
         if value not in accepted:
             return False
-    if "validate_config" in row:
-        return getattr(import_module(row["module"]), row["validate_config"])(config.params)
     if "supports" in row:
         return getattr(import_module(row["module"]), row["supports"])(problem, config)
+    if "default_config" in row:
+        return True
     return config in _configs(name, problem)
 
 
