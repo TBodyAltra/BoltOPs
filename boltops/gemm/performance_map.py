@@ -31,24 +31,23 @@ def config_path(interface):
 
 
 def _validate_document(data, interface):
-    if data["schema_version"] != 6:
+    if data["schema_version"] != 7:
         raise ValueError("unsupported GEMM performance-map schema")
     if data["interface"] != f"gemm_{interface}":
         raise ValueError(f"configuration file must belong to gemm_{interface}")
-    order = data["default_backends"]
-    if not isinstance(order, list) or len(order) != len(_BACKENDS) or set(order) != set(_BACKENDS):
-        raise ValueError("default_backends must list triton, gluon and tilelang exactly once")
+    if set(data) != {"schema_version", "interface", "entries"}:
+        raise ValueError("GEMM document requires schema_version, interface and entries only")
     if not isinstance(data["entries"], list):
         raise ValueError("GEMM entries must be a list")
     for entry in data["entries"]:
+        if set(entry) != {"match", "config"}:
+            raise ValueError("GEMM entry requires match and config only")
         if set(entry["config"]) != {"backend", "implementation", "params"}:
             raise ValueError("configuration requires backend, implementation and params only")
         entry_config(entry)
         _validate_condition(entry["match"], _PROBLEM_SCHEMA)
         if not {"arch", "num_cus"}.issubset(entry["match"]):
             raise ValueError("GEMM match requires explicit arch and num_cus")
-        if type(entry.get("priority", 0)) is not int:
-            raise ValueError("GEMM winner priority must be an integer")
         if entry["config"]["backend"] not in _BACKENDS:
             raise ValueError("unknown backend in GEMM winner configuration")
     return data
@@ -69,10 +68,6 @@ def clear_cache():
 
 def _entries(interface):
     return document(interface)["entries"]
-
-
-def default_backends(interface):
-    return tuple(document(interface)["default_backends"])
 
 
 def _json_value(value):

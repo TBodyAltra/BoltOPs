@@ -11,7 +11,7 @@ from boltops.gemm.descriptors import KernelConfig
 @pytest.fixture
 def add_impl(monkeypatch):
     monkeypatch.setattr(dispatch, 'available', lambda backend: True)
-    def add(name, backend='triton', interface='scaled', configs=None, supports=None, default_priority=0):
+    def add(name, backend='triton', interface='scaled', configs=None, supports=None):
         tile = KernelConfig(32, 64, 32)
         module_name = '_gemm_table_test_' + name.replace('.', '_')
         module = SimpleNamespace(configs=configs or (lambda p: (tile,)),
@@ -21,7 +21,6 @@ def add_impl(monkeypatch):
         monkeypatch.setitem(dispatch.IMPLEMENTATIONS, name, {
             'backend': backend, 'interface': interface, 'module': module_name,
             'configs': 'configs', 'supports': 'supports', 'launcher': 'launch',
-            'default_priority': default_priority,
         })
         return name
     return add

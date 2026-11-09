@@ -26,6 +26,14 @@ IMPLEMENTATIONS = {
         'launcher': 'gemm_a16w16',
         'configs': '_general_configurations',
     },
+    'triton.block_scaled': {
+        'backend': 'triton',
+        'interface': 'scaled',
+        'module': 'boltops.gemm.triton.gemm_block_scaled',
+        'launcher': 'launch_gemm_block_scaled',
+        'configs': 'generic_configs',
+        'supports': 'supports_generic',
+    },
     'triton.scaled.block_fp8': {
         'backend': 'triton',
         'interface': 'scaled',
@@ -89,14 +97,6 @@ IMPLEMENTATIONS = {
         'module': 'boltops.gemm.triton.batched_gemm_a16wfp4',
         'launcher': 'batched_gemm_a16wfp4',
         'configs': '_fp4_configs',
-    },
-    'triton.block_scaled': {
-        'backend': 'triton',
-        'interface': 'scaled',
-        'module': 'boltops.gemm.triton.gemm_block_scaled',
-        'launcher': 'launch_gemm_block_scaled',
-        'configs': 'generic_configs',
-        'supports': 'supports_generic',
     },
     'triton.scaled.fp8_fp4': {
         'backend': 'triton',
@@ -192,11 +192,7 @@ def supports(name, problem, config):
 
 
 def candidate_plans(problem, names=None, *, backend="auto", tuning=False):
-    from .performance_map import default_backends
-    order = default_backends(problem.interface)
-    choices = sorted(_names(problem, names, backend), key=lambda name: (
-        order.index(IMPLEMENTATIONS[name]["backend"]),
-        -IMPLEMENTATIONS[name].get("default_priority", 0), name))
+    choices = _names(problem, names, backend)
     for name in choices:
         seen = set()
         for config in _configs(name, problem, tuning):
@@ -211,16 +207,11 @@ def select_plan(problem, names=None, *, backend="auto"):
     owners = {IMPLEMENTATIONS[name]["backend"] for name in choices}
     records = [e for e in matching_entries(problem, backend=backend) if e["config"]["backend"] in owners]
     if records:
-        priority = max(e.get("priority", 0) for e in records)
-        winners = [e for e in records if e.get("priority", 0) == priority]
-        if len(winners) != 1:
-            labels = [f'{e["config"]["backend"]}:{e["config"]["implementation"]}' for e in winners]
-            raise ValueError(f"conflicting GEMM winners at priority {priority}: {labels}")
-        c = winners[0]["config"]
+        c = records[0]["config"]
         name = c["implementation"]
         if name not in choices or IMPLEMENTATIONS[name]["backend"] != c["backend"]:
             raise ValueError(f"GEMM winner must identify one registered implementation: {c}")
-        config = entry_config(winners[0])
+        config = entry_config(records[0])
         if not supports(name, problem, config):
             raise ValueError(f"recorded GEMM winner is unsupported: {c}")
         return ExecutionPlan(name, config)

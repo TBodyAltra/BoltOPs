@@ -57,7 +57,7 @@ compile/execute failure. Unsupported combinations raise NotImplementedError;
 a registered backend missing its runtime raises ImportError. Gluon retains the optimized E4M3FN/FP32 scale recipe. TileLang currently has no implementation rows.
 
 The five files are `gemm_dense.json`, `gemm_scaled.json`, `gemm_batched.json`,
-`gemm_grouped.json`, and `gemm_batched_a16wfp4_online_quant.json`. Each carries its interface identifier. Schema 6
+`gemm_grouped.json`, and `gemm_batched_a16wfp4_online_quant.json`. Each carries its interface identifier. Schema 7
 separates `match` (arch, num_cus, MNK, dtype/scale/layout contracts) from
 `config` (backend, implementation, tile and optional existing config file).
 Tile is not a matching condition. No measurements, frequency, commit IDs or
@@ -104,44 +104,23 @@ Configuration queries and the launch function live in the actual implementation
 module; there is no intermediate adapter file. The selected plan contains an
 implementation name string and its configuration, not a registration object.
 
-## Winner selection and default policy
+## Selection order
 
-Schema 6 configuration files explicitly declare a default backend order:
+Schema 7 files contain only `schema_version`, `interface`, and `entries`.
+Each entry contains `match` and `config` (backend, implementation and full params).
+Entries are checked in file order. The first matching entry for an available
+backend is used. Put exact-shape exceptions before broad rules. A selected
+stale/unsupported configuration is an error; launch failures propagate.
 
-```json
-{
-  "schema_version": 6,
-  "interface": "gemm_batched",
-  "default_backends": ["triton", "gluon", "tilelang"],
-  "entries": []
-}
-```
+If no record matches, implementations are tried in the order declared in the
+single implementation table. The first supported default is selected, skipping
+unavailable backends. Shape-dependent default configuration is computed by the
+implementation. With no supported implementation, the call raises an error.
+An explicit `backend=` restricts both steps to that backend.
 
-Every entry names one measured winner (`config.backend`, `implementation`,
-complete `params` object). An entry's integer `priority` defaults
-to zero; larger values override lower-priority matching records. This is an
-explicit routing priority, not a timing measurement or a heuristic for tile
-size. Exact-shape exceptions to a broader range should use a higher priority.
-
-`auto` gathers matching records across available backends before choosing an
-implementation. There must be exactly one highest-priority match. Equal-ranked
-overlapping records, including duplicate copies, raise a configuration error;
-JSON order and provider registration order cannot choose a winner. A selected
-record whose implementation/configuration is stale or unsupported also raises
-an error, rather than disguising it as a default selection.
-
-A record for an unavailable backend cannot be used. With no usable record,
-selection follows the interface's `default_backends` list, skipping unavailable
-or unsupported implementations. Within a backend, the larger `default_priority` in the implementation table
-wins, then implementation name provides a stable tie order. Candidate config order is owned by that implementation.
-An explicit `backend=` filters records and defaults to only that backend.
-Compilation/execution failures of a normal launch still propagate unchanged.
-
-Recorded matches can describe dense, batched, grouped and packed/scaled
-operations: exact shapes, batch/group metadata, operand packing/strides,
-scale recipe/encoding, quantization and bias. Existing native-dense
-range contracts remain supported. No implicit specificity score is used;
-conflicting exact/range rules need explicit priorities.
+There is no backend-priority list or numeric rule/implementation priority.
+The table's default order is visible in the source; the optional `names`
+argument restricts implementations without reordering them.
 
 ## Explicit autotune utility
 
@@ -172,16 +151,16 @@ result = autotune(
 The lower positive finite metric wins. Validation is mandatory and runs before
 measurement. Failed candidates retain their error in `result.trials` and cannot
 win; all-failed tuning raises without publishing a record. This failure loop
-exists only in explicit tuning, not normal dispatch. Metric ties follow the
-explicit default policy. The utility compares declared legal candidates; it
+exists only in explicit tuning, not normal dispatch. Metric ties keep the
+first validated trial with that score. The utility compares declared legal candidates; it
 does not generate a full tile scan. Table rows may name a separate
 `tuning_configs` function when their tuning pool differs from defaults;
 callers may also explicitly supply a `plans` list.
 
 Omit `output_path` for an in-memory result only. Same-host, same-user writers
 use an external lock to preserve concurrent updates. Publishing atomically updates
-one exact-shape winner, preserves unrelated records, and assigns enough
-priority to override overlapping broader rules. Repeat tuning replaces the
+one exact-shape winner at the start of the list and preserves the relative
+order of other records. Repeat tuning replaces the
 same exact match without accumulating duplicates. Measurements/errors stay in
 the result and are never written into the JSON.
 
@@ -195,7 +174,7 @@ scan is run as part of ordinary regression validation.
 
 ## Generic match conditions
 
-Schema 6 matches the attributes of `GemmProblem` directly. Nested objects use
+Schema 7 matches the attributes of `GemmProblem` directly. Nested objects use
 partial matching; omitted fields are unconstrained. Arrays and null are exact
 values. Dtypes use names without the `torch.` prefix. For example:
 

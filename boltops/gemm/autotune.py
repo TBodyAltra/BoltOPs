@@ -12,7 +12,6 @@ import os
 from pathlib import Path
 import tempfile
 
-from . import dispatch
 from .dispatch import ExecutionPlan, candidate_plans, supports
 
 
@@ -66,7 +65,7 @@ def save_winner(problem, plan, path):
 
 def _save_winner(problem, plan, path):
     """Atomically publish configuration only, keeping unrelated records intact."""
-    from .performance_map import (document, _validate_document, _matches,
+    from .performance_map import (document, _validate_document,
                                   exact_match, clear_cache)
     if not supports(plan.implementation, problem, plan.config):
         raise ValueError("cannot save an unsupported GEMM plan")
@@ -77,17 +76,12 @@ def _save_winner(problem, plan, path):
             deepcopy(document(problem.interface)))
     _validate_document(data, problem.interface)
     match = exact_match(problem)
-    # Exact re-tunes replace their record. Explicit overrides of broader ranges
-    # outrank those ranges; repeated saves do not grow priority indefinitely.
-    old_exact = [e for e in data['entries'] if e['match'] == match]
+    # Put the exact winner before broader rules; preserve other rules' order.
     others = [e for e in data['entries'] if e['match'] != match]
-    overlaps = [e.get('priority', 0) for e in others if _matches(problem, e['match'])]
-    priority = max([e.get('priority', 0) for e in old_exact] +
-                   [max(overlaps) + 1 if overlaps else 0])
     c = plan.config
     config = {'backend': plan.backend, 'implementation': plan.implementation,
               'params': c.params}
-    data['entries'] = others + [{'match': match, 'priority': priority, 'config': config}]
+    data['entries'] = [{'match': match, 'config': config}] + others
     target.parent.mkdir(parents=True, exist_ok=True)
     mode = target.stat().st_mode & 0o777 if target.exists() else 0o644
     temporary = None
@@ -123,7 +117,6 @@ def autotune(problem, *, benchmark, validate, plans=None, names=None,
     scores and errors stay in the result, not the configuration file.
     """
     from .dispatch import validate_backend
-    from .performance_map import default_backends
     validate_backend(backend)
     if not callable(validate) or not callable(benchmark):
         raise TypeError('autotune requires explicit validation and benchmark callbacks')
@@ -159,12 +152,7 @@ def autotune(problem, *, benchmark, validate, plans=None, names=None,
     if not valid:
         errors = [f'{t.plan.implementation}: {t.error}' for t in trials]
         raise RuntimeError(f'no validated GEMM tuning candidate: {errors}')
-    order = default_backends(problem.interface)
-    best = min(valid, key=lambda t: (t.score, order.index(t.plan.backend),
-                                    -dispatch.IMPLEMENTATIONS[t.plan.implementation].get("default_priority", 0),
-                                    t.plan.implementation,
-                                    t.plan.config.block_m, t.plan.config.block_n,
-                                    t.plan.config.block_k, t.plan.config._params_json))
+    best = min(valid, key=lambda t: t.score)
     if output_path is not None:
         save_winner(problem, best.plan, output_path)
     return AutotuneResult(best.plan, tuple(trials))

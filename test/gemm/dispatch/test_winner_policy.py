@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
-"""Backend order cannot override a measured winner or hide ambiguous records."""
+"""First-match records and table-order defaults use one visible ordering."""
 from dataclasses import replace
 from copy import deepcopy
 import itertools
@@ -23,8 +23,8 @@ def policy(tmp_path, monkeypatch):
     maps.clear_cache()
     for name in ('dense', 'scaled', 'batched', 'grouped', 'batched_a16wfp4_online_quant'):
         (tmp_path / f'gemm_{name}.json').write_text(json.dumps({
-            'schema_version': 6, 'interface': f'gemm_{name}',
-            'default_backends': ['triton', 'gluon', 'tilelang'], 'entries': []}))
+            'schema_version': 7, 'interface': f'gemm_{name}',
+            'entries': []}))
     yield tmp_path
     maps.clear_cache()
 
@@ -42,18 +42,16 @@ def choices(add_impl):
     return tuple(add_impl(f'{b}.test', backend=b) for b in ('triton', 'gluon', 'tilelang'))
 
 
-def record(p, impl, *, priority=0):
-    return {'match': maps.exact_match(p), 'priority': priority,
+def record(p, impl):
+    return {'match': maps.exact_match(p),
             'config': {'backend': dispatch.IMPLEMENTATIONS[impl]['backend'], 'implementation': impl,
                        'params': KernelConfig(32, 64, 32).params}}
 
 
-def write(policy, p, entries, order=None):
+def write(policy, p, entries):
     path = policy / f'gemm_{p.interface}.json'
     data = json.loads(path.read_text())
     data['entries'] = entries
-    if order is not None:
-        data['default_backends'] = order
     path.write_text(json.dumps(data))
     maps.clear_cache()
     return path
@@ -67,36 +65,35 @@ def test_measured_winner_is_independent_of_registration_order(policy, order, cho
 
 
 @pytest.mark.parametrize('reverse', [False, True])
-def test_ambiguous_records_fail_even_when_the_first_one_is_supported(policy, reverse, choices):
+def test_first_matching_record_wins(policy, reverse, choices):
     p = problem()
     records = [record(p, choices[0]), record(p, choices[1])]
-    write(policy, p, records[::-1] if reverse else records)
-    with pytest.raises(ValueError, match='conflicting GEMM winners'):
-        select_plan(p, choices)
+    records = records[::-1] if reverse else records
+    write(policy, p, records)
+    assert select_plan(p, choices).implementation == records[0]['config']['implementation']
     assert select_plan(p, choices, backend='gluon').implementation == choices[1]
 
 
-def test_explicit_record_priority_overrides_broader_record(policy, choices):
+def test_exact_exception_goes_before_broad_rule(policy, choices):
     p = problem()
     broad = record(p, choices[0])
     broad['match'].update(m={'multiple_of': 16}, n={'multiple_of': 32}, k={'min': 32})
-    write(policy, p, [broad, record(p, choices[2], priority=10)])
+    write(policy, p, [record(p, choices[2]), broad])
     assert select_plan(p, choices).implementation == choices[2]
+    assert select_plan(replace(p, m=48), choices).implementation == choices[0]
 
 
-def test_defaults_follow_interface_policy_not_registration_order(policy, choices):
+def test_defaults_follow_implementation_table_order(policy, choices):
     p = problem()
-    write(policy, p, [], order=['tilelang', 'gluon', 'triton'])
-    assert select_plan(p, choices).implementation == choices[2]
-    assert select_plan(p, choices[::-1]).implementation == choices[2]
+    assert select_plan(p, choices).implementation == choices[0]
+    assert select_plan(p, choices[::-1]).implementation == choices[0]
 
 
-def test_defaults_have_stable_implementation_preference(policy, choices, add_impl):
+def test_default_order_is_not_alphabetical(policy, choices, add_impl):
     p = problem()
-    preferred = add_impl('zz', default_priority=10)
-    other = add_impl('aa')
-    assert select_plan(p, (other, preferred)).implementation == preferred
-    assert select_plan(p, (preferred, other)).implementation == preferred
+    first = add_impl('zz')
+    second = add_impl('aa')
+    assert select_plan(p, (second, first)).implementation == first
 
 
 @pytest.mark.parametrize('what', ['unknown_implementation', 'unsupported_tile'])
@@ -117,19 +114,22 @@ def test_unavailable_backend_record_uses_available_defaults(policy, choices):
 
 
 @pytest.mark.parametrize('order', [['triton', 'triton', 'gluon'], ['gluon'], 'triton'])
-def test_invalid_default_policy_fails(policy, order, choices):
+def test_removed_policy_fields_are_rejected(policy, order, choices):
     p = problem()
-    write(policy, p, [], order=order)
-    with pytest.raises(ValueError, match='default_backends'):
+    path = write(policy, p, [])
+    data = json.loads(path.read_text())
+    data['default_backends'] = order
+    path.write_text(json.dumps(data))
+    maps.clear_cache()
+    with pytest.raises(ValueError, match='entries only'):
         select_plan(p, choices)
 
 
-def test_duplicate_identical_winners_are_an_explicit_configuration_error(policy, choices):
+def test_duplicate_identical_rules_do_not_change_first_match(policy, choices):
     p = problem()
     entry = record(p, choices[0])
     write(policy, p, [entry, deepcopy(entry)])
-    with pytest.raises(ValueError, match='conflicting GEMM winners'):
-        select_plan(p, choices)
+    assert select_plan(p, choices).implementation == choices[0]
 
 
 def test_autotune_requires_validation_and_never_runs_from_auto(policy, choices):
@@ -178,7 +178,7 @@ def test_tuning_writes_one_exact_winner_without_measurements(policy, choices):
     assert result.winner.implementation == choices[1]
     data = json.loads(path.read_text())
     assert len(data['entries']) == 1
-    assert set(data['entries'][0]) == {'match', 'config', 'priority'}
+    assert set(data['entries'][0]) == {'match', 'config'}
     assert set(data['entries'][0]['config']) == {'backend', 'implementation', 'params'}
     assert select_plan(p, choices[::-1]).implementation == choices[1]
     save_winner(p, result.winner, path)
@@ -194,20 +194,19 @@ def test_tuned_exact_override_preserves_other_shapes_and_range_record(policy, ch
     plan = ExecutionPlan(choices[1], KernelConfig(32, 64, 32))
     save_winner(p, plan, path)
     data = json.loads(path.read_text())
-    assert data['entries'][:2] == [broad, unrelated]
-    assert data['entries'][2]['priority'] == 1
+    assert data['entries'][1:] == [broad, unrelated]
+    assert data['entries'][0]['config']['implementation'] == choices[1]
     assert select_plan(p, choices).implementation == choices[1]
     assert select_plan(replace(p, m=48), choices).implementation == choices[0]
 
 
-def test_explicit_tuning_limits_backend_and_metric_ties_use_policy(policy, choices):
+def test_explicit_tuning_limits_backend_and_ties_keep_trial_order(policy, choices):
     p = problem()
     result = autotune(p, names=choices[::-1], validate=lambda plan: True,
                       benchmark=lambda plan: 1, backend='gluon')
     assert len(result.trials) == 1 and result.winner.implementation == choices[1]
-    write(policy, p, [], order=['tilelang', 'triton', 'gluon'])
     result = autotune(p, names=choices, validate=lambda plan: True, benchmark=lambda plan: 1)
-    assert result.winner.implementation == choices[2]
+    assert result.winner.implementation == choices[0]
 
 
 def test_override_directory_is_optional_per_interface(policy, tmp_path, monkeypatch, choices):
@@ -215,7 +214,7 @@ def test_override_directory_is_optional_per_interface(policy, tmp_path, monkeypa
     override.mkdir()
     p = problem()
     data = json.loads((policy / 'gemm_scaled.json').read_text())
-    data['default_backends'] = ['gluon', 'tilelang', 'triton']
+    data['entries'] = [record(p, choices[1])]
     (override / 'gemm_scaled.json').write_text(json.dumps(data))
     monkeypatch.setenv('BOLTOPS_GEMM_CONFIG_DIR', str(override))
     assert select_plan(p, choices).backend == 'gluon'
@@ -309,3 +308,12 @@ def test_tuning_publishes_complete_non_tile_parameters(policy, add_impl):
     assert saved['params'] == config.params
     assert set(saved) == {'backend', 'implementation', 'params'}
     assert select_plan(p, names=(name,)) == result.winner
+
+
+def test_removed_entry_priority_is_rejected(policy, choices):
+    p = problem()
+    entry = record(p, choices[0])
+    entry['priority'] = 1
+    write(policy, p, [entry])
+    with pytest.raises(ValueError, match='match and config only'):
+        select_plan(p, choices)
