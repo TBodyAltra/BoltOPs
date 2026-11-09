@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: MIT
 """GEMM semantics shared across dense, batched and grouped implementations."""
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 import torch
 
@@ -12,7 +13,7 @@ class KernelConfig:
     block_m: int
     block_n: int
     block_k: int
-    source_config: str | None = None
+    source_config: Optional[str] = None
 
     def __post_init__(self):
         if any(type(v) is not int or v <= 0 for v in (self.block_m, self.block_n, self.block_k)):
@@ -30,11 +31,11 @@ class ScaleSpec:
 class OperandSpec:
     storage_dtype: torch.dtype
     format: str = "native"
-    packing: str | None = None
-    pack_axis: int | None = None
+    packing: Optional[str] = None
+    pack_axis: Optional[int] = None
     values_per_storage: int = 1
-    zero_point_dtype: torch.dtype | None = None
-    strides: tuple[int, ...] | None = None
+    zero_point_dtype: Optional[torch.dtype] = None
+    strides: Optional[tuple[int, ...]] = None
 
     def __post_init__(self):
         if self.format == "native":
@@ -68,17 +69,25 @@ class GemmProblem:
     b: OperandSpec
     out_dtype: torch.dtype
     arch: str
-    a_scale: ScaleSpec | None = None
-    b_scale: ScaleSpec | None = None
+    a_scale: Optional[ScaleSpec] = None
+    b_scale: Optional[ScaleSpec] = None
     batch: int = 1
-    groups: GroupSpec | None = None
+    groups: Optional[GroupSpec] = None
     a_aligned_16: bool = True
     b_aligned_16: bool = True
-    num_cus: int | None = None
-    activation_quantization: str | None = None
+    num_cus: Optional[int] = None
+    activation_quantization: Optional[str] = None
     has_bias: bool = False
+    a_layout: Optional[str] = field(init=False, default=None)
+    b_layout: Optional[str] = field(init=False, default=None)
 
     def __post_init__(self):
+        if self.kind == "dense":
+            object.__setattr__(self, "a_layout",
+                               "k_contiguous" if self.a.strides == (self.k, 1) else "strided")
+            object.__setattr__(self, "b_layout",
+                               "k_contiguous" if self.b.strides == (self.k, 1) else
+                               "n_contiguous" if self.b.strides == (1, self.n) else "strided")
         if self.num_cus is not None and (type(self.num_cus) is not int or self.num_cus <= 0):
             raise ValueError("num_cus must be a positive integer when specified")
         if self.kind not in ("dense", "batched", "grouped") or min(self.m, self.n, self.k) < 0:

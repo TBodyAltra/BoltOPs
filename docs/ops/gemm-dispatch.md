@@ -57,7 +57,7 @@ compile/execute failure. Unsupported combinations raise NotImplementedError;
 a registered backend missing its runtime raises ImportError. Gluon retains the optimized E4M3FN/FP32 scale recipe. TileLang currently has no implementation rows.
 
 The five files are `gemm_dense.json`, `gemm_scaled.json`, `gemm_batched.json`,
-`gemm_grouped.json`, and `gemm_batched_a16wfp4_online_quant.json`. Each carries its interface identifier. Schema 4
+`gemm_grouped.json`, and `gemm_batched_a16wfp4_online_quant.json`. Each carries its interface identifier. Schema 5
 separates `match` (arch, num_cus, MNK, dtype/scale/layout contracts) from
 `config` (backend, implementation, tile and optional existing config file).
 Tile is not a matching condition. No measurements, frequency, commit IDs or
@@ -100,11 +100,11 @@ implementation name string and its configuration, not a registration object.
 
 ## Winner selection and default policy
 
-Schema 4 configuration files explicitly declare a default backend order:
+Schema 5 configuration files explicitly declare a default backend order:
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "interface": "gemm_batched",
   "default_backends": ["triton", "gluon", "tilelang"],
   "entries": []
@@ -185,3 +185,41 @@ the packaged file. A successful publish clears the local config cache; after
 manual external edits, call `performance_map.clear_cache()` or restart the
 process. Tests for this utility use synthetic metrics; no broad PMD autotune
 scan is run as part of ordinary regression validation.
+
+
+## Generic match conditions
+
+Schema 5 matches the attributes of `GemmProblem` directly. Nested objects use
+partial matching; omitted fields are unconstrained. Arrays and null are exact
+values. Dtypes use names without the `torch.` prefix. For example:
+
+```json
+{
+  "arch": "gfx946",
+  "num_cus": 48,
+  "a": {"storage_dtype": "float8_e4m3fn", "format": "native"},
+  "b": {"storage_dtype": "float8_e4m3fn", "format": "native"},
+  "out_dtype": "bfloat16",
+  "a_scale": {"dtype": "float32", "block": [1, 128], "encoding": "numeric"},
+  "b_scale": {"dtype": "float32", "block": [128, 128], "encoding": "numeric"},
+  "m": {"multiple_of": 128},
+  "n": {"min": 256, "multiple_of": 256},
+  "k": {"min": 256, "max": 6144, "multiple_of": 256}
+}
+```
+
+All specified conditions must hold. Inclusive `min`/`max` and positive integer
+`multiple_of` work on any numeric attribute, including batch/group counts and
+CU count. Boolean values are distinct from numbers. Unknown fields/operators,
+invalid divisors and reversed ranges raise errors, even if another condition
+would not match. Each JSON rule must explicitly include `arch` and `num_cus`.
+
+Attributes and the valid field schema are derived recursively from the data
+classes, including optional scale/group objects. Adding a data-class field does
+not require another matcher branch. `a_layout`/`b_layout` describe dense operand
+contiguity; exact recorded winners also contain operand strides. Exact winner
+publication uses this same attribute dictionary.
+
+Schema 4 is rejected. Packaged rules have been migrated with their formerly
+implicit native-format, no-bias, alignment, batch/group and layout restrictions
+written explicitly; no hidden defaults are applied by the generic matcher.

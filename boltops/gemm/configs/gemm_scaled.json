@@ -1,41 +1,64 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "interface": "gemm_scaled",
   "entries": [
     {
       "match": {
         "arch": "gfx946",
-        "dtypes": [
-          "float8_e4m3fn",
-          "float8_e4m3fn",
-          "bfloat16"
-        ],
-        "scales": [
-          {
-            "dtype": "float32",
-            "block": [
-              1,
-              128
-            ],
-            "encoding": "numeric"
-          },
-          {
-            "dtype": "float32",
-            "block": [
-              128,
-              128
-            ],
-            "encoding": "numeric"
-          }
-        ],
-        "shape_contract": {
-          "m_multiple": 128,
-          "n_multiple": 256,
-          "k_multiple": 256,
-          "k_min": 256,
-          "k_max": 6144
+        "num_cus": 48,
+        "kind": "dense",
+        "out_dtype": "bfloat16",
+        "has_bias": false,
+        "batch": 1,
+        "groups": null,
+        "activation_quantization": null,
+        "a_aligned_16": true,
+        "b_aligned_16": true,
+        "a": {
+          "storage_dtype": "float8_e4m3fn",
+          "format": "native",
+          "packing": null,
+          "pack_axis": null,
+          "values_per_storage": 1,
+          "zero_point_dtype": null
         },
-        "num_cus": 48
+        "a_layout": "k_contiguous",
+        "b": {
+          "storage_dtype": "float8_e4m3fn",
+          "format": "native",
+          "packing": null,
+          "pack_axis": null,
+          "values_per_storage": 1,
+          "zero_point_dtype": null
+        },
+        "b_layout": "k_contiguous",
+        "a_scale": {
+          "dtype": "float32",
+          "block": [
+            1,
+            128
+          ],
+          "encoding": "numeric"
+        },
+        "b_scale": {
+          "dtype": "float32",
+          "block": [
+            128,
+            128
+          ],
+          "encoding": "numeric"
+        },
+        "m": {
+          "multiple_of": 128
+        },
+        "n": {
+          "multiple_of": 256
+        },
+        "k": {
+          "min": 256,
+          "max": 6144,
+          "multiple_of": 256
+        }
       },
       "config": {
         "implementation": "gluon.fp8e4m3fn.fp32scale.a1x128_b128x128.to_bf16",

@@ -23,7 +23,7 @@ def policy(tmp_path, monkeypatch):
     maps.clear_cache()
     for name in ('dense', 'scaled', 'batched', 'grouped', 'batched_a16wfp4_online_quant'):
         (tmp_path / f'gemm_{name}.json').write_text(json.dumps({
-            'schema_version': 4, 'interface': f'gemm_{name}',
+            'schema_version': 5, 'interface': f'gemm_{name}',
             'default_backends': ['triton', 'gluon', 'tilelang'], 'entries': []}))
     yield tmp_path
     maps.clear_cache()
@@ -79,7 +79,7 @@ def test_ambiguous_records_fail_even_when_the_first_one_is_supported(policy, rev
 def test_explicit_record_priority_overrides_broader_record(policy, choices):
     p = problem()
     broad = record(p, choices[0])
-    broad['match']['shape_contract'] = {'m_multiple': 16, 'n_multiple': 32, 'k_min': 32}
+    broad['match'].update(m={'multiple_of': 16}, n={'multiple_of': 32}, k={'min': 32})
     write(policy, p, [broad, record(p, choices[2], priority=10)])
     assert select_plan(p, choices).implementation == choices[2]
 
@@ -188,7 +188,7 @@ def test_tuning_writes_one_exact_winner_without_measurements(policy, choices):
 def test_tuned_exact_override_preserves_other_shapes_and_range_record(policy, choices):
     p = problem()
     broad = record(p, choices[0])
-    broad['match']['shape_contract'] = {'m_multiple': 16}
+    broad['match']['m'] = {'multiple_of': 16}
     unrelated = record(replace(p, n=128), choices[0])
     path = write(policy, p, [broad, unrelated])
     plan = ExecutionPlan(choices[1], KernelConfig(32, 64, 32))
@@ -275,7 +275,7 @@ def test_parallel_publications_preserve_other_workers_records(policy, choices):
         list(pool.map(lambda m: save_winner(replace(base, m=m), plan, target), range(16, 32)))
     data = json.loads(target.read_text())
     assert len(data['entries']) == 16
-    assert {e['match']['shape_contract']['m'] for e in data['entries']} == set(range(16, 32))
+    assert {e['match']['m'] for e in data['entries']} == set(range(16, 32))
 
 
 def test_auto_does_not_import_unavailable_backend(policy, monkeypatch, choices):
