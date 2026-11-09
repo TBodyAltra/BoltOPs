@@ -87,7 +87,10 @@ from importlib import import_module
 for row in IMPLEMENTATIONS.values():
     module = import_module(row['module'])
     assert callable(getattr(module, row['launcher']))
-    assert callable(getattr(module, row['configs']))
+    if 'configs' in row:
+        assert callable(getattr(module, row['configs']))
+    else:
+        assert isinstance(row['default_config'], dict)
     if 'supports' in row:
         assert callable(getattr(module, row['supports']))
 '''

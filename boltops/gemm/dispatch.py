@@ -45,7 +45,19 @@ IMPLEMENTATIONS = {
         'interface': 'batched',
         'module': 'boltops.gemm.triton.batched',
         'launcher': 'launch_native',
-        'configs': '_native_configs',
+        'default_config': {
+            'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 32,
+            'GROUP_SIZE_M': 1, 'num_warps': 8, 'num_stages': 2,
+            'BATCH_LAST_GRID': False,
+        },
+        'capabilities': {
+            'input_dtype': ('float16', 'bfloat16'),
+            'out_dtype': ('float16', 'bfloat16'),
+            'native_operands': (True,), 'unscaled': (True,),
+            'a_layout': ('k_contiguous', 'm_contiguous'),
+            'b_layout': ('k_contiguous', 'n_contiguous'),
+        },
+        'validate_config': 'validate_config',
     },
     'triton.grouped.native16': {
         'backend': 'triton',
@@ -143,7 +155,9 @@ def _names(problem, names, backend):
 
 def _configs(name, problem, tuning=False):
     row = IMPLEMENTATIONS[name]
-    function = row.get("tuning_configs", row["configs"]) if tuning else row["configs"]
+    if "default_config" in row and not (tuning and "tuning_configs" in row):
+        return (KernelConfig.from_params(row["default_config"]),)
+    function = row["tuning_configs"] if tuning and "tuning_configs" in row else row["configs"]
     return getattr(import_module(row["module"]), function)(problem)
 
 
@@ -151,6 +165,14 @@ def supports(name, problem, config):
     row = IMPLEMENTATIONS[name]
     if row["interface"] != problem.interface:
         return False
+    for field, accepted in row.get("capabilities", {}).items():
+        value = getattr(problem, field)
+        if str(value).startswith("torch."):
+            value = str(value).removeprefix("torch.")
+        if value not in accepted:
+            return False
+    if "validate_config" in row:
+        return getattr(import_module(row["module"]), row["validate_config"])(config.params)
     if "supports" in row:
         return getattr(import_module(row["module"]), row["supports"])(problem, config)
     return config in _configs(name, problem)

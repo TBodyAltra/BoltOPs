@@ -26,14 +26,16 @@ def test_public_surface_has_no_legacy_duplicates():
 
 @pytest.mark.parametrize('dtype', [torch.float16, torch.bfloat16])
 @pytest.mark.parametrize('n_contiguous', [False, True])
-def test_batched_native(dtype, n_contiguous):
+@pytest.mark.parametrize('m_contiguous', [False, True])
+def test_batched_native(dtype, n_contiguous, m_contiguous):
     require_hcu()
     torch.manual_seed(631)
     a = (torch.randint(-2, 3, (2, 3, 32)).float() / 4).to(dtype)
     b = (torch.randint(-2, 3, (2, 5, 32)).float() / 4).to(dtype)
     weight = b.transpose(1, 2).contiguous().transpose(1, 2) if n_contiguous else b
     bias = torch.full((2, 1, 5), .25, dtype=dtype)
-    y = gemm.gemm_batched(a.cuda(), weight.cuda(), bias=bias.cuda())
+    activation = a.transpose(1, 2).contiguous().transpose(1, 2) if m_contiguous else a
+    y = gemm.gemm_batched(activation.cuda(), weight.cuda(), bias=bias.cuda())
     torch.testing.assert_close(y.cpu(), (torch.bmm(a.float(), b.float().transpose(1, 2)) + bias).to(dtype), atol=0, rtol=0)
 
 

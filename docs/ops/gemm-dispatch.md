@@ -80,13 +80,22 @@ IMPLEMENTATIONS = {
         "interface": "batched",
         "module": "boltops.gemm.triton.batched",
         "launcher": "launch_native",
-        "configs": "_native_configs",
+        "default_config": {
+            "BLOCK_SIZE_M": 128, "BLOCK_SIZE_N": 128, "BLOCK_SIZE_K": 32,
+            "GROUP_SIZE_M": 1, "num_warps": 8, "num_stages": 2,
+            "BATCH_LAST_GRID": False
+        },
+        "capabilities": {"input_dtype": ("float16", "bfloat16")},
+        "validate_config": "validate_config",
     },
 }
 ```
 
 Rows use module/function names to keep optional DSLs unloaded until needed.
-`configs(problem)` supplies legal default configurations. An optional
+`default_config` can directly supply a fixed parameter dictionary;
+`capabilities` lists supported descriptor values and `validate_config` checks
+implementation parameters. Existing shape-dependent implementations may still
+use `configs(problem)`. An optional
 `supports(problem, config)` function can validate a configuration independently;
 when omitted, membership in the declared configurations is checked. An optional
 `tuning_configs` names a larger explicitly requested tuning pool.
@@ -247,3 +256,17 @@ autotune publication preserves non-tile options and distinguishes configurations
 with different stages or register quotas. Historical backend config files remain
 available to their original users; timing and provenance fields are not copied
 into dispatch rules.
+
+
+The native batched implementation declares a literal `default_config` and
+capability sets in the implementation table. Shape-specific records belong in
+`gemm_batched.json`; no old batched config lookup or size heuristic is performed
+by this dispatch path. The default is BM128/BN128/BK32, eight warps, two stages.
+Existing backend tuning files remain available to their original wrapper users.
+The public entry checks shapes, batch/K/dtype consistency, devices and bias.
+Its descriptor records both A and B continuity independently. The native16
+implementation accepts A K/M-contiguous and B K/N-contiguous storage in all four
+combinations, and launches the existing kernel with the original strides without
+copying A to contiguous storage. Backend-specific dtype/layout capabilities are
+checked during implementation selection; configuration validation is separate
+from input validation. The selected complete params are passed to the kernel.

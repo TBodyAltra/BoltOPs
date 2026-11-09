@@ -119,6 +119,15 @@ class GemmProblem:
             object.__setattr__(self, "b_layout",
                                "k_contiguous" if self.b.strides == (self.k, 1) else
                                "n_contiguous" if self.b.strides == (1, self.n) else "strided")
+        if self.kind == "batched":
+            if self.unscaled and self.a_dtype == self.b_dtype:
+                object.__setattr__(self, "input_dtype", self.a_dtype)
+            for name, outer in (("a", "m"), ("b", "n")):
+                strides = getattr(self, name).strides
+                layout = ("k_contiguous" if strides and strides[-1] == 1 else
+                          outer + "_contiguous" if strides and len(strides) >= 2 and strides[-2] == 1
+                          else "strided")
+                object.__setattr__(self, name + "_layout", layout)
         if self.num_cus is not None and (type(self.num_cus) is not int or self.num_cus <= 0):
             raise ValueError("num_cus must be a positive integer when specified")
         if self.kind not in ("dense", "batched", "grouped") or min(self.m, self.n, self.k) < 0:

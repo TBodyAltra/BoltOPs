@@ -35,7 +35,7 @@ def gemm_batched(a, b, *, bias=None, out_dtype=None, backend="auto"):
         p = GemmProblem("batched", m, n, k,
             OperandSpec(a.dtype, strides=tuple(a.stride())),
             OperandSpec(b.dtype, strides=tuple(b.stride())),
-            out_dtype, device.arch, batch=batch, num_cus=device.cu_count,
+            out_dtype, device.arch, batch=batch, num_cus=device.cu_count, has_bias=bias is not None,
             a_aligned_16=a.data_ptr() % 16 == 0, b_aligned_16=b.data_ptr() % 16 == 0)
         launch(select_plan(p, backend=backend), p, a=a, b=b, bias=bias, out=out)
     return out
