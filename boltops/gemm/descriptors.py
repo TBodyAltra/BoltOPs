@@ -78,11 +78,14 @@ class GemmProblem:
     num_cus: Optional[int] = None
     activation_quantization: Optional[str] = None
     has_bias: bool = False
+    input_dtype: Optional[torch.dtype] = field(init=False, default=None)
     a_layout: Optional[str] = field(init=False, default=None)
     b_layout: Optional[str] = field(init=False, default=None)
 
     def __post_init__(self):
         if self.kind == "dense":
+            if self.unscaled and self.a_dtype == self.b_dtype:
+                object.__setattr__(self, "input_dtype", self.a_dtype)
             object.__setattr__(self, "a_layout",
                                "k_contiguous" if self.a.strides == (self.k, 1) else "strided")
             object.__setattr__(self, "b_layout",

@@ -85,8 +85,9 @@ def test_packaged_rules_are_valid_and_keep_dense_layout_and_scaled_range():
                     OperandSpec(torch.float16, strides=(1, 4608)),
                     torch.float16, 'gfx946', num_cus=48)
     assert maps._matches(p, dense)
+    assert maps._matches(replace(p, a_aligned_16=False, b_aligned_16=False), dense)
+    assert not {"a_aligned_16", "b_aligned_16"} & maps.exact_match(p).keys()
     for other in (replace(p, has_bias=True), replace(p, num_cus=96),
-                  replace(p, a_aligned_16=False),
                   replace(p, b=OperandSpec(torch.float16, strides=(512, 1)))):
         assert not maps._matches(other, dense)
     scaled = maps.document('scaled')['entries']

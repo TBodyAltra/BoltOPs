@@ -133,7 +133,7 @@ Compilation/execution failures of a normal launch still propagate unchanged.
 
 Recorded matches can describe dense, batched, grouped and packed/scaled
 operations: exact shapes, batch/group metadata, operand packing/strides,
-scale recipe/encoding, quantization, bias and alignment. Existing native-dense
+scale recipe/encoding, quantization and bias. Existing native-dense
 range contracts remain supported. No implicit specificity score is used;
 conflicting exact/range rules need explicit priorities.
 
@@ -221,11 +221,15 @@ contiguity; exact recorded winners also contain operand strides. Exact winner
 publication omits `kind` and `activation_quantization`, which the owning
 interface already determines. `batch` is recorded only for batched interfaces;
 `groups` is recorded only for grouped GEMM. Dense/scaled rules carry neither.
-Dense rules also omit scale/packing/zero-point metadata and the second input
-dtype: the public dense interface requires native unscaled A/B of equal dtype.
-Exact winner records use strides without duplicate contiguity labels. Packaged
+Dense rules use a top-level `input_dtype` for both A and B, with a separate
+`out_dtype`. Scale/packing/zero-point metadata and per-operand storage dtypes
+are omitted because the dense interface requires native unscaled equal-dtype
+inputs.
+Configuration rules and generated winner records omit the two 16-byte address
+alignment flags. Exact winner records use strides without duplicate contiguity
+labels. Packaged
 rules may use contiguity labels instead of exact strides.
 
 Schema 4 is rejected. Packaged rules preserve their original restrictions:
-interface invariants are enforced at entry, and remaining bias, alignment and
-layout conditions are explicit. The generic matcher applies no hidden defaults.
+interface invariants are enforced at entry, and remaining bias and layout
+conditions are explicit. The generic matcher applies no hidden defaults.

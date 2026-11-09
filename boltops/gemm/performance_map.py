@@ -148,6 +148,8 @@ def exact_match(p):
     # Interface identity already fixes kind and online-quantization semantics.
     match.pop("kind")
     match.pop("activation_quantization")
+    match.pop("a_aligned_16")
+    match.pop("b_aligned_16")
     if p.kind != "batched":
         match.pop("batch")
     if p.kind != "grouped":
@@ -159,7 +161,9 @@ def exact_match(p):
         for name in ("a", "b"):
             for key in ("format", "packing", "pack_axis", "values_per_storage", "zero_point_dtype"):
                 match[name].pop(key)
-        match["b"].pop("storage_dtype")
+            match[name].pop("storage_dtype")
+    else:
+        match.pop("input_dtype")
     # Exact strides already encode the derived contiguity labels.
     match.pop("a_layout")
     match.pop("b_layout")
