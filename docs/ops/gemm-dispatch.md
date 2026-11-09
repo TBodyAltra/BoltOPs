@@ -218,8 +218,14 @@ Attributes and the valid field schema are derived recursively from the data
 classes, including optional scale/group objects. Adding a data-class field does
 not require another matcher branch. `a_layout`/`b_layout` describe dense operand
 contiguity; exact recorded winners also contain operand strides. Exact winner
-publication uses this same attribute dictionary.
+publication omits `kind` and `activation_quantization`, which the owning
+interface already determines. `batch` is recorded only for batched interfaces;
+`groups` is recorded only for grouped GEMM. Dense/scaled rules carry neither.
+Dense rules also omit scale/packing/zero-point metadata and the second input
+dtype: the public dense interface requires native unscaled A/B of equal dtype.
+Exact winner records use strides without duplicate contiguity labels. Packaged
+rules may use contiguity labels instead of exact strides.
 
-Schema 4 is rejected. Packaged rules have been migrated with their formerly
-implicit native-format, no-bias, alignment, batch/group and layout restrictions
-written explicitly; no hidden defaults are applied by the generic matcher.
+Schema 4 is rejected. Packaged rules preserve their original restrictions:
+interface invariants are enforced at entry, and remaining bias, alignment and
+layout conditions are explicit. The generic matcher applies no hidden defaults.

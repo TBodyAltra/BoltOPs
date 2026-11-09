@@ -141,10 +141,29 @@ def _compare(actual, condition):
 
 
 def exact_match(p):
-    """Record every semantic/storage attribute, without runtime measurements."""
+    """Record interface-local semantic/storage attributes, without measurements."""
     if p.a.strides is None or p.b.strides is None or p.num_cus is None:
         raise ValueError("recording a winner requires operand strides and num_cus")
-    return problem_attributes(p)
+    match = problem_attributes(p)
+    # Interface identity already fixes kind and online-quantization semantics.
+    match.pop("kind")
+    match.pop("activation_quantization")
+    if p.kind != "batched":
+        match.pop("batch")
+    if p.kind != "grouped":
+        match.pop("groups")
+    if p.interface == "dense":
+        # The dense entry accepts native, unscaled A/B with the same dtype.
+        match.pop("a_scale")
+        match.pop("b_scale")
+        for name in ("a", "b"):
+            for key in ("format", "packing", "pack_axis", "values_per_storage", "zero_point_dtype"):
+                match[name].pop(key)
+        match["b"].pop("storage_dtype")
+    # Exact strides already encode the derived contiguity labels.
+    match.pop("a_layout")
+    match.pop("b_layout")
+    return match
 
 
 def _matches(p, match):
