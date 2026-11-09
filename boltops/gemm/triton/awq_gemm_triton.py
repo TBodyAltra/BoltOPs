@@ -11,6 +11,7 @@ from typing import Any, Optional
 import torch
 import triton
 import triton.language as tl
+from ..descriptors import KernelConfig
 
 AWQ_TRITON_SUPPORTED_GROUP_SIZES = [-1, 32, 64, 128]
 
@@ -294,6 +295,8 @@ def awq_gemm_kernel(a_ptr, b_ptr, c_ptr, zeros_ptr, scales_ptr, M, N, K,
 # qweights - [K     , M // 8], int32
 # scales   - [K // G, M     ], float16
 # zeros    - [K // G, M // 8], int32
+
+
 def awq_dequantize_triton(
     qweight: torch.Tensor,
     scales: torch.Tensor,
@@ -348,20 +351,24 @@ def awq_dequantize_triton(
 # qzeros  - [K // G, N // 8]
 # scales  - [K // G, N]
 # split_k_iters - parallelism along K-dimension, int, power of 2.
-def awq_gemm_triton(input: torch.Tensor,
-                    qweight: torch.Tensor,
-                    scales: torch.Tensor,
-                    qzeros: torch.Tensor,
-                    split_k_iters: int,
-                    config=None) -> torch.Tensor:
-    M, K = input.shape
-    N = qweight.shape[1] * 8
-    group_size = qweight.shape[0] // qzeros.shape[0]
+
+
+def awq_gemm_triton(a: torch.Tensor,
+                    b: torch.Tensor,
+                    b_scale: torch.Tensor,
+                    b_zero_points: torch.Tensor,
+                    split_k_iters: int = 1,
+                    config=None, out=None,
+    problem=None,
+) -> torch.Tensor:
+    M, K = a.shape
+    N = b.shape[1] * 8
+    group_size = b.shape[0] // b_zero_points.shape[0]
 
     assert N > 0 and K > 0 and M > 0
-    assert qweight.shape[0] == K and qweight.shape[1] == N // 8
-    assert qzeros.shape[0] == K // group_size and qzeros.shape[1] == N // 8
-    assert scales.shape[0] == K // group_size and scales.shape[1] == N
+    assert b.shape[0] == K and b.shape[1] == N // 8
+    assert b_zero_points.shape[0] == K // group_size and b_zero_points.shape[1] == N // 8
+    assert b_scale.shape[0] == K // group_size and b_scale.shape[1] == N
     assert split_k_iters & (split_k_iters - 1) == 0 and split_k_iters != 0
     assert split_k_iters <= 32
     assert group_size <= K
@@ -401,16 +408,16 @@ def awq_gemm_triton(input: torch.Tensor,
         if "SPLIT_K" not in config:
             config["SPLIT_K"] = split_k_iters
 
-    result = torch.zeros((M, N), dtype=scales.dtype, device=input.device)
+    result = out if out is not None else torch.zeros((M, N), dtype=b_scale.dtype, device=a.device)
 
     # A = input, B = qweight, C = result
     # A = M x K, B = K x N, C = M x N
     awq_gemm_kernel[grid](
-        input,
-        qweight,
+        a,
+        b,
         result,
-        qzeros,
-        scales,
+        b_zero_points,
+        b_scale,
         M,
         N,
         K,
@@ -419,3 +426,13 @@ def awq_gemm_triton(input: torch.Tensor,
     )
 
     return result
+
+
+def _awq(p):
+    return (p.interface == "scaled" and p.b.packing == "awq" and p.a_dtype in (torch.float16, torch.bfloat16) and
+            p.b_dtype == torch.int32 and p.b.zero_point_dtype == torch.int32 and
+            p.b_scale is not None and p.b_scale.dtype == p.out_dtype == p.a_dtype)
+
+
+def _awq_configs(p):
+    return (KernelConfig(16, 64, 32, GROUP_SIZE_M=8, SPLIT_K=1),) if _awq(p) else ()

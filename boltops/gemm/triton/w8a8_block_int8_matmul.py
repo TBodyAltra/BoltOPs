@@ -16,6 +16,7 @@ from typing import Any, Optional
 import torch
 import triton
 import triton.language as tl
+from ..descriptors import KernelConfig
 
 _CONFIG_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -161,51 +162,59 @@ def _w8a8_block_int8_matmul(
 
 
 def w8a8_block_int8_matmul(
-    A: torch.Tensor,
-    B: torch.Tensor,
-    As: torch.Tensor,
-    Bs: torch.Tensor,
-    block_size: list[int],
+    a: torch.Tensor,
+    b: torch.Tensor,
+    a_scale: torch.Tensor,
+    b_scale: torch.Tensor,
+    block_size: list[int] = None,
     output_dtype: torch.dtype = torch.float16,
+    out=None,
+    config=None,
+    problem=None,
 ) -> torch.Tensor:
     """Block-wise INT8 matmul (SGLang Triton path).
 
     Args:
-        A: ``[..., K]`` int8 activation
-        B: ``[N, K]`` int8 weight
+        a: ``[..., K]`` int8 activation
+        b: ``[N, K]`` int8 weight
         As / Bs: block scales
         block_size: ``[block_n, block_k]``
     """
+    if problem is not None:
+        block_size = problem.b_scale.block
+    if out is not None:
+        output_dtype = out.dtype
     assert len(block_size) == 2
     block_n, block_k = block_size[0], block_size[1]
 
-    assert A.shape[-1] == B.shape[-1]
-    assert A.shape[:-1] == As.shape[:-1] and A.is_contiguous()
-    assert triton.cdiv(A.shape[-1], block_k) == As.shape[-1]
-    M = A.numel() // A.shape[-1]
+    assert a.shape[-1] == b.shape[-1]
+    assert a.shape[:-1] == a_scale.shape[:-1] and a.is_contiguous()
+    assert triton.cdiv(a.shape[-1], block_k) == a_scale.shape[-1]
+    M = a.numel() // a.shape[-1]
 
-    assert B.ndim == 2 and B.is_contiguous() and Bs.ndim == 2
-    N, K = B.shape
-    assert triton.cdiv(N, block_n) == Bs.shape[0]
-    assert triton.cdiv(K, block_k) == Bs.shape[1]
+    assert b.ndim == 2 and b.is_contiguous() and b_scale.ndim == 2
+    N, K = b.shape
+    assert triton.cdiv(N, block_n) == b_scale.shape[0]
+    assert triton.cdiv(K, block_k) == b_scale.shape[1]
 
-    C_shape = A.shape[:-1] + (N,)
-    C = A.new_empty(C_shape, dtype=output_dtype)
+    C_shape = a.shape[:-1] + (N,)
+    C = out if out is not None else a.new_empty(C_shape, dtype=output_dtype)
 
-    configs = get_w8a8_block_int8_configs(N, K, block_size[0], block_size[1])
-    if configs:
-        config = _filter_launch_config(
-            configs[min(configs.keys(), key=lambda x: abs(x - M))]
-        )
-    else:
-        config = {
-            "BLOCK_SIZE_M": 64,
-            "BLOCK_SIZE_N": block_size[0],
-            "BLOCK_SIZE_K": block_size[1],
-            "GROUP_SIZE_M": 32,
-            "num_warps": 4,
-            "num_stages": 3,
-        }
+    if config is None:
+        configs = get_w8a8_block_int8_configs(N, K, block_size[0], block_size[1])
+        if configs:
+            config = _filter_launch_config(
+                configs[min(configs.keys(), key=lambda x: abs(x - M))]
+            )
+        else:
+            config = {
+                "BLOCK_SIZE_M": 64,
+                "BLOCK_SIZE_N": block_size[0],
+                "BLOCK_SIZE_K": block_size[1],
+                "GROUP_SIZE_M": 32,
+                "num_warps": 4,
+                "num_stages": 3,
+            }
 
     def grid(META):
         return (
@@ -213,26 +222,67 @@ def w8a8_block_int8_matmul(
         )
 
     _w8a8_block_int8_matmul[grid](
-        A,
-        B,
+        a,
+        b,
         C,
-        As,
-        Bs,
+        a_scale,
+        b_scale,
         M,
         N,
         K,
         block_n,
         block_k,
-        A.stride(-2),
-        A.stride(-1),
-        B.stride(1),
-        B.stride(0),
+        a.stride(-2),
+        a.stride(-1),
+        b.stride(1),
+        b.stride(0),
         C.stride(-2),
         C.stride(-1),
-        As.stride(-2),
-        As.stride(-1),
-        Bs.stride(1),
-        Bs.stride(0),
+        a_scale.stride(-2),
+        a_scale.stride(-1),
+        b_scale.stride(1),
+        b_scale.stride(0),
         **config,
     )
     return C
+
+
+_FLOAT_SCALES = (torch.float16, torch.bfloat16, torch.float32)
+_INPUTS = (torch.float8_e4m3fn, torch.float8_e5m2, torch.float16, torch.bfloat16, torch.int8)
+_OUTPUTS = (torch.float16, torch.bfloat16, torch.float32)
+
+
+def _common(p):
+    return (p.a_dtype == torch.int8 and p.kind == 'dense' and p.native_operands and p.a_dtype == p.b_dtype and
+            p.a_dtype in _INPUTS and p.out_dtype in _OUTPUTS and
+            p.a.strides == (p.k, 1) and p.b.strides == (p.k, 1) and
+            all(s is not None and s.encoding == 'numeric' and s.dtype in _FLOAT_SCALES
+                for s in (p.a_scale, p.b_scale)))
+
+
+def _block_config(p):
+    if not _common(p) or p.has_bias:
+        return None
+    am, ak = p.a_scale.block
+    bn, bk = p.b_scale.block
+    if am != 1 or ak != bk or min(bn, bk) < 16 or bn & (bn - 1) or bk & (bk - 1):
+        return None
+    get_configs = get_w8a8_block_int8_configs
+    configs = get_configs(p.n, p.k, bn, bk)
+    cfg = (_filter_launch_config(configs[min(configs, key=lambda m: abs(m - p.m))]) if configs else
+           {'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': bn, 'BLOCK_SIZE_K': bk})
+    # An iteration must not cross a scale-group boundary.
+    if cfg['BLOCK_SIZE_K'] > bk or bk % cfg['BLOCK_SIZE_K']:
+        return None
+    return cfg
+
+
+def _block_configs(p):
+    config = _block_config(p)
+    if config is None:
+        return ()
+    config = dict(config)
+    config.setdefault("GROUP_SIZE_M", 32)
+    config.setdefault("num_warps", 4)
+    config.setdefault("num_stages", 2)
+    return (KernelConfig.from_params(config),)

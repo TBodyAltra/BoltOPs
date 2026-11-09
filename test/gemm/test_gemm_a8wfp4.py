@@ -47,7 +47,7 @@ def test_dense_strides_and_output():
     args = [a.transpose(-1, -2).contiguous().transpose(-1, -2) for a in args]
     args = [a[0] for a in args]
     y = torch.empty((35, 5), dtype=torch.float32, device='cuda').T
-    out = gemm_a8wfp4(*args, activation_group_size=32, dtype=torch.float32, y=y)
+    out = gemm_a8wfp4(*args, activation_group_size=32, dtype=torch.float32, out=y)
     assert out is y
     torch.testing.assert_close(out.cpu(), ref[0], atol=1e-4, rtol=1e-5)
 
@@ -61,7 +61,7 @@ def test_ragged_empty_experts(group, a8):
     xs = torch.cat([sa[i, :m] for i, m in enumerate(lengths)])
     expected = torch.cat([ref[i, :m] for i, m in enumerate(lengths)])
     offsets = torch.tensor([0, 0, 37, 38, 57], device='cuda', dtype=torch.int32)
-    out = grouped_gemm_a8wfp4(x, w, xs, sb, expert_offsets=offsets,
+    out = grouped_gemm_a8wfp4(x, w, xs, sb, group_offsets=offsets,
                              activation_group_size=group)
     torch.testing.assert_close(out.cpu(), expected.bfloat16(), atol=.05, rtol=.01)
 

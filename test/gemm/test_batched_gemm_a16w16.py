@@ -85,7 +85,7 @@ def test_batched_gemm_a16w16_correctness(
         else w.transpose(1, 2).contiguous().transpose(1, 2)
     )
     out = batched_gemm_a16w16(
-        x, stored_w, bias, dtype=dtype, y=y, config=config
+        x, stored_w, bias, dtype=dtype, out=y, config=config
     )
     golden = _golden(x, w, bias, dtype)
     assert out.shape == (B, M, N)
@@ -179,7 +179,7 @@ def test_bench_batched_gemm_a16w16(
     config["BATCH_LAST_GRID"] = True
 
     def run() -> None:
-        batched_gemm_a16w16(x, weight, dtype=_BENCH_DTYPE, y=output, config=config)
+        batched_gemm_a16w16(x, weight, dtype=_BENCH_DTYPE, out=output, config=config)
 
     run()
     assert output.shape == (B, M, N)

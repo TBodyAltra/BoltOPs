@@ -45,6 +45,7 @@ import triton
 import triton.language as tl
 
 from boltops.utility import arch_info
+from ..performance_map import tuned_configs
 
 # WASP / WDRA are opt-in only on gfx946 (HCU).
 _WASP_WDRA_ARCHS = frozenset({"gfx946"})
@@ -529,6 +530,7 @@ def gemm_fp16(
     wasp_num_mma_warps: Optional[int] = None,
     autotune: bool = True,
     config: Optional[dict[str, Any]] = None,
+    problem=None,
 ) -> torch.Tensor:
     """FP16 GEMM aligned with vLLM Triton matmul call shape.
 
@@ -539,6 +541,13 @@ def gemm_fp16(
     ``use_matrix_store`` selects ``tl.matrix_store`` for C (requires
     ``use_mls=True`` and a Triton build that exposes ``tl.matrix_store``).
     """
+    if problem is not None:
+        b = b.T
+        config = dict(config)
+        wasp, wdra, use_mls, use_matrix_store = (config.pop(k) for k in
+            ("wasp", "wdra", "use_mls", "use_matrix_store"))
+        config = {k: tuple(v) if isinstance(v, list) else v for k, v in config.items()}
+        autotune = False
     if a.dtype != torch.float16 or b.dtype != torch.float16:
         raise TypeError(
             f"gemm_fp16 requires float16 inputs; got a={a.dtype}, b={b.dtype}"
@@ -673,3 +682,11 @@ __all__ = [
     "mode_launch_kwargs",
     "supports_wasp_wdra",
 ]
+
+
+def _native_dense(p):
+    return p.kind == "dense" and p.native_operands and p.unscaled and p.a_dtype == p.b_dtype
+
+
+def _tuned_configurations(p):
+    return tuned_configs(p, "triton.dense.fp16", backend="triton") if _native_dense(p) else ()

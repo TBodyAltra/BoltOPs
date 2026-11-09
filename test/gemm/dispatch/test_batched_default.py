@@ -50,7 +50,6 @@ def test_dtype_and_layout_are_implementation_capabilities():
 
 @pytest.mark.parametrize('batch_last', [False, True])
 def test_launcher_preserves_both_operands_and_selected_options(monkeypatch, batch_last):
-    from boltops.gemm.triton.batched import launch_native
     p = problem('m','n')
     class Tensor:
         def __init__(self, shape, strides, storage=None):
@@ -76,7 +75,8 @@ def test_launcher_preserves_both_operands_and_selected_options(monkeypatch, batc
     monkeypatch.setattr(implementation, '_get_config', unexpected_lookup)
     params = dict(dispatch.IMPLEMENTATIONS['triton.batched.native16']['default_config'],
                   BLOCK_SIZE_M=32, BLOCK_SIZE_N=64, num_stages=3, BATCH_LAST_GRID=batch_last)
-    launch_native(KernelConfig.from_params(params),p,a,b,None,out)
+    plan = dispatch.ExecutionPlan("triton.batched.native16", KernelConfig.from_params(params))
+    dispatch.launch(plan, p, a=a, b=b, bias=None, out=out)
     grid,args,actual=calls[0]
     assert args[0] is a and args[1].storage is b.storage
     assert args[7:13] == (*a.stride(),b.stride(0),b.stride(2),b.stride(1))

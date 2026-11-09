@@ -33,6 +33,7 @@ from typing import Any, Optional
 import torch
 import triton
 import triton.language as tl
+from ..descriptors import KernelConfig
 
 _CONFIG_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -321,29 +322,35 @@ def _batched_gemm_a16w16_kernel(
 
 
 def batched_gemm_a16w16(
-    x: torch.Tensor,
-    w: torch.Tensor,
+    a: torch.Tensor,
+    b: torch.Tensor,
     bias: Optional[torch.Tensor] = None,
     dtype: Optional[torch.dtype] = torch.bfloat16,
     splitK: Optional[int] = None,
-    y: Optional[torch.Tensor] = None,
+    out: Optional[torch.Tensor] = None,
     config: Optional[dict] = None,
+    problem=None,
+    a_scale=None,
+    b_scale=None,
+    group_offsets=None,
 ) -> torch.Tensor:
     """FP16/BF16 batched GEMM ``Y[i] = X[i] @ W[i].T`` (+ optional bias).
 
     Args:
-        x: ``[B, M, K]`` BF16/FP16
-        w: logical ``[B, N, K]`` tensor. Both operand strides are preserved.
+        a: ``[B, M, K]`` BF16/FP16
+        b: logical ``[B, N, K]`` tensor. Both operand strides are preserved.
             Explicit configurations support A K/M-contiguous and B K/N-contiguous storage.
         bias: optional ``[B, 1, N]``
         dtype: output dtype (``bfloat16`` or ``float16``)
         splitK: must be ``None`` (unsupported on this Triton path)
-        y: optional preallocated ``[B, M, N]``
+        out: optional preallocated ``[B, M, N]``
         config: optional launch dict; else HCU JSON or built-in fallback
     """
-    assert x.ndim == 3 and w.ndim == 3, "x and w must be rank-3 tensors"
-    assert x.shape[0] == w.shape[0], "Incompatible Batch dimensions!!!"
-    assert x.shape[2] == w.shape[2], "Incompatible K dimensions"
+    if out is not None:
+        dtype = out.dtype
+    assert a.ndim == 3 and b.ndim == 3, "x and w must be rank-3 tensors"
+    assert a.shape[0] == b.shape[0], "Incompatible Batch dimensions!!!"
+    assert a.shape[2] == b.shape[2], "Incompatible K dimensions"
 
     assert dtype in [
         torch.bfloat16,
@@ -351,17 +358,17 @@ def batched_gemm_a16w16(
     ], f"Output {dtype=} is currently not supported in batched_gemm_a16w16"
     assert splitK is None, "Currently, there isn't any support for splitK on Triton"
 
-    weight_layout = _infer_weight_layout(x, w) if config is None else None
-    w = w.transpose(1, 2)
+    weight_layout = _infer_weight_layout(a, b) if config is None else None
+    b = b.transpose(1, 2)
 
-    B = x.shape[0]
-    M = x.shape[1]
-    K = x.shape[2]
-    N = w.shape[2]
+    B = a.shape[0]
+    M = a.shape[1]
+    K = a.shape[2]
+    N = b.shape[2]
 
     has_bias = bias is not None
-    if y is None:
-        y = torch.empty((B, M, N), dtype=dtype, device=x.device)
+    if out is None:
+        out = torch.empty((B, M, N), dtype=dtype, device=a.device)
 
     if config is None:
         config = _get_config(M, N, K, dtype, B=B, layout=weight_layout)
@@ -369,7 +376,7 @@ def batched_gemm_a16w16(
         config = dict(config)
 
     # Triton needs a real pointer; unused when HAS_BIAS is False.
-    bias_arg = bias if has_bias else y
+    bias_arg = bias if has_bias else out
     bias_stride = bias.stride(0) if has_bias else 1
 
     def grid(META):
@@ -383,25 +390,43 @@ def batched_gemm_a16w16(
     config.setdefault("BATCH_LAST_GRID", False)
 
     _batched_gemm_a16w16_kernel[grid](
-        x,
-        w,
-        y,
+        a,
+        b,
+        out,
         bias_arg,
         M,
         N,
         K,
-        x.stride(0),
-        x.stride(1),
-        x.stride(2),
-        w.stride(0),
-        w.stride(1),
-        w.stride(2),
-        y.stride(0),
-        y.stride(1),
-        y.stride(2),
+        a.stride(0),
+        a.stride(1),
+        a.stride(2),
+        b.stride(0),
+        b.stride(1),
+        b.stride(2),
+        out.stride(0),
+        out.stride(1),
+        out.stride(2),
         bias_stride,
         has_bias,
         **config,
     )
 
-    return y
+    return out
+
+
+def _native(p):
+    return (p.kind == 'grouped' and p.groups.mode == 'equal' and p.native_operands and p.unscaled and
+            p.a_dtype == p.b_dtype and p.a_dtype in (torch.float16, torch.bfloat16) and
+            p.out_dtype in (torch.float16, torch.bfloat16))
+
+
+def _native_config(p):
+    if not _native(p):
+        return ()
+    if p.b.strides is None:
+        return ()
+    layout = 'tn' if p.b.strides[-1] == 1 else 'tt' if p.b.strides[-2] == 1 else None
+    if layout is None:
+        return ()
+    cfg = _get_config(p.m // p.groups.count, p.n, p.k, p.out_dtype, B=p.groups.count, layout=layout)
+    return (KernelConfig.from_params(cfg),)

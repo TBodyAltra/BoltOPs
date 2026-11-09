@@ -111,7 +111,7 @@ aiter Triton batched BF16/FP16 GEMM：`Y[i] = X[i] @ W[i]^T`。
 
 ```python
 y = batched_gemm_a16w16(
-    x, w, bias=None, dtype=torch.bfloat16, y=None, config=None
+    x, w, bias=None, dtype=torch.bfloat16, out=None, config=None
 )
 ```
 
@@ -353,7 +353,7 @@ y = gemm_a8wfp4(x, w, x_scales, w_scales, activation_group_size=128)
 y = grouped_gemm_a8wfp4(x, w, x_scales, w_scales, activation_group_size=32)
 # 按专家连续排列的 x[T,K]；offsets[E+1] 是 GPU 上的专家行边界
 y = grouped_gemm_a8wfp4(x, w, x_scales, w_scales,
-                        expert_offsets=offsets, activation_group_size=128)
+                        group_offsets=offsets, activation_group_size=128)
 ```
 
 激活为 E4M3 FN。权重为 uint8 打包的 E2M1，低 nibble 表示偶数 K，

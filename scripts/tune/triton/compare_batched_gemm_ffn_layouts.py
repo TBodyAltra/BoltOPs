@@ -43,7 +43,7 @@ def bench_case(b: int, m: int, n: int, k: int, layout: str, config: dict) -> flo
 
     def run() -> None:
         batched_gemm_a16w16(
-            x, w, dtype=torch.float16, y=y, config=config
+            x, w, dtype=torch.float16, out=y, config=config
         )
 
     run()

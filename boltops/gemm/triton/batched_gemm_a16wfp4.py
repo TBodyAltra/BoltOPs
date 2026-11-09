@@ -12,6 +12,7 @@ from boltops.gemm.triton.batched_gemm_a16wfp4_op import (
 from boltops.gemm.triton.gemm_afp4wfp4 import get_splitk
 from boltops.gemm.triton.common_utils import deserialize_str, serialize_dict
 import boltops.utility.arch_info as arch_info
+from .gemm_afp4wfp4 import _fp4_configs
 
 _LOGGER = None
 
@@ -230,17 +231,20 @@ def batched_gemm_a16wfp4_(
 
 
 def batched_gemm_a16wfp4(
-    x: torch.Tensor,
-    w: torch.Tensor,
-    w_scales: torch.Tensor,
+    a: torch.Tensor,
+    b: torch.Tensor,
+    b_scale: torch.Tensor,
     dtype: torch.dtype | None = torch.bfloat16,
-    y: torch.Tensor | None = None,
+    out: torch.Tensor | None = None,
     config: dict | None = None,
     transpose_bm: bool | None = False,
     prequant: bool | None = True,
     y_scale: torch.Tensor | None = None,
+    problem=None,
 ) -> torch.Tensor:
+    if out is not None:
+        dtype = out.dtype
     config_hashable = serialize_dict(config) if config else None
     return batched_gemm_a16wfp4_(
-        x, w, w_scales, dtype, y, config_hashable, transpose_bm, prequant, y_scale
+        a, b, b_scale, dtype, out, config_hashable, transpose_bm, prequant, y_scale
     )

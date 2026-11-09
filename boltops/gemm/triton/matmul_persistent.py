@@ -14,6 +14,7 @@ from typing import Any, Optional
 import torch
 import triton
 import triton.language as tl
+from ..descriptors import KernelConfig
 
 
 def _matmul_launch_metadata(
@@ -203,19 +204,22 @@ def _launch_config(dtype: torch.dtype) -> dict:
 
 
 def matmul_persistent(
-    a: torch.Tensor, b: torch.Tensor, bias: Optional[torch.Tensor] = None
+    a: torch.Tensor, b: torch.Tensor, bias: Optional[torch.Tensor] = None, out=None, config=None,
+    problem=None,
 ) -> torch.Tensor:
     """Persistent Triton GEMM matching vLLM ``matmul_persistent``."""
+    if problem is not None:
+        b = b.T
     assert a.shape[1] == b.shape[0], "Incompatible dimensions"
     assert a.dtype == b.dtype, "Incompatible dtypes"
     assert bias is None or bias.dim() == 1, (
         "Currently assuming bias is 1D, let Horace know if you run into this"
     )
-    NUM_SMS = torch.cuda.get_device_properties("cuda").multi_processor_count
+    NUM_SMS = problem.num_cus if problem is not None else torch.cuda.get_device_properties("cuda").multi_processor_count
     M, K = a.shape
     K, N = b.shape
     dtype = a.dtype
-    c = torch.empty((M, N), device=a.device, dtype=dtype)
+    c = out if out is not None else torch.empty((M, N), device=a.device, dtype=dtype)
 
     def grid(META):
         return (
@@ -245,9 +249,17 @@ def matmul_persistent(
         B_LARGE=b.numel() > 2**31,
         C_LARGE=c.numel() > 2**31,
         HAS_BIAS=bias is not None,
-        **_launch_config(dtype),
+        **(_launch_config(dtype) if config is None else config),
     )
     return c
 
 
 __all__ = ["matmul_kernel_persistent", "matmul_persistent"]
+
+
+def _configurations(p):
+    if (p.kind != "dense" or not p.native_operands or not p.unscaled or
+            p.a_dtype != p.b_dtype or p.a_dtype != torch.float32 or
+            p.out_dtype != torch.float32 or not p.num_cus):
+        return ()
+    return (KernelConfig.from_params(_launch_config(p.a_dtype)),)

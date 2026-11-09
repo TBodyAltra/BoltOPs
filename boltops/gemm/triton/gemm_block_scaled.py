@@ -3,6 +3,7 @@ import math
 
 import triton
 import triton.language as tl
+from ..descriptors import KernelConfig
 
 
 @triton.jit
@@ -83,10 +84,26 @@ def launch_gemm_block_scaled(config, problem, a, b, a_scale, b_scale, out):
         raise ValueError("native MMAC does not support FNUZ FP8 on HCU; input upcasting is disabled")
     am, ak = problem.a_scale.block
     bn, bk = problem.b_scale.block
-    _gemm_block_scaled_kernel[(triton.cdiv(problem.m, config.block_m),
-                              triton.cdiv(problem.n, config.block_n))](
+    _gemm_block_scaled_kernel[(triton.cdiv(problem.m, config["BLOCK_SIZE_M"]),
+                              triton.cdiv(problem.n, config["BLOCK_SIZE_N"]))](
         a, b, a_scale, b_scale, out, M=problem.m, N=problem.n, K=problem.k,
-        AM=am, AK=ak, BN=bn, BK_SCALE=bk, Q=math.gcd(ak, bk), DOT_BK=config.block_k,
+        AM=am, AK=ak, BN=bn, BK_SCALE=bk, Q=math.gcd(ak, bk), DOT_BK=config["BLOCK_SIZE_K"],
         A_E8M0=problem.a_scale.encoding == "e8m0", B_E8M0=problem.b_scale.encoding == "e8m0",
-        BM=config.block_m, BN_TILE=config.block_n, num_warps=4, num_stages=1,
+        BM=config["BLOCK_SIZE_M"], BN_TILE=config["BLOCK_SIZE_N"], num_warps=4, num_stages=1,
     )
+
+
+def generic_configs(p):
+    if (p.has_bias or p.kind != "dense" or not p.native_operands or
+            p.a_scale is None or p.b_scale is None):
+        return ()
+    q = math.gcd(p.a_scale.block[1], p.b_scale.block[1])
+    return (KernelConfig(32, 64, max(32, min(128, (1 << (q - 1).bit_length())))),)
+
+
+def supports_generic(p, config):
+    return (config in generic_configs(p) and
+            p.a.strides == (p.k, 1) and p.b.strides == (p.k, 1) and
+            all(s.encoding in ("numeric", "e8m0") and
+                (s.encoding != "e8m0" or str(s.dtype) == "torch.uint8")
+                for s in (p.a_scale, p.b_scale)))

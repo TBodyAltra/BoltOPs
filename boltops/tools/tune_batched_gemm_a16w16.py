@@ -133,7 +133,7 @@ def tune_shape(
     ):
         try:
             fn = lambda cfg=cfg: batched_gemm_a16w16(
-                x, w, dtype=torch.float16, y=y, config=cfg
+                x, w, dtype=torch.float16, out=y, config=cfg
             )
             ms = bench(fn, warmup_ms, rep_ms)
         except Exception as exc:

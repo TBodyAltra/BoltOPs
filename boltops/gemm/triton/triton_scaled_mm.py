@@ -6,6 +6,7 @@ import torch
 
 import triton
 import triton.language as tl
+from ..descriptors import KernelConfig
 
 
 def is_weak_contiguous(x: torch.Tensor):
@@ -139,41 +140,53 @@ def scaled_mm_kernel(
 
 # input   - [M, K]
 # weight - [K, N]
+
+
 def triton_scaled_mm(
-    input: torch.Tensor,
-    weight: torch.Tensor,
-    scale_a: torch.Tensor,
-    scale_b: torch.Tensor,
-    out_dtype: type[torch.dtype],
+    a: torch.Tensor,
+    b: torch.Tensor,
+    a_scale: torch.Tensor,
+    b_scale: torch.Tensor,
+    out_dtype: type[torch.dtype] = torch.bfloat16,
     bias: torch.Tensor | None = None,
     block_size_m: int = 32,
     block_size_n: int = 32,
     block_size_k: int = 32,
     use_heuristic=True,
+    out=None,
+    config=None,
+    problem=None,
 ) -> torch.Tensor:
-    M, K = input.shape
-    N = weight.shape[1]
+    if problem is not None:
+        b = b.T
+    if out is not None:
+        out_dtype = out.dtype
+    if config is not None:
+        block_size_m, block_size_n, block_size_k = (config["BLOCK_SIZE_" + d] for d in ("M", "N", "K"))
+        use_heuristic = False
+    M, K = a.shape
+    N = b.shape[1]
 
     assert N > 0 and K > 0 and M > 0
-    assert weight.shape[0] == K
-    assert input.dtype == weight.dtype
+    assert b.shape[0] == K
+    assert a.dtype == b.dtype
 
-    scale_a = scale_a.reshape(-1, 1) if scale_a.dim() <= 1 else scale_a
-    scale_b = scale_b.reshape(-1, 1) if scale_b.dim() <= 1 else scale_b
+    a_scale = a_scale.reshape(-1, 1) if a_scale.dim() <= 1 else a_scale
+    b_scale = b_scale.reshape(-1, 1) if b_scale.dim() <= 1 else b_scale
 
-    assert scale_a.dtype == scale_b.dtype and scale_a.is_floating_point()
-    assert scale_a.shape[1] == 1 and (scale_a.shape[0] == 1 or scale_a.shape[0] == M)
-    assert scale_b.shape[1] == 1 and (scale_b.shape[0] == 1 or scale_b.shape[0] == N)
+    assert a_scale.dtype == b_scale.dtype and a_scale.is_floating_point()
+    assert a_scale.shape[1] == 1 and (a_scale.shape[0] == 1 or a_scale.shape[0] == M)
+    assert b_scale.shape[1] == 1 and (b_scale.shape[0] == 1 or b_scale.shape[0] == N)
     assert out_dtype.is_floating_point
     assert bias is None or bias.is_floating_point()
-    assert is_weak_contiguous(input)
-    assert is_weak_contiguous(weight)
+    assert is_weak_contiguous(a)
+    assert is_weak_contiguous(b)
 
     grid = lambda META: (
         triton.cdiv(M, META["BLOCK_SIZE_M"]) * triton.cdiv(N, META["BLOCK_SIZE_N"]),
     )
 
-    result = torch.empty((M, N), dtype=out_dtype, device=input.device)
+    result = out if out is not None else torch.empty((M, N), dtype=out_dtype, device=a.device)
 
     has_scalar = lambda x: x.shape[0] == 1 and x.shape[1] == 1
 
@@ -190,27 +203,27 @@ def triton_scaled_mm(
             tile_shape = (128, 128, 128)
         block_size_m, block_size_n, block_size_k = tile_shape
 
-    block_size_sa = 1 if has_scalar(scale_a) else block_size_m
-    block_size_sb = 1 if has_scalar(scale_b) else block_size_n
+    block_size_sa = 1 if has_scalar(a_scale) else block_size_m
+    block_size_sb = 1 if has_scalar(b_scale) else block_size_n
 
-    accumulator_dtype = tl.float32 if input.is_floating_point() else tl.int32
+    accumulator_dtype = tl.float32 if a.is_floating_point() else tl.int32
 
     # A = input, B = weight, C = result
     # A = M x K, B = K x N, C = M x N
     scaled_mm_kernel[grid](
-        input,
-        weight,
-        scale_a,
-        scale_b,
+        a,
+        b,
+        a_scale,
+        b_scale,
         result,
         bias,
         M,
         N,
         K,
-        input.stride(0),
-        input.stride(1),
-        weight.stride(0),
-        weight.stride(1),
+        a.stride(0),
+        a.stride(1),
+        b.stride(0),
+        b.stride(1),
         result.stride(0),
         result.stride(1),
         accumulator_dtype,
@@ -222,3 +235,27 @@ def triton_scaled_mm(
     )
 
     return result.to(out_dtype)
+
+
+_FLOAT_SCALES = (torch.float16, torch.bfloat16, torch.float32)
+_INPUTS = (torch.float8_e4m3fn, torch.float8_e5m2, torch.float16, torch.bfloat16, torch.int8)
+_OUTPUTS = (torch.float16, torch.bfloat16, torch.float32)
+
+
+def _common(p):
+    return (p.kind == 'dense' and p.native_operands and p.a_dtype == p.b_dtype and
+            p.a_dtype in _INPUTS and p.out_dtype in _OUTPUTS and
+            p.a.strides == (p.k, 1) and p.b.strides == (p.k, 1) and
+            all(s is not None and s.encoding == 'numeric' and s.dtype in _FLOAT_SCALES
+                for s in (p.a_scale, p.b_scale)))
+
+
+def _row_configs(p):
+    if not _common(p):
+        return ()
+    am, ak = p.a_scale.block
+    bn, bk = p.b_scale.block
+    if (am not in (1, p.m) or bn not in (1, p.n) or ak < p.k or bk < p.k or
+            p.a_scale.dtype != p.b_scale.dtype):
+        return ()
+    return (KernelConfig(32, 64, 32),)

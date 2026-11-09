@@ -10,6 +10,7 @@ import triton
 import triton.language as tl
 
 from boltops.utility.fp8_scale import decode_fp8_scale
+from ..descriptors import KernelConfig
 
 
 @triton.jit
@@ -68,9 +69,8 @@ def _gemm_a8wfp4_kernel(
 
 
 def grouped_gemm_a8wfp4(
-    x, w, x_scales, w_scales, *, expert_offsets=None,
-    activation_group_size=128, dtype=torch.bfloat16, y=None, config=None,
-):
+    a, b, a_scale, b_scale, *, group_offsets=None,
+    activation_group_size=128, dtype=torch.bfloat16, out=None, config=None, problem=None, bias=None,):
     """Grouped FP8 E4M3 x packed FP4 E2M1 -> BF16/FP16/FP32.
 
     Dense grouped input: x[E,M,K], w[E,N,ceil(K/2)],
@@ -84,48 +84,53 @@ def grouped_gemm_a8wfp4(
     All tensors may have noncontiguous positive strides; y must not overlap
     inputs. No host dequantization is used; native dot_scaled lowering is required.
     """
+    if problem is not None:
+        activation_group_size = problem.a_scale.block[1]
+        config = {"BLOCK_SIZE_M": config["BLOCK_SIZE_M"], "BLOCK_SIZE_N": config["BLOCK_SIZE_N"], "num_warps": 4}
+    if out is not None:
+        dtype = out.dtype
     if activation_group_size not in (32, 128):
         raise ValueError("activation_group_size must be 32 or 128")
-    if x.dtype != torch.float8_e4m3fn:
+    if a.dtype != torch.float8_e4m3fn:
         raise TypeError("x must contain FP8 E4M3 FN values")
-    if w.dtype != torch.uint8 or w.ndim != 3:
+    if b.dtype != torch.uint8 or b.ndim != 3:
         raise TypeError("w must be packed uint8 with shape [E,N,ceil(K/2)]")
-    ragged = expert_offsets is not None
-    if x.ndim != (2 if ragged else 3):
+    ragged = group_offsets is not None
+    if a.ndim != (2 if ragged else 3):
         raise ValueError("x must be [T,K] with offsets, otherwise [E,M,K]")
-    e, n, packed_k = w.shape
-    k = x.shape[-1]
+    e, n, packed_k = b.shape
+    k = a.shape[-1]
     if e < 1 or k < 1 or packed_k != triton.cdiv(k, 2):
         raise ValueError("inconsistent expert count or packed K dimension")
     if ragged:
-        t = x.shape[0]
+        t = a.shape[0]
         m = 0
-        if expert_offsets.shape != (e + 1,) or expert_offsets.dtype not in (torch.int32, torch.int64) or not expert_offsets.is_contiguous():
+        if group_offsets.shape != (e + 1,) or group_offsets.dtype not in (torch.int32, torch.int64) or not group_offsets.is_contiguous():
             raise ValueError("expert_offsets must be contiguous int32/int64 [E+1]")
         expected_xs = (t, triton.cdiv(k, activation_group_size))
         out_shape = (t, n)
     else:
-        if x.shape[0] != e:
+        if a.shape[0] != e:
             raise ValueError("x and w must have the same expert count")
-        m = x.shape[1]
+        m = a.shape[1]
         t = e * m
         expected_xs = (e, m, triton.cdiv(k, activation_group_size))
         out_shape = (e, m, n)
-    if x_scales.shape != expected_xs or w_scales.shape != (e, n, triton.cdiv(k, 32)):
+    if a_scale.shape != expected_xs or b_scale.shape != (e, n, triton.cdiv(k, 32)):
         raise ValueError("scale shapes must match the specified K groups")
-    for scale in (x_scales, w_scales):
+    for scale in (a_scale, b_scale):
         if scale.dtype not in (torch.uint8, torch.float32, torch.float16, torch.bfloat16):
             raise TypeError("scales must be uint8 E8M0 or floating point")
     if dtype not in (torch.bfloat16, torch.float16, torch.float32):
         raise TypeError("output dtype must be BF16, FP16 or FP32")
-    if y is None:
-        y = torch.empty(out_shape, dtype=dtype, device=x.device)
-    if y.shape != out_shape or y.dtype != dtype:
+    if out is None:
+        out = torch.empty(out_shape, dtype=dtype, device=a.device)
+    if out.shape != out_shape or out.dtype != dtype:
         raise ValueError("y has incorrect shape or dtype")
-    tensors = [x, w, x_scales, w_scales, y]
+    tensors = [a, b, a_scale, b_scale, out]
     if ragged:
-        tensors.append(expert_offsets)
-    if any(not a.is_cuda or a.device != x.device for a in tensors):
+        tensors.append(group_offsets)
+    if any(not tensor.is_cuda or tensor.device != a.device for tensor in tensors):
         raise ValueError("all tensors must be on the same CUDA/HIP device")
     if any(a.numel() and any(s <= 0 for s in a.stride()) for a in tensors):
         raise ValueError("all tensors must have positive strides")
@@ -139,29 +144,63 @@ def grouped_gemm_a8wfp4(
     if bm < 16 or bn < 16 or bm & (bm - 1) or bn & (bn - 1):
         raise ValueError("M/N blocks must be powers of two >=16")
     if t == 0 or n == 0:
-        return y
+        return out
     grid = ((triton.cdiv(t, bm) + e - 1) if ragged else triton.cdiv(m, bm),
             triton.cdiv(n, bn), 1 if ragged else e)
     def strides(a):
         return (0, *a.stride()) if a.ndim == 2 else a.stride()
     _gemm_a8wfp4_kernel[grid](
-        x, w, x_scales, w_scales, y, expert_offsets,
+        a, b, a_scale, b_scale, out, group_offsets,
         t, m, n, k, e, ragged, activation_group_size,
-        *strides(x), *w.stride(), *strides(x_scales), *w_scales.stride(),
-        *strides(y), bm, bn, num_warps=cfg['num_warps'], num_stages=1,
+        *strides(a), *b.stride(), *strides(a_scale), *b_scale.stride(),
+        *strides(out), bm, bn, num_warps=cfg['num_warps'], num_stages=1,
         enable_fp_fusion=False,
     )
-    return y
+    return out
 
 
-def gemm_a8wfp4(x, w, x_scales, w_scales, *, activation_group_size=128,
-                dtype=torch.bfloat16, y=None, config=None):
+def gemm_a8wfp4(a, b, a_scale, b_scale, *, activation_group_size=128,
+                dtype=torch.bfloat16, out=None, config=None, problem=None,):
     """Dense Y=X@W.T; x[M,K], packed w[N,ceil(K/2)], matching block scales."""
-    if any(a.ndim != 2 for a in (x, w, x_scales, w_scales)):
+    if problem is not None:
+        activation_group_size = problem.a_scale.block[1]
+        config = {"BLOCK_SIZE_M": config["BLOCK_SIZE_M"], "BLOCK_SIZE_N": config["BLOCK_SIZE_N"], "num_warps": 4}
+    if out is not None:
+        dtype = out.dtype
+    if any(tensor.ndim != 2 for tensor in (a, b, a_scale, b_scale)):
         raise ValueError("dense GEMM inputs and scales must be 2-dimensional")
-    out = grouped_gemm_a8wfp4(
-        x.unsqueeze(0), w.unsqueeze(0), x_scales.unsqueeze(0), w_scales.unsqueeze(0),
+    result = grouped_gemm_a8wfp4(
+        a.unsqueeze(0), b.unsqueeze(0), a_scale.unsqueeze(0), b_scale.unsqueeze(0),
         activation_group_size=activation_group_size, dtype=dtype,
-        y=None if y is None else y.unsqueeze(0), config=config,
+        out=None if out is None else out.unsqueeze(0), config=config,
     )
-    return out.squeeze(0) if y is None else y
+    return result.squeeze(0) if out is None else out
+
+
+def _fp4_types(p):
+    scales = (p.a_scale, p.b_scale)
+    return (p.a_dtype == torch.float8_e4m3fn and p.b_dtype == torch.uint8 and
+            p.a.format == 'native' and p.b.format == 'fp4' and p.b.packing == 'e2m1_low_high' and
+            all(s is not None and ((s.encoding == 'e8m0' and s.dtype == torch.uint8) or
+                (s.encoding == 'numeric' and s.dtype in (torch.float16, torch.bfloat16, torch.float32))) for s in scales) and
+            p.a_scale.block in ((1, 32), (1, 128)) and p.b_scale.block == (1, 32) and
+            p.out_dtype in (torch.float16, torch.bfloat16, torch.float32))
+
+
+def _fp4(p):
+    return p.kind == 'grouped' and p.groups.mode in ('equal', 'offsets') and _fp4_types(p)
+
+
+def grouped_configs(p):
+    return (KernelConfig(16, 32, 32),) if _fp4(p) else ()
+
+
+def supports_mixed_fp4(p, config):
+    return (not p.has_bias and p.kind == "dense" and _fp4_types(p) and config == KernelConfig(16, 32, 32)
+            and all(strides is not None and all(s > 0 for s in strides)
+                    for strides in (p.a.strides, p.b.strides)))
+
+
+def mixed_fp4_configs(p):
+    c = KernelConfig(16, 32, 32)
+    return (c,) if supports_mixed_fp4(p, c) else ()

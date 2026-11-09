@@ -21,6 +21,7 @@ from boltops.gemm.triton.gemm_afp4wfp4_op import (
 )
 import boltops.utility.arch_info as arch_info
 from boltops.gemm.triton.common_utils import deserialize_str, serialize_dict
+from ..descriptors import KernelConfig
 
 _LOGGER = None
 
@@ -251,23 +252,26 @@ def gemm_afp4wfp4_(
 
 
 def gemm_afp4wfp4(
-    x: torch.Tensor,
-    w: torch.Tensor,
-    x_scales: torch.Tensor,
-    w_scales: torch.Tensor,
+    a: torch.Tensor,
+    b: torch.Tensor,
+    a_scale: torch.Tensor,
+    b_scale: torch.Tensor,
     dtype: torch.dtype | None = torch.bfloat16,
-    y: torch.Tensor | None = None,
+    out: torch.Tensor | None = None,
     config: dict | None = None,
     skip_reduce: bool | None = False,
+    problem=None,
 ) -> torch.Tensor:
+    if out is not None:
+        dtype = out.dtype
     if config is None:
         config_hashable = None
-        M, K = x.shape
-        N, _ = w.shape
+        M, K = a.shape
+        N, _ = b.shape
         config, _ = _get_config(M, N, K)
     config_hashable = serialize_dict(config)
     return gemm_afp4wfp4_(
-        x, w, x_scales, w_scales, dtype, y, config_hashable, skip_reduce
+        a, b, a_scale, b_scale, dtype, out, config_hashable, skip_reduce
     )
 
 
@@ -412,6 +416,8 @@ def gemm_afp4wfp4_preshuffled_scales(
 
 # TODO: Split-K support
 # TODO: gluon kernel for M < 32 without preshuffling scales for M < 32
+
+
 def gemm_afp4wfp4_preshuffle(
     x_fp4: torch.Tensor,
     w_preshuf: torch.Tensor,
@@ -582,3 +588,31 @@ def gemm_afp4wfp4_preshuffled_weight_scales(
     This this a backward-compatible API and will be deprecated in future release
     """
     return gemm_afp4wfp4_preshuffle(x, w, x_scales, w_scales, dtype, y, config)
+
+
+def fp4_config(p):
+    cfg = dict(_get_config(p.m, p.n, p.k // 2)[0])
+    cfg['NUM_KSPLIT'] = 1
+    cfg['BLOCK_SIZE_K'] = min(cfg['BLOCK_SIZE_K'], 1 << (p.k - 1).bit_length())
+    cfg['SPLITK_BLOCK_SIZE'] = p.k
+    return cfg
+
+
+def _fp4_configs(p):
+    if (p.arch != 'gfx946' or p.interface not in ('scaled', 'batched_a16wfp4_online_quant') or
+            p.out_dtype not in (torch.float16, torch.bfloat16)):
+        return ()
+    if (p.k % 32 or p.b_dtype != torch.uint8 or p.b.format != 'fp4' or
+            p.b.packing != 'e2m1_low_high' or p.b_scale is None or
+            p.b_scale.dtype != torch.uint8 or p.b_scale.encoding != 'e8m0' or
+            p.b_scale.block != (1, 32)):
+        return ()
+    if p.interface == 'scaled':
+        if (p.a_dtype != torch.uint8 or p.a.packing != 'e2m1_low_high' or p.a_scale is None or
+                p.a_scale.dtype != torch.uint8 or p.a_scale.encoding != 'e8m0' or
+                p.a_scale.block != (1, 32)):
+            return ()
+    elif p.a_dtype not in (torch.float16, torch.bfloat16) or p.a_scale is not None:
+        return ()
+    cfg = fp4_config(p)
+    return (KernelConfig.from_params(cfg),)

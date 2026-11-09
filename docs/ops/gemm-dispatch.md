@@ -78,8 +78,8 @@ IMPLEMENTATIONS = {
     "triton.batched.native16": {
         "backend": "triton",
         "interface": "batched",
-        "module": "boltops.gemm.triton.batched",
-        "launcher": "launch_native",
+        "module": "boltops.gemm.triton.batched_gemm_a16w16",
+        "launcher": "batched_gemm_a16w16",
         "default_config": {
             "BLOCK_SIZE_M": 128, "BLOCK_SIZE_N": 128, "BLOCK_SIZE_K": 32,
             "GROUP_SIZE_M": 1, "num_warps": 8, "num_stages": 2,
@@ -100,9 +100,8 @@ when omitted, membership in the declared configurations is checked. An optional
 
 A new pipeline adds a row and its host launcher/configuration functions. A
 backend with no implementation needs no empty table or forwarding module.
-Backend-specific files (`triton/dense.py`, `scaled.py`, `batched.py`,
-`grouped.py`, `quantized.py`) contain ABI/configuration helpers only; they do
-not register or dispatch implementations. The selected plan contains an
+Configuration queries and the launch function live in the actual implementation
+module; there is no intermediate adapter file. The selected plan contains an
 implementation name string and its configuration, not a registration object.
 
 ## Winner selection and default policy
@@ -268,7 +267,16 @@ combinations, and launches the existing kernel with the original strides without
 copying A to contiguous storage. Backend-specific dtype/layout capabilities are checked during implementation
 selection. Parameter binding and compilation diagnose invalid launch options;
 there is no duplicate host parameter whitelist. The selected complete params
-are passed to the shared launcher in `triton/batched_gemm_a16w16.py`. The lazy
-adapter contains no grid construction or kernel launch. The implementation
+are passed to the shared launcher in `triton/batched_gemm_a16w16.py`. The dispatcher calls this implementation directly. It
 supports FP16/BF16 inputs and outputs; other precisions require their own
 backend implementation.
+
+Implementation entries point directly at the kernel's implementation module.
+The common launch convention is `implementation(config=<parameter dict>,
+problem=<GemmProblem>, **tensors)`, with operands named `a`, `b`, `a_scale`,
+`b_scale` and output `out`. Shape-dependent configuration queries live beside
+that implementation. There are no intermediate dense/scaled/batched/grouped/
+quantized adapter modules. Batched and equal grouped A16W16 use the same launcher.
+FP32 dense and INT8 block-scaled implementations have their own dispatch rows;
+launchers do not perform another dtype dispatch. Existing direct backend callers
+may omit `problem`; the unified dispatcher always supplies it and a full config.

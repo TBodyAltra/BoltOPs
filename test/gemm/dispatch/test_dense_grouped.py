@@ -55,10 +55,10 @@ def test_existing_tuned_fp16_recipe_single_cta():
     a = (torch.randint(-2, 3, (256, 256)).float() / 4).half()
     nn_b = (torch.randint(-2, 3, (256, 256)).float() / 4).half()
     out = torch.empty((256, 256), dtype=torch.float16, device='cuda')
-    from boltops.gemm.triton.dense import launch_dense_fp16
+    from boltops.gemm.triton.gemm_fp16 import gemm_fp16
     weight = nn_b.cuda().T
     p = replace(p, b=OperandSpec(torch.float16, strides=tuple(weight.stride())))
-    launch_dense_fp16(plan.config, p, a.cuda(), weight, None, out)
+    gemm_fp16(a.cuda(), weight, out=out, config=plan.config.params, problem=p)
     torch.testing.assert_close(out.cpu(), (a.float() @ nn_b.float()).half(), atol=0, rtol=0)
 
 
@@ -106,3 +106,18 @@ def test_scaled_fp4_reuses_existing_dense_path():
                       torch.ones((16, 1), device='cuda'),
                       b_format='fp4_e2m1', scale_recipe=((1, 128), (1, 32)))
     torch.testing.assert_close(out.cpu(), torch.full((2, 16), 32., dtype=torch.bfloat16), atol=0, rtol=0)
+
+
+def test_grouped_fp4_rejects_cross_device_operands():
+    from types import SimpleNamespace
+    from boltops.gemm.triton.gemm_a8wfp4 import grouped_gemm_a8wfp4
+    def tensor(shape, dtype, device='cuda:0'):
+        return SimpleNamespace(shape=shape, ndim=len(shape), dtype=dtype,
+                               device=device, is_cuda=True)
+    a = tensor((1, 1, 32), torch.float8_e4m3fn)
+    b = tensor((1, 16, 16), torch.uint8, 'cuda:1')
+    sa = tensor((1, 1, 1), torch.float32)
+    sb = tensor((1, 16, 1), torch.float32)
+    out = tensor((1, 1, 16), torch.bfloat16)
+    with pytest.raises(ValueError, match='same CUDA/HIP device'):
+        grouped_gemm_a8wfp4(a, b, sa, sb, activation_group_size=32, out=out)

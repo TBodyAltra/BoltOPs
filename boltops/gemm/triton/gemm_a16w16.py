@@ -28,33 +28,37 @@ from boltops.gemm.triton.gemm_a16w16_op import (
 from boltops.gemm.triton.splitk_reduce import (
     _gemm_splitk_reduce_kernel,
 )
+from ..descriptors import KernelConfig
 
 
 def gemm_a16w16(
-    x: torch.Tensor,
-    w: torch.Tensor,
+    a: torch.Tensor,
+    b: torch.Tensor,
     bias: Optional[torch.Tensor] = None,
     dtype: Optional[torch.dtype] = None,
-    y: Optional[torch.Tensor] = None,
+    out: Optional[torch.Tensor] = None,
     config: Optional[dict] = None,
     activation: Optional[str] = None,
     skip_reduce: bool = False,
     kernel_type: str = "bandwidth_bound",
     backend: Optional[str] = None,
+    problem=None,
 ) -> torch.Tensor:
     """16-bit matmul ``Y = X @ W^T`` (aiter / vLLM ROCm Triton path).
 
     Args:
-        x: ``[M, K]`` FP16/BF16
-        w: ``[N, K]`` FP16/BF16 (internally transposed)
+        a: ``[M, K]`` FP16/BF16
+        b: ``[N, K]`` FP16/BF16 (internally transposed)
         bias: optional ``[N]``
-        dtype: output dtype; defaults to ``x.dtype``
-        y: optional preallocated ``[M, N]``
+        dtype: output dtype; defaults to ``a.dtype``
+        out: optional preallocated ``[M, N]``
         config: optional launch config dict (else JSON table lookup)
         activation: optional epilogue activation name
         skip_reduce: if True and split-K, return partials ``[NUM_KSPLIT, M, N]``
         kernel_type / backend: accepted for API compatibility; Triton-only here
     """
+    if out is not None:
+        dtype = out.dtype
     del kernel_type  # gluon-only upstream
     if backend is not None and backend.lower() not in ("triton",):
         raise ValueError(
@@ -63,33 +67,33 @@ def gemm_a16w16(
         )
 
     if dtype is None or not isinstance(dtype, torch.dtype):
-        dtype = x.dtype
+        dtype = a.dtype
 
-    assert x.dtype in (torch.float16, torch.bfloat16), (
-        f"Activations (x) must be fp16 or bf16, got {x.dtype}"
+    assert a.dtype in (torch.float16, torch.bfloat16), (
+        f"Activations (x) must be fp16 or bf16, got {a.dtype}"
     )
-    assert w.dtype in (torch.float16, torch.bfloat16), (
-        f"Weights (w) must be fp16 or bf16, got {w.dtype}"
+    assert b.dtype in (torch.float16, torch.bfloat16), (
+        f"Weights (w) must be fp16 or bf16, got {b.dtype}"
     )
-    assert x.shape[1] == w.shape[1], "Incompatible matrix shapes."
+    assert a.shape[1] == b.shape[1], "Incompatible matrix shapes."
 
-    M, K = x.shape
-    N, _ = w.shape
-    w_t = w.T
+    M, K = a.shape
+    N, _ = b.shape
+    w_t = b.T
 
     if config is None:
         config, _ = _get_triton_config(M, N, K)
     else:
         config = dict(config)
 
-    if y is None and (config["NUM_KSPLIT"] == 1 or not skip_reduce):
-        y = torch.empty((M, N), dtype=dtype, device=x.device)
+    if out is None and (config["NUM_KSPLIT"] == 1 or not skip_reduce):
+        out = torch.empty((M, N), dtype=dtype, device=a.device)
 
     if config["NUM_KSPLIT"] > 1:
         y_pp = torch.empty(
             (config["NUM_KSPLIT"], M, N),
             dtype=torch.float32,
-            device=y.device if y is not None else x.device,
+            device=out.device if out is not None else a.device,
         )
     else:
         y_pp = None
@@ -102,20 +106,20 @@ def gemm_a16w16(
         ),
     )
     _gemm_a16_w16_kernel[grid](
-        x,
+        a,
         w_t,
         bias,
-        y if config["NUM_KSPLIT"] == 1 else y_pp,
+        out if config["NUM_KSPLIT"] == 1 else y_pp,
         M,
         N,
         K,
-        x.stride(0),
-        x.stride(1),
+        a.stride(0),
+        a.stride(1),
         w_t.stride(0),
         w_t.stride(1),
         0 if config["NUM_KSPLIT"] == 1 else y_pp.stride(0),
-        y.stride(0) if config["NUM_KSPLIT"] == 1 else y_pp.stride(1),
-        y.stride(1) if config["NUM_KSPLIT"] == 1 else y_pp.stride(2),
+        out.stride(0) if config["NUM_KSPLIT"] == 1 else y_pp.stride(1),
+        out.stride(1) if config["NUM_KSPLIT"] == 1 else y_pp.stride(2),
         activation=_get_activation_from_str(activation) if activation else "",
         use_activation=activation is not None,
         ADD_BIAS=(bias is not None),
@@ -137,15 +141,15 @@ def gemm_a16w16(
         )
         _gemm_splitk_reduce_kernel[grid_reduce](
             y_pp,
-            y,
+            out,
             bias,
             M,
             N,
             y_pp.stride(0),
             y_pp.stride(1),
             y_pp.stride(2),
-            y.stride(0),
-            y.stride(1),
+            out.stride(0),
+            out.stride(1),
             REDUCE_BLOCK_SIZE_M,
             REDUCE_BLOCK_SIZE_N,
             ACTUAL_KSPLIT,
@@ -156,7 +160,24 @@ def gemm_a16w16(
             KERNEL_NAME="_gemm_a16w16_reduce_kernel",
         )
 
-    return y
+    return out
 
 
 __all__ = ["gemm_a16w16"]
+
+
+def _native_dense(p):
+    return p.kind == "dense" and p.native_operands and p.unscaled and p.a_dtype == p.b_dtype
+
+
+def _general_configurations(p):
+    if not _native_dense(p) or p.a_dtype not in (torch.float16, torch.bfloat16):
+        return ()
+    if p.out_dtype not in (torch.float16, torch.bfloat16, torch.float32):
+        return ()
+    from .gemm_a16w16_op import _get_config
+    from .gemm_config_utils import compute_splitk_params
+    cfg = dict(_get_config(p.m, p.n, p.k)[0])
+    cfg["NUM_KSPLIT"] = 1
+    cfg = compute_splitk_params(cfg, p.k)
+    return (KernelConfig.from_params(cfg),)

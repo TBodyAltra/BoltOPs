@@ -55,10 +55,10 @@ def test_explicit_missing_runtime_is_reported(monkeypatch):
 def test_selected_launch_error_propagates(monkeypatch):
     import boltops.gemm.dispatch as dispatch
     plan = select_plan(problem(), backend='triton')
-    class FailedKernel:
-        @staticmethod
-        def launch_generic(*args, **kwargs):
-            raise RuntimeError('native compilation failed')
+    def fail(*args, **kwargs):
+        raise RuntimeError('native compilation failed')
+    from types import SimpleNamespace
+    FailedKernel = SimpleNamespace(**{dispatch.IMPLEMENTATIONS[plan.implementation]['launcher']: fail})
     original = dispatch.import_module
     monkeypatch.setattr(dispatch, 'import_module', lambda name: FailedKernel if name == dispatch.IMPLEMENTATIONS[plan.implementation]['module'] else original(name))
     monkeypatch.setattr(dispatch, 'supports', lambda *args: True)
@@ -82,17 +82,8 @@ sys.meta_path.insert(0, BlockDSL())
 from boltops.gemm import scaled, dense, batched, grouped, specialized
 from boltops.gemm.dispatch import IMPLEMENTATIONS
 assert all(row['backend'] != 'tilelang' for row in IMPLEMENTATIONS.values())
-# Launcher/config/support functions are host Python and must not eagerly load a DSL.
-from importlib import import_module
-for row in IMPLEMENTATIONS.values():
-    module = import_module(row['module'])
-    assert callable(getattr(module, row['launcher']))
-    if 'configs' in row:
-        assert callable(getattr(module, row['configs']))
-    else:
-        assert isinstance(row['default_config'], dict)
-    if 'supports' in row:
-        assert callable(getattr(module, row['supports']))
+# The table is declarative; actual kernel modules load their own DSL on demand.
+assert all(row['module'] not in sys.modules for row in IMPLEMENTATIONS.values())
 '''
     subprocess.run([sys.executable, '-c', code], check=True, env=os.environ.copy())
 
@@ -119,3 +110,16 @@ def test_map_configuration_cannot_change_implementation_owner(monkeypatch):
     # The foreign record cannot claim Gluon, but an explicit request can still
     # use Gluon's independently declared legal default configuration.
     assert select_plan(problem(), backend='gluon').backend == 'gluon'
+
+
+def test_implementation_entries_resolve_directly():
+    from importlib import import_module
+    for row in dispatch.IMPLEMENTATIONS.values():
+        module = import_module(row['module'])
+        assert callable(getattr(module, row['launcher']))
+        if 'configs' in row:
+            assert callable(getattr(module, row['configs']))
+        else:
+            assert isinstance(row['default_config'], dict)
+        if 'supports' in row:
+            assert callable(getattr(module, row['supports']))
