@@ -26,7 +26,7 @@ def test_dense_selects_existing_fp16_config():
     p = dense_problem()
     plan = select_plan(p)
     assert plan.implementation == 'triton.dense.fp16'
-    assert plan.config.source_config.endswith('M4096_N4608_K4096_TT_wdra48_bcs_mls_mlf3_pp_mstore.json')
+    assert plan.config.params['wasp_partition_regs'] == [16, 244, 244]
     assert select_plan(replace(p, num_cus=96)).implementation == 'triton.dense.native'
     assert select_plan(dense_problem(512, 512, 512)).implementation == 'triton.dense.native'
     tn = replace(p, b=OperandSpec(torch.float16, strides=(p.k, 1)))

@@ -1,16 +1,19 @@
 """Fixed Gluon pipeline capabilities; measured winners are selected centrally."""
 from ...descriptors import KernelConfig
 
+_CONFIG = KernelConfig(128, 256, 128, num_warps=4, num_stages=2,
+                       wasp_partition_warps=[4, 4, 4, 4], wasp_wdra=True)
+
 
 def _configurations(p):
-    c = KernelConfig(128, 256, 128)
+    c = _CONFIG
     return (c,) if _supports(p, c) else ()
 
 
 def _supports(p, config):
     # Legality is independent of measured winners so explicit tuning can try
     # the fixed pipeline even when this exact shape has no performance record.
-    return (config == KernelConfig(128, 256, 128) and p.kind == "dense" and
+    return (config == _CONFIG and p.kind == "dense" and
             p.native_operands and not p.has_bias and p.arch == "gfx946" and p.num_cus == 48 and
             [str(t) for t in (p.a_dtype, p.b_dtype, p.out_dtype)] ==
                 ["torch.float8_e4m3fn", "torch.float8_e4m3fn", "torch.bfloat16"] and
@@ -25,4 +28,13 @@ def _supports(p, config):
 
 def launch(config, problem, **tensors):
     from .kernels.gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16 import launch_gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16_bm128_bn256_bk128
+    from .kernels.gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16 import get_launch_config
+    launch_options = get_launch_config()
+    for key, value in config.params.items():
+        if key not in ("BLOCK_SIZE_M", "BLOCK_SIZE_N", "BLOCK_SIZE_K"):
+            actual = launch_options[key]
+            if isinstance(actual, tuple):
+                actual = list(actual)
+            if actual != value:
+                raise ValueError(f"fixed Gluon pipeline disagrees with params.{key}")
     launch_gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16_bm128_bn256_bk128(config, problem, **tensors)

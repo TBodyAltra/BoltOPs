@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "interface": "gemm_dense",
   "entries": [
     {
@@ -17,13 +17,36 @@
       },
       "config": {
         "implementation": "triton.dense.fp16",
-        "block_size": [
-          256,
-          256,
-          64
-        ],
-        "source_config": "triton/configs/gemm_fp16/gfx946/M4096_N4608_K512_TT_wdra48_bcs_mls_mlf3_pp_mstore.json",
-        "backend": "triton"
+        "backend": "triton",
+        "params": {
+          "GROUP_SIZE_M": 1,
+          "WARP_SPECIALIZE": true,
+          "wasp_wdra": true,
+          "amdgpu_enable_max_ilp_scheduling_strategy": true,
+          "hcu_use_gfx946_sched_model_v2": false,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "empty_arrive_after_mmac": false,
+          "enable_v_mmac_cluster": 0,
+          "num_stages": 2,
+          "mmac_layout_force": 3,
+          "buffer_cache_swizzle": true,
+          "wasp": true,
+          "wdra": true,
+          "use_mls": true,
+          "use_matrix_store": true
+        }
       },
       "priority": 0
     },
@@ -42,13 +65,36 @@
       },
       "config": {
         "implementation": "triton.dense.fp16",
-        "block_size": [
-          256,
-          256,
-          64
-        ],
-        "source_config": "triton/configs/gemm_fp16/gfx946/M4096_N4608_K4096_TT_wdra48_bcs_mls_mlf3_pp_mstore.json",
-        "backend": "triton"
+        "backend": "triton",
+        "params": {
+          "GROUP_SIZE_M": 1,
+          "WARP_SPECIALIZE": true,
+          "wasp_wdra": true,
+          "amdgpu_enable_max_ilp_scheduling_strategy": true,
+          "hcu_use_gfx946_sched_model_v2": false,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "empty_arrive_after_mmac": false,
+          "enable_v_mmac_cluster": 0,
+          "num_stages": 2,
+          "mmac_layout_force": 3,
+          "buffer_cache_swizzle": true,
+          "wasp": true,
+          "wdra": true,
+          "use_mls": true,
+          "use_matrix_store": true
+        }
       },
       "priority": 0
     },
@@ -67,13 +113,36 @@
       },
       "config": {
         "implementation": "triton.dense.fp16",
-        "block_size": [
-          256,
-          256,
-          64
-        ],
-        "source_config": "triton/configs/gemm_fp16/gfx946/M4096_N4608_K16384_TT_wdra48_bcs_mls_mlf3_pp_mstore.json",
-        "backend": "triton"
+        "backend": "triton",
+        "params": {
+          "GROUP_SIZE_M": 1,
+          "WARP_SPECIALIZE": true,
+          "wasp_wdra": true,
+          "amdgpu_enable_max_ilp_scheduling_strategy": true,
+          "hcu_use_gfx946_sched_model_v2": false,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "empty_arrive_after_mmac": false,
+          "enable_v_mmac_cluster": 0,
+          "num_stages": 2,
+          "mmac_layout_force": 3,
+          "buffer_cache_swizzle": true,
+          "wasp": true,
+          "wdra": true,
+          "use_mls": true,
+          "use_matrix_store": true
+        }
       },
       "priority": 0
     }

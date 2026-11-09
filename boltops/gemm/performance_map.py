@@ -31,7 +31,7 @@ def config_path(interface):
 
 
 def _validate_document(data, interface):
-    if data["schema_version"] != 5:
+    if data["schema_version"] != 6:
         raise ValueError("unsupported GEMM performance-map schema")
     if data["interface"] != f"gemm_{interface}":
         raise ValueError(f"configuration file must belong to gemm_{interface}")
@@ -41,6 +41,9 @@ def _validate_document(data, interface):
     if not isinstance(data["entries"], list):
         raise ValueError("GEMM entries must be a list")
     for entry in data["entries"]:
+        if set(entry["config"]) != {"backend", "implementation", "params"}:
+            raise ValueError("configuration requires backend, implementation and params only")
+        entry_config(entry)
         _validate_condition(entry["match"], _PROBLEM_SCHEMA)
         if not {"arch", "num_cus"}.issubset(entry["match"]):
             raise ValueError("GEMM match requires explicit arch and num_cus")
@@ -185,7 +188,7 @@ def matching_entries(problem, *, backend="auto"):
 
 def entry_config(entry):
     c = entry["config"]
-    return KernelConfig(*c["block_size"], source_config=c.get("source_config"))
+    return KernelConfig.from_params(c["params"])
 
 
 def tuned_configs(problem, implementation, *, backend=None):

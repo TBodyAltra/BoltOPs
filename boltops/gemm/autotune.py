@@ -86,9 +86,7 @@ def _save_winner(problem, plan, path):
                    [max(overlaps) + 1 if overlaps else 0])
     c = plan.config
     config = {'backend': plan.backend, 'implementation': plan.implementation,
-              'block_size': [c.block_m, c.block_n, c.block_k]}
-    if c.source_config is not None:
-        config['source_config'] = c.source_config
+              'params': c.params}
     data['entries'] = others + [{'match': match, 'priority': priority, 'config': config}]
     target.parent.mkdir(parents=True, exist_ok=True)
     mode = target.stat().st_mode & 0o777 if target.exists() else 0o644
@@ -166,7 +164,7 @@ def autotune(problem, *, benchmark, validate, plans=None, names=None,
                                     -dispatch.IMPLEMENTATIONS[t.plan.implementation].get("default_priority", 0),
                                     t.plan.implementation,
                                     t.plan.config.block_m, t.plan.config.block_n,
-                                    t.plan.config.block_k, t.plan.config.source_config or ''))
+                                    t.plan.config.block_k, t.plan.config._params_json))
     if output_path is not None:
         save_winner(problem, best.plan, output_path)
     return AutotuneResult(best.plan, tuple(trials))

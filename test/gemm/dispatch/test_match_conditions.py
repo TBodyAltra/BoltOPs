@@ -99,10 +99,10 @@ def test_packaged_rules_are_valid_and_keep_dense_layout_and_scaled_range():
 
 
 def test_document_rejects_unknown_rule_even_without_matching_backend():
-    d = {'schema_version': 5, 'interface': 'gemm_dense',
+    d = {'schema_version': 6, 'interface': 'gemm_dense',
          'default_backends': ['triton', 'gluon', 'tilelang'],
          'entries': [{'match': {'arch': 'other', 'num_cus': 48, 'bad': 1},
-                      'config': {'backend': 'tilelang'}}]}
+                      'config': {'backend': 'tilelang', 'implementation': 'test', 'params': {'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32}}}]}
     with pytest.raises(ValueError, match='unknown GEMM match field'):
         maps._validate_document(d, 'dense')
     d['entries'][0]['match'] = {'arch': 'gfx946'}

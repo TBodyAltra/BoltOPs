@@ -57,7 +57,7 @@ compile/execute failure. Unsupported combinations raise NotImplementedError;
 a registered backend missing its runtime raises ImportError. Gluon retains the optimized E4M3FN/FP32 scale recipe. TileLang currently has no implementation rows.
 
 The five files are `gemm_dense.json`, `gemm_scaled.json`, `gemm_batched.json`,
-`gemm_grouped.json`, and `gemm_batched_a16wfp4_online_quant.json`. Each carries its interface identifier. Schema 5
+`gemm_grouped.json`, and `gemm_batched_a16wfp4_online_quant.json`. Each carries its interface identifier. Schema 6
 separates `match` (arch, num_cus, MNK, dtype/scale/layout contracts) from
 `config` (backend, implementation, tile and optional existing config file).
 Tile is not a matching condition. No measurements, frequency, commit IDs or
@@ -100,11 +100,11 @@ implementation name string and its configuration, not a registration object.
 
 ## Winner selection and default policy
 
-Schema 5 configuration files explicitly declare a default backend order:
+Schema 6 configuration files explicitly declare a default backend order:
 
 ```json
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "interface": "gemm_batched",
   "default_backends": ["triton", "gluon", "tilelang"],
   "entries": []
@@ -112,7 +112,7 @@ Schema 5 configuration files explicitly declare a default backend order:
 ```
 
 Every entry names one measured winner (`config.backend`, `implementation`,
-block size and optional source config). An entry's integer `priority` defaults
+complete `params` object). An entry's integer `priority` defaults
 to zero; larger values override lower-priority matching records. This is an
 explicit routing priority, not a timing measurement or a heuristic for tile
 size. Exact-shape exceptions to a broader range should use a higher priority.
@@ -189,7 +189,7 @@ scan is run as part of ordinary regression validation.
 
 ## Generic match conditions
 
-Schema 5 matches the attributes of `GemmProblem` directly. Nested objects use
+Schema 6 matches the attributes of `GemmProblem` directly. Nested objects use
 partial matching; omitted fields are unconstrained. Arrays and null are exact
 values. Dtypes use names without the `torch.` prefix. For example:
 
@@ -230,6 +230,20 @@ alignment flags. Exact winner records use strides without duplicate contiguity
 labels. Packaged
 rules may use contiguity labels instead of exact strides.
 
-Schema 4 is rejected. Packaged rules preserve their original restrictions:
+Schemas 4 and 5 are rejected. Packaged rules preserve their original restrictions:
 interface invariants are enforced at entry, and remaining bias and layout
 conditions are explicit. The generic matcher applies no hidden defaults.
+
+
+Each selected `config` contains only `backend`, `implementation` and `params`.
+`params` holds the implementation's launch options directly, including block
+sizes, stages, warp/register quotas and pipeline flags as applicable. There is
+no `source_config` reference or separate `block_size` copy. The public dispatcher
+passes this configuration to the implementation's launcher for interpretation.
+The FP16 launcher consumes the expanded parameters without reading a second
+file or resolving mode presets. Fixed pipelines validate their supported
+configuration. KernelConfig retains immutable complete parameters, so explicit
+autotune publication preserves non-tile options and distinguishes configurations
+with different stages or register quotas. Historical backend config files remain
+available to their original users; timing and provenance fields are not copied
+into dispatch rules.

@@ -1,7 +1,4 @@
 """Adapters reuse the existing dense kernels and gfx946 FP16 recipes."""
-import json
-from pathlib import Path
-
 import torch
 
 from ..performance_map import tuned_configs
@@ -37,16 +34,16 @@ def _general_configurations(p):
     if p.a_dtype == torch.float32 and (p.out_dtype != torch.float32 or not p.num_cus):
         return ()
     cfg = _general_config(p)
-    return (KernelConfig(*(cfg['BLOCK_SIZE_' + d] for d in ('M', 'N', 'K'))),)
+    return (KernelConfig.from_params(cfg),)
 
 
 def launch_dense(config, problem, a, b, bias, out):
     if a.dtype in (torch.float16, torch.bfloat16):
         from .gemm_a16w16 import gemm_a16w16
-        gemm_a16w16(a, b, bias, dtype=out.dtype, y=out, config=_general_config(problem))
+        gemm_a16w16(a, b, bias, dtype=out.dtype, y=out, config=config.params)
     else:
         from .matmul_persistent import matmul_kernel_persistent
-        cfg = _general_config(problem)
+        cfg = config.params
         grid = (min(problem.num_cus, ((problem.m + config.block_m - 1) // config.block_m) * ((problem.n + config.block_n - 1) // config.block_n)),)
         matmul_kernel_persistent[grid](
             a, b.T, out, bias, problem.m, problem.n, problem.k,
@@ -56,25 +53,9 @@ def launch_dense(config, problem, a, b, bias, out):
 
 
 def launch_dense_fp16(config, problem, a, b, bias, out):
-    from .gemm_fp16 import gemm_fp16, mode_launch_kwargs
-    root = Path(__file__).resolve().parents[1]
-    path = (root / config.source_config).resolve()
-    if root not in path.parents:
-        raise ValueError("dense config must be inside the GEMM package")
-    recipe = json.loads(path.read_text())
-    if tuple(recipe['BLOCK_SIZE_' + d] for d in ('M', 'N', 'K')) != (config.block_m, config.block_n, config.block_k):
-        raise ValueError("selected tile disagrees with the existing FP16 recipe")
-    launch = mode_launch_kwargs(recipe["mode"])
-    keys = {'BLOCK_SIZE_M', 'BLOCK_SIZE_N', 'BLOCK_SIZE_K', 'GROUP_SIZE_M',
-            'WARP_SPECIALIZE', 'num_warps', 'num_stages', 'empty_arrive_after_mmac',
-            'enable_v_mmac_cluster', 'mmac_layout_force', 'wasp_wdra',
-            'wasp_partition_warps', 'wasp_partition_regs'}
-    launch.update({k: tuple(v) if isinstance(v, list) else v for k, v in recipe.items() if k in keys})
-    if "TRITON_BUFFER_CACHE_SWIZZLE" in recipe:
-        launch['buffer_cache_swizzle'] = recipe['TRITON_BUFFER_CACHE_SWIZZLE']
-    gemm_fp16(a, b.T, bias, out=out, wasp=recipe['mode'] != 'nowasp',
-              wdra=recipe['mode'].startswith('wdra'),
-              use_mls=recipe.get('use_mls', False),
-              use_matrix_store=recipe.get('use_matrix_store', False),
-              autotune=False, config=launch)
-
+    from .gemm_fp16 import gemm_fp16
+    params = config.params
+    flags = {key: params.pop(key) for key in ("wasp", "wdra", "use_mls", "use_matrix_store")}
+    launch = {key: tuple(value) if isinstance(value, list) else value
+              for key, value in params.items()}
+    gemm_fp16(a, b.T, bias, out=out, autotune=False, config=launch, **flags)

@@ -4,20 +4,48 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
+import json
 
 import torch
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class KernelConfig:
-    block_m: int
-    block_n: int
-    block_k: int
-    source_config: Optional[str] = None
+    # Canonical JSON keeps nested options immutable, hashable and serializable.
+    _params_json: str
 
-    def __post_init__(self):
-        if any(type(v) is not int or v <= 0 for v in (self.block_m, self.block_n, self.block_k)):
+    def __init__(self, block_m, block_n, block_k, **options):
+        if any(type(v) is not int or v <= 0 for v in (block_m, block_n, block_k)):
             raise ValueError("kernel block sizes must be positive integers")
+        params = dict(options, BLOCK_SIZE_M=block_m, BLOCK_SIZE_N=block_n, BLOCK_SIZE_K=block_k)
+        object.__setattr__(self, "_params_json", json.dumps(params, sort_keys=True, allow_nan=False))
+
+    @classmethod
+    def from_params(cls, params):
+        if not isinstance(params, dict):
+            raise ValueError("kernel params must be an object")
+        options = dict(params)
+        try:
+            blocks = [options.pop("BLOCK_SIZE_" + d) for d in ("M", "N", "K")]
+        except KeyError as error:
+            raise ValueError("kernel params require BLOCK_SIZE_M/N/K") from error
+        return cls(*blocks, **options)
+
+    @property
+    def params(self):
+        return json.loads(self._params_json)
+
+    @property
+    def block_m(self):
+        return self.params["BLOCK_SIZE_M"]
+
+    @property
+    def block_n(self):
+        return self.params["BLOCK_SIZE_N"]
+
+    @property
+    def block_k(self):
+        return self.params["BLOCK_SIZE_K"]
 
 
 @dataclass(frozen=True)

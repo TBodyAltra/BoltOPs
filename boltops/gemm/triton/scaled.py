@@ -43,7 +43,13 @@ def _block_config(p):
 
 def _block_configs(p):
     config = _block_config(p)
-    return () if config is None else (KernelConfig(*(config["BLOCK_SIZE_" + d] for d in ("M", "N", "K"))),)
+    if config is None:
+        return ()
+    config = dict(config)
+    config.setdefault("GROUP_SIZE_M", 32)
+    config.setdefault("num_warps", 4)
+    config.setdefault("num_stages", 2)
+    return (KernelConfig.from_params(config),)
 
 
 def _row_configs(p):
@@ -62,10 +68,7 @@ def launch_block_scaled(config, problem, a, b, a_scale, b_scale, out):
         from .w8a8_block_int8_matmul import _w8a8_block_int8_matmul as kernel
     else:
         from .w8a8_triton_block_scaled_mm import _w8a8_triton_block_scaled_mm as kernel
-    cfg = dict(_block_config(problem))
-    cfg.setdefault('GROUP_SIZE_M', 32)
-    cfg.setdefault('num_warps', 4)
-    cfg.setdefault('num_stages', 2)
+    cfg = config.params
     m, n, k = problem.m, problem.n, problem.k
     grid = ((m + config.block_m - 1) // config.block_m *
             ((n + config.block_n - 1) // config.block_n),)

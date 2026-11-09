@@ -26,7 +26,8 @@ def problem(shape=(128, 256, 256), *, aligned=True, dtype=torch.float8_e4m3fn,
 def test_complete_tiles_select_fixed_mls_pipeline(shape):
     plan = select_plan(problem(shape))
     assert plan.implementation == "gluon.fp8e4m3fn.fp32scale.a1x128_b128x128.to_bf16"
-    assert plan.config == KernelConfig(128, 256, 128)
+    assert plan.config == KernelConfig(128, 256, 128, num_warps=4, num_stages=2,
+                                       wasp_partition_warps=[4, 4, 4, 4], wasp_wdra=True)
 
 
 @pytest.mark.parametrize("shape", [
@@ -37,8 +38,9 @@ def test_incomplete_or_over_capacity_tiles_use_triton(shape):
     assert select_plan(problem(shape)).implementation == "triton.block_scaled"
 
 
-def test_unaligned_inputs_do_not_select_mls():
-    assert select_plan(problem(aligned=False)).implementation == "triton.block_scaled"
+def test_unaligned_inputs_reject_the_recorded_mls_configuration():
+    with pytest.raises(ValueError, match="winner is unsupported"):
+        select_plan(problem(aligned=False))
 
 
 @pytest.mark.parametrize("kwargs", [

@@ -23,7 +23,7 @@ def policy(tmp_path, monkeypatch):
     maps.clear_cache()
     for name in ('dense', 'scaled', 'batched', 'grouped', 'batched_a16wfp4_online_quant'):
         (tmp_path / f'gemm_{name}.json').write_text(json.dumps({
-            'schema_version': 5, 'interface': f'gemm_{name}',
+            'schema_version': 6, 'interface': f'gemm_{name}',
             'default_backends': ['triton', 'gluon', 'tilelang'], 'entries': []}))
     yield tmp_path
     maps.clear_cache()
@@ -45,7 +45,7 @@ def choices(add_impl):
 def record(p, impl, *, priority=0):
     return {'match': maps.exact_match(p), 'priority': priority,
             'config': {'backend': dispatch.IMPLEMENTATIONS[impl]['backend'], 'implementation': impl,
-                       'block_size': [32, 64, 32]}}
+                       'params': KernelConfig(32, 64, 32).params}}
 
 
 def write(policy, p, entries, order=None):
@@ -103,8 +103,8 @@ def test_defaults_have_stable_implementation_preference(policy, choices, add_imp
 def test_stale_measured_record_is_not_silently_replaced(policy, what, choices):
     p = problem()
     entry = record(p, choices[1])
-    entry['config']['implementation' if what == 'unknown_implementation' else 'block_size'] = (
-        'gluon.absent' if what == 'unknown_implementation' else [64, 64, 32])
+    entry['config']['implementation' if what == 'unknown_implementation' else 'params'] = (
+        'gluon.absent' if what == 'unknown_implementation' else KernelConfig(64, 64, 32).params)
     write(policy, p, [entry])
     with pytest.raises(ValueError, match='registered implementation|winner is unsupported'):
         select_plan(p, choices)
@@ -179,7 +179,7 @@ def test_tuning_writes_one_exact_winner_without_measurements(policy, choices):
     data = json.loads(path.read_text())
     assert len(data['entries']) == 1
     assert set(data['entries'][0]) == {'match', 'config', 'priority'}
-    assert set(data['entries'][0]['config']) == {'backend', 'implementation', 'block_size'}
+    assert set(data['entries'][0]['config']) == {'backend', 'implementation', 'params'}
     assert select_plan(p, choices[::-1]).implementation == choices[1]
     save_winner(p, result.winner, path)
     assert json.loads(path.read_text()) == data
@@ -295,3 +295,17 @@ def test_validation_requires_success_not_an_arbitrary_return_value(policy, inval
     with pytest.raises(RuntimeError, match='no validated'):
         autotune(problem(), names=choices, validate=lambda plan: invalid,
                  benchmark=lambda plan: 1)
+
+
+def test_tuning_publishes_complete_non_tile_parameters(policy, add_impl):
+    p = problem()
+    config = KernelConfig(32, 64, 32, num_stages=3, wasp_partition_regs=[16, 244, 244])
+    name = add_impl('triton.inline_options', configs=lambda p: (config,),
+                    supports=lambda p, candidate: candidate == config)
+    path = policy / 'gemm_scaled.json'
+    result = autotune(p, names=(name,), validate=lambda plan: True,
+                      benchmark=lambda plan: 1, output_path=path)
+    saved = json.loads(path.read_text())['entries'][0]['config']
+    assert saved['params'] == config.params
+    assert set(saved) == {'backend', 'implementation', 'params'}
+    assert select_plan(p, names=(name,)) == result.winner
