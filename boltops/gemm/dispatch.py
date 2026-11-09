@@ -70,7 +70,11 @@ IMPLEMENTATIONS = {
         'interface': 'scaled',
         'module': 'boltops.gemm.triton.awq_gemm_triton',
         'launcher': 'awq_gemm_triton',
-        'configs': '_awq_configs',
+        'default_config': {
+            'BLOCK_SIZE_M': 16, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32,
+            'GROUP_SIZE_M': 8, 'SPLIT_K': 1,
+        },
+        'supports': '_supports_awq',
     },
     'triton.scaled.mxfp4': {
         'backend': 'triton',
