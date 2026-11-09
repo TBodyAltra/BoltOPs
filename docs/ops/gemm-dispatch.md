@@ -277,3 +277,12 @@ heuristic. Both expose fixed default parameters in the implementation table.
 The recorded BW200/gfx936 80-CU batched shapes are stored in gemm_batched.json;
 FP16 recipes also serve BF16 at their recorded shapes. Unrecorded shapes use
 the fixed defaults. The tuning CLI publishes gemm_batched.json in the same format.
+
+## Pending naming cleanup
+
+- [ ] Rename implementation ID `triton.batched.native16` to `triton.batched.a16w16`.
+- [ ] Rename implementation ID `triton.grouped.native16` to `triton.grouped.a16w16`.
+
+Update the implementation table, interface JSON records, tuning tools, tests and
+documentation together. Keep the public APIs `gemm_batched` and `gemm_grouped`
+unchanged. This is a pending task; the IDs have not been renamed yet.
