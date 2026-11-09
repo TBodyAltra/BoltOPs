@@ -37,5 +37,14 @@ def test_tile_is_selected_then_checked_by_implementation(monkeypatch):
     assert performance_map.tuned_configs(
         problem(), entries[0]["config"]["implementation"]
     ) == (KernelConfig(256, 256, 64),)
-    # The map selected a tile; the fixed implementation still cannot execute it.
+    # A stale measured winner must be diagnosed, not silently replaced.
+    with pytest.raises(ValueError, match="recorded GEMM winner is unsupported"):
+        select_plan(problem())
+
+
+def test_gluon_capability_does_not_require_an_existing_winner(monkeypatch):
+    from boltops.gemm.registry import candidate_plans
+    monkeypatch.setattr(performance_map, "_entries", lambda interface: [])
+    plans = tuple(candidate_plans(problem(), tuning=True))
+    assert {p.implementation.backend for p in plans} == {"triton", "gluon"}
     assert select_plan(problem()).implementation.backend == "triton"

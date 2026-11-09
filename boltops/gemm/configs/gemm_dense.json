@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "interface": "gemm_dense",
   "entries": [
     {
@@ -28,7 +28,8 @@
         ],
         "source_config": "triton/configs/gemm_fp16/gfx946/M4096_N4608_K512_TT_wdra48_bcs_mls_mlf3_pp_mstore.json",
         "backend": "triton"
-      }
+      },
+      "priority": 0
     },
     {
       "match": {
@@ -56,7 +57,8 @@
         ],
         "source_config": "triton/configs/gemm_fp16/gfx946/M4096_N4608_K4096_TT_wdra48_bcs_mls_mlf3_pp_mstore.json",
         "backend": "triton"
-      }
+      },
+      "priority": 0
     },
     {
       "match": {
@@ -84,7 +86,13 @@
         ],
         "source_config": "triton/configs/gemm_fp16/gfx946/M4096_N4608_K16384_TT_wdra48_bcs_mls_mlf3_pp_mstore.json",
         "backend": "triton"
-      }
+      },
+      "priority": 0
     }
+  ],
+  "default_backends": [
+    "triton",
+    "gluon",
+    "tilelang"
   ]
 }

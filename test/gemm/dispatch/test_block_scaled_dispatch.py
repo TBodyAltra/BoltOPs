@@ -73,7 +73,7 @@ def test_a_new_implementation_needs_no_dispatch_branches():
     config = KernelConfig(64, 64, 64)
     implementation = Implementation("test", "dense", "not_imported", "launch",
                                     lambda p: (config,), lambda p, c: c == config, backend="gluon")
-    plan = select_plan(problem(), implementations=(implementation,))
+    plan = select_plan(replace(problem(), n=64), implementations=(implementation,))
     assert plan.implementation is implementation and plan.config == config
 
 

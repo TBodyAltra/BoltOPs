@@ -46,13 +46,13 @@ AWQ 和预量化 MXFP4 已合入 `gemm_scaled`，由格式、recipe 和 zero-poi
 | Gluon | 已优化 E4M3FN + FP32 A1×128/B128×128 → BF16 | 未注册 | 未注册 |
 | TileLang | 未注册 | 未注册 | 未注册 |
 
-自动调度先跨后端查统一性能映射，再选择已安装后端的通用实现。
+自动调度先跨后端选择唯一的最高 priority 调优记录，同优先级重叠记录直接报错。无可用记录时按各接口 JSON 的 default_backends 顺序选择；不依赖后端注册顺序。
 显式指定后端时只考虑该后端；没有对应组合报 `NotImplementedError`，已注册后端缺运行时依赖报 `ImportError`。
 编译或执行错误直接向上传递，不捕获后换后端。TileLang 本轮仅接入框架，没有新增 kernel 或正确性通过声明。
 
 公共框架按 MNK、输入/输出 dtype、scale、布局、arch 和 num_cus 分派；tile 是选出的配置。
 每个接口只读取 `configs/` 下同名的 JSON 文件，校验 interface 标识；包括普通四接口及在线量化 batched 接口，共五份文件。
-schema 3 的 match/config 分离，config 显式包含 backend 和 implementation，不存统计、频率、commit 或证据路径。
+schema 4 的 match/config 分离，config 显式包含 backend 和 implementation，不存统计、频率、commit 或证据路径。
 当前只登记 48 CU 上可接入的配置，不推定 96/192 CU 已调优；未命中的请求使用对应已有通用实现。
 其他既有专项算子仍保留原接口；三个统一入口不依赖这些公开包装，直接复用后端实现。
 
@@ -115,3 +115,5 @@ FP8×FP4 接口使用预量化 A 与低/高半字节打包的 E2M1 W（偶数 K 
 - 生产 kernel 与默认配置尚未采用上述实验流水。旧 MR !122 已关闭，后续在统一优化分支推进。
 
 关键根因、修复边界和环境能力缺口见 [debug 记录](debug_tuning/DEBUG.md)；有效性能数据、资源规则和候选计划见 [调优记录](debug_tuning/TUNING.md)。旧逐日记录不再维护，可从 Git 历史追溯。脚本、原始日志、StatLog、IR/汇编及大型产物均留在仓库外；不恢复暂停任务。
+
+显式跨后端 autotune、配置写回和外部配置目录的使用方式见 [调度规则](../ops/gemm-dispatch.md#winner-selection-and-default-policy)。普通 auto 不进行现场测速；本轮未运行大规模 PMD 扫描。

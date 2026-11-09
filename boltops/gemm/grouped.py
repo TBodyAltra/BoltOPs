@@ -84,6 +84,7 @@ def gemm_grouped(a, b, *, group_offsets=None, a_scale=None, b_scale=None,
             a_scale=None if recipe is None else ScaleSpec(a_scale.dtype, recipe[0], scale_encodings[0]),
             b_scale=None if recipe is None else ScaleSpec(b_scale.dtype, recipe[1], scale_encodings[1]),
             num_cus=get_device_info(a.device).cu_count, has_bias=bias is not None,
+            a_aligned_16=a.data_ptr() % 16 == 0, b_aligned_16=b.data_ptr() % 16 == 0,
         )
         launch(select_plan(problem, backend=backend), problem, a=a, b=b, a_scale=a_scale, b_scale=b_scale,
                group_offsets=group_offsets, bias=bias, out=out)

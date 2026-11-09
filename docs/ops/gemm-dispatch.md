@@ -57,9 +57,98 @@ compile/execute failure. Unsupported combinations raise NotImplementedError;
 a registered backend missing its runtime raises ImportError. Gluon retains the optimized E4M3FN/FP32 scale recipe. TileLang remains an empty registration point.
 
 The five files are `gemm_dense.json`, `gemm_scaled.json`, `gemm_batched.json`,
-`gemm_grouped.json`, and `gemm_batched_a16wfp4_online_quant.json`. Each carries its interface identifier. Schema 3
+`gemm_grouped.json`, and `gemm_batched_a16wfp4_online_quant.json`. Each carries its interface identifier. Schema 4
 separates `match` (arch, num_cus, MNK, dtype/scale/layout contracts) from
 `config` (backend, implementation, tile and optional existing config file).
 Tile is not a matching condition. No measurements, frequency, commit IDs or
 evidence paths are stored. Current tuned entries reuse existing gfx946 48-CU
 FP16 TT configurations. Source kernels and default configurations are unchanged.
+
+## Winner selection and default policy
+
+Schema 4 configuration files explicitly declare a default backend order:
+
+```json
+{
+  "schema_version": 4,
+  "interface": "gemm_batched",
+  "default_backends": ["triton", "gluon", "tilelang"],
+  "entries": []
+}
+```
+
+Every entry names one measured winner (`config.backend`, `implementation`,
+block size and optional source config). An entry's integer `priority` defaults
+to zero; larger values override lower-priority matching records. This is an
+explicit routing priority, not a timing measurement or a heuristic for tile
+size. Exact-shape exceptions to a broader range should use a higher priority.
+
+`auto` gathers matching records across available backends before choosing an
+implementation. There must be exactly one highest-priority match. Equal-ranked
+overlapping records, including duplicate copies, raise a configuration error;
+JSON order and provider registration order cannot choose a winner. A selected
+record whose implementation/configuration is stale or unsupported also raises
+an error, rather than disguising it as a default selection.
+
+A record for an unavailable backend cannot be used. With no usable record,
+selection follows the interface's `default_backends` list, skipping unavailable
+or unsupported implementations. Within a backend, larger
+`Implementation.default_priority` wins, then implementation name provides a
+stable tie order. Candidate config order is owned by that implementation.
+An explicit `backend=` filters records and defaults to only that backend.
+Compilation/execution failures of a normal launch still propagate unchanged.
+
+Recorded matches can describe dense, batched, grouped and packed/scaled
+operations: exact shapes, batch/group metadata, operand packing/strides,
+scale recipe/encoding, quantization, bias and alignment. Existing native-dense
+range contracts remain supported. No implicit specificity score is used;
+conflicting exact/range rules need explicit priorities.
+
+## Explicit autotune utility
+
+Normal `auto` dispatch never benchmarks. A separate utility is opt-in:
+
+```python
+import torch
+from boltops.gemm.autotune import autotune
+from boltops.gemm.registry import launch
+
+# p is a complete GemmProblem; tensors contains the launch arguments.
+# reference is independently computed. device_bench measures warmed device
+# execution (or provide a PMD modeled-cycle measurement callback).
+def validate(plan):
+    launch(plan, p, **tensors)  # compile, warm up and execute this candidate
+    torch.cuda.synchronize()
+    torch.testing.assert_close(tensors["out"], reference)
+
+def benchmark(plan):
+    return device_bench(lambda: launch(plan, p, **tensors))
+
+result = autotune(
+    p, validate=validate, benchmark=benchmark,
+    output_path=user_config_dir / f"gemm_{p.interface}.json",
+)
+```
+
+The lower positive finite metric wins. Validation is mandatory and runs before
+measurement. Failed candidates retain their error in `result.trials` and cannot
+win; all-failed tuning raises without publishing a record. This failure loop
+exists only in explicit tuning, not normal dispatch. Metric ties follow the
+explicit default policy. The utility compares declared legal candidates; it
+does not generate a full tile scan. Implementations may provide a separate
+`tuning_configurations` callback when their tuning pool differs from defaults;
+callers may also explicitly supply a `plans` list.
+
+Omit `output_path` for an in-memory result only. Same-host, same-user writers
+use an external lock to preserve concurrent updates. Publishing atomically updates
+one exact-shape winner, preserves unrelated records, and assigns enough
+priority to override overlapping broader rules. Repeat tuning replaces the
+same exact match without accumulating duplicates. Measurements/errors stay in
+the result and are never written into the JSON.
+
+Set `BOLTOPS_GEMM_CONFIG_DIR` to `user_config_dir` to use generated records in
+later normal calls. Missing interface files in that directory fall back to
+the packaged file. A successful publish clears the local config cache; after
+manual external edits, call `performance_map.clear_cache()` or restart the
+process. Tests for this utility use synthetic metrics; no broad PMD autotune
+scan is run as part of ordinary regression validation.

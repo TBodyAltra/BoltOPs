@@ -50,7 +50,8 @@ def _awq_scaled(a, packed_b, b_scale, b_zero_points, *, group_size, backend="aut
         p = GemmProblem("dense", m, n, k, OperandSpec(a.dtype, strides=tuple(a.stride())),
             OperandSpec(packed_b.dtype, "int4", "awq", 1, 8,
                         zero_point_dtype=b_zero_points.dtype, strides=tuple(packed_b.stride())),
-            out.dtype, d.arch, b_scale=ScaleSpec(b_scale.dtype, (1, group_size)), num_cus=d.cu_count)
+            out.dtype, d.arch, b_scale=ScaleSpec(b_scale.dtype, (1, group_size)), num_cus=d.cu_count,
+            a_aligned_16=a.data_ptr() % 16 == 0, b_aligned_16=packed_b.data_ptr() % 16 == 0)
         launch(select_plan(p, backend=backend), p, a=a, b=packed_b, b_scale=b_scale,
                b_zero_points=b_zero_points, out=out)
     return out
@@ -78,7 +79,8 @@ def _mxfp4_scaled(a, b, a_scale, b_scale, *, out_dtype=None, backend="auto"):
             OperandSpec(a.dtype, "fp4", "e2m1_low_high", -1, 2, strides=tuple(a.stride())),
             OperandSpec(b.dtype, "fp4", "e2m1_low_high", -1, 2, strides=tuple(b.stride())),
             out_dtype, d.arch, a_scale=ScaleSpec(a_scale.dtype, (1, 32), "e8m0"),
-            b_scale=ScaleSpec(b_scale.dtype, (1, 32), "e8m0"), num_cus=d.cu_count)
+            b_scale=ScaleSpec(b_scale.dtype, (1, 32), "e8m0"), num_cus=d.cu_count,
+            a_aligned_16=a.data_ptr() % 16 == 0, b_aligned_16=b.data_ptr() % 16 == 0)
         launch(select_plan(p, backend=backend), p, a=a, b=b, a_scale=a_scale, b_scale=b_scale, out=out)
     return out
 
@@ -109,6 +111,7 @@ def gemm_batched_a16wfp4_online_quant(a, b, b_scale, *, out_dtype=None, backend=
         p = GemmProblem("batched", m, n, k, OperandSpec(a.dtype, strides=tuple(a.stride())),
             OperandSpec(b.dtype, "fp4", "e2m1_low_high", -1, 2, strides=tuple(b.stride())),
             out_dtype, d.arch, batch=batch, b_scale=ScaleSpec(b_scale.dtype, (1, 32), "e8m0"),
-            num_cus=d.cu_count, activation_quantization="mxfp4")
+            num_cus=d.cu_count, activation_quantization="mxfp4",
+            a_aligned_16=a.data_ptr() % 16 == 0, b_aligned_16=b.data_ptr() % 16 == 0)
         launch(select_plan(p, backend=backend), p, a=a, b=b, b_scale=b_scale, out=out)
     return out
