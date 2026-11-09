@@ -1,0 +1,135 @@
+{
+ "shape": [
+  12,
+  248320,
+  2048
+ ],
+ "layout": "TT",
+ "dtype": "BF16 x BF16 -> BF16; FP32 accumulation",
+ "gcFrequency_GHz": 2.197802,
+ "constants": {
+  "M": 12,
+  "N": 248320,
+  "K": 2048,
+  "useful_flops": 12205424640,
+  "logical_bytes_D": 1023127552,
+  "A_bytes": 49152,
+  "B_bytes": 1017118720,
+  "C_bytes": 5959680,
+  "arithmetic_intensity_flop_per_byte": 11.929523954409156,
+  "peak_tflops": 432.0,
+  "configured_bandwidth_TB_s": 1.7996485,
+  "roofline_tflops": 21.468949890266504,
+  "roofline_time_us": 568.5152139431674
+ },
+ "metric_definition": "MMAC utilization = (2MNK/median_us)/432 TFLOPS; effective bandwidth = D/median_us with D = 2(MK+KN+MN) = 1,023,127,552 B; achieved = effective/1.7996485 TB/s. median_us is the full-kernel PMD gcSimCycles time. Not a hardware MMAC busy counter.",
+ "timing_protocol": "One independent PMD process per case, seed 29, 2 dispatches (1 warm-up + 1 timed, so median_us is a single timed sample); same B reused. The full 2,979,840-element output of the last dispatch is checked (atol=0.02, rtol=0.01 vs BF16-rounded FP32 reference), finite, 128-element guards, mean_abs <= 1.05*rounding_floor+1e-6.",
+ "transcription": "Copied from tmp/1106/r018_opt/runs/<source_run>/{result.json,case.json}; no GEMM was re-executed to produce this file. Raw PMD output stays in tmp (IR/asm/perf copies are kept locally under runs/TT_ir_asm_perf/, not committed).",
+ "kind": "generic_recorded",
+ "kernel": "operators/gemm_a16w16_generic.py (_gemm_bf16_generic_kernel), sha256 e108b0bb94c719409fc0a8b387e295f1d39bf1e02d364494a1d92c5e361313fb",
+ "config_file": "generic/best_config.json",
+ "config_source": "autotune/results_TT_dyn/shapes/R018_12x248320x2048_TT.json best.config (sha256 bf743bfb9db07a6ba0e905bdc739da66db27921bed815ae5cfb6f796c2bfa76c)",
+ "baseline": {
+  "source_run": "tmp/1106/r018_opt/runs/s2_base_real",
+  "seed": 29,
+  "dispatches": 2,
+  "dispatch_cycles": [
+   1289911.0,
+   1285684.0
+  ],
+  "timed_cycles": [
+   1285684.0
+  ],
+  "median_cycles": 1285684.0,
+  "median_us": 584.9862726487646,
+  "grid": 970,
+  "completed_wgs": 970,
+  "shared_B": 34816,
+  "n_regs": 58,
+  "n_spills": 0,
+  "num_warps": 4,
+  "asm_sha": "c1a7aa008f2559a05eb382370f67e040e251e64a3a4cfc56ba1ac8e1a7c1678c",
+  "correctness": {
+   "full_outputs_checked": 1,
+   "points_per_output": 2979840,
+   "mismatches": 0,
+   "finite": true,
+   "guard_128_each_side": true,
+   "mean_abs": 0.051060207188129425,
+   "rounding_floor": 0.051060207188129425
+  },
+  "metrics": {
+   "median_us": 584.9862726487646,
+   "tflops": 20.864463339857444,
+   "mmac_utilization_pct": 4.82973688422626,
+   "effective_bandwidth_TB_s": 1.7489770270460734,
+   "bandwidth_achieved_pct": 97.18436833893247,
+   "roofline_attained_pct": 97.1843683389325
+  },
+  "last_timed_dispatch_counters": {
+   "cycles": 1285684.0,
+   "us": 584.9862726487646,
+   "no_issue_frac": 0.23106916933011007,
+   "wait_density": {
+    "waitVmCounter": 0.4653454264448929,
+    "waitLgkmCounter": 0.03605918157829013,
+    "barrierCounter": 0.07269529931318425,
+    "depCounter": 0.07196387110021132,
+    "memInstVmemStallCounter": 0.0076740291907914085,
+    "memInstLdsStallCounter": 0.00034726532464967436,
+    "emptyBufferCounter": 0.003124462200675583
+   },
+   "gmem_credit_stall": 0.16833504795362855,
+   "cache": {
+    "TccSendRespBandwidth": 1.901675,
+    "TccRecvRespBandwidth": 1.750731,
+    "totalTCCRequests": 17382088.0,
+    "missTCCRequests": 3999800.0,
+    "TCCHitRate": 0.76989,
+    "totalTCPRequests": 78469120.0,
+    "TCPHitRate": 0.778485,
+    "TCPCacheLineHitRate": 0.204561
+   },
+   "umc_read_req": 3976514.0,
+   "umc_write_req": 24086.0,
+   "hbm_read_B_per_cycle": 791.7867718661818,
+   "cu_cycles_max": 1277689.0,
+   "cu_cycles_min": 1235414.0,
+   "cu_wgs_hist": {
+    "20.0": 38,
+    "21.0": 10
+   },
+   "first_wave_tick": 590521750.0,
+   "last_wave_tick": 1171895725.0
+  },
+  "warmup_dispatch_us": 586.9095578218603,
+  "case_as_run": {
+   "M": 12,
+   "N": 248320,
+   "K": 2048,
+   "layout": "TT",
+   "seed": 29,
+   "dispatches": 2,
+   "full_check": true,
+   "keep": true,
+   "keep_asm": true,
+   "config": {
+    "BLOCK_SIZE_M": 16,
+    "BLOCK_SIZE_N": 256,
+    "BLOCK_SIZE_K": 32,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 4,
+    "num_stages": 2,
+    "USE_MLS": true,
+    "LOOP_UNROLL_FACTOR": 2,
+    "mmac_layout_force": -1
+   },
+   "operator": "/public/home/duyubo/bolt/github/BoltOPs/tmp/1106/r018_opt/runs/s2_base_real/kernel_source.py",
+   "source_operator": "/public/home/duyubo/bolt/github/BoltOPs/tmp/1106/r018_opt/kernels/k0_generic.py",
+   "source_sha256": "e108b0bb94c719409fc0a8b387e295f1d39bf1e02d364494a1d92c5e361313fb",
+   "tune_lib_sha256": "9f52a590528963fe455e3cf202811996d0af8b5065ca4cb70c01695b0c47317f",
+   "baseline_sha256": "bf743bfb9db07a6ba0e905bdc739da66db27921bed815ae5cfb6f796c2bfa76c"
+  },
+  "wall_s": 4677.623692152003
+ }
+}
