@@ -12,7 +12,8 @@ import torch
 from boltops.gemm import performance_map as maps
 from boltops.gemm.autotune import autotune, save_winner
 from boltops.gemm.descriptors import GemmProblem, GroupSpec, OperandSpec, ScaleSpec
-from boltops.gemm.registry import ExecutionPlan, Implementation, KernelConfig, select_plan
+from boltops.gemm.dispatch import ExecutionPlan, KernelConfig, select_plan
+from boltops.gemm import dispatch
 
 
 @pytest.fixture
@@ -36,16 +37,14 @@ def problem():
                        b_scale=ScaleSpec(torch.float32, (32, 32)), num_cus=48)
 
 
-def implementations():
-    tile = KernelConfig(32, 64, 32)
-    return tuple(Implementation(f'{b}.test', 'dense', 'not_loaded', 'launch',
-                 lambda p: (tile,), lambda p, c: c == tile, backend=b)
-                 for b in ('triton', 'gluon', 'tilelang'))
+@pytest.fixture
+def choices(add_impl):
+    return tuple(add_impl(f'{b}.test', backend=b) for b in ('triton', 'gluon', 'tilelang'))
 
 
 def record(p, impl, *, priority=0):
     return {'match': maps.exact_match(p), 'priority': priority,
-            'config': {'backend': impl.backend, 'implementation': impl.name,
+            'config': {'backend': dispatch.IMPLEMENTATIONS[impl]['backend'], 'implementation': impl,
                        'block_size': [32, 64, 32]}}
 
 
@@ -61,17 +60,15 @@ def write(policy, p, entries, order=None):
 
 
 @pytest.mark.parametrize('order', list(itertools.permutations(range(3))))
-def test_measured_winner_is_independent_of_registration_order(policy, order):
+def test_measured_winner_is_independent_of_registration_order(policy, order, choices):
     p = problem()
-    choices = implementations()
     write(policy, p, [record(p, choices[2])])
     assert select_plan(p, [choices[i] for i in order]).implementation == choices[2]
 
 
 @pytest.mark.parametrize('reverse', [False, True])
-def test_ambiguous_records_fail_even_when_the_first_one_is_supported(policy, reverse):
+def test_ambiguous_records_fail_even_when_the_first_one_is_supported(policy, reverse, choices):
     p = problem()
-    choices = implementations()
     records = [record(p, choices[0]), record(p, choices[1])]
     write(policy, p, records[::-1] if reverse else records)
     with pytest.raises(ValueError, match='conflicting GEMM winners'):
@@ -79,36 +76,32 @@ def test_ambiguous_records_fail_even_when_the_first_one_is_supported(policy, rev
     assert select_plan(p, choices, backend='gluon').implementation == choices[1]
 
 
-def test_explicit_record_priority_overrides_broader_record(policy):
+def test_explicit_record_priority_overrides_broader_record(policy, choices):
     p = problem()
-    choices = implementations()
     broad = record(p, choices[0])
     broad['match']['shape_contract'] = {'m_multiple': 16, 'n_multiple': 32, 'k_min': 32}
     write(policy, p, [broad, record(p, choices[2], priority=10)])
     assert select_plan(p, choices).implementation == choices[2]
 
 
-def test_defaults_follow_interface_policy_not_registration_order(policy):
+def test_defaults_follow_interface_policy_not_registration_order(policy, choices):
     p = problem()
-    choices = implementations()
     write(policy, p, [], order=['tilelang', 'gluon', 'triton'])
     assert select_plan(p, choices).implementation == choices[2]
     assert select_plan(p, choices[::-1]).implementation == choices[2]
 
 
-def test_defaults_have_stable_implementation_preference(policy):
+def test_defaults_have_stable_implementation_preference(policy, choices, add_impl):
     p = problem()
-    base = implementations()[0]
-    preferred = replace(base, name='zz', default_priority=10)
-    other = replace(base, name='aa')
+    preferred = add_impl('zz', default_priority=10)
+    other = add_impl('aa')
     assert select_plan(p, (other, preferred)).implementation == preferred
     assert select_plan(p, (preferred, other)).implementation == preferred
 
 
 @pytest.mark.parametrize('what', ['unknown_implementation', 'unsupported_tile'])
-def test_stale_measured_record_is_not_silently_replaced(policy, what):
+def test_stale_measured_record_is_not_silently_replaced(policy, what, choices):
     p = problem()
-    choices = implementations()
     entry = record(p, choices[1])
     entry['config']['implementation' if what == 'unknown_implementation' else 'block_size'] = (
         'gluon.absent' if what == 'unknown_implementation' else [64, 64, 32])
@@ -117,51 +110,48 @@ def test_stale_measured_record_is_not_silently_replaced(policy, what):
         select_plan(p, choices)
 
 
-def test_unavailable_backend_record_uses_available_defaults(policy):
+def test_unavailable_backend_record_uses_available_defaults(policy, choices):
     p = problem()
-    choices = implementations()
     write(policy, p, [record(p, choices[2])])
     assert select_plan(p, choices[:2]).implementation == choices[0]
 
 
 @pytest.mark.parametrize('order', [['triton', 'triton', 'gluon'], ['gluon'], 'triton'])
-def test_invalid_default_policy_fails(policy, order):
+def test_invalid_default_policy_fails(policy, order, choices):
     p = problem()
     write(policy, p, [], order=order)
     with pytest.raises(ValueError, match='default_backends'):
-        select_plan(p, implementations())
+        select_plan(p, choices)
 
 
-def test_duplicate_identical_winners_are_an_explicit_configuration_error(policy):
+def test_duplicate_identical_winners_are_an_explicit_configuration_error(policy, choices):
     p = problem()
-    entry = record(p, implementations()[0])
+    entry = record(p, choices[0])
     write(policy, p, [entry, deepcopy(entry)])
     with pytest.raises(ValueError, match='conflicting GEMM winners'):
-        select_plan(p, implementations())
+        select_plan(p, choices)
 
 
-def test_autotune_requires_validation_and_never_runs_from_auto(policy):
+def test_autotune_requires_validation_and_never_runs_from_auto(policy, choices):
     p = problem()
-    choices = implementations()
     assert select_plan(p, choices).implementation == choices[0]
     with pytest.raises(TypeError, match='validation and benchmark'):
-        autotune(p, implementations=choices, benchmark=lambda plan: 1, validate=None)
+        autotune(p, names=choices, benchmark=lambda plan: 1, validate=None)
 
 
-def test_explicit_tuning_checks_correctness_before_measuring(policy):
+def test_explicit_tuning_checks_correctness_before_measuring(policy, choices):
     p = problem()
-    choices = implementations()
     measured = []
     def validate(plan):
-        if plan.implementation.backend == 'triton':
+        if plan.backend == 'triton':
             return False
     def benchmark(plan):
-        name = plan.implementation.backend
+        name = plan.backend
         measured.append(name)
         if name == 'tilelang':
             raise RuntimeError('compiler unavailable for this candidate')
         return 5
-    result = autotune(p, implementations=choices, benchmark=benchmark, validate=validate)
+    result = autotune(p, names=choices, benchmark=benchmark, validate=validate)
     assert result.winner.implementation == choices[1]
     assert measured == ['gluon', 'tilelang']
     assert result.trials[0].score is None and 'validation' in result.trials[0].error
@@ -169,23 +159,22 @@ def test_explicit_tuning_checks_correctness_before_measuring(policy):
 
 
 @pytest.mark.parametrize('bad', [0, -1, float('nan'), float('inf'), True])
-def test_invalid_metric_does_not_write_a_winner(policy, bad):
+def test_invalid_metric_does_not_write_a_winner(policy, bad, choices):
     p = problem()
     path = policy / 'gemm_scaled.json'
     before = path.read_bytes()
     with pytest.raises(RuntimeError, match='no validated'):
-        autotune(p, implementations=implementations(), validate=lambda plan: True,
+        autotune(p, names=choices, validate=lambda plan: True,
                  benchmark=lambda plan: bad, output_path=path)
     assert path.read_bytes() == before
 
 
-def test_tuning_writes_one_exact_winner_without_measurements(policy):
+def test_tuning_writes_one_exact_winner_without_measurements(policy, choices):
     p = problem()
-    choices = implementations()
     scores = {'triton': 3, 'gluon': 1, 'tilelang': 2}
     path = policy / 'gemm_scaled.json'
-    result = autotune(p, implementations=choices, validate=lambda plan: True,
-                      benchmark=lambda plan: scores[plan.implementation.backend], output_path=path)
+    result = autotune(p, names=choices, validate=lambda plan: True,
+                      benchmark=lambda plan: scores[plan.backend], output_path=path)
     assert result.winner.implementation == choices[1]
     data = json.loads(path.read_text())
     assert len(data['entries']) == 1
@@ -196,9 +185,8 @@ def test_tuning_writes_one_exact_winner_without_measurements(policy):
     assert json.loads(path.read_text()) == data
 
 
-def test_tuned_exact_override_preserves_other_shapes_and_range_record(policy):
+def test_tuned_exact_override_preserves_other_shapes_and_range_record(policy, choices):
     p = problem()
-    choices = implementations()
     broad = record(p, choices[0])
     broad['match']['shape_contract'] = {'m_multiple': 16}
     unrelated = record(replace(p, n=128), choices[0])
@@ -212,18 +200,17 @@ def test_tuned_exact_override_preserves_other_shapes_and_range_record(policy):
     assert select_plan(replace(p, m=48), choices).implementation == choices[0]
 
 
-def test_explicit_tuning_limits_backend_and_metric_ties_use_policy(policy):
+def test_explicit_tuning_limits_backend_and_metric_ties_use_policy(policy, choices):
     p = problem()
-    choices = implementations()
-    result = autotune(p, implementations=choices[::-1], validate=lambda plan: True,
+    result = autotune(p, names=choices[::-1], validate=lambda plan: True,
                       benchmark=lambda plan: 1, backend='gluon')
     assert len(result.trials) == 1 and result.winner.implementation == choices[1]
     write(policy, p, [], order=['tilelang', 'triton', 'gluon'])
-    result = autotune(p, implementations=choices, validate=lambda plan: True, benchmark=lambda plan: 1)
+    result = autotune(p, names=choices, validate=lambda plan: True, benchmark=lambda plan: 1)
     assert result.winner.implementation == choices[2]
 
 
-def test_override_directory_is_optional_per_interface(policy, tmp_path, monkeypatch):
+def test_override_directory_is_optional_per_interface(policy, tmp_path, monkeypatch, choices):
     override = tmp_path / 'user-config'
     override.mkdir()
     p = problem()
@@ -231,12 +218,12 @@ def test_override_directory_is_optional_per_interface(policy, tmp_path, monkeypa
     data['default_backends'] = ['gluon', 'tilelang', 'triton']
     (override / 'gemm_scaled.json').write_text(json.dumps(data))
     monkeypatch.setenv('BOLTOPS_GEMM_CONFIG_DIR', str(override))
-    assert select_plan(p, implementations()).implementation.backend == 'gluon'
+    assert select_plan(p, choices).backend == 'gluon'
     assert maps.config_path('dense') == policy / 'gemm_dense.json'
 
 
 @pytest.mark.parametrize('mode', ['batched', 'grouped', 'awq', 'mxfp4', 'online'])
-def test_winners_round_trip_all_operation_and_packing_contracts(policy, mode):
+def test_winners_round_trip_all_operation_and_packing_contracts(policy, mode, choices, monkeypatch):
     p = problem()
     if mode in ('batched', 'grouped'):
         p = replace(p, kind=mode, a_scale=None, b_scale=None,
@@ -254,7 +241,8 @@ def test_winners_round_trip_all_operation_and_packing_contracts(policy, mode):
             p = replace(p, a=replace(p.b), a_scale=replace(p.b_scale))
         else:
             p = replace(p, kind='batched', batch=2, a_scale=None, activation_quantization='mxfp4')
-    impl = replace(implementations()[1], family=p.kind)
+    impl = choices[1]
+    monkeypatch.setitem(dispatch.IMPLEMENTATIONS, impl, {**dispatch.IMPLEMENTATIONS[impl], 'interface': p.interface})
     plan = ExecutionPlan(impl, KernelConfig(32, 64, 32))
     path = policy / f'gemm_{p.interface}.json'
     save_winner(p, plan, path)
@@ -263,7 +251,7 @@ def test_winners_round_trip_all_operation_and_packing_contracts(policy, mode):
     assert maps.matching_entries(replace(p, has_bias=True)) == ()
 
 
-def test_atomic_publish_failure_keeps_original_file(policy, monkeypatch):
+def test_atomic_publish_failure_keeps_original_file(policy, monkeypatch, choices):
     import boltops.gemm.autotune as tuning
     p = problem()
     target = policy / 'gemm_scaled.json'
@@ -272,15 +260,15 @@ def test_atomic_publish_failure_keeps_original_file(policy, monkeypatch):
         raise OSError('simulated filesystem failure')
     monkeypatch.setattr(tuning.os, 'replace', fail)
     with pytest.raises(OSError, match='filesystem failure'):
-        save_winner(p, ExecutionPlan(implementations()[0], KernelConfig(32, 64, 32)), target)
+        save_winner(p, ExecutionPlan(choices[0], KernelConfig(32, 64, 32)), target)
     assert target.read_bytes() == before
     assert not list(policy.glob('*.tmp'))
 
 
-def test_parallel_publications_preserve_other_workers_records(policy):
+def test_parallel_publications_preserve_other_workers_records(policy, choices):
     from concurrent.futures import ThreadPoolExecutor
     base = problem()
-    impl = implementations()[0]
+    impl = choices[0]
     plan = ExecutionPlan(impl, KernelConfig(32, 64, 32))
     target = policy / 'gemm_scaled.json'
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -290,19 +278,20 @@ def test_parallel_publications_preserve_other_workers_records(policy):
     assert {e['match']['shape_contract']['m'] for e in data['entries']} == set(range(16, 32))
 
 
-def test_auto_does_not_import_missing_backend_provider(policy, monkeypatch):
-    from boltops.gemm import catalog
-    choices = implementations()
-    monkeypatch.setattr(catalog, 'available', lambda backend: backend != 'tilelang')
-    def load(backend, interface):
-        assert backend != 'tilelang', 'unavailable provider should not be imported'
-        return tuple(i for i in choices if i.backend == backend)
-    monkeypatch.setattr(catalog, 'implementations', load)
-    assert select_plan(problem()).implementation.backend == 'triton'
+def test_auto_does_not_import_unavailable_backend(policy, monkeypatch, choices):
+    rows = {name: dispatch.IMPLEMENTATIONS[name] for name in choices}
+    monkeypatch.setattr(dispatch, 'IMPLEMENTATIONS', rows)
+    monkeypatch.setattr(dispatch, 'available', lambda backend: backend != 'tilelang')
+    original = dispatch.import_module
+    def load(module):
+        assert module != rows[choices[2]]['module'], 'unavailable implementation must not be imported'
+        return original(module)
+    monkeypatch.setattr(dispatch, 'import_module', load)
+    assert select_plan(problem()).backend == 'triton'
 
 
 @pytest.mark.parametrize('invalid', [0, 1, 'PASS'])
-def test_validation_requires_success_not_an_arbitrary_return_value(policy, invalid):
+def test_validation_requires_success_not_an_arbitrary_return_value(policy, invalid, choices):
     with pytest.raises(RuntimeError, match='no validated'):
-        autotune(problem(), implementations=implementations(), validate=lambda plan: invalid,
+        autotune(problem(), names=choices, validate=lambda plan: invalid,
                  benchmark=lambda plan: 1)

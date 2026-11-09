@@ -6,15 +6,15 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-from .registry import KernelConfig
-from .catalog import BACKENDS as _BACKENDS
+from .descriptors import KernelConfig
+from .dispatch import BACKENDS as _BACKENDS
 
 _CONFIG_DIR = Path(__file__).with_name("configs")
-_INTERFACES = ("scaled", "dense", "batched", "grouped", "batched_a16wfp4_online_quant")
+_CONFIG_NAMES = ("scaled", "dense", "batched", "grouped", "batched_a16wfp4_online_quant")
 
 
 def config_path(interface):
-    if interface not in _INTERFACES:
+    if interface not in _CONFIG_NAMES:
         raise ValueError(f"unknown GEMM configuration interface: {interface}")
     name = f"gemm_{interface}.json"
     override = os.environ.get("BOLTOPS_GEMM_CONFIG_DIR")
@@ -148,6 +148,6 @@ def entry_config(entry):
 
 
 def tuned_configs(problem, implementation, *, backend=None):
-    """Capabilities may query records; winner resolution belongs to registry."""
+    """Capabilities may query records; winner resolution belongs to dispatch."""
     return tuple(entry_config(e) for e in matching_entries(problem, backend=backend or "auto")
                  if e["config"]["implementation"] == implementation)

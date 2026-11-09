@@ -7,7 +7,7 @@ import triton
 
 from boltops.gemm import gemm_dense, gemm_grouped, gemm_scaled
 from boltops.gemm.descriptors import GemmProblem, OperandSpec
-from boltops.gemm.registry import select_plan
+from boltops.gemm.dispatch import select_plan
 
 
 def require_hcu():
@@ -25,12 +25,12 @@ def dense_problem(m=4096, n=4608, k=4096, num_cus=48):
 def test_dense_selects_existing_fp16_config():
     p = dense_problem()
     plan = select_plan(p)
-    assert plan.implementation.name == 'triton.dense.fp16'
+    assert plan.implementation == 'triton.dense.fp16'
     assert plan.config.source_config.endswith('M4096_N4608_K4096_TT_wdra48_bcs_mls_mlf3_pp_mstore.json')
-    assert select_plan(replace(p, num_cus=96)).implementation.name == 'triton.dense.native'
-    assert select_plan(dense_problem(512, 512, 512)).implementation.name == 'triton.dense.native'
+    assert select_plan(replace(p, num_cus=96)).implementation == 'triton.dense.native'
+    assert select_plan(dense_problem(512, 512, 512)).implementation == 'triton.dense.native'
     tn = replace(p, b=OperandSpec(torch.float16, strides=(p.k, 1)))
-    assert select_plan(tn).implementation.name == 'triton.dense.native'
+    assert select_plan(tn).implementation == 'triton.dense.native'
 
 
 @pytest.mark.parametrize('dtype', [torch.float16, torch.bfloat16, torch.float32])
@@ -55,7 +55,7 @@ def test_existing_tuned_fp16_recipe_single_cta():
     a = (torch.randint(-2, 3, (256, 256)).float() / 4).half()
     nn_b = (torch.randint(-2, 3, (256, 256)).float() / 4).half()
     out = torch.empty((256, 256), dtype=torch.float16, device='cuda')
-    from boltops.gemm.triton.dense_dispatch import launch_dense_fp16
+    from boltops.gemm.triton.dense import launch_dense_fp16
     weight = nn_b.cuda().T
     p = replace(p, b=OperandSpec(torch.float16, strides=tuple(weight.stride())))
     launch_dense_fp16(plan.config, p, a.cuda(), weight, None, out)

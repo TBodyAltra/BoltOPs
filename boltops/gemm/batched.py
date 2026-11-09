@@ -3,9 +3,8 @@
 """Batched GEMM with independent problem/configuration/backend selection."""
 import torch
 from boltops.utility.arch_info import get_device_info
-from .catalog import validate_backend
 from .descriptors import GemmProblem, OperandSpec
-from .registry import launch, select_plan
+from .dispatch import launch, select_plan, validate_backend
 
 
 def gemm_batched(a, b, *, bias=None, out_dtype=None, backend="auto"):

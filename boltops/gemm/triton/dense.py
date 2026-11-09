@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 from ..performance_map import tuned_configs
-from ..registry import Implementation, KernelConfig
+from ..descriptors import KernelConfig
 
 _TUNED = "triton.dense.fp16"
 
@@ -78,10 +78,3 @@ def launch_dense_fp16(config, problem, a, b, bias, out):
               use_matrix_store=recipe.get('use_matrix_store', False),
               autotune=False, config=launch)
 
-
-IMPLEMENTATIONS = (
-    Implementation(_TUNED, "dense", __name__, "launch_dense_fp16", _tuned_configurations,
-                   lambda p, c: c in _tuned_configurations(p), backend="triton"),
-    Implementation("triton.dense.native", "dense", __name__, "launch_dense", _general_configurations,
-                   lambda p, c: c in _general_configurations(p), backend="triton"),
-)

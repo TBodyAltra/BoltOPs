@@ -4,9 +4,8 @@
 import operator
 import torch
 from boltops.utility.arch_info import get_device_info
-from .catalog import validate_backend
 from .descriptors import GemmProblem, OperandSpec, ScaleSpec
-from .registry import launch, select_plan
+from .dispatch import launch, select_plan, validate_backend
 
 
 def _check_device(a, tensors):

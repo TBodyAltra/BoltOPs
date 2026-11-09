@@ -1,7 +1,7 @@
 """Reuse equal 16-bit batched GEMM and existing equal/ragged FP8 x FP4 GEMM."""
 import torch
 
-from ..registry import Implementation, KernelConfig
+from ..descriptors import KernelConfig
 
 
 def _native(p):
@@ -53,10 +53,6 @@ def launch_grouped_fp4(config, problem, a, b, a_scale, b_scale, group_offsets, b
                         config={'BLOCK_SIZE_M': config.block_m, 'BLOCK_SIZE_N': config.block_n, 'num_warps': 4})
 
 
-IMPLEMENTATIONS = (
-    Implementation('triton.grouped.native16', 'grouped', __name__, 'launch_grouped_native', _native_config,
-                   lambda p, c: c in _native_config(p), backend='triton'),
-    Implementation('triton.grouped.fp8_fp4', 'grouped', __name__, 'launch_grouped_fp4',
-                   lambda p: (KernelConfig(16, 32, 32),) if _fp4(p) else (),
-                   lambda p, c: _fp4(p) and c == KernelConfig(16, 32, 32), backend='triton'),
-)
+
+def mixed_fp4_configs(p):
+    return (KernelConfig(16, 32, 32),) if _fp4(p) else ()

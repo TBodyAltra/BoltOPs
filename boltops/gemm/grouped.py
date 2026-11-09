@@ -3,8 +3,7 @@ import torch
 from boltops.utility.arch_info import get_device_info
 
 from .descriptors import GemmProblem, GroupSpec, OperandSpec, ScaleSpec
-from .registry import launch, select_plan
-from .catalog import validate_backend
+from .dispatch import launch, select_plan, validate_backend
 from .scaled import _parse_recipe
 
 

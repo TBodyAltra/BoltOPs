@@ -12,7 +12,8 @@ import os
 from pathlib import Path
 import tempfile
 
-from .registry import ExecutionPlan, candidate_plans
+from . import dispatch
+from .dispatch import ExecutionPlan, candidate_plans, supports
 
 
 @dataclass(frozen=True)
@@ -67,7 +68,7 @@ def _save_winner(problem, plan, path):
     """Atomically publish configuration only, keeping unrelated records intact."""
     from .performance_map import (document, _validate_document, _matches,
                                   exact_match, clear_cache)
-    if not plan.implementation.matches(problem, plan.config):
+    if not supports(plan.implementation, problem, plan.config):
         raise ValueError("cannot save an unsupported GEMM plan")
     target = Path(path)
     if target.name != f"gemm_{problem.interface}.json":
@@ -84,7 +85,7 @@ def _save_winner(problem, plan, path):
     priority = max([e.get('priority', 0) for e in old_exact] +
                    [max(overlaps) + 1 if overlaps else 0])
     c = plan.config
-    config = {'backend': plan.implementation.backend, 'implementation': plan.implementation.name,
+    config = {'backend': plan.backend, 'implementation': plan.implementation,
               'block_size': [c.block_m, c.block_n, c.block_k]}
     if c.source_config is not None:
         config['source_config'] = c.source_config
@@ -108,7 +109,7 @@ def _save_winner(problem, plan, path):
     clear_cache()
 
 
-def autotune(problem, *, benchmark, validate, plans=None, implementations=None,
+def autotune(problem, *, benchmark, validate, plans=None, names=None,
              backend='auto', output_path=None):
     """Select a validated plan by an explicitly supplied lower-is-better metric.
 
@@ -123,26 +124,26 @@ def autotune(problem, *, benchmark, validate, plans=None, implementations=None,
     BOLTOPS_GEMM_CONFIG_DIR at its directory for later auto dispatch. Runtime
     scores and errors stay in the result, not the configuration file.
     """
-    from .catalog import validate_backend
+    from .dispatch import validate_backend
     from .performance_map import default_backends
     validate_backend(backend)
     if not callable(validate) or not callable(benchmark):
         raise TypeError('autotune requires explicit validation and benchmark callbacks')
-    if plans is not None and implementations is not None:
-        raise ValueError('provide plans or implementations, not both')
-    plans = (candidate_plans(problem, implementations, backend=backend, tuning=True)
+    if plans is not None and names is not None:
+        raise ValueError('provide plans or implementation names, not both')
+    plans = (candidate_plans(problem, names, backend=backend, tuning=True)
              if plans is None else plans)
     trials = []
     seen = set()
     for plan in plans:
-        if backend != 'auto' and plan.implementation.backend != backend:
+        if backend != 'auto' and plan.backend != backend:
             continue
-        key = (plan.implementation.backend, plan.implementation.name, plan.config)
+        key = (plan.backend, plan.implementation, plan.config)
         if key in seen:
             continue
         seen.add(key)
         try:
-            if not plan.implementation.matches(problem, plan.config):
+            if not supports(plan.implementation, problem, plan.config):
                 raise ValueError('unsupported candidate configuration')
             validation = validate(plan)
             if validation is not None and validation is not True:
@@ -158,12 +159,12 @@ def autotune(problem, *, benchmark, validate, plans=None, implementations=None,
             trials.append(Trial(plan, None, f'{type(error).__name__}: {error}'))
     valid = [trial for trial in trials if trial.score is not None]
     if not valid:
-        errors = [f'{t.plan.implementation.name}: {t.error}' for t in trials]
+        errors = [f'{t.plan.implementation}: {t.error}' for t in trials]
         raise RuntimeError(f'no validated GEMM tuning candidate: {errors}')
     order = default_backends(problem.interface)
-    best = min(valid, key=lambda t: (t.score, order.index(t.plan.implementation.backend),
-                                    -t.plan.implementation.default_priority,
-                                    t.plan.implementation.name,
+    best = min(valid, key=lambda t: (t.score, order.index(t.plan.backend),
+                                    -dispatch.IMPLEMENTATIONS[t.plan.implementation].get("default_priority", 0),
+                                    t.plan.implementation,
                                     t.plan.config.block_m, t.plan.config.block_n,
                                     t.plan.config.block_k, t.plan.config.source_config or ''))
     if output_path is not None:

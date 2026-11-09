@@ -69,12 +69,12 @@ def test_awq_explicit_zero_points():
 def test_batched_and_grouped_use_distinct_plans():
     from dataclasses import replace
     from boltops.gemm.descriptors import GemmProblem, OperandSpec, GroupSpec
-    from boltops.gemm.registry import select_plan
+    from boltops.gemm.dispatch import select_plan
     p = GemmProblem('batched', 3, 5, 32, OperandSpec(torch.bfloat16, strides=(96, 32, 1)),
                     OperandSpec(torch.bfloat16, strides=(160, 32, 1)), torch.bfloat16, 'gfx946', batch=2)
-    assert select_plan(p).implementation.name == 'triton.batched.native16'
+    assert select_plan(p).implementation == 'triton.batched.native16'
     q = replace(p, kind='grouped', batch=1, m=6, groups=GroupSpec('equal', 2))
-    assert select_plan(q).implementation.name == 'triton.grouped.native16'
+    assert select_plan(q).implementation == 'triton.grouped.native16'
 
 
 def test_awq_zero_point_defaults_to_zero():

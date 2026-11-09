@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Adapters for distinct native quantized computations already in the backend."""
 import torch
-from ..registry import Implementation, KernelConfig
+from ..descriptors import KernelConfig
 
 
 def _awq(p):
@@ -61,14 +61,3 @@ def launch_a16wfp4(c, p, a, b, b_scale, out):
     from .batched_gemm_a16wfp4 import batched_gemm_a16wfp4
     batched_gemm_a16wfp4(a, b, b_scale, dtype=out.dtype, y=out, config=fp4_config(p), prequant=True)
 
-
-SCALED_IMPLEMENTATIONS = (
-    Implementation('triton.scaled.awq', 'dense', __name__, 'launch_awq', _awq_configs,
-                   lambda p, c: c in _awq_configs(p), backend='triton'),
-    Implementation('triton.scaled.mxfp4', 'dense', __name__, 'launch_mxfp4', _fp4_configs,
-                   lambda p, c: p.interface == 'scaled' and p.a.format == 'fp4' and c in _fp4_configs(p), backend='triton'),
-)
-IMPLEMENTATIONS = {
-    'batched_a16wfp4_online_quant': (Implementation('triton.batched_a16wfp4_online_quant', 'batched', __name__, 'launch_a16wfp4',
-                       _fp4_configs, lambda p, c: p.interface == 'batched_a16wfp4_online_quant' and c in _fp4_configs(p), backend='triton'),),
-}

@@ -5,14 +5,14 @@ import pytest
 import torch
 
 from boltops.gemm.descriptors import GemmProblem, GroupSpec, OperandSpec, ScaleSpec
-from boltops.gemm.registry import KernelConfig, select_plan
+from boltops.gemm.dispatch import KernelConfig, select_plan
 
 
 def test_unscaled_dense_uses_existing_native_kernel():
     p = GemmProblem("dense", 32, 64, 64, OperandSpec(torch.bfloat16),
                     OperandSpec(torch.bfloat16), torch.float32, "gfx946", num_cus=48)
     assert p.unscaled
-    assert select_plan(p).implementation.name == "triton.dense.native"
+    assert select_plan(p).implementation == "triton.dense.native"
 
 
 def test_batched_is_not_silently_reinterpreted_as_grouped():
@@ -27,7 +27,7 @@ def test_unimplemented_group_addressing_never_uses_dense(mode):
     p = GemmProblem("grouped", 32, 64, 64, OperandSpec(torch.bfloat16, strides=(1024, 64, 1)),
                     OperandSpec(torch.bfloat16, strides=(4096, 64, 1)), torch.bfloat16, "gfx946", groups=GroupSpec(mode, 2))
     if mode == "equal":
-        assert select_plan(p).implementation.name == "triton.grouped.native16"
+        assert select_plan(p).implementation == "triton.grouped.native16"
     else:
         with pytest.raises(NotImplementedError, match="no registered grouped GEMM"):
             select_plan(p)

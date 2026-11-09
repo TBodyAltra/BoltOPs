@@ -5,13 +5,13 @@ import pytest
 import torch
 
 from boltops.gemm import performance_map
-from boltops.gemm.registry import KernelConfig, select_plan
+from boltops.gemm.dispatch import KernelConfig, select_plan
 from test_block_scaled_dispatch import problem
 
 
 def test_empty_performance_map_uses_triton(monkeypatch):
     monkeypatch.setattr(performance_map, "_entries", lambda interface: [])
-    assert select_plan(problem()).implementation.backend == "triton"
+    assert select_plan(problem()).backend == "triton"
 
 
 @pytest.mark.parametrize("changes", [
@@ -24,7 +24,7 @@ def test_unmeasured_contracts_never_select_gluon(changes):
     if "k" in changes:
         changes = dict(changes, a=replace(base.a, strides=(changes["k"], 1)),
                        b=replace(base.b, strides=(changes["k"], 1)))
-    assert select_plan(replace(base, **changes)).implementation.backend == "triton"
+    assert select_plan(replace(base, **changes)).backend == "triton"
 
 
 def test_tile_is_selected_then_checked_by_implementation(monkeypatch):
@@ -43,8 +43,8 @@ def test_tile_is_selected_then_checked_by_implementation(monkeypatch):
 
 
 def test_gluon_capability_does_not_require_an_existing_winner(monkeypatch):
-    from boltops.gemm.registry import candidate_plans
+    from boltops.gemm.dispatch import candidate_plans
     monkeypatch.setattr(performance_map, "_entries", lambda interface: [])
     plans = tuple(candidate_plans(problem(), tuning=True))
-    assert {p.implementation.backend for p in plans} == {"triton", "gluon"}
-    assert select_plan(problem()).implementation.backend == "triton"
+    assert {p.backend for p in plans} == {"triton", "gluon"}
+    assert select_plan(problem()).backend == "triton"

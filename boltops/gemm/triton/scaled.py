@@ -1,9 +1,10 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
 """Adapt existing scaled kernels without adding a device implementation."""
+import math
 import torch
 
-from ..registry import Implementation, KernelConfig
+from ..descriptors import KernelConfig
 
 _FLOAT_SCALES = (torch.float16, torch.bfloat16, torch.float32)
 _INPUTS = (torch.float8_e4m3fn, torch.float8_e5m2, torch.float16, torch.bfloat16, torch.int8)
@@ -88,9 +89,43 @@ def launch_row_scaled(config, problem, a, b, a_scale, b_scale, out, bias=None):
         BLOCK_SIZE_SCALE_B=1 if b_scale.shape[0] == 1 else config.block_n)
 
 
-IMPLEMENTATIONS = (
-    Implementation('triton.scaled.block_fp8', 'dense', __name__, 'launch_block_scaled',
-                   _block_configs, lambda p, c: c in _block_configs(p), backend='triton'),
-    Implementation('triton.scaled.row_fp8', 'dense', __name__, 'launch_row_scaled',
-                   _row_configs, lambda p, c: c in _row_configs(p), backend='triton'),
-)
+
+def generic_configs(p):
+    if (p.has_bias or p.kind != "dense" or not p.native_operands or
+            p.a_scale is None or p.b_scale is None):
+        return ()
+    q = math.gcd(p.a_scale.block[1], p.b_scale.block[1])
+    return (KernelConfig(32, 64, max(32, min(128, (1 << (q - 1).bit_length())))),)
+
+
+def supports_generic(p, config):
+    return (config in generic_configs(p) and
+            p.a.strides == (p.k, 1) and p.b.strides == (p.k, 1) and
+            all(s.encoding in ("numeric", "e8m0") and
+                (s.encoding != "e8m0" or str(s.dtype) == "torch.uint8")
+                for s in (p.a_scale, p.b_scale)))
+
+
+def supports_mixed_fp4(p, config):
+    from .grouped import _fp4_types
+    return (not p.has_bias and p.kind == "dense" and _fp4_types(p) and config == KernelConfig(16, 32, 32)
+            and all(strides is not None and all(s > 0 for s in strides)
+                    for strides in (p.a.strides, p.b.strides)))
+
+
+def launch_scaled_fp4(config, problem, a, b, a_scale, b_scale, out):
+    from .gemm_a8wfp4 import gemm_a8wfp4
+    gemm_a8wfp4(a, b, a_scale, b_scale, activation_group_size=problem.a_scale.block[1],
+                dtype=out.dtype, y=out,
+                config={"BLOCK_SIZE_M": config.block_m, "BLOCK_SIZE_N": config.block_n, "num_warps": 4})
+
+
+
+def mixed_fp4_configs(p):
+    c = KernelConfig(16, 32, 32)
+    return (c,) if supports_mixed_fp4(p, c) else ()
+
+
+def launch_generic(config, problem, **tensors):
+    from .gemm_block_scaled import launch_gemm_block_scaled
+    launch_gemm_block_scaled(config, problem, **tensors)

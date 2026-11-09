@@ -61,7 +61,7 @@ gemm/
   scaled.py                   # gemm_scaled
   dense.py                    # gemm_dense
   grouped.py                  # gemm_grouped
-  descriptors.py / registry.py / catalog.py
+  descriptors.py / dispatch.py  # 单一实现表与查表调度
   performance_map.py
   configs/gemm_scaled.json     # gemm_scaled 的跨后端配置
   configs/gemm_dense.json      # gemm_dense 的跨后端配置
@@ -69,21 +69,17 @@ gemm/
   configs/gemm_batched.json
   configs/gemm_batched_a16wfp4_online_quant.json
   triton/
-    dispatch.py               # 独立注册 scaled / dense / grouped
-    gemm_block_scaled.py / block_scaled_dispatch.py
-    dense_dispatch.py         # 适配已有 gemm_fp16、a16w16、persistent
-    grouped_dispatch.py       # 适配已有 native16、FP8×FP4 grouped
+    gemm_block_scaled.py / scaled.py
+    dense.py         # 适配已有 gemm_fp16、a16w16、persistent
+    grouped.py       # 适配已有 native16、FP8×FP4 grouped
     configs/gemm_fp16/gfx946/  # 复用原配置，不改其内容
   gluon/
-    dispatch.py               # 仅注册已有 scaled 特化
-    dense/dispatch.py
+    dense/launchers.py
     dense/kernels/gemm_fp8e4m3fn_fp32scale_a1x128_b128x128_to_bf16.py
-  tilelang/dispatch.py         # 三接口扩展点，当前能力为空
+  tilelang/                   # 暂无 GEMM 实现，无空注册表
 ```
 
-新增后端实现时，在对应 `dispatch.py` 的 `INTERFACES` 中注册 `Implementation`，
-声明 backend、配置生成与支持条件；支持条件匹配后才加载选中的 kernel。
-优化后的配置可以加入统一映射，tile 仍是配置而非问题匹配条件。
+新增流水只需在公共 `dispatch.py` 的 IMPLEMENTATIONS 字典中添加一行，指向对应后端的 host launcher、配置获取与支持检查函数。没有额外的后端注册层；调优记录仍按接口分 JSON。
 
 FP16 已有配置需要区分输入布局：旧 kernel 接受 B[K,N]，统一入口接受 B[N,K]，adapter 只做转置 view。
 映射中的 k_contiguous/n_contiguous 指统一入口 B 的实际内存连续方向，不是数学转置开关。

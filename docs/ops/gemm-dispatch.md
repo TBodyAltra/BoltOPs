@@ -1,7 +1,7 @@
 # GEMM interfaces and independent backends
 
 Each public operation has one entry point, with its own JSON configuration
-under `boltops/gemm/configs/`. All providers are independent (`triton`,
+under `boltops/gemm/configs/`. Backends are independent (`triton`,
 `gluon`, `tilelang`). There are no public aliases named after backend kernels.
 
 | Public interface | Computation / input contract | Previous public entry points |
@@ -54,7 +54,7 @@ All interfaces accept `backend="auto"`, `"triton"`, `"gluon"`, `"tilelang"`.
 Automatic selection queries the selected operation's own configuration file
 before defaults. Explicit backend selection never retries another backend on
 compile/execute failure. Unsupported combinations raise NotImplementedError;
-a registered backend missing its runtime raises ImportError. Gluon retains the optimized E4M3FN/FP32 scale recipe. TileLang remains an empty registration point.
+a registered backend missing its runtime raises ImportError. Gluon retains the optimized E4M3FN/FP32 scale recipe. TileLang currently has no implementation rows.
 
 The five files are `gemm_dense.json`, `gemm_scaled.json`, `gemm_batched.json`,
 `gemm_grouped.json`, and `gemm_batched_a16wfp4_online_quant.json`. Each carries its interface identifier. Schema 4
@@ -63,6 +63,40 @@ separates `match` (arch, num_cus, MNK, dtype/scale/layout contracts) from
 Tile is not a matching condition. No measurements, frequency, commit IDs or
 evidence paths are stored. Current tuned entries reuse existing gfx946 48-CU
 FP16 TT configurations. Source kernels and default configurations are unchanged.
+
+
+## One table, one dispatcher
+
+The call chain is public input validation -> interface JSON -> implementation
+name lookup -> launcher. `catalog.py`, `registry.py`, per-backend `dispatch.py`,
+`INTERFACES` registries and the `Implementation` class have been removed.
+
+`boltops/gemm/dispatch.py` owns the only implementation table. For example:
+
+```python
+IMPLEMENTATIONS = {
+    "triton.batched.native16": {
+        "backend": "triton",
+        "interface": "batched",
+        "module": "boltops.gemm.triton.batched",
+        "launcher": "launch_native",
+        "configs": "_native_configs",
+    },
+}
+```
+
+Rows use module/function names to keep optional DSLs unloaded until needed.
+`configs(problem)` supplies legal default configurations. An optional
+`supports(problem, config)` function can validate a configuration independently;
+when omitted, membership in the declared configurations is checked. An optional
+`tuning_configs` names a larger explicitly requested tuning pool.
+
+A new pipeline adds a row and its host launcher/configuration functions. A
+backend with no implementation needs no empty table or forwarding module.
+Backend-specific files (`triton/dense.py`, `scaled.py`, `batched.py`,
+`grouped.py`, `quantized.py`) contain ABI/configuration helpers only; they do
+not register or dispatch implementations. The selected plan contains an
+implementation name string and its configuration, not a registration object.
 
 ## Winner selection and default policy
 
@@ -92,9 +126,8 @@ an error, rather than disguising it as a default selection.
 
 A record for an unavailable backend cannot be used. With no usable record,
 selection follows the interface's `default_backends` list, skipping unavailable
-or unsupported implementations. Within a backend, larger
-`Implementation.default_priority` wins, then implementation name provides a
-stable tie order. Candidate config order is owned by that implementation.
+or unsupported implementations. Within a backend, the larger `default_priority` in the implementation table
+wins, then implementation name provides a stable tie order. Candidate config order is owned by that implementation.
 An explicit `backend=` filters records and defaults to only that backend.
 Compilation/execution failures of a normal launch still propagate unchanged.
 
@@ -111,7 +144,7 @@ Normal `auto` dispatch never benchmarks. A separate utility is opt-in:
 ```python
 import torch
 from boltops.gemm.autotune import autotune
-from boltops.gemm.registry import launch
+from boltops.gemm.dispatch import launch
 
 # p is a complete GemmProblem; tensors contains the launch arguments.
 # reference is independently computed. device_bench measures warmed device
@@ -135,8 +168,8 @@ measurement. Failed candidates retain their error in `result.trials` and cannot
 win; all-failed tuning raises without publishing a record. This failure loop
 exists only in explicit tuning, not normal dispatch. Metric ties follow the
 explicit default policy. The utility compares declared legal candidates; it
-does not generate a full tile scan. Implementations may provide a separate
-`tuning_configurations` callback when their tuning pool differs from defaults;
+does not generate a full tile scan. Table rows may name a separate
+`tuning_configs` function when their tuning pool differs from defaults;
 callers may also explicitly supply a `plans` list.
 
 Omit `output_path` for an in-memory result only. Same-host, same-user writers

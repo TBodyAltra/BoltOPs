@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Reuse existing batched native16 and explicitly quantized A16WFP4 kernels."""
 import torch
-from ..registry import Implementation, KernelConfig
+from ..descriptors import KernelConfig
 
 
 def _native_configs(p):
@@ -23,8 +23,3 @@ def launch_native(config, p, a, b, bias, out):
     cfg = _get_config(p.m, p.n, p.k, out.dtype, B=p.batch, layout=_infer_weight_layout(a, b))
     batched_gemm_bf16(a, b, bias, dtype=out.dtype, y=out, config=cfg)
 
-
-IMPLEMENTATIONS = (
-    Implementation("triton.batched.native16", "batched", __name__, "launch_native", _native_configs,
-                   lambda p, c: c in _native_configs(p), backend="triton"),
-)
