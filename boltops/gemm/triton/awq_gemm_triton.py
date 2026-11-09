@@ -428,11 +428,11 @@ def awq_gemm_triton(a: torch.Tensor,
     return result
 
 
-def _awq(p):
+def _supports_awq(p):
     return (p.interface == "scaled" and p.b.packing == "awq" and p.a_dtype in (torch.float16, torch.bfloat16) and
             p.b_dtype == torch.int32 and p.b.zero_point_dtype == torch.int32 and
             p.b_scale is not None and p.b_scale.dtype == p.out_dtype == p.a_dtype)
 
 
 def _awq_configs(p):
-    return (KernelConfig(16, 64, 32, GROUP_SIZE_M=8, SPLIT_K=1),) if _awq(p) else ()
+    return (KernelConfig(16, 64, 32, GROUP_SIZE_M=8, SPLIT_K=1),) if _supports_awq(p) else ()
