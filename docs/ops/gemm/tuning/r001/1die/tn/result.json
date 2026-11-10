@@ -1,0 +1,304 @@
+{
+  "requirement": "R001",
+  "record_key": {
+    "requirement": "R001",
+    "dies": 1,
+    "layout": "TN"
+  },
+  "shape": [
+    64,
+    64,
+    2048
+  ],
+  "full_grid_TGs": 16,
+  "status": "PASS",
+  "performance": {
+    "api_end_to_end_us": 1023208.39,
+    "kernel_us": 2.193555,
+    "dispatch_us": 5.8055725,
+    "dispatch_cycles": 12759.5
+  },
+  "time_domains": {
+    "api_end_to_end_us": "host wall time through public API including PMD simulation; warmed JIT, preallocated output",
+    "kernel_us": "PMD first wave start to last wave end",
+    "dispatch_us": "PMD full dispatch gcSimCycles"
+  },
+  "source": {
+    "path": "boltops/gemm/gluon/gemm_a16w16.py",
+    "sha256": "5a76bbb95f6173c80cde3e68f856e050941b864bf314afb6154e5f27d7a8188d",
+    "symbol": "_gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel"
+  },
+  "config": {
+    "path": "boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json",
+    "sha256": "7d1a058397e9e5781488611ca377f25b1eb6f830b1c6f75654a41c1f47308f27"
+  },
+  "assembly": {
+    "path": "kernel.amdgcn",
+    "sha256": "03aaf1a76cc0eeba2b604cab56c402a1d7f8d11ea289a3a162e1c0bab6ed8edc",
+    "raw_sha256": "7e4907502901e3d8b9331498bb4e50a9dadaaa3e27f012a60e987d08624c9b33",
+    "normalization": "strip trailing whitespace only"
+  },
+  "environment": {
+    "path": "environment.json",
+    "sha256": "dbb4027750351276b445772f8045c97210621fe3ae69a9c50b7fd4d11c0f150d"
+  },
+  "benchmark": {
+    "path": "scripts/perf/bench_a16w16_pmd.py",
+    "sha256": "33588b84199677fa9676b14902728ca94e6bd2970b885f35748454479c771f57",
+    "case": "benchmark.json",
+    "command": "python scripts/perf/bench_a16w16_pmd.py --case docs/ops/gemm/tuning/r001/1die/tn/benchmark.json --environment docs/ops/gemm/tuning/r001/1die/tn/environment.json --output /tmp/r001-1die-tn"
+  },
+  "resources": {
+    "LDS_bytes": 65536,
+    "VGPR": 133,
+    "spill": 0
+  },
+  "validation": [
+    {
+      "dispatch_cycles": 19638.0,
+      "dispatch_us": 8.93529,
+      "kernel_us": 5.323955,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/2/stats.txt",
+      "api_end_to_end_us": 1431262.351,
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0
+      }
+    },
+    {
+      "dispatch_cycles": 12989.0,
+      "dispatch_us": 5.909995,
+      "kernel_us": 2.296385,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/4/stats.txt",
+      "api_end_to_end_us": 1019229.209,
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0
+      }
+    },
+    {
+      "dispatch_cycles": 12974.0,
+      "dispatch_us": 5.90317,
+      "kernel_us": 2.290925,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/6/stats.txt",
+      "api_end_to_end_us": 997860.261,
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0001220703125
+      }
+    }
+  ],
+  "samples": [
+    {
+      "dispatch_cycles": 12542.0,
+      "dispatch_us": 5.70661,
+      "kernel_us": 2.094365,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/7/stats.txt",
+      "api_end_to_end_us": 992097.148,
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0001220703125
+      }
+    },
+    {
+      "dispatch_cycles": 12960.0,
+      "dispatch_us": 5.8968,
+      "kernel_us": 2.28501,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/8/stats.txt",
+      "api_end_to_end_us": 1021193.645,
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0001220703125
+      }
+    },
+    {
+      "dispatch_cycles": 12568.0,
+      "dispatch_us": 5.71844,
+      "kernel_us": 2.106195,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/9/stats.txt",
+      "api_end_to_end_us": 1013912.01,
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0001220703125
+      }
+    },
+    {
+      "dispatch_cycles": 12985.0,
+      "dispatch_us": 5.908175,
+      "kernel_us": 2.295475,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/10/stats.txt",
+      "api_end_to_end_us": 1025223.135,
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0001220703125
+      }
+    },
+    {
+      "dispatch_cycles": 12521.0,
+      "dispatch_us": 5.697055,
+      "kernel_us": 2.08481,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/11/stats.txt",
+      "api_end_to_end_us": 1011543.209,
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0001220703125
+      }
+    },
+    {
+      "dispatch_cycles": 12949.0,
+      "dispatch_us": 5.891795,
+      "kernel_us": 2.280005,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/12/stats.txt",
+      "api_end_to_end_us": 1017067.099,
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0001220703125
+      }
+    },
+    {
+      "dispatch_cycles": 12555.0,
+      "dispatch_us": 5.712525,
+      "kernel_us": 2.10028,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/13/stats.txt",
+      "api_end_to_end_us": 1032937.964,
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0001220703125
+      }
+    },
+    {
+      "dispatch_cycles": 12973.0,
+      "dispatch_us": 5.902715,
+      "kernel_us": 2.290015,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/14/stats.txt",
+      "api_end_to_end_us": 1033248.845,
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0001220703125
+      }
+    },
+    {
+      "dispatch_cycles": 12570.0,
+      "dispatch_us": 5.71935,
+      "kernel_us": 2.107105,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/15/stats.txt",
+      "api_end_to_end_us": 1030032.642,
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0001220703125
+      }
+    }
+  ],
+  "warm_samples": 8,
+  "dtype": {
+    "A": "BF16",
+    "W": "BF16",
+    "compute": "FP32",
+    "output": "BF16",
+    "scale": null
+  },
+  "operand_strides": {
+    "A": [
+      2048,
+      1
+    ],
+    "W": [
+      2048,
+      1
+    ],
+    "logical_B": [
+      1,
+      2048
+    ],
+    "C": [
+      64,
+      1
+    ]
+  },
+  "public_api": {
+    "path": "boltops/gemm/gemm_a16w16.py",
+    "sha256": "82404cc5c465621ea05af2493a4c6630e2b6c191a2c050d50349c7a77137a42d",
+    "backend": "auto",
+    "out": "preallocated"
+  },
+  "perf": {
+    "path": "kernel.perf",
+    "sha256": "0861138872afa9f4b0ffb640a591828c7800d6ee89bcee886c03eaea95290630",
+    "stats": "stats.txt.gz",
+    "stats_sha256": "33caf841188763fd379c89c213864d3318b2d419a749f6e39a35176a14a64e6d",
+    "measurement": {
+      "completed_TGs": 16,
+      "dispatch_cycles": 12583.0,
+      "dispatch_us": 5.725265,
+      "shader_cycles": 4644.0,
+      "shader_us": 2.11302,
+      "clock_ps": 455,
+      "path": "m5out/0/5/stats.txt"
+    },
+    "accuracy": {
+      "elements": 4096,
+      "mismatches": 0,
+      "nonfinite": 0,
+      "max_abs": 0.0001220703125,
+      "counters": []
+    },
+    "active_CUs": {
+      "0": 1,
+      "1": 1,
+      "2": 1,
+      "3": 1,
+      "12": 1,
+      "13": 1,
+      "14": 1,
+      "15": 1,
+      "24": 1,
+      "25": 1,
+      "26": 1,
+      "27": 1,
+      "36": 1,
+      "37": 1,
+      "38": 1,
+      "39": 1
+    },
+    "same_ISA_and_machine_code_as_recorded_kernel": true,
+    "machine_code_sha256": "6f8d53a9dac37d5328be4a74b006b2d0064c5e90306f48522b6059a9ccee9d44",
+    "flags": "['StatLog', 'TT', 'Perf']",
+    "helper": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+  }
+}
