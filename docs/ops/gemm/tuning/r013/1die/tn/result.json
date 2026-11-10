@@ -6,19 +6,8 @@
     2048
   ],
   "environment": {
-    "type": "PMD",
-    "model": "CoreArch1703",
-    "arch": "gfx946",
-    "dies": 1,
-    "cu_count": 48,
-    "triton": {
-      "branch": "release/3.6.x",
-      "commit": "d8374cbaca28e5c4e7789fcf130b6701f71be0eb"
-    },
-    "clang": {
-      "branch": "dtk-llvm-6.3.3",
-      "commit": "3599a58d7aebe66dc1cec4f830f82cb96e505666"
-    }
+    "path": "environment.json",
+    "sha256": "3556201e0623ed4b497476e93e76ad9ea391488f7dd94f86512a1aa1028260d1"
   },
   "layout": "TN",
   "operand_strides": {
@@ -64,5 +53,11 @@
     "requirement": "R013",
     "dies": 1,
     "layout": "TN"
+  },
+  "benchmark": {
+    "path": "scripts/perf/bench_blockscale_pmd.py",
+    "sha256": "d4af6edf3e4f34c936cb75797f460251002c96658b4b6541026b3bd9a3723eaf",
+    "case": "benchmark.json",
+    "command": "python scripts/perf/bench_blockscale_pmd.py --case docs/ops/gemm/tuning/r013/1die/tn/benchmark.json --environment docs/ops/gemm/tuning/r013/1die/tn/environment.json --output /tmp/r013-1die-tn-full"
   }
 }
