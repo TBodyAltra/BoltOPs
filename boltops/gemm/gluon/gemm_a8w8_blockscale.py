@@ -1,9 +1,10 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
-"""E4M3FN, FP32 block scales, BF16: native 128x256x128 WASP/WDRA pipeline.
+"""Gluon block-scaled GEMM kernels, selected by recipe and tile name.
 
-Uses release/3.6.x shared descriptors and abarrier_try_wait. Launch resources
-and exact measured shapes are selected by gfx946/48cu Gluon config files.
+The current recipe uses E4M3FN inputs, FP32 A(1,128)/B(128,128) scales,
+BF16 output and tile M/N/K=(128,256,128). Each entry owns its layouts,
+partition resources, pipeline and compile-time legality checks.
 """
 
 from triton.experimental import gluon as g
@@ -27,7 +28,6 @@ from triton.experimental.gluon.language.amd.hcu import (
     sched_barrier,
     packed_scale_fma,
 )
-
 
 
 @g.jit
