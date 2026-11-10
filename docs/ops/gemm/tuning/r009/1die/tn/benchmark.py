@@ -71,7 +71,10 @@ def main():
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     os.chdir(output)
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    repository = next((parent for parent in Path(__file__).resolve().parents
+                       if (parent / "boltops/gemm/config.py").is_file()), None)
+    if repository is not None:
+        sys.path.insert(0, str(repository))
 
     import torch
     import triton
