@@ -1,0 +1,570 @@
+--- 
+
++++ 
+
+@@ -81,5 +81,5 @@
+
+   %79 = tail call ptr addrspace(8) @llvm.amdgcn.make.buffer.rsrc.p8.p1(ptr addrspace(1) %0, i16 0, i64 -8, i32 159744), !dbg !39
+   %80 = shl nuw nsw i32 %16, 12, !dbg !39
+-  %81 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %80, !dbg !39
++  %81 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %80, !dbg !39
+   %82 = shl nuw nsw i32 %16, 25, !dbg !39
+   %83 = ptrtoint ptr addrspace(3) %81 to i32, !dbg !39
+@@ -90,5 +90,5 @@
+
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %79, ptr addrspace(3) %85, i32 16, i32 %87, i32 0, i32 0, i32 0), !dbg !39, !alias.scope !40
+   %88 = or i32 %80, 1024, !dbg !39
+-  %89 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %88, !dbg !39
++  %89 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %88, !dbg !39
+   %90 = ptrtoint ptr addrspace(3) %89 to i32, !dbg !39
+   %91 = or i32 %82, %90, !dbg !39
+@@ -98,5 +98,5 @@
+
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %79, ptr addrspace(3) nonnull %92, i32 16, i32 %94, i32 0, i32 0, i32 0), !dbg !39, !alias.scope !40
+   %95 = or i32 %80, 2048, !dbg !39
+-  %96 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %95, !dbg !39
++  %96 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %95, !dbg !39
+   %97 = ptrtoint ptr addrspace(3) %96 to i32, !dbg !39
+   %98 = or i32 %82, %97, !dbg !39
+@@ -106,5 +106,5 @@
+
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %79, ptr addrspace(3) nonnull %99, i32 16, i32 %101, i32 0, i32 0, i32 0), !dbg !39, !alias.scope !40
+   %102 = or i32 %80, 3072, !dbg !39
+-  %103 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %102, !dbg !39
++  %103 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %102, !dbg !39
+   %104 = ptrtoint ptr addrspace(3) %103 to i32, !dbg !39
+   %105 = or i32 %82, %104, !dbg !39
+@@ -115,5 +115,5 @@
+
+   tail call void @llvm.amdgcn.asyncmark(), !dbg !39
+   %109 = tail call ptr addrspace(8) @llvm.amdgcn.make.buffer.rsrc.p8.p1(ptr addrspace(1) %1, i16 0, i64 -8, i32 159744), !dbg !7
+-  %110 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %80, !dbg !7
++  %110 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %80, !dbg !7
+   %111 = shl nuw nsw i32 %16, 26, !dbg !7
+   %112 = and i32 %111, 67108864, !dbg !7
+@@ -124,5 +124,5 @@
+
+   %117 = select i1 %60, i32 %116, i32 -8, !dbg !7
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %109, ptr addrspace(3) %115, i32 16, i32 %117, i32 0, i32 0, i32 0), !dbg !7, !alias.scope !40
+-  %118 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %88, !dbg !7
++  %118 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %88, !dbg !7
+   %119 = ptrtoint ptr addrspace(3) %118 to i32, !dbg !7
+   %120 = or i32 %112, %119, !dbg !7
+@@ -131,5 +131,5 @@
+
+   %123 = select i1 %60, i32 %122, i32 -8, !dbg !7
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %109, ptr addrspace(3) nonnull %121, i32 16, i32 %123, i32 0, i32 0, i32 0), !dbg !7, !alias.scope !40
+-  %124 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %95, !dbg !7
++  %124 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %95, !dbg !7
+   %125 = ptrtoint ptr addrspace(3) %124 to i32, !dbg !7
+   %126 = or i32 %112, %125, !dbg !7
+@@ -138,5 +138,5 @@
+
+   %129 = select i1 %60, i32 %128, i32 -8, !dbg !7
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %109, ptr addrspace(3) nonnull %127, i32 16, i32 %129, i32 0, i32 0, i32 0), !dbg !7, !alias.scope !40
+-  %130 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %102, !dbg !7
++  %130 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %102, !dbg !7
+   %131 = ptrtoint ptr addrspace(3) %130 to i32, !dbg !7
+   %132 = or i32 %112, %131, !dbg !7
+@@ -151,5 +151,5 @@
+
+   %139 = add i32 %76, %77, !dbg !43
+   %140 = icmp sgt i32 %6, 383, !dbg !35
+-  %141 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %80, !dbg !39
++  %141 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %80, !dbg !39
+   %142 = ptrtoint ptr addrspace(3) %141 to i32, !dbg !39
+   %143 = or i32 %82, %142, !dbg !39
+@@ -158,5 +158,5 @@
+
+   %146 = select i1 %78, i32 %145, i32 -8, !dbg !39
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %79, ptr addrspace(3) %144, i32 16, i32 %146, i32 0, i32 0, i32 0), !dbg !39, !alias.scope !40
+-  %147 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %88, !dbg !39
++  %147 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %88, !dbg !39
+   %148 = ptrtoint ptr addrspace(3) %147 to i32, !dbg !39
+   %149 = or i32 %82, %148, !dbg !39
+@@ -165,5 +165,5 @@
+
+   %152 = select i1 %78, i32 %151, i32 -8, !dbg !39
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %79, ptr addrspace(3) nonnull %150, i32 16, i32 %152, i32 0, i32 0, i32 0), !dbg !39, !alias.scope !40
+-  %153 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %95, !dbg !39
++  %153 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %95, !dbg !39
+   %154 = ptrtoint ptr addrspace(3) %153 to i32, !dbg !39
+   %155 = or i32 %82, %154, !dbg !39
+@@ -172,5 +172,5 @@
+
+   %158 = select i1 %78, i32 %157, i32 -8, !dbg !39
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %79, ptr addrspace(3) nonnull %156, i32 16, i32 %158, i32 0, i32 0, i32 0), !dbg !39, !alias.scope !40
+-  %159 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %102, !dbg !39
++  %159 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %102, !dbg !39
+   %160 = ptrtoint ptr addrspace(3) %159 to i32, !dbg !39
+   %161 = or i32 %82, %160, !dbg !39
+@@ -180,5 +180,5 @@
+
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %79, ptr addrspace(3) nonnull %162, i32 16, i32 %164, i32 0, i32 0, i32 0), !dbg !39, !alias.scope !40
+   tail call void @llvm.amdgcn.asyncmark(), !dbg !39
+-  %165 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %80, !dbg !7
++  %165 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %80, !dbg !7
+   %166 = ptrtoint ptr addrspace(3) %165 to i32, !dbg !7
+   %167 = or i32 %112, %166, !dbg !7
+@@ -187,5 +187,5 @@
+
+   %170 = select i1 %78, i32 %169, i32 -8, !dbg !7
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %109, ptr addrspace(3) %168, i32 16, i32 %170, i32 0, i32 0, i32 0), !dbg !7, !alias.scope !40
+-  %171 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %88, !dbg !7
++  %171 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %88, !dbg !7
+   %172 = ptrtoint ptr addrspace(3) %171 to i32, !dbg !7
+   %173 = or i32 %112, %172, !dbg !7
+@@ -194,5 +194,5 @@
+
+   %176 = select i1 %78, i32 %175, i32 -8, !dbg !7
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %109, ptr addrspace(3) nonnull %174, i32 16, i32 %176, i32 0, i32 0, i32 0), !dbg !7, !alias.scope !40
+-  %177 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %95, !dbg !7
++  %177 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %95, !dbg !7
+   %178 = ptrtoint ptr addrspace(3) %177 to i32, !dbg !7
+   %179 = or i32 %112, %178, !dbg !7
+@@ -201,5 +201,5 @@
+
+   %182 = select i1 %78, i32 %181, i32 -8, !dbg !7
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %109, ptr addrspace(3) nonnull %180, i32 16, i32 %182, i32 0, i32 0, i32 0), !dbg !7, !alias.scope !40
+-  %183 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %102, !dbg !7
++  %183 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %102, !dbg !7
+   %184 = ptrtoint ptr addrspace(3) %183 to i32, !dbg !7
+   %185 = or i32 %112, %184, !dbg !7
+@@ -229,5 +229,5 @@
+
+   %204 = add nuw nsw i32 %201, %203, !dbg !44
+   %205 = or i32 %204, %200, !dbg !44
+-  %206 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %205, !dbg !44
++  %206 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %205, !dbg !44
+   %207 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) %206, i32 0), !dbg !44
+   %208 = or i32 %203, 512, !dbg !44
+@@ -235,25 +235,25 @@
+
+   %210 = and i32 %209, 1008, !dbg !44
+   %211 = or i32 %210, %200, !dbg !44
+-  %212 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %211, !dbg !44
++  %212 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %211, !dbg !44
+   %213 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) %212, i32 0), !dbg !44
+   %214 = lshr exact i32 %205, 1, !dbg !44
+   %215 = or i32 %214, 512, !dbg !44
+-  %216 = getelementptr inbounds half, ptr addrspace(3) @global_smem, i32 %215, !dbg !44
++  %216 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %215, !dbg !44
+   %217 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) nonnull %216, i32 0), !dbg !44
+   %218 = lshr exact i32 %211, 1, !dbg !44
+   %219 = or i32 %218, 512, !dbg !44
+-  %220 = getelementptr inbounds half, ptr addrspace(3) @global_smem, i32 %219, !dbg !44
++  %220 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %219, !dbg !44
+   %221 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) nonnull %220, i32 0), !dbg !44
+   %222 = or i32 %214, 1024, !dbg !44
+-  %223 = getelementptr inbounds half, ptr addrspace(3) @global_smem, i32 %222, !dbg !44
++  %223 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %222, !dbg !44
+   %224 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) nonnull %223, i32 0), !dbg !44
+   %225 = or i32 %218, 1024, !dbg !44
+-  %226 = getelementptr inbounds half, ptr addrspace(3) @global_smem, i32 %225, !dbg !44
++  %226 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %225, !dbg !44
+   %227 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) nonnull %226, i32 0), !dbg !44
+   %228 = or i32 %214, 1536, !dbg !44
+-  %229 = getelementptr inbounds half, ptr addrspace(3) @global_smem, i32 %228, !dbg !44
++  %229 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %228, !dbg !44
+   %230 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) nonnull %229, i32 0), !dbg !44
+   %231 = or i32 %218, 1536, !dbg !44
+-  %232 = getelementptr inbounds half, ptr addrspace(3) @global_smem, i32 %231, !dbg !44
++  %232 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %231, !dbg !44
+   %233 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) nonnull %232, i32 0), !dbg !44
+   %234 = shl nuw nsw i32 %13, 12, !dbg !44
+@@ -270,5 +270,5 @@
+
+   %245 = and i32 %241, 13312, !dbg !44
+   %246 = or i32 %245, %244, !dbg !44
+-  %247 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %246, !dbg !44
++  %247 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %246, !dbg !44
+   %248 = load <4 x half>, ptr addrspace(3) %247, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %249 = or i32 %242, 32, !dbg !44
+@@ -276,5 +276,5 @@
+
+   %251 = and i32 %250, 888, !dbg !44
+   %252 = or i32 %251, %245, !dbg !44
+-  %253 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %252, !dbg !44
++  %253 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %252, !dbg !44
+   %254 = load <4 x half>, ptr addrspace(3) %253, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %255 = or i32 %242, 64, !dbg !44
+@@ -282,5 +282,5 @@
+
+   %257 = and i32 %256, 888, !dbg !44
+   %258 = or i32 %257, %245, !dbg !44
+-  %259 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %258, !dbg !44
++  %259 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %258, !dbg !44
+   %260 = load <4 x half>, ptr addrspace(3) %259, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %261 = or i32 %242, 96, !dbg !44
+@@ -288,5 +288,5 @@
+
+   %263 = and i32 %262, 1016, !dbg !44
+   %264 = or i32 %263, %245, !dbg !44
+-  %265 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %264, !dbg !44
++  %265 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %264, !dbg !44
+   %266 = load <4 x half>, ptr addrspace(3) %265, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %267 = or i32 %242, 128, !dbg !44
+@@ -294,5 +294,5 @@
+
+   %269 = and i32 %268, 952, !dbg !44
+   %270 = or i32 %269, %245, !dbg !44
+-  %271 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %270, !dbg !44
++  %271 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %270, !dbg !44
+   %272 = load <4 x half>, ptr addrspace(3) %271, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %273 = or i32 %242, 160, !dbg !44
+@@ -300,5 +300,5 @@
+
+   %275 = and i32 %274, 1016, !dbg !44
+   %276 = or i32 %275, %245, !dbg !44
+-  %277 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %276, !dbg !44
++  %277 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %276, !dbg !44
+   %278 = load <4 x half>, ptr addrspace(3) %277, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %279 = or i32 %242, 192, !dbg !44
+@@ -306,5 +306,5 @@
+
+   %281 = and i32 %280, 1016, !dbg !44
+   %282 = or i32 %281, %245, !dbg !44
+-  %283 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %282, !dbg !44
++  %283 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %282, !dbg !44
+   %284 = load <4 x half>, ptr addrspace(3) %283, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %285 = or i32 %242, 224, !dbg !44
+@@ -312,8 +312,8 @@
+
+   %287 = and i32 %286, 1016, !dbg !44
+   %288 = or i32 %287, %245, !dbg !44
+-  %289 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %288, !dbg !44
++  %289 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %288, !dbg !44
+   %290 = load <4 x half>, ptr addrspace(3) %289, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %291 = or i32 %246, 2048, !dbg !44
+-  %292 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %291, !dbg !44
++  %292 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %291, !dbg !44
+   %293 = load <4 x half>, ptr addrspace(3) %292, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %294 = or i32 %241, 2080, !dbg !44
+@@ -322,5 +322,5 @@
+
+   %297 = and i32 %294, 2147482624, !dbg !44
+   %298 = or i32 %296, %297, !dbg !44
+-  %299 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %298, !dbg !44
++  %299 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %298, !dbg !44
+   %300 = load <4 x half>, ptr addrspace(3) %299, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %301 = or i32 %241, 2112, !dbg !44
+@@ -329,5 +329,5 @@
+
+   %304 = and i32 %301, 2147482624, !dbg !44
+   %305 = or i32 %303, %304, !dbg !44
+-  %306 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %305, !dbg !44
++  %306 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %305, !dbg !44
+   %307 = load <4 x half>, ptr addrspace(3) %306, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %308 = or i32 %241, 2144, !dbg !44
+@@ -336,5 +336,5 @@
+
+   %311 = and i32 %308, 2147482624, !dbg !44
+   %312 = or i32 %310, %311, !dbg !44
+-  %313 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %312, !dbg !44
++  %313 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %312, !dbg !44
+   %314 = load <4 x half>, ptr addrspace(3) %313, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %315 = or i32 %241, 2176, !dbg !44
+@@ -343,5 +343,5 @@
+
+   %318 = and i32 %315, 2147482624, !dbg !44
+   %319 = or i32 %317, %318, !dbg !44
+-  %320 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %319, !dbg !44
++  %320 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %319, !dbg !44
+   %321 = load <4 x half>, ptr addrspace(3) %320, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %322 = or i32 %241, 2208, !dbg !44
+@@ -350,5 +350,5 @@
+
+   %325 = and i32 %322, 2147482624, !dbg !44
+   %326 = or i32 %324, %325, !dbg !44
+-  %327 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %326, !dbg !44
++  %327 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %326, !dbg !44
+   %328 = load <4 x half>, ptr addrspace(3) %327, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %329 = or i32 %241, 2240, !dbg !44
+@@ -357,5 +357,5 @@
+
+   %332 = and i32 %329, 2147482624, !dbg !44
+   %333 = or i32 %331, %332, !dbg !44
+-  %334 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %333, !dbg !44
++  %334 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %333, !dbg !44
+   %335 = load <4 x half>, ptr addrspace(3) %334, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   %336 = or i32 %241, 2272, !dbg !44
+@@ -364,5 +364,5 @@
+
+   %339 = and i32 %336, 2147482624, !dbg !44
+   %340 = or i32 %338, %339, !dbg !44
+-  %341 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %340, !dbg !44
++  %341 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %340, !dbg !44
+   %342 = load <4 x half>, ptr addrspace(3) %341, align 8, !dbg !44, !alias.scope !45, !noalias !40
+   fence syncscope("workgroup") release, !dbg !44
+@@ -458,28 +458,28 @@
+
+ 
+ .lr.ph:                                           ; preds = %346
+-  %415 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %205
+-  %416 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %211
+-  %417 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %215
+-  %418 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %219
+-  %419 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %222
+-  %420 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %225
+-  %421 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %228
+-  %422 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %231
+-  %423 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %246
+-  %424 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %252
+-  %425 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %258
+-  %426 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %264
+-  %427 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %270
+-  %428 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %276
+-  %429 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %282
+-  %430 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %288
+-  %431 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %291
+-  %432 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %298
+-  %433 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %305
+-  %434 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %312
+-  %435 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %319
+-  %436 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %326
+-  %437 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %333
+-  %438 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %340
++  %415 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %205
++  %416 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %211
++  %417 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %215
++  %418 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %219
++  %419 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %222
++  %420 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %225
++  %421 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %228
++  %422 = getelementptr inbounds half, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), i32 %231
++  %423 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %246
++  %424 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %252
++  %425 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %258
++  %426 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %264
++  %427 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %270
++  %428 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %276
++  %429 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %282
++  %430 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %288
++  %431 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %291
++  %432 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %298
++  %433 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %305
++  %434 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %312
++  %435 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %319
++  %436 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %326
++  %437 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %333
++  %438 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), i32 %340
+   br label %671, !dbg !35
+ 
+@@ -586,5 +586,5 @@
+
+   %526 = add i32 %.pn109.lcssa, %77, !dbg !43
+   tail call void @llvm.amdgcn.sched.barrier(i32 0), !dbg !44
+-  %527 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %80, !dbg !39
++  %527 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %80, !dbg !39
+   %528 = ptrtoint ptr addrspace(3) %527 to i32, !dbg !39
+   %529 = or i32 %82, %528, !dbg !39
+@@ -593,5 +593,5 @@
+
+   %532 = select i1 %140, i32 %531, i32 -8, !dbg !39
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %79, ptr addrspace(3) %530, i32 16, i32 %532, i32 0, i32 0, i32 0), !dbg !39, !alias.scope !40
+-  %533 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %88, !dbg !39
++  %533 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %88, !dbg !39
+   %534 = ptrtoint ptr addrspace(3) %533 to i32, !dbg !39
+   %535 = or i32 %82, %534, !dbg !39
+@@ -600,5 +600,5 @@
+
+   %538 = select i1 %140, i32 %537, i32 -8, !dbg !39
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %79, ptr addrspace(3) nonnull %536, i32 16, i32 %538, i32 0, i32 0, i32 0), !dbg !39, !alias.scope !40
+-  %539 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %95, !dbg !39
++  %539 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %95, !dbg !39
+   %540 = ptrtoint ptr addrspace(3) %539 to i32, !dbg !39
+   %541 = or i32 %82, %540, !dbg !39
+@@ -607,5 +607,5 @@
+
+   %544 = select i1 %140, i32 %543, i32 -8, !dbg !39
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %79, ptr addrspace(3) nonnull %542, i32 16, i32 %544, i32 0, i32 0, i32 0), !dbg !39, !alias.scope !40
+-  %545 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %102, !dbg !39
++  %545 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %102, !dbg !39
+   %546 = ptrtoint ptr addrspace(3) %545 to i32, !dbg !39
+   %547 = or i32 %82, %546, !dbg !39
+@@ -615,5 +615,5 @@
+
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %79, ptr addrspace(3) nonnull %548, i32 16, i32 %550, i32 0, i32 0, i32 0), !dbg !39, !alias.scope !40
+   tail call void @llvm.amdgcn.asyncmark(), !dbg !39
+-  %551 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %80, !dbg !7
++  %551 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %80, !dbg !7
+   %552 = ptrtoint ptr addrspace(3) %551 to i32, !dbg !7
+   %553 = or i32 %112, %552, !dbg !7
+@@ -622,5 +622,5 @@
+
+   %556 = select i1 %140, i32 %555, i32 -8, !dbg !7
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %109, ptr addrspace(3) %554, i32 16, i32 %556, i32 0, i32 0, i32 0), !dbg !7, !alias.scope !40
+-  %557 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %88, !dbg !7
++  %557 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %88, !dbg !7
+   %558 = ptrtoint ptr addrspace(3) %557 to i32, !dbg !7
+   %559 = or i32 %112, %558, !dbg !7
+@@ -629,5 +629,5 @@
+
+   %562 = select i1 %140, i32 %561, i32 -8, !dbg !7
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %109, ptr addrspace(3) nonnull %560, i32 16, i32 %562, i32 0, i32 0, i32 0), !dbg !7, !alias.scope !40
+-  %563 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %95, !dbg !7
++  %563 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %95, !dbg !7
+   %564 = ptrtoint ptr addrspace(3) %563 to i32, !dbg !7
+   %565 = or i32 %112, %564, !dbg !7
+@@ -636,5 +636,5 @@
+
+   %568 = select i1 %140, i32 %567, i32 -8, !dbg !7
+   tail call void @llvm.amdgcn.raw.ptr.buffer.load.async.lds(ptr addrspace(8) %109, ptr addrspace(3) nonnull %566, i32 16, i32 %568, i32 0, i32 0, i32 0), !dbg !7, !alias.scope !40
+-  %569 = getelementptr inbounds i8, ptr addrspace(3) @global_smem, i32 %102, !dbg !7
++  %569 = getelementptr inbounds i8, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), i32 %102, !dbg !7
+   %570 = ptrtoint ptr addrspace(3) %569 to i32, !dbg !7
+   %571 = or i32 %112, %570, !dbg !7
+@@ -1222,8 +1222,8 @@
+
+   %.pn543.lcssa = phi i32 [ %.pn125.lcssa, %.preheader ], [ %525, %.lr.ph1322.peel ]
+   %.pn527.lcssa = phi i32 [ %.pn109.lcssa, %.preheader ], [ %526, %.lr.ph1322.peel ]
+-  %1061 = phi ptr addrspace(3) [ getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), %.preheader ], [ getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), %.lr.ph1322.peel ], !dbg !39
+-  %1062 = phi ptr addrspace(3) [ getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), %.preheader ], [ getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), %.lr.ph1322.peel ], !dbg !39
+-  %.lcssa896 = phi ptr addrspace(3) [ @global_smem, %.preheader ], [ getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), %.lr.ph1322.peel ], !dbg !7
+-  %1063 = phi ptr addrspace(3) [ getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), %.preheader ], [ @global_smem, %.lr.ph1322.peel ], !dbg !7
++  %.lcssa898 = phi ptr addrspace(3) [ @global_smem, %.preheader ], [ getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), %.lr.ph1322.peel ], !dbg !39
++  %1061 = phi ptr addrspace(3) [ getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), %.preheader ], [ @global_smem, %.lr.ph1322.peel ], !dbg !39
++  %1062 = phi ptr addrspace(3) [ getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), %.preheader ], [ getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), %.lr.ph1322.peel ], !dbg !7
++  %1063 = phi ptr addrspace(3) [ getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), %.preheader ], [ getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), %.lr.ph1322.peel ], !dbg !7
+   br i1 %344, label %1064, label %1065, !dbg !44
+ 
+@@ -1233,59 +1233,59 @@
+
+ 
+ 1065:                                             ; preds = %1064, %._crit_edge
+-  %1066 = select i1 %.not, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), !dbg !39
+-  %1067 = select i1 %.not, ptr addrspace(3) @global_smem, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), !dbg !7
++  %1066 = select i1 %.not, ptr addrspace(3) @global_smem, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 32768), !dbg !39
++  %1067 = select i1 %.not, ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 16384), ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 49152), !dbg !7
+   tail call void @llvm.amdgcn.wait.asyncmark(i16 0), !dbg !44
+   tail call void @llvm.amdgcn.s.waitcnt(i32 49279), !dbg !44
+   tail call void @llvm.amdgcn.s.barrier(), !dbg !44
+-  %1068 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %246, !dbg !44
++  %1068 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %246, !dbg !44
+   %1069 = load <4 x half>, ptr addrspace(3) %1068, align 8, !dbg !44
+-  %1070 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %252, !dbg !44
++  %1070 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %252, !dbg !44
+   %1071 = load <4 x half>, ptr addrspace(3) %1070, align 8, !dbg !44
+-  %1072 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %258, !dbg !44
++  %1072 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %258, !dbg !44
+   %1073 = load <4 x half>, ptr addrspace(3) %1072, align 8, !dbg !44
+-  %1074 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %264, !dbg !44
++  %1074 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %264, !dbg !44
+   %1075 = load <4 x half>, ptr addrspace(3) %1074, align 8, !dbg !44
+-  %1076 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %270, !dbg !44
++  %1076 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %270, !dbg !44
+   %1077 = load <4 x half>, ptr addrspace(3) %1076, align 8, !dbg !44
+-  %1078 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %276, !dbg !44
++  %1078 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %276, !dbg !44
+   %1079 = load <4 x half>, ptr addrspace(3) %1078, align 8, !dbg !44
+-  %1080 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %282, !dbg !44
++  %1080 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %282, !dbg !44
+   %1081 = load <4 x half>, ptr addrspace(3) %1080, align 8, !dbg !44
+-  %1082 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %288, !dbg !44
++  %1082 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %288, !dbg !44
+   %1083 = load <4 x half>, ptr addrspace(3) %1082, align 8, !dbg !44
+-  %1084 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %291, !dbg !44
++  %1084 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %291, !dbg !44
+   %1085 = load <4 x half>, ptr addrspace(3) %1084, align 8, !dbg !44
+-  %1086 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %298, !dbg !44
++  %1086 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %298, !dbg !44
+   %1087 = load <4 x half>, ptr addrspace(3) %1086, align 8, !dbg !44
+-  %1088 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %305, !dbg !44
++  %1088 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %305, !dbg !44
+   %1089 = load <4 x half>, ptr addrspace(3) %1088, align 8, !dbg !44
+-  %1090 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %312, !dbg !44
++  %1090 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %312, !dbg !44
+   %1091 = load <4 x half>, ptr addrspace(3) %1090, align 8, !dbg !44
+-  %1092 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %319, !dbg !44
++  %1092 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %319, !dbg !44
+   %1093 = load <4 x half>, ptr addrspace(3) %1092, align 8, !dbg !44
+-  %1094 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %326, !dbg !44
++  %1094 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %326, !dbg !44
+   %1095 = load <4 x half>, ptr addrspace(3) %1094, align 8, !dbg !44
+-  %1096 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %333, !dbg !44
++  %1096 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %333, !dbg !44
+   %1097 = load <4 x half>, ptr addrspace(3) %1096, align 8, !dbg !44
+-  %1098 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %340, !dbg !44
++  %1098 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa898, i32 %340, !dbg !44
+   %1099 = load <4 x half>, ptr addrspace(3) %1098, align 8, !dbg !44
+   tail call void @llvm.amdgcn.wait.asyncmark(i16 0), !dbg !44
+   tail call void @llvm.amdgcn.s.waitcnt(i32 49279), !dbg !44
+   tail call void @llvm.amdgcn.s.barrier(), !dbg !44
+-  %1100 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa896, i32 %205, !dbg !44
++  %1100 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %205, !dbg !44
+   %1101 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) %1100, i32 0), !dbg !44
+-  %1102 = getelementptr inbounds i8, ptr addrspace(3) %.lcssa896, i32 %211, !dbg !44
++  %1102 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %211, !dbg !44
+   %1103 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) %1102, i32 0), !dbg !44
+-  %1104 = getelementptr inbounds half, ptr addrspace(3) %.lcssa896, i32 %215, !dbg !44
++  %1104 = getelementptr inbounds half, ptr addrspace(3) %1062, i32 %215, !dbg !44
+   %1105 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) nonnull %1104, i32 0), !dbg !44
+-  %1106 = getelementptr inbounds half, ptr addrspace(3) %.lcssa896, i32 %219, !dbg !44
++  %1106 = getelementptr inbounds half, ptr addrspace(3) %1062, i32 %219, !dbg !44
+   %1107 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) nonnull %1106, i32 0), !dbg !44
+-  %1108 = getelementptr inbounds half, ptr addrspace(3) %.lcssa896, i32 %222, !dbg !44
++  %1108 = getelementptr inbounds half, ptr addrspace(3) %1062, i32 %222, !dbg !44
+   %1109 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) nonnull %1108, i32 0), !dbg !44
+-  %1110 = getelementptr inbounds half, ptr addrspace(3) %.lcssa896, i32 %225, !dbg !44
++  %1110 = getelementptr inbounds half, ptr addrspace(3) %1062, i32 %225, !dbg !44
+   %1111 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) nonnull %1110, i32 0), !dbg !44
+-  %1112 = getelementptr inbounds half, ptr addrspace(3) %.lcssa896, i32 %228, !dbg !44
++  %1112 = getelementptr inbounds half, ptr addrspace(3) %1062, i32 %228, !dbg !44
+   %1113 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) nonnull %1112, i32 0), !dbg !44
+-  %1114 = getelementptr inbounds half, ptr addrspace(3) %.lcssa896, i32 %231, !dbg !44
++  %1114 = getelementptr inbounds half, ptr addrspace(3) %1062, i32 %231, !dbg !44
+   %1115 = tail call <8 x half> @llvm.hcu.ds.read.m32x16.b16.v8f16.p3(ptr addrspace(3) nonnull %1114, i32 0), !dbg !44
+   br i1 %60, label %1116, label %._crit_edge1488, !dbg !44
+@@ -1394,35 +1394,35 @@
+
+   tail call void @llvm.amdgcn.s.waitcnt(i32 49279), !dbg !44
+   tail call void @llvm.amdgcn.s.barrier(), !dbg !44
+-  %1197 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %246, !dbg !44
++  %1197 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %246, !dbg !44
+   %1198 = load <4 x half>, ptr addrspace(3) %1197, align 8, !dbg !44
+-  %1199 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %252, !dbg !44
++  %1199 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %252, !dbg !44
+   %1200 = load <4 x half>, ptr addrspace(3) %1199, align 8, !dbg !44
+-  %1201 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %258, !dbg !44
++  %1201 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %258, !dbg !44
+   %1202 = load <4 x half>, ptr addrspace(3) %1201, align 8, !dbg !44
+-  %1203 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %264, !dbg !44
++  %1203 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %264, !dbg !44
+   %1204 = load <4 x half>, ptr addrspace(3) %1203, align 8, !dbg !44
+-  %1205 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %270, !dbg !44
++  %1205 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %270, !dbg !44
+   %1206 = load <4 x half>, ptr addrspace(3) %1205, align 8, !dbg !44
+-  %1207 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %276, !dbg !44
++  %1207 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %276, !dbg !44
+   %1208 = load <4 x half>, ptr addrspace(3) %1207, align 8, !dbg !44
+-  %1209 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %282, !dbg !44
++  %1209 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %282, !dbg !44
+   %1210 = load <4 x half>, ptr addrspace(3) %1209, align 8, !dbg !44
+-  %1211 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %288, !dbg !44
++  %1211 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %288, !dbg !44
+   %1212 = load <4 x half>, ptr addrspace(3) %1211, align 8, !dbg !44
+-  %1213 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %291, !dbg !44
++  %1213 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %291, !dbg !44
+   %1214 = load <4 x half>, ptr addrspace(3) %1213, align 8, !dbg !44
+-  %1215 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %298, !dbg !44
++  %1215 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %298, !dbg !44
+   %1216 = load <4 x half>, ptr addrspace(3) %1215, align 8, !dbg !44
+-  %1217 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %305, !dbg !44
++  %1217 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %305, !dbg !44
+   %1218 = load <4 x half>, ptr addrspace(3) %1217, align 8, !dbg !44
+-  %1219 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %312, !dbg !44
++  %1219 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %312, !dbg !44
+   %1220 = load <4 x half>, ptr addrspace(3) %1219, align 8, !dbg !44
+-  %1221 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %319, !dbg !44
++  %1221 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %319, !dbg !44
+   %1222 = load <4 x half>, ptr addrspace(3) %1221, align 8, !dbg !44
+-  %1223 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %326, !dbg !44
++  %1223 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %326, !dbg !44
+   %1224 = load <4 x half>, ptr addrspace(3) %1223, align 8, !dbg !44
+-  %1225 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %333, !dbg !44
++  %1225 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %333, !dbg !44
+   %1226 = load <4 x half>, ptr addrspace(3) %1225, align 8, !dbg !44
+-  %1227 = getelementptr inbounds i8, ptr addrspace(3) %1062, i32 %340, !dbg !44
++  %1227 = getelementptr inbounds i8, ptr addrspace(3) %1061, i32 %340, !dbg !44
+   %1228 = load <4 x half>, ptr addrspace(3) %1227, align 8, !dbg !44
+   tail call void @llvm.amdgcn.wait.asyncmark(i16 0), !dbg !44

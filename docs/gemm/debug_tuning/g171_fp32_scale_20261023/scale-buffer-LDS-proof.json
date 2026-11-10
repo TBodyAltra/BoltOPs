@@ -1,0 +1,38 @@
+{
+  "MLS_encoding_aliases": 2,
+  "producer_i32_layout_changes": 7,
+  "copies": [
+    {
+      "operand": "A scale",
+      "payload_dtype": "f32",
+      "logical_tile_elements": 128,
+      "global_indexing": "unchanged",
+      "global_B_shape": [
+        2,
+        48
+      ],
+      "producer_layout": "blocked sizePerThread1 / 64 threads / 4 warps",
+      "native_operation": "amdg.buffer_load_to_local",
+      "publication": "async commit + wait0 before existing ready abarrier arrive",
+      "consumer_math_and_LDS_layout": "unchanged"
+    },
+    {
+      "operand": "B scale",
+      "payload_dtype": "f32",
+      "logical_tile_elements": 256,
+      "global_indexing": "unchanged",
+      "global_B_shape": [
+        2,
+        48
+      ],
+      "producer_layout": "blocked sizePerThread1 / 64 threads / 4 warps",
+      "native_operation": "amdg.buffer_load_to_local",
+      "publication": "async commit + wait0 before existing ready abarrier arrive",
+      "consumer_math_and_LDS_layout": "unchanged"
+    }
+  ],
+  "B_scale_note": "Input stays compact [2,48]; this variant preserves the existing logical 256-entry B scale LDS staging and repeated source indices.",
+  "source": "/home/kxu/fp8-G171-fp32-blockscale-20261023/mls-base-fp32.ttgir",
+  "source_sha256": "4421c4e89b4eec67d85e8ef6a3089c775fa82131d09849fcf574418e1e1ca7ea",
+  "executed_candidate_sha256": "e7b28e8f00e4cae6280e88f708c004960af0e94f8d685e8dc62be3aa1896c4b2"
+}

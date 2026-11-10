@@ -1,0 +1,84 @@
+--- a/boltops/gemm/triton/gemm_fp16.py
++++ b/boltops/gemm/triton/gemm_fp16.py
+@@ -425,6 +425,7 @@
+     MIXED_OPERAND: tl.constexpr = 0,
+     MIXED_VECTOR_FULL: tl.constexpr = False,
+     SIMPLIFY_GROUP1: tl.constexpr = False,
++    REBASE_MLS_TILE: tl.constexpr = 0,
+ ):
+     tl.assume(K % BLOCK_SIZE_K == 0)
+     tl.assume(stride_am > 0)
+@@ -455,39 +456,61 @@
+ 
+     mls_offs_am = pid_m * BLOCK_SIZE_M
+     mls_offs_bn = pid_n * BLOCK_SIZE_N
++    tl.static_assert(REBASE_MLS_TILE >= 0 and REBASE_MLS_TILE <= 3)
++    if REBASE_MLS_TILE:
++        tl.static_assert(not WARP_SPECIALIZE)
++        tl.static_assert(MIXED_OPERAND == 0)
++    # Rebase only the non-K tile coordinates. Keep the exact remaining shape
++    # so every original edge predicate is preserved for arbitrary M/N.
++    if REBASE_MLS_TILE & 1:
++        mls_a_ptr = a_ptr + mls_offs_am.to(tl.int64) * stride_am
++        mls_shape_m = M - mls_offs_am
++        mls_load_m = 0
++    else:
++        mls_a_ptr = a_ptr
++        mls_shape_m = M
++        mls_load_m = mls_offs_am
++    if REBASE_MLS_TILE & 2:
++        mls_b_ptr = b_ptr + mls_offs_bn.to(tl.int64) * stride_bn
++        mls_shape_n = N - mls_offs_bn
++        mls_load_n = 0
++    else:
++        mls_b_ptr = b_ptr
++        mls_shape_n = N
++        mls_load_n = mls_offs_bn
+     accumulator = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
+     for k in tl.range(0, K // BLOCK_SIZE_K, warp_specialize=WARP_SPECIALIZE, loop_unroll_factor=LOOP_UNROLL_FACTOR):
+         mls_offs_k = k * BLOCK_SIZE_K
+         if MIXED_OPERAND == 0:
+             if LOAD_B_FIRST:
+                 b = tl.matrix_load(
+-                    b_ptr,
+-                    shape=[K, N],
++                    mls_b_ptr,
++                    shape=[K, mls_shape_n],
+                     strides=[stride_bk, stride_bn],
+                     block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N],
+-                    offsets=[mls_offs_k, mls_offs_bn],
++                    offsets=[mls_offs_k, mls_load_n],
+                 )
+                 a = tl.matrix_load(
+-                    a_ptr,
+-                    shape=[M, K],
++                    mls_a_ptr,
++                    shape=[mls_shape_m, K],
+                     strides=[stride_am, stride_ak],
+                     block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K],
+-                    offsets=[mls_offs_am, mls_offs_k],
++                    offsets=[mls_load_m, mls_offs_k],
+                 )
+             else:
+                 a = tl.matrix_load(
+-                    a_ptr,
+-                    shape=[M, K],
++                    mls_a_ptr,
++                    shape=[mls_shape_m, K],
+                     strides=[stride_am, stride_ak],
+                     block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K],
+-                    offsets=[mls_offs_am, mls_offs_k],
++                    offsets=[mls_load_m, mls_offs_k],
+                 )
+                 b = tl.matrix_load(
+-                    b_ptr,
+-                    shape=[K, N],
++                    mls_b_ptr,
++                    shape=[K, mls_shape_n],
+                     strides=[stride_bk, stride_bn],
+                     block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N],
+-                    offsets=[mls_offs_k, mls_offs_bn],
++                    offsets=[mls_offs_k, mls_load_n],
+                 )
+             if MMA_K_SPLIT == 1:
+                 accumulator = tl.dot(a, b, accumulator)

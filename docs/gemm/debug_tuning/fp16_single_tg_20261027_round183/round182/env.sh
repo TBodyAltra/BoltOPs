@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+source /xukang/code/pmd-triton-sessions/single-tg-pipeline-20261021/env.sh
+export FP16_MAP_ROOT=/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round181-sgpr-liveness-native
+export PYTHONPATH=/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round181-sgpr-liveness-native/triton/python:/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round181-sgpr-liveness-native/bolt_ops
+export TRITON_HOME=/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round181-sgpr-liveness-native/cache/home
+export TRITON_CACHE_DIR=/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round181-sgpr-liveness-native/cache/kernels
+export TRITON_BUILD_DIR=/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round181-sgpr-liveness-native/build
+export HCU_PIPELINE_ENV_REV=181sgprlivenessnative
+
+# Preserve every parent measured environment value for initial-series continuation.
+export AMDGCN_USE_BUFFER_OPS=1
+export GPU_CHIP=sb
+export GPU_DFLAGS='['"'"'StatLog'"'"']'
+export HCU_PIPELINE_ENV_REV=181sgprlivenessnative
+export LD_LIBRARY_PATH=/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib
+export LLVM_SYSPATH=/xukang/code/pmd-triton-sessions/gemm-wdra48-release-3.6.x/llvm-build
+export OMP_NUM_THREADS=8
+export OPENBLAS_NUM_THREADS=8
+export PATH=/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/llvm/bin:/xukang/code/pmd-triton-sessions/fp16-map-20261020/venv/bin:/opt/hyhal/bin:/opt/rocm/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PMD_PATH=/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd
+export PYTHONPATH=/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round181-sgpr-liveness-native/triton/python:/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round181-sgpr-liveness-native/bolt_ops
+export TRITON_BACKENDS_IN_TREE=1
+export TRITON_BUILD_DIR=/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round181-sgpr-liveness-native/build
+export TRITON_BUILD_PROTON=OFF
+export TRITON_CACHE_DIR=/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round181-sgpr-liveness-native/cache/kernels
+export TRITON_HIP_CLANG_PATH=/opt/rocm/llvm/bin/clang-18
+export TRITON_HIP_LLD_PATH=/opt/rocm/llvm/bin/ld.lld
+export TRITON_HOME=/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round181-sgpr-liveness-native/cache/home
+export TRITON_OFFLINE_BUILD=1

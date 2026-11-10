@@ -1,0 +1,22 @@
+--- a/third_party/hcu/lib/TritonHCUToLLVM/MlsOpToLLVM.cpp
++++ b/third_party/hcu/lib/TritonHCUToLLVM/MlsOpToLLVM.cpp
+@@ -516,7 +516,7 @@
+    * For each vector, share same rsrc desc with ldOffValue, but has different ldOffConst offset & stOffValue.
+    * key: ldOffValue, value: std::pair<ldOffConst, stOffValue>
+    **/
+-  DenseMap<Value, SmallVector<std::pair<unsigned, Value>>>
++  llvm::MapVector<Value, SmallVector<std::pair<unsigned, Value>>>
+   computeMatrixLoadStoreOffsetsWithMlOffs(Location loc, RewriterBase &rewriter,
+                                 const MlsInsn &mlsInsn,
+                                 const MlsEncodingAttr &blockLayout,
+@@ -626,7 +626,9 @@
+       }
+     }
+ 
+-    DenseMap<Value, SmallVector<std::pair<unsigned, Value>>> loadStoreOffsetsMap;
++    // Emit descriptor groups in geometric insertion order. Pointer-hashed Value
++    // iteration must not select the MLS instruction schedule.
++    llvm::MapVector<Value, SmallVector<std::pair<unsigned, Value>>> loadStoreOffsetsMap;
+     for (auto &group : loadStoreOffsets) {
+       Value ldOffV = std::get<0>(group[0]);
+       auto &curMap = loadStoreOffsetsMap[ldOffV];

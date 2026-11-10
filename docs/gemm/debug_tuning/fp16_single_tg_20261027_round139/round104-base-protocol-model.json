@@ -1,0 +1,125 @@
+{
+  "passed": true,
+  "CPU_only": true,
+  "finite_protocol_model": true,
+  "MMAC_turns_disabled": true,
+  "positive_cases": [
+    {
+      "passed": true,
+      "consumer_waves": 2,
+      "producer_waves": 4,
+      "generations": 4,
+      "states": 1367,
+      "transitions": 3055,
+      "terminal_states": 1,
+      "all_reachable_states_no_pending_read_overwrite_or_wrong_generation_or_deadlock": true,
+      "seconds": 0.0028880619938718155
+    },
+    {
+      "passed": true,
+      "consumer_waves": 4,
+      "producer_waves": 4,
+      "generations": 4,
+      "states": 36282,
+      "transitions": 123435,
+      "terminal_states": 1,
+      "all_reachable_states_no_pending_read_overwrite_or_wrong_generation_or_deadlock": true,
+      "seconds": 0.10695482799928868
+    },
+    {
+      "passed": true,
+      "consumer_waves": 8,
+      "producer_waves": 4,
+      "generations": 2,
+      "states": 1644974,
+      "transitions": 8632520,
+      "terminal_states": 1,
+      "all_reachable_states_no_pending_read_overwrite_or_wrong_generation_or_deadlock": true,
+      "seconds": 9.323658424000314
+    }
+  ],
+  "negative_cases": [
+    {
+      "passed": false,
+      "reason": "OVERWRITE_WITH_PENDING_LDS_READ",
+      "state": [
+        3,
+        [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ]
+      ],
+      "slot": 0,
+      "generation": 1,
+      "states": 2024,
+      "mutation": "release_before_drain"
+    },
+    {
+      "passed": false,
+      "reason": "OVERWRITE_WITH_PENDING_LDS_READ",
+      "state": [
+        5,
+        [
+          8,
+          8,
+          8,
+          11,
+          13,
+          13,
+          13,
+          13
+        ]
+      ],
+      "slot": 2,
+      "generation": 1,
+      "states": 510070,
+      "mutation": "B1_empty_count4"
+    },
+    {
+      "passed": false,
+      "reason": "DEADLOCK",
+      "state": [
+        5,
+        [
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9,
+          9
+        ]
+      ],
+      "states": 50412,
+      "mutation": "wrong_B1_ready_phase"
+    },
+    {
+      "passed": false,
+      "reason": "DEADLOCK",
+      "state": [
+        0,
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "states": 1,
+      "mutation": "missing_initial_empty"
+    }
+  ],
+  "scope": "All reachable symmetry-reduced individual-consumer-wave interleavings for the stated bounds. Four-producer ready publication abstracts the legacy MLS seq/copy/arrive completion semantics, separately paired for each slot; actual ISA pairing/teardown checks and PMD gold are required. No producer ebarrier6 is assumed. This is not an unbounded proof or performance measurement.",
+  "script_sha256": "3922d18a1dbc8766ec29a4a98ac0925ab1e395ecfd27072fb8897b719225da50"
+}

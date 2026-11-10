@@ -1,0 +1,113 @@
+{
+  "record_type": "recorded_existing_results",
+  "status": "RECORDED",
+  "name": "TT_v2final_recorded",
+  "source_run_name": "v2final_baseline",
+  "results_were_executed_for_this_delivery": false,
+  "repro_generic_executed": false,
+  "raw_artifacts_included": false,
+  "note": "Extracted from the existing r004_opt/runs/v2final_baseline/result.json. This is a historical baseline record, not a new repro_generic execution or a new execution in the formal delivery directory. Original timestamps were not recorded by the source result.json; raw logs and PMD files remain in the source results directory.",
+  "shape": [6656, 64, 2048],
+  "dtype": "bfloat16",
+  "layout": "TT",
+  "seed": 29,
+  "config": {
+    "BLOCK_SIZE_M": 128,
+    "BLOCK_SIZE_N": 32,
+    "BLOCK_SIZE_K": 32,
+    "GROUP_SIZE_M": 8,
+    "num_warps": 4,
+    "num_stages": 2,
+    "use_async_copy": true,
+    "use_block_pingpong": true,
+    "block_pingpong_async_global_prefetch": 3,
+    "block_pingpong_async_local_prefetch": 1,
+    "mmac_layout_force": 2,
+    "enable_v_mmac_cluster": 1,
+    "hcu_use_gfx946_sched_model_v2": false,
+    "misched_regpressure": false,
+    "max_memory_cluster_dwords": 32
+  },
+  "source_sha256": "e108b0bb94c719409fc0a8b387e295f1d39bf1e02d364494a1d92c5e361313fb",
+  "source_result": "/public/home/duyubo/bolt/github/BoltOPs/tmp/1106/r004_opt/runs/v2final_baseline/result.json",
+  "results_directory": "/public/home/duyubo/bolt/github/BoltOPs/tmp/1106/r004_opt/runs/v2final_baseline",
+  "provenance": {
+    "source_result_sha256": "69c9b7765a5ef1ae155fea8a2a3c4b38d7058d20f736066cbeb2ed0891c37d49",
+    "source_snapshot": "/public/home/duyubo/bolt/github/BoltOPs/tmp/1106/r004_opt/runs/v2final_baseline/kernel_source.py",
+    "source_operator": "/public/home/duyubo/bolt/github/BoltOPs/docs/gemm/debug_tuning/bf16_linear_gemm/autotune/scripts/gemm_a16w16_generic.py",
+    "measurement_script": "/public/home/duyubo/bolt/github/BoltOPs/tmp/1106/r004_opt/bench.py",
+    "config_source": "/public/home/duyubo/bolt/github/BoltOPs/docs/gemm/debug_tuning/bf16_linear_gemm/autotune/results_TT_dyn/shapes/R004_6656x64x2048_TT.json",
+    "config_json_pointer": "/best/config",
+    "config_source_sha256": "a383ab205104a8bfa2904b9990241a53f0e0141a77d6a7c3c6849a7aa98a7b3e",
+    "archived_tune_lib_sha256": "9f52a590528963fe455e3cf202811996d0af8b5065ca4cb70c01695b0c47317f"
+  },
+  "scope": "PMD gfx946, 48 CUs; kernel-only gcSimCycles / (gcFrequency_GHz * 1000); excludes compilation, allocation, copies and CPU validation",
+  "rounds": 1,
+  "warmup_per_round": 1,
+  "timed_per_round": 2,
+  "samples": 2,
+  "freq_ghz": 2.197802,
+  "warmup_dispatches": [
+    {
+      "dispatch_id": 0,
+      "cycles": 66292.0,
+      "freq_ghz": 2.197802,
+      "us": 30.16286271465765,
+      "completed_wgs": 104,
+      "cu_count": 48,
+      "active_cus": 48,
+      "source_stats_path": "/public/home/duyubo/bolt/github/BoltOPs/tmp/1106/r004_opt/runs/v2final_baseline/g/0/0/stats.txt"
+    }
+  ],
+  "timed_dispatches": [
+    {
+      "dispatch_id": 1,
+      "cycles": 54666.0,
+      "freq_ghz": 2.197802,
+      "us": 24.873032238572904,
+      "completed_wgs": 104,
+      "cu_count": 48,
+      "active_cus": 48,
+      "source_stats_path": "/public/home/duyubo/bolt/github/BoltOPs/tmp/1106/r004_opt/runs/v2final_baseline/g/0/1/stats.txt"
+    },
+    {
+      "dispatch_id": 2,
+      "cycles": 54519.0,
+      "freq_ghz": 2.197802,
+      "us": 24.806147232553254,
+      "completed_wgs": 104,
+      "cu_count": 48,
+      "active_cus": 48,
+      "source_stats_path": "/public/home/duyubo/bolt/github/BoltOPs/tmp/1106/r004_opt/runs/v2final_baseline/g/0/2/stats.txt"
+    }
+  ],
+  "timed_cycles": [54666.0, 54519.0],
+  "median_cycles": 54592.5,
+  "median_us": 24.83958973556308,
+  "min_us": 24.806147232553254,
+  "max_us": 24.873032238572904,
+  "round_medians_us": [24.83958973556308],
+  "tflops": 70.24393247131249,
+  "mmac_util": 0.16256201248645266,
+  "correctness": "PASS",
+  "full_check": true,
+  "accuracy": {
+    "status": "PASS",
+    "finite": true,
+    "guard": true,
+    "sampled_points": 425984,
+    "mismatches": 0,
+    "mean_abs": 0.05073971301317215,
+    "rounding_floor": 0.05073970556259155
+  },
+  "accuracy_policy": "Source worker checks every element of the final dispatch. BF16-rounded CPU FP32 reference with atol=0.02, rtol=0.01; mean absolute error against unrounded FP32 <= 1.05 * BF16 rounding floor + 1e-6, plus finite output and prefix/suffix guards.",
+  "resources": {
+    "grid": [104],
+    "compile_wall_s": 4.073722987988731,
+    "shared": 30720,
+    "n_regs": 94,
+    "n_spills": 0,
+    "num_warps": 4,
+    "asm_sha": "3ca3c81471005b9c5244355ac4bdffd3ce8f2eb6e2b6e87fd510999d25410377"
+  }
+}

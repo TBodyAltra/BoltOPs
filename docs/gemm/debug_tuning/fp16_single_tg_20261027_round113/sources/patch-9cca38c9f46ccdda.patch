@@ -1,0 +1,95 @@
+diff --git a/third_party/hcu/backend/compiler.py b/third_party/hcu/backend/compiler.py
+index 812937a65..a1cba3802 100644
+--- a/third_party/hcu/backend/compiler.py
++++ b/third_party/hcu/backend/compiler.py
+@@ -108,6 +108,11 @@ class HIPOptions:
+     # schedule_hint="attention,memory-bound-attention"
+     schedule_hint: str = 'none'
+ 
++    # Experimental independent MLS global prefetch depth. None preserves the
++    # existing hint-derived behavior. Dataclass field participates in hash().
++    mls_global_prefetch: Optional[int] = None
++    hcu_fragment_mls_layout: bool = False
++
+     # Extend options for HCU(legacy), used for old arch like gfx928, gfx936
+     # 1. set scheduling latency for mmac and ds:
+     #    - none: use default scheduling latency which equal mmac1-ds5
+@@ -186,6 +191,11 @@ class HIPOptions:
+     assume_no_nans: bool = False
+ 
+     def __post_init__(self):
++        if type(self.hcu_fragment_mls_layout) is not bool:
++            raise ValueError("hcu_fragment_mls_layout must be bool")
++        if self.mls_global_prefetch is not None and (
++                type(self.mls_global_prefetch) is not int or self.mls_global_prefetch not in (0, 1)):
++            raise ValueError("mls_global_prefetch must be None, 0 or 1")
+         gfx_major = int(self.arch[3:-2])  # Drop "gfx" prefix and minor/patch number
+         warp_size = 32 if gfx_major >= 10 else 64
+         object.__setattr__(self, 'warp_size', warp_size)
+@@ -609,6 +619,8 @@ class HIPBackend(BaseBackend):
+         b = ir.builder(mod.context)
+         use_async_copy = options.use_async_copy
+         mmac_cluster_on = int(options.enable_v_mmac_cluster) >= 1
++        if options.hcu_fragment_mls_layout:
++            mod.set_attr("hcu.fragment_mls_layout", b.get_bool_attr(True))
+         mod.set_attr("hcu.sched_barrier_before_mmac",
+                      b.get_bool_attr(mmac_cluster_on))
+         mod.set_attr("hcu.empty_arrive_after_mmac",
+@@ -694,7 +706,9 @@ class HIPBackend(BaseBackend):
+ 
+         # Preserve the old triton stream-prefetch behavior for MLS:
+         # separate global load and LDS consumption by one pipeline stage.
+-        global_prefetch = int(options.schedule_hint == "local-prefetch")
++        global_prefetch = (int(options.schedule_hint == "local-prefetch")
++                           if options.mls_global_prefetch is None else options.mls_global_prefetch)
++        metadata["mls_global_prefetch_resolved"] = global_prefetch
+ 
+         # When WASP is enabled, skip MLS software pipelining (same rationale as
+         # skipping amd stream_pipeline): WASP owns multi-buffering / sync for
+diff --git a/third_party/hcu/lib/TritonHCUTransforms/AccelerateHCUMatmul.cpp b/third_party/hcu/lib/TritonHCUTransforms/AccelerateHCUMatmul.cpp
+index b9a9de370..c6e8cc95d 100644
+--- a/third_party/hcu/lib/TritonHCUTransforms/AccelerateHCUMatmul.cpp
++++ b/third_party/hcu/lib/TritonHCUTransforms/AccelerateHCUMatmul.cpp
+@@ -104,6 +104,42 @@ DotOperandMatrixLoadInfo getDotOperandMatrixLoadInfo(DotOpInterface dotOp,
+     if (opIdx >= 0 && opIdx < 2 && !matrixOps[opIdx])
+       matrixOps[opIdx] = mOp;
+   });
++  // Experimental: split K fragments retain the MLS source of both halves.
++  // The normal forward search associates a matrix load with only the first
++  // dot; subsequent fragments otherwise get an incompatible fallback layout.
++  if (auto enabled = mod->getAttrOfType<BoolAttr>("hcu.fragment_mls_layout");
++      enabled && enabled.getValue()) {
++    if (auto plainDot = dyn_cast<tt::DotOp>(dotOp.getOperation())) {
++      for (int idx = 0; idx < 2; ++idx) {
++        if (matrixOps[idx])
++          continue;
++        Value value = idx == 0 ? plainDot.getA() : plainDot.getB();
++        auto operandTy = cast<RankedTensorType>(value.getType());
++        unsigned splitCount = 0;
++        for (unsigned depth = 0; depth < 16 && value; ++depth) {
++          Operation *def = value.getDefiningOp();
++          if (!def)
++            break;
++          if (auto load = dyn_cast<tt::MatrixLoadOp>(def)) {
++            auto sourceTy = load.getType();
++            unsigned kAxis = 1 - idx;
++            if (splitCount >= 1 && splitCount <= 2 && operandTy.getRank() == 2 &&
++                sourceTy.getRank() == 2 && operandTy.getElementType().isF16() &&
++                sourceTy.getElementType() == operandTy.getElementType() &&
++                sourceTy.getShape()[idx] == operandTy.getShape()[idx] &&
++                sourceTy.getShape()[kAxis] == (1LL << splitCount) * operandTy.getShape()[kAxis])
++              matrixOps[idx] = load;
++            break;
++          }
++          if (isa<tt::SplitOp>(def))
++            ++splitCount;
++          else if (!isa<tt::ReshapeOp, tt::TransOp, ttg::ConvertLayoutOp>(def))
++            break;
++          value = def->getOperand(0);
++        }
++      }
++    }
++  }
+   std::array<std::optional<MatrixLoadInfo>, 2> infos = {
+       buildDotOperandMatrixLoadInfo(dotOp, 0, matrixOps[0]),
+       buildDotOperandMatrixLoadInfo(dotOp, 1, matrixOps[1])};

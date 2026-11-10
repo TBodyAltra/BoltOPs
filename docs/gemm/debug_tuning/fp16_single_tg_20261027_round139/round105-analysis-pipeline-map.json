@@ -1,0 +1,904 @@
+{
+  "purpose": "Single TG per-block pipeline baselines for BU; no MNK-based tile selection",
+  "measurement_context_id": "fc7311a29771de39",
+  "model_peak_basis": "16x16x16 FP16 MMAC=8192 FLOPs / configured 8 cycles * configured 4 SIMDs =4096 FLOPs/CU/cycle",
+  "note": "FLOP/peak fraction is not an independently measured busy-counter percentage; raw MMOP runtime counters retained separately. TT/TN are input transports, not workload size buckets.",
+  "statuses": {
+    "PASS": 20
+  },
+  "paired_candidates": 6,
+  "matched_block_layouts": 2,
+  "best": [
+    {
+      "tile": [
+        128,
+        256,
+        128
+      ],
+      "layout": "TN",
+      "recipe": "rectangular_independent_B_slots_native105",
+      "mode": "wdra48",
+      "mls": true,
+      "matrix_store": false,
+      "stages": 1,
+      "warps": null,
+      "regs": [
+        8,
+        248,
+        248
+      ],
+      "mmac_layout": -1,
+      "cluster": 0,
+      "empty_arrive": false,
+      "use_async_copy": false,
+      "use_block_pingpong": false,
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": false,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": -1,
+        "hcu_wasp_single_buffer": true,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "hcu_wasp_partial_k_local_read": true,
+        "hcu_wasp_prefetch_one_operand": 1,
+        "hcu_wasp_mmac_turn": 0,
+        "hcu_wasp_merge_ab": false,
+        "hcu_wasp_split_b_global_probe": true,
+        "hcu_wasp_split_b_slots": true,
+        "hcu_wasp_split_b_slot_turn": 0,
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2
+      },
+      "effective_partition_regs": [
+        8,
+        248,
+        248
+      ],
+      "actual_partition_regs": [
+        2,
+        145,
+        145
+      ],
+      "effective_num_warps": 12,
+      "shared_bytes": 98304,
+      "n_regs": 168,
+      "n_spills": 0,
+      "cycles_per_bk_slope": 2888.1458333333335,
+      "ideal_mmac_cycles_per_bk": 2048.0,
+      "mmac_theoretical_fraction": 0.7091054670311835,
+      "slope_sample_range": [
+        2859.9166666666665,
+        2895.8541666666665
+      ],
+      "loop_counts": [
+        16,
+        32,
+        64
+      ],
+      "source_ids": [
+        "794f9a295d748ae3",
+        "836a09d77486216e",
+        "700646ec79d1a93b"
+      ],
+      "asm_sha256": "014be2e16128311bf89e0ee3c5dee9df8e2c2881a6b2cf6c33b509e3bc63ab6e",
+      "assembly_features": {
+        "mmac_opcodes": [
+          "v_mmac_f32_16x16x16_f16"
+        ],
+        "buffer_to_lds": false,
+        "set_priority_instructions": 0
+      },
+      "identical_binary_across_loop_counts": true,
+      "peak_flops_per_cu_cycle": 4096,
+      "valid_metric": true,
+      "steadiness": "three-or-more loop-count check",
+      "intermediate_residual_cycles": 2478.333333333343,
+      "intermediate_residual_fraction_of_long_time": 0.01206195317658477
+    },
+    {
+      "tile": [
+        128,
+        256,
+        128
+      ],
+      "layout": "TT",
+      "recipe": "rectangular_independent_B_slots_native105",
+      "mode": "wdra48",
+      "mls": true,
+      "matrix_store": false,
+      "stages": 1,
+      "warps": null,
+      "regs": [
+        8,
+        248,
+        248
+      ],
+      "mmac_layout": -1,
+      "cluster": 0,
+      "empty_arrive": false,
+      "use_async_copy": false,
+      "use_block_pingpong": false,
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": -1,
+        "hcu_wasp_single_buffer": true,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "hcu_wasp_partial_k_local_read": true,
+        "hcu_wasp_prefetch_one_operand": 1,
+        "hcu_wasp_mmac_turn": 0,
+        "hcu_wasp_merge_ab": false,
+        "hcu_wasp_split_b_global_probe": true,
+        "hcu_wasp_split_b_slots": true,
+        "hcu_wasp_split_b_slot_turn": 0,
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2
+      },
+      "effective_partition_regs": [
+        8,
+        248,
+        248
+      ],
+      "actual_partition_regs": [
+        2,
+        137,
+        137
+      ],
+      "effective_num_warps": 12,
+      "shared_bytes": 98304,
+      "n_regs": 168,
+      "n_spills": 0,
+      "cycles_per_bk_slope": 3159.6875,
+      "ideal_mmac_cycles_per_bk": 2048.0,
+      "mmac_theoretical_fraction": 0.6481653644545544,
+      "slope_sample_range": [
+        3126.5208333333335,
+        3184.3541666666665
+      ],
+      "loop_counts": [
+        16,
+        32,
+        64
+      ],
+      "source_ids": [
+        "e11a45f141f2f20f",
+        "3ab15b0ff0a68a79",
+        "8390e63c92afa299"
+      ],
+      "asm_sha256": "bd53300852143074a3f0b8c05c44e40ade10b7c744923fb7142e29731f338946",
+      "assembly_features": {
+        "mmac_opcodes": [
+          "v_mmac_f32_16x16x16_f16"
+        ],
+        "buffer_to_lds": false,
+        "set_priority_instructions": 0
+      },
+      "identical_binary_across_loop_counts": true,
+      "peak_flops_per_cu_cycle": 4096,
+      "valid_metric": true,
+      "steadiness": "three-or-more loop-count check",
+      "intermediate_residual_cycles": 1842.0,
+      "intermediate_residual_fraction_of_long_time": 0.00836147728510731
+    }
+  ],
+  "best_64k": [],
+  "candidates": [
+    {
+      "tile": [
+        128,
+        256,
+        128
+      ],
+      "layout": "TN",
+      "recipe": "rectangular_independent_B_slots_native105",
+      "mode": "wdra48",
+      "mls": true,
+      "matrix_store": false,
+      "stages": 1,
+      "warps": null,
+      "regs": [
+        8,
+        248,
+        248
+      ],
+      "mmac_layout": -1,
+      "cluster": 0,
+      "empty_arrive": false,
+      "use_async_copy": false,
+      "use_block_pingpong": false,
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": false,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": -1,
+        "hcu_wasp_single_buffer": true,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "hcu_wasp_partial_k_local_read": true,
+        "hcu_wasp_prefetch_one_operand": 1,
+        "hcu_wasp_mmac_turn": 0,
+        "hcu_wasp_merge_ab": false,
+        "hcu_wasp_split_b_global_probe": true,
+        "hcu_wasp_split_b_slots": true,
+        "hcu_wasp_split_b_slot_turn": 1,
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2
+      },
+      "effective_partition_regs": [
+        8,
+        248,
+        248
+      ],
+      "actual_partition_regs": [
+        2,
+        145,
+        157
+      ],
+      "effective_num_warps": 12,
+      "shared_bytes": 98304,
+      "n_regs": 168,
+      "n_spills": 0,
+      "cycles_per_bk_slope": 3586.9583333333335,
+      "ideal_mmac_cycles_per_bk": 2048.0,
+      "mmac_theoretical_fraction": 0.5709572873953094,
+      "slope_sample_range": [
+        3569.3333333333335,
+        3599.9375
+      ],
+      "loop_counts": [
+        16,
+        32,
+        64
+      ],
+      "source_ids": [
+        "ce1a70b4fd9559a1",
+        "bb6e9ade46bd68bf",
+        "fa1454512fc1cb43"
+      ],
+      "asm_sha256": "535d0384832ce519e5dba6502c77e736963c451545c278afa58ae4e0c2b42b68",
+      "assembly_features": {
+        "mmac_opcodes": [
+          "v_mmac_f32_16x16x16_f16"
+        ],
+        "buffer_to_lds": false,
+        "set_priority_instructions": 0
+      },
+      "identical_binary_across_loop_counts": true,
+      "peak_flops_per_cu_cycle": 4096,
+      "valid_metric": true,
+      "steadiness": "three-or-more loop-count check",
+      "intermediate_residual_cycles": 371.33333333334303,
+      "intermediate_residual_fraction_of_long_time": 0.0015100989562153032
+    },
+    {
+      "tile": [
+        128,
+        256,
+        128
+      ],
+      "layout": "TT",
+      "recipe": "rectangular_independent_B_slots_native105",
+      "mode": "wdra48",
+      "mls": true,
+      "matrix_store": false,
+      "stages": 1,
+      "warps": null,
+      "regs": [
+        8,
+        248,
+        248
+      ],
+      "mmac_layout": -1,
+      "cluster": 0,
+      "empty_arrive": false,
+      "use_async_copy": false,
+      "use_block_pingpong": false,
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": -1,
+        "hcu_wasp_single_buffer": true,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "hcu_wasp_partial_k_local_read": true,
+        "hcu_wasp_prefetch_one_operand": 1,
+        "hcu_wasp_mmac_turn": 0,
+        "hcu_wasp_merge_ab": false,
+        "hcu_wasp_split_b_global_probe": true,
+        "hcu_wasp_split_b_slots": true,
+        "hcu_wasp_split_b_slot_turn": 2,
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2
+      },
+      "effective_partition_regs": [
+        8,
+        248,
+        248
+      ],
+      "actual_partition_regs": [
+        2,
+        137,
+        137
+      ],
+      "effective_num_warps": 12,
+      "shared_bytes": 98304,
+      "n_regs": 168,
+      "n_spills": 0,
+      "cycles_per_bk_slope": 3764.9375,
+      "ideal_mmac_cycles_per_bk": 2048.0,
+      "mmac_theoretical_fraction": 0.5439665333089859,
+      "slope_sample_range": [
+        3757.7291666666665,
+        3772.9166666666665
+      ],
+      "loop_counts": [
+        16,
+        32,
+        64
+      ],
+      "source_ids": [
+        "82922f6948135e3f",
+        "f15f4b175a20b5af",
+        "e155cd69fa31435f"
+      ],
+      "asm_sha256": "4cee040f0b07122f7dc64bacc52a757704785c3a79125dd501bb9dde72872833",
+      "assembly_features": {
+        "mmac_opcodes": [
+          "v_mmac_f32_16x16x16_f16"
+        ],
+        "buffer_to_lds": false,
+        "set_priority_instructions": 0
+      },
+      "identical_binary_across_loop_counts": true,
+      "peak_flops_per_cu_cycle": 4096,
+      "valid_metric": true,
+      "steadiness": "three-or-more loop-count check",
+      "intermediate_residual_cycles": 86.0,
+      "intermediate_residual_fraction_of_long_time": 0.0003311296526603957
+    },
+    {
+      "tile": [
+        128,
+        256,
+        128
+      ],
+      "layout": "TT",
+      "recipe": "rectangular_independent_B_slots_native105",
+      "mode": "wdra48",
+      "mls": true,
+      "matrix_store": false,
+      "stages": 1,
+      "warps": null,
+      "regs": [
+        8,
+        248,
+        248
+      ],
+      "mmac_layout": -1,
+      "cluster": 0,
+      "empty_arrive": false,
+      "use_async_copy": false,
+      "use_block_pingpong": false,
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": -1,
+        "hcu_wasp_single_buffer": true,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "hcu_wasp_partial_k_local_read": true,
+        "hcu_wasp_prefetch_one_operand": 1,
+        "hcu_wasp_mmac_turn": 0,
+        "hcu_wasp_merge_ab": false,
+        "hcu_wasp_split_b_global_probe": true,
+        "hcu_wasp_split_b_slots": true,
+        "hcu_wasp_split_b_slot_turn": 1,
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2
+      },
+      "effective_partition_regs": [
+        8,
+        248,
+        248
+      ],
+      "actual_partition_regs": [
+        2,
+        137,
+        137
+      ],
+      "effective_num_warps": 12,
+      "shared_bytes": 98304,
+      "n_regs": 168,
+      "n_spills": 0,
+      "cycles_per_bk_slope": 4347.604166666667,
+      "ideal_mmac_cycles_per_bk": 2048.0,
+      "mmac_theoretical_fraction": 0.47106404389390705,
+      "slope_sample_range": [
+        4320.958333333333,
+        4353.791666666667
+      ],
+      "loop_counts": [
+        16,
+        32,
+        64
+      ],
+      "source_ids": [
+        "057a90f89206e730",
+        "d2b4577cbe459760",
+        "0bcc59176e6d2217"
+      ],
+      "asm_sha256": "abd3ec4722edecc9ef1a81e038f3514f272f6b394e6938ffcd4b91029a3db3d9",
+      "assembly_features": {
+        "mmac_opcodes": [
+          "v_mmac_f32_16x16x16_f16"
+        ],
+        "buffer_to_lds": false,
+        "set_priority_instructions": 0
+      },
+      "identical_binary_across_loop_counts": true,
+      "peak_flops_per_cu_cycle": 4096,
+      "valid_metric": true,
+      "steadiness": "three-or-more loop-count check",
+      "intermediate_residual_cycles": 327.33333333331393,
+      "intermediate_residual_fraction_of_long_time": 0.0011227810211132474
+    },
+    {
+      "tile": [
+        128,
+        256,
+        128
+      ],
+      "layout": "TN",
+      "recipe": "rectangular_independent_B_slots_native105",
+      "mode": "wdra48",
+      "mls": true,
+      "matrix_store": false,
+      "stages": 1,
+      "warps": null,
+      "regs": [
+        8,
+        248,
+        248
+      ],
+      "mmac_layout": -1,
+      "cluster": 0,
+      "empty_arrive": false,
+      "use_async_copy": false,
+      "use_block_pingpong": false,
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": false,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": -1,
+        "hcu_wasp_single_buffer": true,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "hcu_wasp_partial_k_local_read": true,
+        "hcu_wasp_prefetch_one_operand": 1,
+        "hcu_wasp_mmac_turn": 0,
+        "hcu_wasp_merge_ab": false,
+        "hcu_wasp_split_b_global_probe": true,
+        "hcu_wasp_split_b_slots": true,
+        "hcu_wasp_split_b_slot_turn": 0,
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2
+      },
+      "effective_partition_regs": [
+        8,
+        248,
+        248
+      ],
+      "actual_partition_regs": [
+        2,
+        145,
+        145
+      ],
+      "effective_num_warps": 12,
+      "shared_bytes": 98304,
+      "n_regs": 168,
+      "n_spills": 0,
+      "cycles_per_bk_slope": 2888.1458333333335,
+      "ideal_mmac_cycles_per_bk": 2048.0,
+      "mmac_theoretical_fraction": 0.7091054670311835,
+      "slope_sample_range": [
+        2859.9166666666665,
+        2895.8541666666665
+      ],
+      "loop_counts": [
+        16,
+        32,
+        64
+      ],
+      "source_ids": [
+        "794f9a295d748ae3",
+        "836a09d77486216e",
+        "700646ec79d1a93b"
+      ],
+      "asm_sha256": "014be2e16128311bf89e0ee3c5dee9df8e2c2881a6b2cf6c33b509e3bc63ab6e",
+      "assembly_features": {
+        "mmac_opcodes": [
+          "v_mmac_f32_16x16x16_f16"
+        ],
+        "buffer_to_lds": false,
+        "set_priority_instructions": 0
+      },
+      "identical_binary_across_loop_counts": true,
+      "peak_flops_per_cu_cycle": 4096,
+      "valid_metric": true,
+      "steadiness": "three-or-more loop-count check",
+      "intermediate_residual_cycles": 2478.333333333343,
+      "intermediate_residual_fraction_of_long_time": 0.01206195317658477
+    },
+    {
+      "tile": [
+        128,
+        256,
+        128
+      ],
+      "layout": "TT",
+      "recipe": "rectangular_independent_B_slots_native105",
+      "mode": "wdra48",
+      "mls": true,
+      "matrix_store": false,
+      "stages": 1,
+      "warps": null,
+      "regs": [
+        8,
+        248,
+        248
+      ],
+      "mmac_layout": -1,
+      "cluster": 0,
+      "empty_arrive": false,
+      "use_async_copy": false,
+      "use_block_pingpong": false,
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": -1,
+        "hcu_wasp_single_buffer": true,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "hcu_wasp_partial_k_local_read": true,
+        "hcu_wasp_prefetch_one_operand": 1,
+        "hcu_wasp_mmac_turn": 0,
+        "hcu_wasp_merge_ab": false,
+        "hcu_wasp_split_b_global_probe": true,
+        "hcu_wasp_split_b_slots": true,
+        "hcu_wasp_split_b_slot_turn": 0,
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2
+      },
+      "effective_partition_regs": [
+        8,
+        248,
+        248
+      ],
+      "actual_partition_regs": [
+        2,
+        137,
+        137
+      ],
+      "effective_num_warps": 12,
+      "shared_bytes": 98304,
+      "n_regs": 168,
+      "n_spills": 0,
+      "cycles_per_bk_slope": 3159.6875,
+      "ideal_mmac_cycles_per_bk": 2048.0,
+      "mmac_theoretical_fraction": 0.6481653644545544,
+      "slope_sample_range": [
+        3126.5208333333335,
+        3184.3541666666665
+      ],
+      "loop_counts": [
+        16,
+        32,
+        64
+      ],
+      "source_ids": [
+        "e11a45f141f2f20f",
+        "3ab15b0ff0a68a79",
+        "8390e63c92afa299"
+      ],
+      "asm_sha256": "bd53300852143074a3f0b8c05c44e40ade10b7c744923fb7142e29731f338946",
+      "assembly_features": {
+        "mmac_opcodes": [
+          "v_mmac_f32_16x16x16_f16"
+        ],
+        "buffer_to_lds": false,
+        "set_priority_instructions": 0
+      },
+      "identical_binary_across_loop_counts": true,
+      "peak_flops_per_cu_cycle": 4096,
+      "valid_metric": true,
+      "steadiness": "three-or-more loop-count check",
+      "intermediate_residual_cycles": 1842.0,
+      "intermediate_residual_fraction_of_long_time": 0.00836147728510731
+    },
+    {
+      "tile": [
+        128,
+        256,
+        128
+      ],
+      "layout": "TN",
+      "recipe": "rectangular_independent_B_slots_native105",
+      "mode": "wdra48",
+      "mls": true,
+      "matrix_store": false,
+      "stages": 1,
+      "warps": null,
+      "regs": [
+        8,
+        248,
+        248
+      ],
+      "mmac_layout": -1,
+      "cluster": 0,
+      "empty_arrive": false,
+      "use_async_copy": false,
+      "use_block_pingpong": false,
+      "config": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": false,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          8,
+          248,
+          248
+        ],
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 1,
+        "mmac_layout_force": -1,
+        "hcu_wasp_single_buffer": true,
+        "optimize_epilogue": true,
+        "HAS_BIAS": false,
+        "USE_MATRIX_STORE": false,
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "hcu_fragment_mls_layout": true,
+        "mls_global_prefetch": 0,
+        "schedule_hint": "none",
+        "hcu_wasp_partial_k_local_read": true,
+        "hcu_wasp_prefetch_one_operand": 1,
+        "hcu_wasp_mmac_turn": 0,
+        "hcu_wasp_merge_ab": false,
+        "hcu_wasp_split_b_global_probe": true,
+        "hcu_wasp_split_b_slots": true,
+        "hcu_wasp_split_b_slot_turn": 2,
+        "LOOP_UNROLL_FACTOR": 1,
+        "MMA_K_SPLIT": 2
+      },
+      "effective_partition_regs": [
+        8,
+        248,
+        248
+      ],
+      "actual_partition_regs": [
+        2,
+        157,
+        157
+      ],
+      "effective_num_warps": 12,
+      "shared_bytes": 98304,
+      "n_regs": 168,
+      "n_spills": 0,
+      "cycles_per_bk_slope": 3652.6666666666665,
+      "ideal_mmac_cycles_per_bk": 2048.0,
+      "mmac_theoretical_fraction": 0.5606862566161709,
+      "slope_sample_range": [
+        3639.5625,
+        3660.5208333333335
+      ],
+      "loop_counts": [
+        16,
+        32,
+        64
+      ],
+      "source_ids": [
+        "e7b70be5ca868b91",
+        "a7e3d0fce386705e",
+        "5d97cf2f1b23271c"
+      ],
+      "asm_sha256": "4ef090c9a51669b58db5f0245150a47c5a10f4df7f470d866bfa0d18777b1f88",
+      "assembly_features": {
+        "mmac_opcodes": [
+          "v_mmac_f32_16x16x16_f16"
+        ],
+        "buffer_to_lds": false,
+        "set_priority_instructions": 0
+      },
+      "identical_binary_across_loop_counts": true,
+      "peak_flops_per_cu_cycle": 4096,
+      "valid_metric": true,
+      "steadiness": "three-or-more loop-count check",
+      "intermediate_residual_cycles": 253.66666666665697,
+      "intermediate_residual_fraction_of_long_time": 0.0010071053199246338
+    }
+  ]
+}

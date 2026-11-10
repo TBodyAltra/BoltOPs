@@ -1,0 +1,8 @@
+{
+  "scope": "AUDIT_ONLY_NO_GPU_SOURCE_CHANGE",
+  "v1_failure": "Applied late-wait release-before-first-MMAC requirement to unmoved fragments too.",
+  "observed": "28 off-mask fragment cases interleave data reads/releases with MMAC issue; all moved fragments satisfy release-before-token-wait-before-first-MMAC; all off-mask releases occur before their turn handoff.",
+  "corrected_checks": "Keep strict moved-fragment ordering. Unmoved fragments acquire token before data ready and release input ownership after full DS drain, before turn handoff. Bind all actual DS-read-matrix instructions to exact ready/empty windows with matching LLVM call counts. B1 ready stays after first turn handoff.",
+  "model_abstraction": "Fragment MMAC group issue is bracketed by token wait/handoff; register-only issue can interleave input reads without shared-memory side effects. Data ownership remains guarded by final DS drain. No physical MMAC completion claim.",
+  "failed_checker_preserved": true
+}

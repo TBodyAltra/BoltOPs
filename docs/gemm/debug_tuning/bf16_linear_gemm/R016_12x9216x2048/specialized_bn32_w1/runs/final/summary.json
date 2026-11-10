@@ -1,0 +1,398 @@
+{
+ "kind": "specialized_measured",
+ "shape": [
+  12,
+  9216,
+  2048
+ ],
+ "layout": "TT",
+ "dtype": "BF16 x BF16 -> BF16; FP32 accumulation",
+ "gcFrequency_GHz": 2.197802,
+ "constants": {
+  "M": 12,
+  "N": 9216,
+  "K": 2048,
+  "useful_flops": 452984832,
+  "logical_bytes_D": 38019072,
+  "A_bytes": 49152,
+  "B_bytes": 37748736,
+  "C_bytes": 221184,
+  "arithmetic_intensity_flop_per_byte": 11.914673561732386,
+  "peak_tflops": 432.0,
+  "configured_bandwidth_TB_s": 1.7996485,
+  "roofline_tflops": 21.442224403361344,
+  "roofline_time_us": 21.125832072207434
+ },
+ "command": "cd specialized_bn32_w1 && bash run.sh --name <final29|final30> --compare --seed <29|30> --dispatches 5; rotate32: --seed 32 --dispatches 3 --rotate-b --compare; pad31: --seed 31 --dispatches 2 --poison-pad",
+ "protocol": "Executed from this archived package on 2026-11-07 (not a transcription). Each case is an independent PMD process; baseline and specialized are started concurrently. 5 dispatches = 1 warmup + 4 timed; same B reused; pooled median over the 8 timed dispatches of seeds 29 and 30. Every dispatch: full 110592-output check (atol=0.02, rtol=0.01 vs BF16-rounded FP32 reference), finite, 128-element guards, mean_abs <= 1.05*rounding_floor+1e-6.",
+ "baseline": {
+  "per_process": [
+   {
+    "run": "final29_baseline",
+    "seed": 29,
+    "dispatches": 5,
+    "timed_cycles": [
+     59849.0,
+     59644.0,
+     59648.0,
+     59877.0
+    ],
+    "timed_us": [
+     27.231297450816776,
+     27.138022442422024,
+     27.139842442585824,
+     27.244037451963376
+    ],
+    "median_cycles": 59748.5,
+    "median_us": 27.1855699467013,
+    "range_us": [
+     27.138022442422024,
+     27.244037451963376
+    ],
+    "grid": 72,
+    "completed_wgs": 72,
+    "shared_B": 36864,
+    "n_regs": 58,
+    "n_spills": 0,
+    "num_warps": 4,
+    "correctness": {
+     "full_outputs_checked": 5,
+     "points_per_output": 110592,
+     "mismatches": 0,
+     "finite": true,
+     "guard_128_each_side": true,
+     "mean_abs": 0.051039718091487885,
+     "rounding_floor": 0.051039718091487885
+    },
+    "metrics": {
+     "median_us": 27.1855699467013,
+     "tflops": 16.66269395448026,
+     "mmac_utilization_pct": 3.857105082055616,
+     "effective_bandwidth_TB_s": 1.3985019285796962,
+     "bandwidth_achieved_pct": 77.70972657047732,
+     "roofline_attained_pct": 77.70972657047732
+    }
+   },
+   {
+    "run": "final30_baseline",
+    "seed": 30,
+    "dispatches": 5,
+    "timed_cycles": [
+     59992.0,
+     60024.0,
+     60049.0,
+     59789.0
+    ],
+    "timed_us": [
+     27.296362456672625,
+     27.310922457983025,
+     27.322297459006776,
+     27.203997448359775
+    ],
+    "median_cycles": 60008.0,
+    "median_us": 27.303642457327825,
+    "range_us": [
+     27.203997448359775,
+     27.322297459006776
+    ],
+    "grid": 72,
+    "completed_wgs": 72,
+    "shared_B": 36864,
+    "n_regs": 58,
+    "n_spills": 0,
+    "num_warps": 4,
+    "correctness": {
+     "full_outputs_checked": 5,
+     "points_per_output": 110592,
+     "mismatches": 0,
+     "finite": true,
+     "guard_128_each_side": true,
+     "mean_abs": 0.050941403955221176,
+     "rounding_floor": 0.050941403955221176
+    },
+    "metrics": {
+     "median_us": 27.303642457327825,
+     "tflops": 16.590637410666307,
+     "mmac_utilization_pct": 3.8404253265431265,
+     "effective_bandwidth_TB_s": 1.3924542141005198,
+     "bandwidth_achieved_pct": 77.37367680969477,
+     "roofline_attained_pct": 77.37367680969476
+    }
+   }
+  ],
+  "pooled": {
+   "samples": 8,
+   "median_us": 27.237667451390074,
+   "range_us": [
+    27.138022442422024,
+    27.322297459006776
+   ],
+   "median_cycles": 59863.0,
+   "metrics": {
+    "median_us": 27.237667451390074,
+    "tflops": 16.630823208647477,
+    "mmac_utilization_pct": 3.8497275945943237,
+    "effective_bandwidth_TB_s": 1.39582701300877,
+    "bandwidth_achieved_pct": 77.56109112467074,
+    "roofline_attained_pct": 77.56109112467074
+   }
+  }
+ },
+ "specialized": {
+  "per_process": [
+   {
+    "run": "final29_best",
+    "seed": 29,
+    "dispatches": 5,
+    "timed_cycles": [
+     56526.0,
+     56557.0,
+     56546.0,
+     56627.0
+    ],
+    "timed_us": [
+     25.719332314739912,
+     25.73343731600936,
+     25.728432315558912,
+     25.765287318875863
+    ],
+    "median_cycles": 56551.5,
+    "median_us": 25.73093481578414,
+    "range_us": [
+     25.719332314739912,
+     25.765287318875863
+    ],
+    "grid": 288,
+    "completed_wgs": 288,
+    "shared_B": 12288,
+    "n_regs": 33,
+    "n_spills": 0,
+    "num_warps": 1,
+    "correctness": {
+     "full_outputs_checked": 5,
+     "points_per_output": 110592,
+     "mismatches": 0,
+     "finite": true,
+     "guard_128_each_side": true,
+     "mean_abs": 0.051039718091487885,
+     "rounding_floor": 0.051039718091487885
+    },
+    "metrics": {
+     "median_us": 25.73093481578414,
+     "tflops": 17.604678385883023,
+     "mmac_utilization_pct": 4.0751570337692185,
+     "effective_bandwidth_TB_s": 1.477562796384605,
+     "bandwidth_achieved_pct": 82.10285488441798,
+     "roofline_attained_pct": 82.10285488441798
+    }
+   },
+   {
+    "run": "final30_best",
+    "seed": 30,
+    "dispatches": 5,
+    "timed_cycles": [
+     56591.0,
+     56538.0,
+     56572.0,
+     56572.0
+    ],
+    "timed_us": [
+     25.748907317401663,
+     25.724792315231312,
+     25.740262316623614,
+     25.740262316623614
+    ],
+    "median_cycles": 56572.0,
+    "median_us": 25.740262316623614,
+    "range_us": [
+     25.724792315231312,
+     25.748907317401663
+    ],
+    "grid": 288,
+    "completed_wgs": 288,
+    "shared_B": 12288,
+    "n_regs": 33,
+    "n_spills": 0,
+    "num_warps": 1,
+    "correctness": {
+     "full_outputs_checked": 5,
+     "points_per_output": 110592,
+     "mismatches": 0,
+     "finite": true,
+     "guard_128_each_side": true,
+     "mean_abs": 0.050941403955221176,
+     "rounding_floor": 0.050941403955221176
+    },
+    "metrics": {
+     "median_us": 25.740262316623614,
+     "tflops": 17.59829897721954,
+     "mmac_utilization_pct": 4.073680318800819,
+     "effective_bandwidth_TB_s": 1.4770273718402034,
+     "bandwidth_achieved_pct": 82.07310326656587,
+     "roofline_attained_pct": 82.07310326656585
+    }
+   }
+  ],
+  "pooled": {
+   "samples": 8,
+   "median_us": 25.736849816316486,
+   "range_us": [
+    25.719332314739912,
+    25.765287318875863
+   ],
+   "median_cycles": 56564.5,
+   "metrics": {
+    "median_us": 25.736849816316486,
+    "tflops": 17.600632370820286,
+    "mmac_utilization_pct": 4.0742204562083995,
+    "effective_bandwidth_TB_s": 1.477223213848686,
+    "bandwidth_achieved_pct": 82.0839855032072,
+    "roofline_attained_pct": 82.08398550320722
+   }
+  }
+ },
+ "paired": [
+  {
+   "seed": 29,
+   "baseline_us": 27.1855699467013,
+   "specialized_us": 25.73093481578414,
+   "reduction_pct": 5.350761943814486,
+   "speedup": 1.0565325411350714
+  },
+  {
+   "seed": 30,
+   "baseline_us": 27.303642457327825,
+   "specialized_us": 25.740262316623614,
+   "reduction_pct": 5.725903212904937,
+   "speedup": 1.060736760234745
+  }
+ ],
+ "pooled_reduction_pct": 5.51008135242137,
+ "pooled_speedup": 1.0583139601693643,
+ "unique_B_seed32": {
+  "protocol": "3 dispatches, fresh allocation and data for B each dispatch, all B kept alive, 2 timed; no explicit cache flush",
+  "baseline": {
+   "run": "rotate32_baseline",
+   "seed": 32,
+   "dispatches": 3,
+   "timed_cycles": [
+    60260.0,
+    59976.0
+   ],
+   "timed_us": [
+    27.418302467647226,
+    27.289082456017425
+   ],
+   "median_cycles": 60118.0,
+   "median_us": 27.353692461832324,
+   "range_us": [
+    27.289082456017425,
+    27.418302467647226
+   ],
+   "grid": 72,
+   "completed_wgs": 72,
+   "shared_B": 36864,
+   "n_regs": 58,
+   "n_spills": 0,
+   "num_warps": 4,
+   "correctness": {
+    "full_outputs_checked": 3,
+    "points_per_output": 110592,
+    "mismatches": 0,
+    "finite": true,
+    "guard_128_each_side": true,
+    "mean_abs": 0.050922974944114685,
+    "rounding_floor": 0.050922974944114685
+   },
+   "metrics": {
+    "median_us": 27.353692461832324,
+    "tflops": 16.560280943132906,
+    "mmac_utilization_pct": 3.8333983664659503,
+    "effective_bandwidth_TB_s": 1.389906392091287,
+    "bandwidth_achieved_pct": 77.23210349639317,
+    "roofline_attained_pct": 77.23210349639317
+   }
+  },
+  "specialized": {
+   "run": "rotate32_best",
+   "seed": 32,
+   "dispatches": 3,
+   "timed_cycles": [
+    57878.0,
+    57908.0
+   ],
+   "timed_us": [
+    26.334492370104318,
+    26.348142371332816
+   ],
+   "median_cycles": 57893.0,
+   "median_us": 26.341317370718567,
+   "range_us": [
+    26.334492370104318,
+    26.348142371332816
+   ],
+   "grid": 288,
+   "completed_wgs": 288,
+   "shared_B": 12288,
+   "n_regs": 33,
+   "n_spills": 0,
+   "num_warps": 1,
+   "correctness": {
+    "full_outputs_checked": 3,
+    "points_per_output": 110592,
+    "mismatches": 0,
+    "finite": true,
+    "guard_128_each_side": true,
+    "mean_abs": 0.050922974944114685,
+    "rounding_floor": 0.050922974944114685
+   },
+   "metrics": {
+    "median_us": 26.341317370718567,
+    "tflops": 17.196741743203216,
+    "mmac_utilization_pct": 3.980727255371115,
+    "effective_bandwidth_TB_s": 1.4433246243888551,
+    "bandwidth_achieved_pct": 80.20036270354211,
+    "roofline_attained_pct": 80.20036270354211
+   }
+  },
+  "reduction_pct": 3.7010545926344784
+ },
+ "padding_seed31": {
+  "protocol": "NaN row-tail padding and non-minimal leading dimensions; 2 dispatches; only the last output is checked; correctness evidence only, not compared for performance",
+  "status": "PASS",
+  "finite": true,
+  "guard": true,
+  "mismatches": 0,
+  "sampled_points": 110592
+ },
+ "counters_seed29_last_timed_dispatch": {
+  "baseline": {
+   "cycles": 59877.0,
+   "wave_cycles": 51937.0,
+   "outside_wave_cycles": 7940.0,
+   "wave_mmac": 73728,
+   "umc_numReadRequests": 147649.0,
+   "ldsBankConflict": 6912.0,
+   "barrierCounter": 33798.0,
+   "GlobalMemPipeline.cmdCreditStall": 71275.0,
+   "numInstrTypeExecuted::SCA": 184896.0,
+   "numInstrTypeExecuted::VMEM": 43776.0,
+   "waitVmCounter": 1497781.0,
+   "waitLgkmCounter": 153182.5
+  },
+  "specialized": {
+   "cycles": 56627.0,
+   "wave_cycles": 48689.0,
+   "outside_wave_cycles": 7938.0,
+   "wave_mmac": 73728,
+   "umc_numReadRequests": 147649.0,
+   "ldsBankConflict": 0.0,
+   "barrierCounter": 0.0,
+   "GlobalMemPipeline.cmdCreditStall": 2062.0,
+   "numInstrTypeExecuted::SCA": 274752.0,
+   "numInstrTypeExecuted::VMEM": 55584.0,
+   "waitVmCounter": 1688927.5,
+   "waitLgkmCounter": 83668.0
+  }
+ }
+}

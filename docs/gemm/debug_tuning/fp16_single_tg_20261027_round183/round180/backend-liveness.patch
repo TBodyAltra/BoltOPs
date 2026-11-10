@@ -1,0 +1,48 @@
+--- a/third_party/hcu/backend/compiler.py
++++ b/third_party/hcu/backend/compiler.py
+@@ -125,6 +125,8 @@
+     #   misched_regpressure=False → -mllvm=-misched-regpressure=false
+     #   amdgpu_enable_max_ilp_scheduling_strategy=True → -mllvm=-amdgpu-enable-max-ilp-scheduling-strategy=true
+     misched_regpressure: bool = True
++    # Experimental gfx946 codegen-only liveness strategy. Zero preserves all flags.
++    hcu_sgpr_liveness_strategy: int = 0
+     amdgpu_enable_max_ilp_scheduling_strategy: bool = False
+     # Select the gfx946 v2 scheduling model. Autotune configs may disable it
+     # to retain the legacy model with newer HCU Clang builds.
+@@ -310,6 +312,11 @@
+                 f"enable_v_mmac_cluster must be 0, 1, or 2; got {cluster}")
+         args["enable_v_mmac_cluster"] = cluster
+ 
++        sgpr_strategy = args.get("hcu_sgpr_liveness_strategy", 0)
++        if type(sgpr_strategy) is not int or sgpr_strategy not in range(6):
++            raise ValueError("hcu_sgpr_liveness_strategy must be an integer in [0,5]")
++        args["hcu_sgpr_liveness_strategy"] = sgpr_strategy
++
+         mem_cluster = args.get("max_memory_cluster_dwords")
+         if mem_cluster is not None:
+             mem_cluster = int(mem_cluster)
+@@ -569,6 +576,24 @@
+ 
+         if options.enable_fp_fusion:
+             options_args.extend(["-mllvm=-fp-fuse=fast"])
++
++        sgpr_strategy = options.hcu_sgpr_liveness_strategy
++        if sgpr_strategy and options.arch != "gfx946":
++            raise ValueError("Experimental SGPR liveness strategies require gfx946")
++        # Discovered in the exact deployed clang18 --help-hidden. These change
++        # argument lowering, sinking, or allocation, never resource limits.
++        sgpr_flags = {
++            0: [],
++            1: ["-mllvm=-amdgpu-ir-lower-kernel-arguments=false"],
++            2: ["-mllvm=-sink-insts-to-avoid-spills=true",
++                "-mllvm=-machine-sink-cycle-limit=4096",
++                "-mllvm=-machine-sink-load-instrs-threshold=4096",
++                "-mllvm=-machine-sink-load-blocks-threshold=128"],
++            3: ["-mllvm=-sgpr-regalloc=basic"],
++            4: ["-mllvm=-enable-subreg-liveness=true"],
++            5: ["-mllvm=-sgpr-regalloc=fast"],
++        }
++        options_args.extend(sgpr_flags[sgpr_strategy])
+ 
+         if not options.misched_regpressure:
+             options_args.append("-mllvm=-misched-regpressure=false")

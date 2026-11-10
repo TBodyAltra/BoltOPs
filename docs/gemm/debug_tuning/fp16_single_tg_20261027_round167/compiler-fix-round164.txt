@@ -1,0 +1,33 @@
+2026-10-27：FP16 单 TG matrix-store 重复 tile 布局修正
+
+已验证的修正：BM256 BN128 BK128，4-warp，TT/TN。原编译器分别出现28659/28658个输出不匹配；同一配置、shape、seed、scale和kernel源码，修正后完整输出校验通过。没有对输出或gold做置换来通过测试。
+
+实现位于隔离worktree161：对于无boundaryCheck、32x32 matrix-store且存在CTA重复的配置，从实际MFMA LinearLayout导出寄存器、lane和warp到GMEM的对应关系。编译时检查完整覆盖和无重叠；非重复和边界路径保留原codegen。实测配置均为NoWASP/NoWDRA；其他拓扑尚未做本修正的专项验证。128³仍暂缓。
+
+独立native162仅替换MLS codegen对象，其余503个链接输入与qualified native95一致。5个旧配置CPU指令及资源完全一致，并通过PMD对照。12个新配置全部编译；2个4-warp256cube配置出现VGPR/scratch spill，已排除。剩余10个无物理spill配置全部通过16/32/64循环标定，共35个测试点、140次原始dispatch，MMOP工作量比1、仅CU0活跃。
+
+利用率为周期斜率折算的模型峰值比，非独立busy-counter百分比。以下8个结果达到残差<=2%的稳态门槛；所有结果均低于原最佳配置，也低于98%资源替代准入线，因此没有追加复测或替换最佳值。
+
+BM BN BK layout warps UF 利用率% 残差% steady
+256 128 128 TT 4 1 31.011117 0.974233 True
+256 128 128 TN 4 1 30.984921 5.711316 False
+128 256 128 TT 4 1 30.625826 0.34196 True
+128 256 128 TN 4 1 30.793134 1.24941 True
+256 256 128 TT 8 1 42.723037 0.066913 True
+256 256 128 TN 8 1 43.168804 1.353854 True
+256 128 128 TT 4 2 31.076604 5.298342 False
+256 128 128 TT 4 4 31.164483 0.894444 True
+256 128 128 TN 4 2 31.107286 1.681548 True
+256 128 128 TN 4 4 31.066783 1.73346 True
+
+地图round164新增10条候选及修正资格记录，503个已选配置保持不变。小block的3个MLS tile选择编译失败仍单独保留在CPU157；本修正未宣称解决这些情况。
+
+host上的修正补丁：/home/hygon/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round163-repeated-cta-store-native/native-fix.patch
+最终CPP源码：/home/hygon/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round161-repeated-cta-store-cpu-retry/triton/third_party/hcu/lib/TritonHCUToLLVM/MlsOpToLLVM.cpp
+资格JSON：/home/hygon/xukang/code/pmd-triton-sessions/single-tg-continuation-20261023/published/compiler-fix-qualification-round164.json
+编译器实体：/home/hygon/xukang/code/pmd-triton-sessions/single-tg-pipeline-20261027-round162-repeated-cta-store-build-fix/native/libtriton.so
+构建计划/依赖哈希：同上round162目录的build-plan.json、build-result.json、native/compile-dependency-hashes.json；需匹配qualified native95 ABI。
+正确性前后对照及原始stats：host round159、round163目录，原始文件和失败precision快照均保留。
+
+native SHA256: 7eb9fbc909873af0faaf37002362bde031b406530473095d104ba86df3926193
+CPP SHA256: 988c54e9ecc098625e281a24c79cb56b9fc2b0a7eacf93c85de393515e323157

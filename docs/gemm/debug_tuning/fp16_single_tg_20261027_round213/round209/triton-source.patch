@@ -1,0 +1,817 @@
+diff --git a/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/DataPartition.cpp b/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/DataPartition.cpp
+index 99886cbb3..a596f6f7e 100644
+--- a/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/DataPartition.cpp
++++ b/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/DataPartition.cpp
+@@ -15,6 +15,8 @@
+ #include "TritonHCU/BufferLdsEncoding.h"
+ #include "TritonHCU/MlsGroup.h"
+ #include "TritonHCU/WaspSplitPlan.h"
++#include <optional>
++#include <utility>
+ #include "mlir/Pass/Pass.h"
+ #include "mlir/Transforms/Passes.h"
+ #include "mlir/Transforms/RegionUtils.h"
+@@ -219,6 +221,13 @@ struct DataPartitionScheme {
+   unsigned numPartitions = 0;
+   // TwoPTwoC: slice producer buffers and tag load chains with slice task ids.
+   bool producerSliced = false;
++  bool hasFragmentViews = false;
++  struct LoopCarryFixup {
++    scf::ForOp loop;
++    unsigned previousCarryCount;
++    SmallVector<std::pair<unsigned, unsigned>> appendedIndices;
++  };
++  SmallVector<LoopCarryFixup> loopCarryFixups;
+   // All operations that participate in this partitioning scheme.
+   SetVector<Operation *> ops;
+   // Which dimension to partition. For dot, dim 0 means along M dimension, 1
+@@ -239,6 +248,7 @@ struct DataPartitionScheme {
+ 
+   void append(DataPartitionScheme &other) {
+     producerSliced = producerSliced || other.producerSliced;
++    hasFragmentViews = hasFragmentViews || other.hasFragmentViews;
+     for (auto op : other.ops)
+       ops.insert(op);
+     for (auto op : other.opPartitionDims)
+@@ -256,7 +266,9 @@ struct DataPartitionScheme {
+   bool partitionIsCompatible() { return true; }
+ 
+   bool isValidPartitionDim(unsigned dim) const {
+-    return dim < numPartitions || dim == DataPartitionScheme::noOpPartitionDim;
++    // Number of partitions is independent of tensor rank. K-fragment views
++    // use rank three; staged memdescs can have one additional dimension.
++    return dim < 4 || dim == DataPartitionScheme::noOpPartitionDim;
+   }
+ 
+   unsigned flipPartitionDim(unsigned dim) const {
+@@ -332,6 +344,47 @@ static SmallVector<int64_t> getShape(Type type) {
+ static SmallVector<int64_t> getShape(Value v) { return getShape(v.getType()); }
+ 
+ // Forward declaration: used while collecting MLS producer chains.
++// Preserve an axis only if its extent and row-major inner span are unchanged.
++// This supports splitting/merging the other (K) axis without treating a K
++// fragment as an independently partitionable output tile.
++static std::optional<unsigned>
++mapReshapePartitionDim(ArrayRef<int64_t> from, ArrayRef<int64_t> to,
++                       unsigned dim) {
++  if (dim == DataPartitionScheme::noOpPartitionDim)
++    return dim;
++  if (dim >= from.size())
++    return std::nullopt;
++  int64_t inner = 1;
++  for (unsigned i = dim + 1; i < from.size(); ++i)
++    inner *= from[i];
++  int64_t candidateInner = 1;
++  for (int i = int(to.size()) - 1; i >= 0; --i) {
++    if (to[i] == from[dim] && candidateInner == inner)
++      return unsigned(i);
++    candidateInner *= to[i];
++  }
++  return std::nullopt;
++}
++
++static unsigned transposeInputPartitionDim(Operation *op, unsigned dim) {
++  if (dim == DataPartitionScheme::noOpPartitionDim)
++    return dim;
++  auto order = isa<TransOp>(op) ? cast<TransOp>(op).getOrder()
++                               : cast<MemDescTransOp>(op).getOrder();
++  assert(dim < order.size() && "invalid transpose output partition axis");
++  return order[dim];
++}
++
++static unsigned transposeOutputPartitionDim(Operation *op, unsigned dim) {
++  if (dim == DataPartitionScheme::noOpPartitionDim)
++    return dim;
++  auto order = isa<TransOp>(op) ? cast<TransOp>(op).getOrder()
++                               : cast<MemDescTransOp>(op).getOrder();
++  auto it = llvm::find(order, int32_t(dim));
++  assert(it != order.end() && "invalid transpose input partition axis");
++  return unsigned(it - order.begin());
++}
++
+ static bool getBackwardSliceToPartition(Value v,
+                                         DataPartitionScheme &partitionScheme,
+                                         unsigned currentDim);
+@@ -891,7 +944,25 @@ static bool getBackwardSliceToPartition(Value v,
+ 
+     // Flip dim when op is trans
+     if (isa<TransOp, MemDescTransOp>(op))
+-      currentDim = partitionScheme.flipPartitionDim(currentDim);
++      currentDim = transposeInputPartitionDim(op, currentDim);
++    if (auto reshape = dyn_cast<ReshapeOp>(op)) {
++      auto mapped = mapReshapePartitionDim(
++          cast<RankedTensorType>(reshape.getResult().getType()).getShape(),
++          cast<RankedTensorType>(reshape.getSrc().getType()).getShape(),
++          currentDim);
++      if (!mapped)
++        return false;
++      currentDim = *mapped;
++    }
++    if (auto split = dyn_cast<SplitOp>(op)) {
++      partitionScheme.hasFragmentViews = true;
++      // Split removes the trailing two-element selector axis; never partition
++      // that selector. All remaining axes retain their indices.
++      unsigned rank = cast<RankedTensorType>(split.getSrc().getType()).getRank();
++      if (currentDim != DataPartitionScheme::noOpPartitionDim &&
++          currentDim >= rank - 1)
++        return false;
++    }
+ 
+     if (auto expandDimsOp = dyn_cast<ExpandDimsOp>(op)) {
+       // currentDim is the dim after expansion.
+@@ -907,7 +978,7 @@ static bool getBackwardSliceToPartition(Value v,
+     if (op->hasTrait<OpTrait::Elementwise>() ||
+         isa<arith::ConstantOp, arith::ExtSIOp, arith::ExtUIOp, arith::ExtFOp,
+             BroadcastOp, ExpandDimsOp, MakeRangeOp, SplatOp, ConvertLayoutOp,
+-            LoadOp, TransOp, MemDescTransOp,
++            LoadOp, TransOp, MemDescTransOp, SplitOp, ReshapeOp,
+             AtomicRMWOp, triton::AddPtrOp, DescriptorLoadOp,
+             LocalLoadOp, AsyncCommitGroupOp, AsyncWaitOp,
+             nvidia_gpu::TMEMAllocOp, nvidia_gpu::TMEMLoadOp, FpToFpOp>(op)) {
+@@ -1026,6 +1097,10 @@ static bool getBackwardSliceToPartition(Value v,
+                                        currentDim))
+         return false;
+     } else {
++      llvm::errs() << "HCU_PARTITION_UNSUPPORTED_OP="
++                   << op->getName().getStringRef() << " DIM=" << currentDim
++                   << "\n";
++      op->dump();
+       llvm_unreachable("Unexpected op");
+     }
+   } else {
+@@ -1081,7 +1156,22 @@ static bool getForwardSliceToPartition(Value v,
+     currentDim = originalDim;
+     // Flip dim when op is trans
+     if (isa<TransOp, MemDescTransOp>(depOp))
+-      currentDim = partitionScheme.flipPartitionDim(currentDim);
++      currentDim = transposeOutputPartitionDim(depOp, currentDim);
++    if (auto reshape = dyn_cast<ReshapeOp>(depOp)) {
++      auto mapped = mapReshapePartitionDim(
++          cast<RankedTensorType>(reshape.getSrc().getType()).getShape(),
++          cast<RankedTensorType>(reshape.getResult().getType()).getShape(),
++          currentDim);
++      if (!mapped)
++        return false;
++      currentDim = *mapped;
++    }
++    if (auto split = dyn_cast<SplitOp>(depOp)) {
++      unsigned rank = cast<RankedTensorType>(split.getSrc().getType()).getRank();
++      if (currentDim != DataPartitionScheme::noOpPartitionDim &&
++          currentDim >= rank - 1)
++        return false;
++    }
+ 
+     // Check dim compatibility
+     if (!partitionScheme.ops.insert(depOp)) {
+@@ -1093,10 +1183,10 @@ static bool getForwardSliceToPartition(Value v,
+         });
+         return false;
+       }
+-      // YieldOp can be partitioned multiple times, one for each of its
+-      // operands.
+-      if (!isa<scf::YieldOp>(depOp))
+-        continue;
++      // Backward discovery may already own this operation. Forward closure
++      // still has to reach its result users (including loop yields and the
++      // epilogue). The Value-based seen set below guards forward traversal;
++      // operation membership is not a forward-visited marker.
+     }
+ 
+     partitionScheme.opPartitionDims[depOp] = currentDim;
+@@ -1220,6 +1310,21 @@ static bool getSliceToPartition(Value root,
+                                          currentDim))
+           return false;
+       }
++    } else if (isa<DotOp>(op)) {
++      // A preceding dot reaches subsequent dots through their accumulator.
++      // Pull in EACH dot's A/B dependencies as well, including the odd Split
++      // results; marking the dot as visited alone loses those producer trees.
++      unsigned opndIndx = partitionScheme.dotPartitionOperand[op];
++      if (opndIndx != currentDim)
++        return false; // This path partitions output tiles, never reduction K.
++      if (!getBackwardSliceToPartition(op->getOperand(opndIndx),
++                                       partitionScheme, currentDim) ||
++          !getBackwardSliceToPartition(op->getOperand(1 - opndIndx),
++                                       partitionScheme,
++                                       DataPartitionScheme::noOpPartitionDim) ||
++          !getBackwardSliceToPartition(op->getOperand(2), partitionScheme,
++                                       currentDim))
++        return false;
+     } else if (isa<nvidia_gpu::WarpGroupDotOp, nvidia_gpu::TCGen5MMAOp>(op)) {
+       unsigned opndIndx = partitionScheme.dotPartitionOperand[op];
+       if (!getBackwardSliceToPartition(op->getOperand(opndIndx),
+@@ -2308,8 +2413,10 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
+     reverseMappings.map(newOp, op);
+     for (auto [oldV, newV] :
+          llvm::zip(op->getResults(), newOp->getResults())) {
+-      // Retype stage views when the parent alloc was sliced (MLS or TwoPTwoC).
+-      if (isMlsSharedValue(oldV) || partitionScheme.producerSliced) {
++      // Every stage view follows the ACTUAL parent shape, including an
++      // ordinary tl.load buffer sliced through the fragment producer chain.
++      if (mappings.lookupOrNull(memDescIndexOp.getSrc()) ||
++          isMlsSharedValue(oldV) || partitionScheme.producerSliced) {
+         Value mappedParent = mappings.lookupOrNull(memDescIndexOp.getSrc());
+         auto parentTy = cast<MemDescType>(
+             (mappedParent ? mappedParent : memDescIndexOp.getSrc()).getType());
+@@ -2324,6 +2431,32 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
+     }
+   } else if (auto tensorDescOp = dyn_cast<ttng::ReinterpretTensorDescOp>(op)) {
+     newOp = cloneAndSetResultType(op);
++  } else if (isa<SplitOp, ReshapeOp>(op)) {
++    for (Value operand : op->getOperands())
++      sliceOp(operand, offset, mappings, reverseMappings, partitionScheme);
++    builder.setInsertionPoint(op);
++    newOp = builder.clone(*op, mappings);
++    hcu::setAsyncTaskIds(newOp, sliceTaskIds);
++    // Split has two results. Retype and map BOTH, including the odd fragment;
++    // mapping just result zero silently leaves half the reduction unsliced.
++    for (auto [oldV, newV] : llvm::zip(op->getResults(), newOp->getResults())) {
++      auto type = cast<RankedTensorType>(oldV.getType());
++      SmallVector<int64_t> shape(type.getShape().begin(), type.getShape().end());
++      if (dim != DataPartitionScheme::noOpPartitionDim) {
++        assert(dim < shape.size() && shape[dim] % numOfPartitions == 0 &&
++               "invalid shape-view partition");
++        shape[dim] /= numOfPartitions;
++      }
++      Attribute encoding = repairMfmaEncodingForShape(type.getEncoding(), shape);
++      newV.setType(RankedTensorType::get(shape, type.getElementType(), encoding));
++      mappings.map(oldV, newV);
++      reverseMappings.map(newV, oldV);
++    }
++  } else if (isa<TransOp, MemDescTransOp>(op) &&
++             dim == DataPartitionScheme::noOpPartitionDim) {
++    sliceOp(op->getOperand(0), offset, mappings, reverseMappings,
++            partitionScheme);
++    newOp = cloneAndSetResultType(op);
+   } else if (isa<TransOp, MemDescTransOp>(op)) {
+     sliceOp(op->getOperand(0), offset, mappings, reverseMappings,
+             partitionScheme);
+@@ -2469,6 +2602,14 @@ static Operation *sliceOp(Operation *op, int offset, IRMapping &mappings,
+       mappings.map(regionArg, newRegionArg);
+       reverseMappings.map(newRegionArg, regionArg);
+     }
++    if (partitionScheme.hasFragmentViews && !newArgIdices.empty()) {
++      DataPartitionScheme::LoopCarryFixup fixup;
++      fixup.loop = newForOp;
++      fixup.previousCarryCount = forOp.getNumResults();
++      for (auto indices : newArgIdices)
++        fixup.appendedIndices.emplace_back(indices.first, indices.second);
++      partitionScheme.loopCarryFixups.push_back(std::move(fixup));
++    }
+   } else if (auto ifOp = dyn_cast<scf::IfOp>(op)) {
+     // Slice the yield op and update if results
+     auto thenYieldOp = ifOp.thenYield();
+@@ -2674,6 +2815,7 @@ static bool doDataPartition(triton::FuncOp &funcOp,
+   // Slice the ops.
+   for (int i = 0; i < partitionScheme.numPartitions; i++) {
+     IRMapping mappings, reverseMappings;
++    partitionScheme.loopCarryFixups.clear();
+     LDBG("partitioning op for task " << i + 1 << ":\n");
+     int numOps = partitionScheme.ops.size();
+     for (int j = 0; j < numOps; j++) {
+@@ -2681,6 +2823,35 @@ static bool doDataPartition(triton::FuncOp &funcOp,
+       sliceOp(op, i, mappings, reverseMappings, partitionScheme);
+     }
+ 
++    // Dot fragments form a cyclic accumulator chain. Resolve each appended
++    // carry only AFTER all ops for this offset have a mapping. The old prefix
++    // remains intact; each new result is tied to its original SCF carry index.
++    for (auto &fixup : partitionScheme.loopCarryFixups) {
++      auto yield = cast<scf::YieldOp>(fixup.loop.getBody()->getTerminator());
++      unsigned expected = fixup.loop.getInitArgs().size();
++      if (yield.getNumOperands() < fixup.previousCarryCount ||
++          yield.getNumOperands() > expected)
++        return false;
++      SmallVector<Value> values;
++      for (unsigned j = 0; j < fixup.previousCarryCount; ++j)
++        values.push_back(yield.getOperand(j));
++      values.resize(expected);
++      for (auto [oldIndex, newIndex] : fixup.appendedIndices) {
++        Value mapped = mappings.lookupOrNull(yield.getOperand(oldIndex));
++        if (!mapped || mapped.getType() !=
++                           fixup.loop.getRegionIterArg(newIndex).getType()) {
++          fixup.loop.emitError("missing typed fragment loop carry mapping");
++          return false;
++        }
++        values[newIndex] = mapped;
++      }
++      for (unsigned j = 0; j < expected; ++j)
++        if (!values[j] || values[j].getType() !=
++                              fixup.loop.getRegionIterArg(j).getType())
++          return false;
++      yield->setOperands(values);
++    }
++
+     // clean up
+     LLVM_DEBUG({
+       LDBG("prior to clean up:");
+diff --git a/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/PartitionScheduling.cpp b/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/PartitionScheduling.cpp
+index 0f3e4d3f9..b20e08745 100644
+--- a/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/PartitionScheduling.cpp
++++ b/lib/Dialect/TritonGPU/Transforms/WarpSpecializationHCU/PartitionScheduling.cpp
+@@ -262,8 +262,15 @@ static std::optional<WarpSchedule> getInitialSchedule(scf::ForOp loop) {
+       Operation *op = operandViews.pop_back_val();
+       // Follow dot operand views so consumer synchronization is not assigned
+       // to root and replicated into producer warps.
+-      if (!isa<LocalLoadOp, TransOp, ConvertLayoutOp>(op))
++      if (auto alloc = dyn_cast<LocalAllocOp>(op)) {
++        // Layout conversion buffers initialized from a register tensor belong
++        // to its consumers. Empty/pipelined producer allocations remain owned
++        // by the producer; only traverse initialized consumer buffers.
++        if (!alloc.getSrc() || schedule.getPartition(op) == loadPartition)
++          continue;
++      } else if (!isa<LocalLoadOp, TransOp, ConvertLayoutOp, ReshapeOp, SplitOp>(op)) {
+         continue;
++      }
+ 
+       // Duplicate the op if necessary to ensure that the MMA partition is the only user.
+       if (!llvm::all_of(op->getUsers(), [&](Operation *user) {
+diff --git a/third_party/hcu/backend/compiler.py b/third_party/hcu/backend/compiler.py
+index 812937a65..4b2e4a782 100644
+--- a/third_party/hcu/backend/compiler.py
++++ b/third_party/hcu/backend/compiler.py
+@@ -108,6 +108,11 @@ class HIPOptions:
+     # schedule_hint="attention,memory-bound-attention"
+     schedule_hint: str = 'none'
+ 
++    # Experimental independent MLS global prefetch depth. None preserves the
++    # existing hint-derived behavior. Dataclass field participates in hash().
++    mls_global_prefetch: Optional[int] = None
++    hcu_fragment_mls_layout: bool = False
++
+     # Extend options for HCU(legacy), used for old arch like gfx928, gfx936
+     # 1. set scheduling latency for mmac and ds:
+     #    - none: use default scheduling latency which equal mmac1-ds5
+@@ -120,6 +125,8 @@ class HIPOptions:
+     #   misched_regpressure=False → -mllvm=-misched-regpressure=false
+     #   amdgpu_enable_max_ilp_scheduling_strategy=True → -mllvm=-amdgpu-enable-max-ilp-scheduling-strategy=true
+     misched_regpressure: bool = True
++    # Experimental gfx946 codegen-only liveness strategy. Zero preserves all flags.
++    hcu_sgpr_liveness_strategy: int = 0
+     amdgpu_enable_max_ilp_scheduling_strategy: bool = False
+     # Select the gfx946 v2 scheduling model. Autotune configs may disable it
+     # to retain the legacy model with newer HCU Clang builds.
+@@ -167,6 +174,19 @@ class HIPOptions:
+     # num_warps only seeds the initial layouts; launch waves are sum(tuple).
+     wasp_partition_warps: Tuple[int, ...] = (4, 4, 4)
+     wasp_wdra: bool = True
++    # Private opt-in prototype; default APIs retain the 2/4-buffer restriction.
++    hcu_wasp_single_buffer: bool = False
++    hcu_wasp_partial_k_local_read: bool = False
++    hcu_wasp_mmac_turn: int = 0
++    hcu_wasp_merge_ab: bool = False
++    hcu_wasp_prefetch_full_k: bool = False
++    hcu_wasp_first_operand_early: bool = False
++    hcu_wasp_prefetch_one_operand: int = 0
++    hcu_wasp_split_b_global_probe: bool = False
++    hcu_wasp_split_b_slots: bool = False
++    hcu_wasp_alias_ab_slots: bool = False
++    hcu_wasp_split_b_slot_turn: int = 0
++    hcu_wasp_split_b_slot_turn_wait_mask: int = 0
+     wasp_partition_regs: Tuple[int, ...] = None
+ 
+     # Delay empty abarrier arrive until after mmac (+ SchedBarrier fence).
+@@ -186,6 +206,11 @@ class HIPOptions:
+     assume_no_nans: bool = False
+ 
+     def __post_init__(self):
++        if type(self.hcu_fragment_mls_layout) is not bool:
++            raise ValueError("hcu_fragment_mls_layout must be bool")
++        if self.mls_global_prefetch is not None and (
++                type(self.mls_global_prefetch) is not int or self.mls_global_prefetch not in (0, 1)):
++            raise ValueError("mls_global_prefetch must be None, 0 or 1")
+         gfx_major = int(self.arch[3:-2])  # Drop "gfx" prefix and minor/patch number
+         warp_size = 32 if gfx_major >= 10 else 64
+         object.__setattr__(self, 'warp_size', warp_size)
+@@ -287,6 +312,11 @@ class HIPBackend(BaseBackend):
+                 f"enable_v_mmac_cluster must be 0, 1, or 2; got {cluster}")
+         args["enable_v_mmac_cluster"] = cluster
+ 
++        sgpr_strategy = args.get("hcu_sgpr_liveness_strategy", 0)
++        if type(sgpr_strategy) is not int or sgpr_strategy not in range(6):
++            raise ValueError("hcu_sgpr_liveness_strategy must be an integer in [0,5]")
++        args["hcu_sgpr_liveness_strategy"] = sgpr_strategy
++
+         mem_cluster = args.get("max_memory_cluster_dwords")
+         if mem_cluster is not None:
+             mem_cluster = int(mem_cluster)
+@@ -547,6 +577,24 @@ class HIPBackend(BaseBackend):
+         if options.enable_fp_fusion:
+             options_args.extend(["-mllvm=-fp-fuse=fast"])
+ 
++        sgpr_strategy = options.hcu_sgpr_liveness_strategy
++        if sgpr_strategy and options.arch != "gfx946":
++            raise ValueError("Experimental SGPR liveness strategies require gfx946")
++        # Discovered in the exact deployed clang18 --help-hidden. These change
++        # argument lowering, sinking, or allocation, never resource limits.
++        sgpr_flags = {
++            0: [],
++            1: ["-mllvm=-amdgpu-ir-lower-kernel-arguments=false"],
++            2: ["-mllvm=-sink-insts-to-avoid-spills=true",
++                "-mllvm=-machine-sink-cycle-limit=4096",
++                "-mllvm=-machine-sink-load-instrs-threshold=4096",
++                "-mllvm=-machine-sink-load-blocks-threshold=128"],
++            3: ["-mllvm=-sgpr-regalloc=basic"],
++            4: ["-mllvm=-enable-subreg-liveness=true"],
++            5: ["-mllvm=-sgpr-regalloc=fast"],
++        }
++        options_args.extend(sgpr_flags[sgpr_strategy])
++
+         if not options.misched_regpressure:
+             options_args.append("-mllvm=-misched-regpressure=false")
+ 
+@@ -609,6 +657,8 @@ class HIPBackend(BaseBackend):
+         b = ir.builder(mod.context)
+         use_async_copy = options.use_async_copy
+         mmac_cluster_on = int(options.enable_v_mmac_cluster) >= 1
++        if options.hcu_fragment_mls_layout:
++            mod.set_attr("hcu.fragment_mls_layout", b.get_bool_attr(True))
+         mod.set_attr("hcu.sched_barrier_before_mmac",
+                      b.get_bool_attr(mmac_cluster_on))
+         mod.set_attr("hcu.empty_arrive_after_mmac",
+@@ -694,7 +744,9 @@ class HIPBackend(BaseBackend):
+ 
+         # Preserve the old triton stream-prefetch behavior for MLS:
+         # separate global load and LDS consumption by one pipeline stage.
+-        global_prefetch = int(options.schedule_hint == "local-prefetch")
++        global_prefetch = (int(options.schedule_hint == "local-prefetch")
++                           if options.mls_global_prefetch is None else options.mls_global_prefetch)
++        metadata["mls_global_prefetch_resolved"] = global_prefetch
+ 
+         # When WASP is enabled, skip MLS software pipelining (same rationale as
+         # skipping amd stream_pipeline): WASP owns multi-buffering / sync for
+@@ -790,6 +842,95 @@ class HIPBackend(BaseBackend):
+         hcu.passes.ttgpuir.add_update_async_wait_count(pm, options.arch)
+         pm.run(mod, 'make_ttgir')
+         metadata["tensordesc_meta"] = mod.get_tensordesc_metadata()
++        if options.hcu_wasp_partial_k_local_read:
++            if (not metadata.get("wasp_enabled") or not options.hcu_wasp_single_buffer or
++                not options.wasp_wdra or options.num_stages != 1 or
++                options.empty_arrive_after_mmac or tuple(options.wasp_partition_warps) != (4, 4, 4)):
++                raise ValueError("partial K LDS reads require explicit early-release OnePTwoC singlebuffer")
++            from .partial_k_local import rewrite_module
++            mod, proof = rewrite_module(mod)
++            metadata["hcu_partial_k_local_reads"] = sum(x["new_local_reads"] for x in proof["consumers"])
++            metadata["hcu_partial_k_fragments_per_bk"] = 2
++        if options.hcu_wasp_prefetch_one_operand:
++            if not options.hcu_wasp_partial_k_local_read or options.hcu_wasp_prefetch_full_k or options.hcu_wasp_first_operand_early or options.hcu_wasp_merge_ab or options.hcu_wasp_mmac_turn not in (0,1,2):
++                raise ValueError("one-operand prefetch requires partialK, separate data barriers and MMAC turns; full/first prefetch modes are exclusive")
++            from .prefetch_one_operand import rewrite_module as rewrite_one_operand
++            mod, one_proof = rewrite_one_operand(mod, options.hcu_wasp_prefetch_one_operand)
++            metadata["hcu_prefetch_one_operand"] = one_proof["prefetched_operand"]
++            metadata["hcu_operand_barriers"] = one_proof["operand_barriers"]
++            metadata["hcu_streamed_other_k_fragments"] = 2
++            metadata["hcu_turn_wait_before_streamed_ready"] = bool(options.hcu_wasp_mmac_turn)
++        if options.hcu_wasp_prefetch_full_k:
++            if not options.hcu_wasp_partial_k_local_read:
++                raise ValueError("full-K local prefetch requires the qualified partial-K reader")
++            from .prefetch_full_k import rewrite_module as rewrite_prefetch
++            mod, prefetch_proof = rewrite_prefetch(mod)
++            metadata["hcu_full_BK_local_prefetch"] = True
++        if options.hcu_wasp_first_operand_early:
++            if not options.hcu_wasp_prefetch_full_k or options.hcu_wasp_merge_ab:
++                raise ValueError("first-operand early capture requires full-K prefetch and separate A/B data barriers")
++            from .first_operand_early import rewrite_module as rewrite_first_early
++            mod, first_early_proof = rewrite_first_early(mod)
++            metadata["hcu_first_operand_early_capture"] = first_early_proof["first_operand"]
++            metadata["hcu_operand_barriers"] = first_early_proof["operand_barriers"]
++        if options.hcu_wasp_merge_ab:
++            if not options.hcu_wasp_partial_k_local_read:
++                raise ValueError("merged AB prototype requires the qualified partial-K reader")
++            from .merge_ab import rewrite_module as rewrite_ab
++            mod, ab_proof = rewrite_ab(mod)
++            metadata["hcu_merged_AB_data_barriers"] = True
++            metadata["hcu_AB_data_barrier_ids"] = [0, 1]
++        if options.hcu_wasp_mmac_turn:
++            if not options.hcu_wasp_partial_k_local_read:
++                raise ValueError("MMAC turn prototype requires the qualified partial-K reader")
++            from .mmac_turn import rewrite_module as rewrite_turn
++            mod, turn_proof = rewrite_turn(mod, options.hcu_wasp_mmac_turn, prefetch_operand=options.hcu_wasp_prefetch_one_operand)
++            metadata["hcu_mmac_turn_mode"] = options.hcu_wasp_mmac_turn
++            metadata["hcu_mmac_turn_barrier_ids"] = [4, 5]
++        if type(options.hcu_wasp_split_b_global_probe) is not bool:
++            raise ValueError("hcu_wasp_split_b_global_probe must be bool")
++        if options.hcu_wasp_split_b_global_probe:
++            if not options.hcu_wasp_partial_k_local_read or options.hcu_wasp_prefetch_one_operand != 1 or options.hcu_wasp_prefetch_full_k or options.hcu_wasp_first_operand_early or options.hcu_wasp_merge_ab:
++                raise ValueError("CPU-only split-B feasibility probe requires qualified OneA/private partialK")
++            from .split_b_global_probe import rewrite_module as rewrite_split_b_probe
++            mod, split_b_proof = rewrite_split_b_probe(mod)
++            metadata["hcu_split_b_global_probe"] = True
++            metadata["hcu_split_b_global_parent_shape"] = split_b_proof["parent_shape"]
++            metadata["hcu_split_b_global_shapes"] = split_b_proof["global_transfer_shapes"]
++        if type(options.hcu_wasp_split_b_slots) is not bool:
++            raise ValueError("hcu_wasp_split_b_slots must be bool")
++        if options.hcu_wasp_split_b_slots:
++            if not options.hcu_wasp_split_b_global_probe or options.hcu_wasp_mmac_turn != 0:
++                raise ValueError("Independent B slots require qualified K64 parent copies and no MMAC turns")
++            from .split_b_slots import rewrite_module as rewrite_split_b_slots
++            mod, split_slots_proof = rewrite_split_b_slots(mod)
++            metadata["hcu_split_b_independent_slots"] = True
++            metadata["hcu_split_b_slot_barriers"] = split_slots_proof["operand_barriers"]
++        if type(options.hcu_wasp_alias_ab_slots) is not bool:
++            raise ValueError("hcu_wasp_alias_ab_slots must be bool")
++        if options.hcu_wasp_alias_ab_slots:
++            if not options.hcu_wasp_split_b_slots or options.hcu_wasp_prefetch_one_operand != 1 or options.hcu_wasp_mmac_turn != 0:
++                raise ValueError("Aliased A/B slots require independent B slots, full A capture, and old mmac_turn0")
++            from .alias_ab_slots import rewrite_module as rewrite_alias_ab_slots
++            mod, alias_ab_proof = rewrite_alias_ab_slots(mod)
++            metadata["hcu_alias_ab_slots"] = True
++            metadata["hcu_alias_ab_slots_expected_shared"] = alias_ab_proof["expected_shared_bytes"]
++
++        if type(options.hcu_wasp_split_b_slot_turn) is not int or options.hcu_wasp_split_b_slot_turn not in (0,1,2):
++            raise ValueError("hcu_wasp_split_b_slot_turn must be int0/1/2")
++        if type(options.hcu_wasp_split_b_slot_turn_wait_mask) is not int or options.hcu_wasp_split_b_slot_turn_wait_mask not in (0,1,2,3):
++            raise ValueError("slot turn wait mask must be int0..3")
++        if options.hcu_wasp_split_b_slot_turn_wait_mask and options.hcu_wasp_split_b_slot_turn != 2:
++            raise ValueError("late waits require two K64 turns")
++        if options.hcu_wasp_split_b_slot_turn:
++            if not options.hcu_wasp_split_b_slots or options.hcu_wasp_mmac_turn != 0:
++                raise ValueError("Slot turns require independent B slots and free6/7 turn IDs")
++            from .split_b_slot_turn import rewrite_module as rewrite_slot_turn
++            mod, slot_turn_proof = rewrite_slot_turn(mod,options.hcu_wasp_split_b_slot_turn,options.hcu_wasp_split_b_slot_turn_wait_mask)
++            metadata["hcu_split_b_slot_mmac_turn"] = options.hcu_wasp_split_b_slot_turn
++            metadata["hcu_split_b_slot_mmac_turn_ids"] = slot_turn_proof["turn_ids"]
++
++
+         return mod
+ 
+     @staticmethod
+diff --git a/third_party/hcu/backend/wasp.py b/third_party/hcu/backend/wasp.py
+index c6402e8f7..214ce67aa 100644
+--- a/third_party/hcu/backend/wasp.py
++++ b/third_party/hcu/backend/wasp.py
+@@ -5,6 +5,37 @@ from triton._C.libtriton import ir
+ 
+ 
+ def check_options(args):
++    one=args.get("hcu_wasp_prefetch_one_operand",0)
++    if type(one) is not int or one not in (0,1,2):
++        raise ValueError("hcu_wasp_prefetch_one_operand must be int 0/1/2")
++    if one and (not args.get("hcu_wasp_partial_k_local_read") or args.get("hcu_wasp_prefetch_full_k") or args.get("hcu_wasp_first_operand_early") or args.get("hcu_wasp_merge_ab") or args.get("hcu_wasp_mmac_turn",0) not in (0,1,2)):
++        raise ValueError("one-operand prefetch requires partialK and separate-data MMAC turns, excluding full/first modes")
++
++    if type(args.get("hcu_wasp_first_operand_early", False)) is not bool:
++        raise ValueError("hcu_wasp_first_operand_early must be bool")
++    if args.get("hcu_wasp_first_operand_early") and (not args.get("hcu_wasp_prefetch_full_k") or args.get("hcu_wasp_merge_ab")):
++        raise ValueError("first-operand early capture requires full-K prefetch and separate A/B data barriers")
++
++    if type(args.get("hcu_wasp_prefetch_full_k", False)) is not bool:
++        raise ValueError("hcu_wasp_prefetch_full_k must be bool")
++    if args.get("hcu_wasp_prefetch_full_k") and not args.get("hcu_wasp_partial_k_local_read"):
++        raise ValueError("full-K local prefetch requires explicit partial-K reader")
++
++    if type(args.get("hcu_wasp_merge_ab", False)) is not bool:
++        raise ValueError("hcu_wasp_merge_ab must be bool")
++    if args.get("hcu_wasp_merge_ab") and not args.get("hcu_wasp_partial_k_local_read"):
++        raise ValueError("merged AB requires explicit partial-K reader")
++
++    turn = args.get("hcu_wasp_mmac_turn", 0)
++    if type(turn) is not int or turn not in (0, 1, 2):
++        raise ValueError("hcu_wasp_mmac_turn must be 0, 1, or 2")
++    if turn and not args.get("hcu_wasp_partial_k_local_read", False):
++        raise ValueError("MMAC turn requires explicit partial-K reader")
++
++    if type(args.get("hcu_wasp_partial_k_local_read", False)) is not bool:
++        raise ValueError("hcu_wasp_partial_k_local_read must be bool")
++    if type(args.get("hcu_wasp_single_buffer", False)) is not bool:
++        raise ValueError("hcu_wasp_single_buffer must be a bool")
+     if type(args.get("wasp_wdra", True)) is not bool:
+         raise ValueError("wasp_wdra must be a bool")
+     waves = args.get("wasp_partition_warps", (4, 4, 4))
+@@ -49,6 +80,8 @@ def configure_wasp(mod, metadata, options):
+     metadata["wasp_enabled"] = requested
+     metadata["wasp_wdra"] = requested and options.wasp_wdra
+     if not requested:
++        if options.hcu_wasp_single_buffer:
++            raise ValueError("single-buffer prototype requires a WASP loop")
+         if options.wasp_partition_regs is not None:
+             raise ValueError("wasp_partition_regs requires a warp_specialize=True loop")
+         return
+@@ -57,7 +90,15 @@ def configure_wasp(mod, metadata, options):
+     # WASP owns LDS multi-buffering through LoadMMASpecialization; num_stages
+     # is the LDS buffer depth, not the ordinary AMD software-pipeline depth.
+     # The current stage/phase and abarrier lowering supports depths 2 and 4.
+-    if options.num_stages not in (2, 4):
++    if options.hcu_wasp_single_buffer:
++        if options.empty_arrive_after_mmac:
++            raise ValueError("singlebuffer late release has a proven cyclic consumer wait")
++        if explicit or not options.wasp_wdra or options.num_stages != 1 or len(options.wasp_partition_warps) != 3:
++            raise ValueError("single-buffer prototype requires automatic OnePTwoC and num_stages=1")
++        if options.use_block_pingpong:
++            raise ValueError("single-buffer prototype cannot combine with BPP")
++        metadata["hcu_wasp_single_buffer"] = True
++    elif options.num_stages not in (2, 4):
+         raise ValueError("WASP requires num_stages in (2, 4)")
+     # The current 2P2C plan budgets 2 load groups * 2 (empty/ready) *
+     # 2 producer-consumer pairs * num_stages = 8 * num_stages abarrier IDs.
+diff --git a/third_party/hcu/lib/TritonHCUToLLVM/MlsOpToLLVM.cpp b/third_party/hcu/lib/TritonHCUToLLVM/MlsOpToLLVM.cpp
+index 7b6114120..7482d008e 100644
+--- a/third_party/hcu/lib/TritonHCUToLLVM/MlsOpToLLVM.cpp
++++ b/third_party/hcu/lib/TritonHCUToLLVM/MlsOpToLLVM.cpp
+@@ -154,6 +154,24 @@ struct MLSMatrixLoadToLocalOpConversion
+     auto smemObj = LLVM::getSharedMemoryObjectFromStruct(
+          loc, adaptor.getDest(), llvmElemTy, rewriter);
+ 
++    // MatrixLoad global coordinates describe the view, while its shared
++    // destination is tiled in the full allocation. memdesc_subslice keeps
++    // the parent base and carries logical offsets in the descriptor struct.
++    SmallVector<int64_t> dstParentShape(dstTy.getShape().begin(),
++                                        dstTy.getShape().end());
++    auto allocShape = dstTy.getAllocShape();
++    if (allocShape.size() >= 2) {
++      for (unsigned d = 0; d < 2; ++d)
++        dstParentShape[d] = std::max(dstParentShape[d],
++                                    allocShape[allocShape.size() - 2 + d]);
++    }
++    bool parentSubview = false;
++    for (unsigned d = 0; d < 2; ++d)
++      parentSubview |= dstParentShape[d] != dstTy.getShape()[d];
++    SmallVector<Value> dstTileOffsets;
++    if (!parentSubview)
++      dstParentShape.clear(); // Preserve the full-root lowering verbatim.
++
+     auto opIdx = blockLayout.getOpIdx();
+     auto kDimIdx = opIdx == 0 ? 1 : 0;
+     auto nonKDimIdx = opIdx == 0 ? 0 : 1;
+@@ -168,6 +186,29 @@ struct MLSMatrixLoadToLocalOpConversion
+                                static_cast<MlsInterleaveKind>(blockLayout.getAlt2Kind()));
+     auto mlInsnAttr = mlsInsn->getMatrixLoadInsnAttr();
+ 
++    if (parentSubview) {
++      auto tile = mlsInsn->getMlsTile(MlsTileKind::Elems);
++      auto logicalOffsets = smemObj.getOffsets();
++      if (blockLayout.getElemBitWidth() != 16 || logicalOffsets.size() < 2)
++        return rewriter.notifyMatchFailure(
++            op, "MLS destination subviews require FP16 tile-aligned offsets");
++      // MemDescSubslice verifies offsets are multiples of the view extent.
++      // Requiring whole MLS tiles therefore also guarantees tile alignment.
++      // Within-tile global writes need a separate instruction/mask contract.
++      for (unsigned d = 0; d < 2; ++d) {
++        if (dstTy.getShape()[d] < tile[d] ||
++            dstTy.getShape()[d] % tile[d] != 0 ||
++            dstParentShape[d] % tile[d] != 0 ||
++            sharedLayout.getMlsTile()[d] != tile[d])
++          return rewriter.notifyMatchFailure(
++              op, "MLS destination subviews must cover whole parent MLS tiles");
++        dstTileOffsets.push_back(
++            b.udiv(logicalOffsets[logicalOffsets.size() - 2 + d],
++                   b.i32_val(tile[d])));
++      }
++    }
++
++
+     auto allocOp = op.getResult().getDefiningOp<triton::gpu::LocalAllocOp>();
+     auto elemByteWidth = blockLayout.getElemBitWidth() / 8;
+ 
+@@ -210,7 +251,8 @@ struct MLSMatrixLoadToLocalOpConversion
+                                               llStrides,
+                                               mlsInsn->isRowMajor(),
+                                               boundaryCheckInfo,
+-                                              ldInBlkOffCoordMappings);
++                                              ldInBlkOffCoordMappings,
++                                              dstParentShape, dstTileOffsets);
+ 
+       unsigned iterIdx = 0;
+       for (auto &ldstInBlkGroup : ldstInBlkMappings) {
+@@ -296,7 +338,8 @@ struct MLSMatrixLoadToLocalOpConversion
+                                               mlsInsn->isRowMajor(),
+                                               boundaryCheckInfo,
+                                               mlOffsInY,
+-                                              ldInBlkOffCoordMappings);
++                                              ldInBlkOffCoordMappings,
++                                              dstParentShape, dstTileOffsets);
+       bool groupPaddingInY = !mlOffsInY;
+ 
+       for (auto &ldstInBlkGroup : ldstInBlkMappings) {
+@@ -394,14 +437,17 @@ private:
+                                 ValueRange llStrides,
+                                 bool mlsIsRowMajor,
+                                 SmallVector<bool> boundaryCheckInfo,
+-                                SmallVector<std::pair<Value, Value>> &ldInBlkOffCoordMappings) const {
++                                SmallVector<std::pair<Value, Value>> &ldInBlkOffCoordMappings,
++                                ArrayRef<int64_t> dstParentShape = {},
++                                ValueRange dstTileOffsets = {}) const {
+     auto b = TritonLLVMOpBuilder(loc, rewriter);
+     auto mlsTileG = mlsInsn.getMlsTile(MlsTileKind::Global);
+     auto mlsTileS = mlsInsn.getMlsTile(MlsTileKind::Shared);
+     auto mlsTileE = mlsInsn.getMlsTile(MlsTileKind::Elems);
+     auto tensorShapeG = tensorShape;
+-    auto tensorShapeS =
+-        getMlsExpandedShape(sharedLayout, tensorShape, MlsTileKind::Shared);
++    auto tensorShapeS = getMlsExpandedShape(
++        sharedLayout, dstParentShape.empty() ? tensorShape : dstParentShape,
++        MlsTileKind::Shared);
+ 
+     auto warpsPerCta = blockLayout.getWarpsPerCTA();
+     auto shapePerCta = getShapePerCTA(mlsTileG, warpsPerCta);
+@@ -442,6 +488,10 @@ private:
+             Value ldOffV = dot64(loc, rewriter, {ldRow, ldCol}, llStrides);
+             Value stMlsRow = b.add(b.i32_val(ctaX * warpsPerCta[0]), multiDimWarpIds[0]);
+             Value stMlsCol = b.add(b.i32_val(ctaY * warpsPerCta[1]), multiDimWarpIds[1]);
++            if (!dstTileOffsets.empty()) {
++              stMlsRow = b.add(stMlsRow, dstTileOffsets[0]);
++              stMlsCol = b.add(stMlsCol, dstTileOffsets[1]);
++            }
+ 
+             Value stMlsOff = b.mul(linearize(rewriter, loc, {stMlsRow, stMlsCol},
+                                 flattenedMlsShape, sharedLayout.getOrder()),
+@@ -466,7 +516,7 @@ private:
+    * For each vector, share same rsrc desc with ldOffValue, but has different ldOffConst offset & stOffValue.
+    * key: ldOffValue, value: std::pair<ldOffConst, stOffValue>
+    **/
+-  DenseMap<Value, SmallVector<std::pair<unsigned, Value>>>
++  llvm::MapVector<Value, SmallVector<std::pair<unsigned, Value>>>
+   computeMatrixLoadStoreOffsetsWithMlOffs(Location loc, RewriterBase &rewriter,
+                                 const MlsInsn &mlsInsn,
+                                 const MlsEncodingAttr &blockLayout,
+@@ -477,15 +527,18 @@ private:
+                                 bool mlsIsRowMajor,
+                                 SmallVector<bool> boundaryCheckInfo,
+                                 bool &mlOffsInY,     /* key: ldOffValue, value: ldCoordValue */
+-                                DenseMap<Value, Value> &ldInBlkOffCoordMappings) const {
++                                DenseMap<Value, Value> &ldInBlkOffCoordMappings,
++                                ArrayRef<int64_t> dstParentShape = {},
++                                ValueRange dstTileOffsets = {}) const {
+     auto b = TritonLLVMOpBuilder(loc, rewriter);
+ 
+     auto mlsTileG = mlsInsn.getMlsTile(MlsTileKind::Global);
+     auto mlsTileS = mlsInsn.getMlsTile(MlsTileKind::Shared);
+     auto mlsTileE = mlsInsn.getMlsTile(MlsTileKind::Elems);
+     auto tensorShapeG = tensorShape;
+-    auto tensorShapeS =
+-        getMlsExpandedShape(sharedLayout, tensorShape, MlsTileKind::Shared);
++    auto tensorShapeS = getMlsExpandedShape(
++        sharedLayout, dstParentShape.empty() ? tensorShape : dstParentShape,
++        MlsTileKind::Shared);
+ 
+     auto warpsPerCta = blockLayout.getWarpsPerCTA();
+     auto shapePerCta = getShapePerCTA(mlsTileG, warpsPerCta);
+@@ -554,6 +607,10 @@ private:
+ 
+             Value stMlsRow = b.add(b.i32_val(ctaX * warpsPerCta[0]), multiDimWarpIds[0]);
+             Value stMlsCol = b.add(b.i32_val(ctaY * warpsPerCta[1]), multiDimWarpIds[1]);
++            if (!dstTileOffsets.empty()) {
++              stMlsRow = b.add(stMlsRow, dstTileOffsets[0]);
++              stMlsCol = b.add(stMlsCol, dstTileOffsets[1]);
++            }
+ 
+             Value stMlsOff = b.mul(linearize(rewriter, loc, {stMlsRow, stMlsCol},
+                                 flattenedMlsShape, sharedLayout.getOrder()),
+@@ -569,7 +626,9 @@ private:
+       }
+     }
+ 
+-    DenseMap<Value, SmallVector<std::pair<unsigned, Value>>> loadStoreOffsetsMap;
++    // Emit descriptor groups in geometric insertion order. Pointer-hashed Value
++    // iteration must not select the MLS instruction schedule.
++    llvm::MapVector<Value, SmallVector<std::pair<unsigned, Value>>> loadStoreOffsetsMap;
+     for (auto &group : loadStoreOffsets) {
+       Value ldOffV = std::get<0>(group[0]);
+       auto &curMap = loadStoreOffsetsMap[ldOffV];
+diff --git a/third_party/hcu/lib/TritonHCUTransforms/AccelerateHCUMatmul.cpp b/third_party/hcu/lib/TritonHCUTransforms/AccelerateHCUMatmul.cpp
+index b9a9de370..c6e8cc95d 100644
+--- a/third_party/hcu/lib/TritonHCUTransforms/AccelerateHCUMatmul.cpp
++++ b/third_party/hcu/lib/TritonHCUTransforms/AccelerateHCUMatmul.cpp
+@@ -104,6 +104,42 @@ DotOperandMatrixLoadInfo getDotOperandMatrixLoadInfo(DotOpInterface dotOp,
+     if (opIdx >= 0 && opIdx < 2 && !matrixOps[opIdx])
+       matrixOps[opIdx] = mOp;
+   });
++  // Experimental: split K fragments retain the MLS source of both halves.
++  // The normal forward search associates a matrix load with only the first
++  // dot; subsequent fragments otherwise get an incompatible fallback layout.
++  if (auto enabled = mod->getAttrOfType<BoolAttr>("hcu.fragment_mls_layout");
++      enabled && enabled.getValue()) {
++    if (auto plainDot = dyn_cast<tt::DotOp>(dotOp.getOperation())) {
++      for (int idx = 0; idx < 2; ++idx) {
++        if (matrixOps[idx])
++          continue;
++        Value value = idx == 0 ? plainDot.getA() : plainDot.getB();
++        auto operandTy = cast<RankedTensorType>(value.getType());
++        unsigned splitCount = 0;
++        for (unsigned depth = 0; depth < 16 && value; ++depth) {
++          Operation *def = value.getDefiningOp();
++          if (!def)
++            break;
++          if (auto load = dyn_cast<tt::MatrixLoadOp>(def)) {
++            auto sourceTy = load.getType();
++            unsigned kAxis = 1 - idx;
++            if (splitCount >= 1 && splitCount <= 2 && operandTy.getRank() == 2 &&
++                sourceTy.getRank() == 2 && operandTy.getElementType().isF16() &&
++                sourceTy.getElementType() == operandTy.getElementType() &&
++                sourceTy.getShape()[idx] == operandTy.getShape()[idx] &&
++                sourceTy.getShape()[kAxis] == (1LL << splitCount) * operandTy.getShape()[kAxis])
++              matrixOps[idx] = load;
++            break;
++          }
++          if (isa<tt::SplitOp>(def))
++            ++splitCount;
++          else if (!isa<tt::ReshapeOp, tt::TransOp, ttg::ConvertLayoutOp>(def))
++            break;
++          value = def->getOperand(0);
++        }
++      }
++    }
++  }
+   std::array<std::optional<MatrixLoadInfo>, 2> infos = {
+       buildDotOperandMatrixLoadInfo(dotOp, 0, matrixOps[0]),
+       buildDotOperandMatrixLoadInfo(dotOp, 1, matrixOps[1])};

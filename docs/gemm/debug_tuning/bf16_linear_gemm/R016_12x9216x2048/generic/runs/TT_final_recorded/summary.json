@@ -1,0 +1,158 @@
+{
+ "shape": [
+  12,
+  9216,
+  2048
+ ],
+ "layout": "TT",
+ "dtype": "BF16 x BF16 -> BF16; FP32 accumulation",
+ "gcFrequency_GHz": 2.197802,
+ "constants": {
+  "M": 12,
+  "N": 9216,
+  "K": 2048,
+  "useful_flops": 452984832,
+  "logical_bytes_D": 38019072,
+  "A_bytes": 49152,
+  "B_bytes": 37748736,
+  "C_bytes": 221184,
+  "arithmetic_intensity_flop_per_byte": 11.914673561732386,
+  "peak_tflops": 432.0,
+  "configured_bandwidth_TB_s": 1.7996485,
+  "roofline_tflops": 21.442224403361344,
+  "roofline_time_us": 21.125832072207434
+ },
+ "metric_definition": "MMAC utilization = (2MNK/median_us)/432 TFLOPS; effective bandwidth = D/median_us with D = 2(MK+KN+MN) = 38,019,072 B; achieved = effective/1.7996485 TB/s. median_us is the full-kernel PMD gcSimCycles time. Not a hardware MMAC busy counter.",
+ "timing_protocol": "Per case: independent PMD process, 5 dispatches (1 warmup + 4 timed); same B reused; two seeds (29, 30); pooled median over the 8 timed dispatches. Every dispatch: full 110592-output check (atol=0.02, rtol=0.01 vs BF16-rounded FP32 reference), finite, 128-element guards, mean_abs <= 1.05*rounding_floor+1e-6.",
+ "transcription": "Recorded results copied from tmp/1105/r016_tt_extreme_2305/runs/*/result.json; no GEMM was re-executed to produce this file. Raw PMD output stays in tmp (not archived).",
+ "kind": "generic_recorded",
+ "kernel": "operators/gemm_a16w16_generic.py (_gemm_bf16_generic_kernel), sha256 e108b0bb94c719409fc0a8b387e295f1d39bf1e02d364494a1d92c5e361313fb",
+ "config_file": "generic/best_config.json",
+ "config_source": "autotune/results_TT_dyn/shapes/R016_12x9216x2048_TT.json best.config (sha256 045a64e0a86ac8e427d89479487ccdc2d0e90fe939d86f9d8adc453ae852a860)",
+ "baseline": {
+  "per_process": [
+   {
+    "source_run": "tmp/1105/r016_tt_extreme_2305/runs/final29_baseline",
+    "seed": 29,
+    "dispatches": 5,
+    "timed_cycles": [
+     59593.0,
+     59485.0,
+     59645.0,
+     59908.0
+    ],
+    "timed_us": [
+     27.114817440333574,
+     27.065677435910974,
+     27.138477442462975,
+     27.258142453232825
+    ],
+    "median_cycles": 59619.0,
+    "median_us": 27.126647441398276,
+    "range_us": [
+     27.065677435910974,
+     27.258142453232825
+    ],
+    "grid": 72,
+    "completed_wgs": 72,
+    "shared_B": 36864,
+    "n_regs": 58,
+    "n_spills": 0,
+    "num_warps": 4,
+    "correctness": {
+     "full_outputs_checked": 5,
+     "points_per_output": 110592,
+     "mismatches": 0,
+     "finite": true,
+     "guard_128_each_side": true,
+     "mean_abs": 0.051039718091487885,
+     "rounding_floor": 0.051039718091487885
+    },
+    "metrics": {
+     "median_us": 27.126647441398276,
+     "tflops": 16.698887430840234,
+     "mmac_utilization_pct": 3.8654832015833875,
+     "effective_bandwidth_TB_s": 1.4015396514491016,
+     "bandwidth_achieved_pct": 77.87852191409054,
+     "roofline_attained_pct": 77.87852191409054
+    }
+   },
+   {
+    "source_run": "tmp/1105/r016_tt_extreme_2305/runs/final30_baseline",
+    "seed": 30,
+    "dispatches": 5,
+    "timed_cycles": [
+     59785.0,
+     59660.0,
+     59893.0,
+     59468.0
+    ],
+    "timed_us": [
+     27.202177448195975,
+     27.145302443077224,
+     27.251317452618576,
+     27.057942435214823
+    ],
+    "median_cycles": 59722.5,
+    "median_us": 27.173739945636598,
+    "range_us": [
+     27.057942435214823,
+     27.251317452618576
+    ],
+    "grid": 72,
+    "completed_wgs": 72,
+    "shared_B": 36864,
+    "n_regs": 58,
+    "n_spills": 0,
+    "num_warps": 4,
+    "correctness": {
+     "full_outputs_checked": 5,
+     "points_per_output": 110592,
+     "mismatches": 0,
+     "finite": true,
+     "guard_128_each_side": true,
+     "mean_abs": 0.050941403955221176,
+     "rounding_floor": 0.050941403955221176
+    },
+    "metrics": {
+     "median_us": 27.173739945636598,
+     "tflops": 16.669948005178348,
+     "mmac_utilization_pct": 3.858784260457951,
+     "effective_bandwidth_TB_s": 1.3991107619363556,
+     "bandwidth_achieved_pct": 77.74355725222762,
+     "roofline_attained_pct": 77.74355725222762
+    }
+   }
+  ],
+  "pooled": {
+   "samples": 8,
+   "median_us": 27.1418899427701,
+   "range_us": [
+    27.057942435214823,
+    27.258142453232825
+   ],
+   "median_cycles": 59652.5,
+   "metrics": {
+    "median_us": 27.1418899427701,
+    "tflops": 16.689509571925132,
+    "mmac_utilization_pct": 3.8633124009085953,
+    "effective_bandwidth_TB_s": 1.4007525666106868,
+    "bandwidth_achieved_pct": 77.83478643805648,
+    "roofline_attained_pct": 77.83478643805648
+   }
+  }
+ },
+ "autotune_record": {
+  "median_us": 27.107537439678374,
+  "median_cycles": 59577.0,
+  "note": "autotune val: warmup 1 + 3 timed; different protocol, listed for provenance only; not pooled",
+  "metrics": {
+   "median_us": 27.107537439678374,
+   "tflops": 16.710659646159826,
+   "mmac_utilization_pct": 3.8682082514258855,
+   "effective_bandwidth_TB_s": 1.4025276949115262,
+   "bandwidth_achieved_pct": 77.93342393870392,
+   "roofline_attained_pct": 77.93342393870392
+  }
+ }
+}

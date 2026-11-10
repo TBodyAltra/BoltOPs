@@ -1,0 +1,197 @@
+--- a/boltops/gemm/triton/gemm_fp16.py
++++ b/boltops/gemm/triton/gemm_fp16.py
+@@ -448,7 +448,12 @@
+     REBASE_MLS_TILE: tl.constexpr = 0,
+     STREAM_K_FRAGMENTS: tl.constexpr = 1,
+     STREAM_FRAGMENT_PREFETCH: tl.constexpr = False,
++    WASP_GLOBAL_K_FRAGMENTS: tl.constexpr = 1,
+ ):
++    tl.static_assert(WASP_GLOBAL_K_FRAGMENTS == 1 or WASP_GLOBAL_K_FRAGMENTS == 2 or WASP_GLOBAL_K_FRAGMENTS == 4)
++    tl.static_assert(BLOCK_SIZE_K % WASP_GLOBAL_K_FRAGMENTS == 0)
++    tl.static_assert(WASP_GLOBAL_K_FRAGMENTS == 1 or (WARP_SPECIALIZE and STREAM_K_FRAGMENTS == 1 and MIXED_OPERAND == 0))
++    PHYSICAL_BLOCK_K: tl.constexpr = BLOCK_SIZE_K // WASP_GLOBAL_K_FRAGMENTS
+     tl.assume(K % BLOCK_SIZE_K == 0)
+     tl.assume(stride_am > 0)
+     tl.assume(stride_ak > 0)
+@@ -501,16 +506,16 @@
+         mls_shape_n = N
+         mls_load_n = mls_offs_bn
+     accumulator = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
+-    for k in tl.range(0, K // BLOCK_SIZE_K, warp_specialize=WARP_SPECIALIZE, loop_unroll_factor=LOOP_UNROLL_FACTOR):
+-        mls_offs_k = k * BLOCK_SIZE_K
++    for k in tl.range(0, K // PHYSICAL_BLOCK_K, warp_specialize=WARP_SPECIALIZE, loop_unroll_factor=LOOP_UNROLL_FACTOR):
++        mls_offs_k = k * PHYSICAL_BLOCK_K
+         tl.static_assert(MIXED_OPERAND >= 0 and MIXED_OPERAND <= 2)
+         if STREAM_K_FRAGMENTS > 1:
+             tl.static_assert(not WARP_SPECIALIZE)
+             tl.static_assert(MIXED_OPERAND == 0)
+             tl.static_assert(STREAM_K_FRAGMENTS == 2 or STREAM_K_FRAGMENTS == 4)
+             tl.static_assert(MMA_K_SPLIT == STREAM_K_FRAGMENTS)
+-            tl.static_assert(BLOCK_SIZE_K % STREAM_K_FRAGMENTS == 0)
+-            KF: tl.constexpr = BLOCK_SIZE_K // STREAM_K_FRAGMENTS
++            tl.static_assert(PHYSICAL_BLOCK_K % STREAM_K_FRAGMENTS == 0)
++            KF: tl.constexpr = PHYSICAL_BLOCK_K // STREAM_K_FRAGMENTS
+             if STREAM_FRAGMENT_PREFETCH:
+                 a_s, b_s = _gemm_fp16_mls_stream_load(
+                     mls_a_ptr, mls_b_ptr, mls_shape_m, mls_shape_n, K,
+@@ -544,14 +549,14 @@
+                     mls_b_ptr,
+                     shape=[K, mls_shape_n],
+                     strides=[stride_bk, stride_bn],
+-                    block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N],
++                    block_shape=[PHYSICAL_BLOCK_K, BLOCK_SIZE_N],
+                     offsets=[mls_offs_k, mls_load_n],
+                 )
+                 a = tl.matrix_load(
+                     mls_a_ptr,
+                     shape=[mls_shape_m, K],
+                     strides=[stride_am, stride_ak],
+-                    block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K],
++                    block_shape=[BLOCK_SIZE_M, PHYSICAL_BLOCK_K],
+                     offsets=[mls_load_m, mls_offs_k],
+                 )
+             else:
+@@ -559,103 +564,103 @@
+                     mls_a_ptr,
+                     shape=[mls_shape_m, K],
+                     strides=[stride_am, stride_ak],
+-                    block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K],
++                    block_shape=[BLOCK_SIZE_M, PHYSICAL_BLOCK_K],
+                     offsets=[mls_load_m, mls_offs_k],
+                 )
+                 b = tl.matrix_load(
+                     mls_b_ptr,
+                     shape=[K, mls_shape_n],
+                     strides=[stride_bk, stride_bn],
+-                    block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N],
++                    block_shape=[PHYSICAL_BLOCK_K, BLOCK_SIZE_N],
+                     offsets=[mls_offs_k, mls_load_n],
+                 )
+             if MMA_K_SPLIT == 1:
+                 accumulator = tl.dot(a, b, accumulator)
+             elif MMA_K_SPLIT == 2:
+                 tl.static_assert(MMA_K_SPLIT == 2)
+-                tl.static_assert(BLOCK_SIZE_K % 2 == 0)
+-                a0, a1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 2)), (0, 2, 1)))
+-                b0, b1 = tl.split(tl.permute(tl.reshape(b, (2, BLOCK_SIZE_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
++                tl.static_assert(PHYSICAL_BLOCK_K % 2 == 0)
++                a0, a1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, PHYSICAL_BLOCK_K // 2)), (0, 2, 1)))
++                b0, b1 = tl.split(tl.permute(tl.reshape(b, (2, PHYSICAL_BLOCK_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
+                 accumulator = tl.dot(a0, b0, accumulator)
+                 accumulator = tl.dot(a1, b1, accumulator)
+             else:
+                 tl.static_assert(MMA_K_SPLIT == 4)
+-                tl.static_assert(BLOCK_SIZE_K % 4 == 0)
+-                ah0, ah1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 2)), (0, 2, 1)))
+-                bh0, bh1 = tl.split(tl.permute(tl.reshape(b, (2, BLOCK_SIZE_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
+-                a0, a1 = tl.split(tl.permute(tl.reshape(ah0, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
+-                a2, a3 = tl.split(tl.permute(tl.reshape(ah1, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
+-                b0, b1 = tl.split(tl.permute(tl.reshape(bh0, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
+-                b2, b3 = tl.split(tl.permute(tl.reshape(bh1, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++                tl.static_assert(PHYSICAL_BLOCK_K % 4 == 0)
++                ah0, ah1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, PHYSICAL_BLOCK_K // 2)), (0, 2, 1)))
++                bh0, bh1 = tl.split(tl.permute(tl.reshape(b, (2, PHYSICAL_BLOCK_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
++                a0, a1 = tl.split(tl.permute(tl.reshape(ah0, (BLOCK_SIZE_M, 2, PHYSICAL_BLOCK_K // 4)), (0, 2, 1)))
++                a2, a3 = tl.split(tl.permute(tl.reshape(ah1, (BLOCK_SIZE_M, 2, PHYSICAL_BLOCK_K // 4)), (0, 2, 1)))
++                b0, b1 = tl.split(tl.permute(tl.reshape(bh0, (2, PHYSICAL_BLOCK_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++                b2, b3 = tl.split(tl.permute(tl.reshape(bh1, (2, PHYSICAL_BLOCK_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
+                 accumulator = tl.dot(a0, b0, accumulator)
+                 accumulator = tl.dot(a1, b1, accumulator)
+                 accumulator = tl.dot(a2, b2, accumulator)
+                 accumulator = tl.dot(a3, b3, accumulator)
+         elif STREAM_K_FRAGMENTS == 1 and MIXED_OPERAND == 1:
+             tl.static_assert(MMA_K_SPLIT == 4)
+-            tl.static_assert(BLOCK_SIZE_K % 4 == 0)
+-            a = tl.matrix_load(a_ptr, shape=[M, K], strides=[stride_am, stride_ak], block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K], offsets=[mls_offs_am, mls_offs_k])
+-            ah0, ah1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 2)), (0, 2, 1)))
+-            a0, a1 = tl.split(tl.permute(tl.reshape(ah0, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
+-            a2, a3 = tl.split(tl.permute(tl.reshape(ah1, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
++            tl.static_assert(PHYSICAL_BLOCK_K % 4 == 0)
++            a = tl.matrix_load(a_ptr, shape=[M, K], strides=[stride_am, stride_ak], block_shape=[BLOCK_SIZE_M, PHYSICAL_BLOCK_K], offsets=[mls_offs_am, mls_offs_k])
++            ah0, ah1 = tl.split(tl.permute(tl.reshape(a, (BLOCK_SIZE_M, 2, PHYSICAL_BLOCK_K // 2)), (0, 2, 1)))
++            a0, a1 = tl.split(tl.permute(tl.reshape(ah0, (BLOCK_SIZE_M, 2, PHYSICAL_BLOCK_K // 4)), (0, 2, 1)))
++            a2, a3 = tl.split(tl.permute(tl.reshape(ah1, (BLOCK_SIZE_M, 2, PHYSICAL_BLOCK_K // 4)), (0, 2, 1)))
+             if MIXED_VECTOR_FULL:
+                 rn = mls_offs_bn + tl.arange(0, BLOCK_SIZE_N)
+-                rk = mls_offs_k + tl.arange(0, BLOCK_SIZE_K)
++                rk = mls_offs_k + tl.arange(0, PHYSICAL_BLOCK_K)
+                 bv = tl.load(b_ptr + rk[:, None] * stride_bk + rn[None, :] * stride_bn, mask=(rk[:, None] < K) & (rn[None, :] < N), other=0)
+-                bh0, bh1 = tl.split(tl.permute(tl.reshape(bv, (2, BLOCK_SIZE_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
+-                bv0, bv1 = tl.split(tl.permute(tl.reshape(bh0, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
+-                bv2, bv3 = tl.split(tl.permute(tl.reshape(bh1, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++                bh0, bh1 = tl.split(tl.permute(tl.reshape(bv, (2, PHYSICAL_BLOCK_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
++                bv0, bv1 = tl.split(tl.permute(tl.reshape(bh0, (2, PHYSICAL_BLOCK_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++                bv2, bv3 = tl.split(tl.permute(tl.reshape(bh1, (2, PHYSICAL_BLOCK_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
+                 accumulator = tl.dot(a0, bv0, accumulator)
+                 accumulator = tl.dot(a1, bv1, accumulator)
+                 accumulator = tl.dot(a2, bv2, accumulator)
+                 accumulator = tl.dot(a3, bv3, accumulator)
+             else:
+                 rn = mls_offs_bn + tl.arange(0, BLOCK_SIZE_N)
+-                rk = mls_offs_k + tl.arange(0, BLOCK_SIZE_K // 4)
+-                kb0 = rk + 0 * (BLOCK_SIZE_K // 4)
++                rk = mls_offs_k + tl.arange(0, PHYSICAL_BLOCK_K // 4)
++                kb0 = rk + 0 * (PHYSICAL_BLOCK_K // 4)
+                 bv0 = tl.load(b_ptr + kb0[:, None] * stride_bk + rn[None, :] * stride_bn, mask=(kb0[:, None] < K) & (rn[None, :] < N), other=0)
+                 accumulator = tl.dot(a0, bv0, accumulator)
+-                kb1 = rk + 1 * (BLOCK_SIZE_K // 4)
++                kb1 = rk + 1 * (PHYSICAL_BLOCK_K // 4)
+                 bv1 = tl.load(b_ptr + kb1[:, None] * stride_bk + rn[None, :] * stride_bn, mask=(kb1[:, None] < K) & (rn[None, :] < N), other=0)
+                 accumulator = tl.dot(a1, bv1, accumulator)
+-                kb2 = rk + 2 * (BLOCK_SIZE_K // 4)
++                kb2 = rk + 2 * (PHYSICAL_BLOCK_K // 4)
+                 bv2 = tl.load(b_ptr + kb2[:, None] * stride_bk + rn[None, :] * stride_bn, mask=(kb2[:, None] < K) & (rn[None, :] < N), other=0)
+                 accumulator = tl.dot(a2, bv2, accumulator)
+-                kb3 = rk + 3 * (BLOCK_SIZE_K // 4)
++                kb3 = rk + 3 * (PHYSICAL_BLOCK_K // 4)
+                 bv3 = tl.load(b_ptr + kb3[:, None] * stride_bk + rn[None, :] * stride_bn, mask=(kb3[:, None] < K) & (rn[None, :] < N), other=0)
+                 accumulator = tl.dot(a3, bv3, accumulator)
+         elif STREAM_K_FRAGMENTS == 1 and MIXED_OPERAND == 2:
+             tl.static_assert(MIXED_OPERAND == 2)
+             tl.static_assert(MMA_K_SPLIT == 4)
+-            tl.static_assert(BLOCK_SIZE_K % 4 == 0)
+-            b = tl.matrix_load(b_ptr, shape=[K, N], strides=[stride_bk, stride_bn], block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N], offsets=[mls_offs_k, mls_offs_bn])
+-            bh0, bh1 = tl.split(tl.permute(tl.reshape(b, (2, BLOCK_SIZE_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
+-            b0, b1 = tl.split(tl.permute(tl.reshape(bh0, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
+-            b2, b3 = tl.split(tl.permute(tl.reshape(bh1, (2, BLOCK_SIZE_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++            tl.static_assert(PHYSICAL_BLOCK_K % 4 == 0)
++            b = tl.matrix_load(b_ptr, shape=[K, N], strides=[stride_bk, stride_bn], block_shape=[PHYSICAL_BLOCK_K, BLOCK_SIZE_N], offsets=[mls_offs_k, mls_offs_bn])
++            bh0, bh1 = tl.split(tl.permute(tl.reshape(b, (2, PHYSICAL_BLOCK_K // 2, BLOCK_SIZE_N)), (1, 2, 0)))
++            b0, b1 = tl.split(tl.permute(tl.reshape(bh0, (2, PHYSICAL_BLOCK_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
++            b2, b3 = tl.split(tl.permute(tl.reshape(bh1, (2, PHYSICAL_BLOCK_K // 4, BLOCK_SIZE_N)), (1, 2, 0)))
+             if MIXED_VECTOR_FULL:
+                 rm = mls_offs_am + tl.arange(0, BLOCK_SIZE_M)
+-                rk = mls_offs_k + tl.arange(0, BLOCK_SIZE_K)
++                rk = mls_offs_k + tl.arange(0, PHYSICAL_BLOCK_K)
+                 av = tl.load(a_ptr + rm[:, None] * stride_am + rk[None, :] * stride_ak, mask=(rm[:, None] < M) & (rk[None, :] < K), other=0)
+-                ah0, ah1 = tl.split(tl.permute(tl.reshape(av, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 2)), (0, 2, 1)))
+-                av0, av1 = tl.split(tl.permute(tl.reshape(ah0, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
+-                av2, av3 = tl.split(tl.permute(tl.reshape(ah1, (BLOCK_SIZE_M, 2, BLOCK_SIZE_K // 4)), (0, 2, 1)))
++                ah0, ah1 = tl.split(tl.permute(tl.reshape(av, (BLOCK_SIZE_M, 2, PHYSICAL_BLOCK_K // 2)), (0, 2, 1)))
++                av0, av1 = tl.split(tl.permute(tl.reshape(ah0, (BLOCK_SIZE_M, 2, PHYSICAL_BLOCK_K // 4)), (0, 2, 1)))
++                av2, av3 = tl.split(tl.permute(tl.reshape(ah1, (BLOCK_SIZE_M, 2, PHYSICAL_BLOCK_K // 4)), (0, 2, 1)))
+                 accumulator = tl.dot(av0, b0, accumulator)
+                 accumulator = tl.dot(av1, b1, accumulator)
+                 accumulator = tl.dot(av2, b2, accumulator)
+                 accumulator = tl.dot(av3, b3, accumulator)
+             else:
+                 rm = mls_offs_am + tl.arange(0, BLOCK_SIZE_M)
+-                rk = mls_offs_k + tl.arange(0, BLOCK_SIZE_K // 4)
+-                ka0 = rk + 0 * (BLOCK_SIZE_K // 4)
++                rk = mls_offs_k + tl.arange(0, PHYSICAL_BLOCK_K // 4)
++                ka0 = rk + 0 * (PHYSICAL_BLOCK_K // 4)
+                 av0 = tl.load(a_ptr + rm[:, None] * stride_am + ka0[None, :] * stride_ak, mask=(rm[:, None] < M) & (ka0[None, :] < K), other=0)
+                 accumulator = tl.dot(av0, b0, accumulator)
+-                ka1 = rk + 1 * (BLOCK_SIZE_K // 4)
++                ka1 = rk + 1 * (PHYSICAL_BLOCK_K // 4)
+                 av1 = tl.load(a_ptr + rm[:, None] * stride_am + ka1[None, :] * stride_ak, mask=(rm[:, None] < M) & (ka1[None, :] < K), other=0)
+                 accumulator = tl.dot(av1, b1, accumulator)
+-                ka2 = rk + 2 * (BLOCK_SIZE_K // 4)
++                ka2 = rk + 2 * (PHYSICAL_BLOCK_K // 4)
+                 av2 = tl.load(a_ptr + rm[:, None] * stride_am + ka2[None, :] * stride_ak, mask=(rm[:, None] < M) & (ka2[None, :] < K), other=0)
+                 accumulator = tl.dot(av2, b2, accumulator)
+-                ka3 = rk + 3 * (BLOCK_SIZE_K // 4)
++                ka3 = rk + 3 * (PHYSICAL_BLOCK_K // 4)
+                 av3 = tl.load(a_ptr + rm[:, None] * stride_am + ka3[None, :] * stride_ak, mask=(rm[:, None] < M) & (ka3[None, :] < K), other=0)
+                 accumulator = tl.dot(av3, b3, accumulator)
+ 

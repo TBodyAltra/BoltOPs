@@ -1,0 +1,52 @@
+{
+  "passed": true,
+  "CPU_only": true,
+  "PMD_models": 0,
+  "deployed_clang_version": "clang version 18.0.0 (/buildspace/das-build/staging-pmd-6.3.3/llvm-project/clang d18da61d4bca49003103ad25f881b799f8a373ec)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /opt/rocm/llvm/bin\n",
+  "auxiliary_opt_version": "AOMP-18.0-12 (http://github.com/ROCm-Developer-Tools/aomp):\n Source ID:18.0-12-ce1873ac686bb90ddec72bb99889a4e80e2de382\n  LLVM version 18.0.0\n  Optimized build.\n  Default target: x86_64-unknown-linux-gnu\n  Host CPU: sapphirerapids\n",
+  "auxiliary_tool_version_matches_clang_source": false,
+  "exact_clang_unroll_pass_executed": true,
+  "loop_count": 3,
+  "auxiliary_scev_trip_multiples": [
+    1,
+    1,
+    1
+  ],
+  "unroll2_no_runtime_call_counts": {
+    "calls": 932,
+    "mmac": 512
+  },
+  "original_call_counts": {
+    "calls": 932,
+    "mmac": 512
+  },
+  "convergence_attributes_preserved": true,
+  "reason_for_deployed_clang_refusal_not_proven": true,
+  "upstream_reference": "https://raw.githubusercontent.com/llvm/llvm-project/release/18.x/llvm/lib/Transforms/Scalar/LoopUnrollPass.cpp",
+  "upstream_reference_caveat": "Upstream restricts remainders for convergent loops with trip multiple1; deployed compiler is modified. This is a possible explanation, not proof of its exact early-return condition. Auxiliary opt has different source version; its results are not a qualification for HCU Clang.",
+  "next_action": "Do not remove convergence/barrier contracts or assert extra K divisibility. Pursue source-level address/liveness recentering in isolated worktree188; any late-unroll revisit requires actual HCU legality evidence.",
+  "artifacts": {
+    "optimized.ll": "410862685cb120db3e502e415b7bfb92e65024c009b6d70db0e040118f5be721",
+    "unroll2-no-remainder.command.json": "9b0e5de5082f160f9c5b1abdeaa14a83ff972532a534f36de7be5dbe784492a9",
+    "diagnostic-review.json": "bf6e603acdacfb064a1b84dc96dff6b8fb279b4e742599adc46a5ea092604a6b",
+    "clang-pragma.log": "0426ad38385bccf1864260b2cb4a994d925f925a6f5da7e9bd18b649fa183862",
+    "loops.log": "8b385ee5f7746d9ec79bfa8e47f1c08da50804aac9a564d48591a4ebc79be990",
+    "pragma-output.ll": "8a4c6f4f204b665a76be363214692167f79a2a84b41d13430728fb3816929a82",
+    "clang-pragma.amdgcn": "3f7aab5fe33937f8fc94ec045bf9aaf3b4ff3e6af53c4674d46fa9aa38147b0c",
+    "unroll2-no-remainder.ll": "828107f92533d96fc77d78318194a519f571a576755fc8eba8d49cc75404f6db",
+    "diagnose.py": "366766c2440debf872abc5e9c5a5a0ed09a8bebd6a1f599033bfd99cfcf8a040",
+    "unroll2-no-runtime.ll": "828107f92533d96fc77d78318194a519f571a576755fc8eba8d49cc75404f6db",
+    "unroll2-no-runtime.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "pragma.command.json": "48827a1ee536fff9c2bd8260911c3ab1a5e757b80cc4363c22c5b078bd5fe850",
+    "unroll2.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "unroll2.ll": "828107f92533d96fc77d78318194a519f571a576755fc8eba8d49cc75404f6db",
+    "unroll2-no-remainder.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "clang-pragma.command.json": "d8768d6b4aaa113802a8367cbab3c4a432d0e935d7ead04201644da378983810",
+    "pragma.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "unroll2-no-runtime.command.json": "55b17341e87153d7b250f4a5ed62d041fef09afb131482bd0ea820cdfd537c83",
+    "input.ll": "9934aa845e3f59aaf8a72516d35c512cb0a366e7b877666b143379816b45e406",
+    "pipeline.log": "3ffda61693de7a839f65003cf21a7be8e177dad85f1253e739b7afcf3f790c13",
+    "debug-only.log": "07b3b11f3a125caa8382c10ca0d15d2ec85001e45ff2ccdf6c0f1989c1edf745",
+    "pragma-input.ll": "ade428daa082d98ed35b647ec9c1b28ef27e3c78ec089a848c9adb899bfac215"
+  }
+}

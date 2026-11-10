@@ -1,0 +1,19 @@
+--- a/scan.py
++++ b/scan.py
+@@ -24,7 +24,7 @@
+ CONTROLLER_SOURCE = Path(__file__).read_bytes()
+ CONTROLLER_SHA256 = hashlib.sha256(CONTROLLER_SOURCE).hexdigest()
+ SPEC_KEYS = ("tile", "shape", "scope", "layout", "mode", "stages", "regs", "warps",
+-             "empty_arrive", "cluster", "mmac_layout", "mls", "matrix_store", "repeats", "use_async_copy", "use_block_pingpong", "async_global_prefetch", "async_local_prefetch", "compiler_options", "partition_warps", "pipeline_unroll_factor", "dot_k_split", "load_b_first", "mixed_operand", "mixed_vector_full", "wasp_single_buffer", "optimize_epilogue", "simplify_group1", "rebase_mls_tile", "correctness_only", "stream_k_fragments", "stream_fragment_prefetch")
++             "empty_arrive", "cluster", "mmac_layout", "mls", "matrix_store", "repeats", "use_async_copy", "use_block_pingpong", "async_global_prefetch", "async_local_prefetch", "compiler_options", "partition_warps", "pipeline_unroll_factor", "dot_k_split", "load_b_first", "mixed_operand", "mixed_vector_full", "wasp_single_buffer", "optimize_epilogue", "simplify_group1", "rebase_mls_tile", "correctness_only", "stream_k_fragments", "stream_fragment_prefetch", "wasp_global_k_fragments")
+ CONTEXT_CACHE = {}
+ EXISTING_POINTS = {}
+ SCHEDULING_LOCK = threading.Lock()
+@@ -70,6 +70,7 @@
+ 
+ def point_key(row, context_id):
+     data = {k: row.get(k) for k in SPEC_KEYS}
++    data["wasp_global_k_fragments"] = row.get("wasp_global_k_fragments", 1)
+     data["measurement_context_id"] = context_id
+     return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[:16]
+ 
