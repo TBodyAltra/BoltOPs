@@ -282,7 +282,7 @@
       <td>—</td>
       <td>GC 2.1978 GHz<br><a href="tuning/r009/1die/tn/environment.json">flags / env</a></td>
       <td>—</td>
-      <td><a href="../../../boltops/gemm/gluon/gemm_a8w8_blockscale.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r009/1die/tn/kernel.amdgcn">汇编</a><br><a href="../../../scripts/perf/bench_blockscale_pmd.py">测试代码</a> / <a href="tuning/r009/1die/tn/benchmark.json">运行配置</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r009/1die/tn/kernel.amdgcn">汇编</a><br><a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/scripts/perf/bench_blockscale_pmd.py">测试代码</a> / <a href="tuning/r009/1die/tn/benchmark.json">运行配置</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -306,7 +306,7 @@
       <td>—</td>
       <td>GC 2.1978 GHz<br><a href="tuning/r010/1die/tn/environment.json">flags / env</a></td>
       <td>—</td>
-      <td><a href="../../../boltops/gemm/gluon/gemm_a8w8_blockscale.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r010/1die/tn/kernel.amdgcn">汇编</a><br><a href="../../../scripts/perf/bench_blockscale_pmd.py">测试代码</a> / <a href="tuning/r010/1die/tn/benchmark.json">运行配置</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r010/1die/tn/kernel.amdgcn">汇编</a><br><a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/scripts/perf/bench_blockscale_pmd.py">测试代码</a> / <a href="tuning/r010/1die/tn/benchmark.json">运行配置</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -354,7 +354,7 @@
       <td>—</td>
       <td>GC 2.1978 GHz<br><a href="tuning/r012/1die/tn/environment.json">flags / env</a></td>
       <td>—</td>
-      <td><a href="../../../boltops/gemm/gluon/gemm_a8w8_blockscale.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r012/1die/tn/kernel.amdgcn">汇编</a><br><a href="../../../scripts/perf/bench_blockscale_pmd.py">测试代码</a> / <a href="tuning/r012/1die/tn/benchmark.json">运行配置</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r012/1die/tn/kernel.amdgcn">汇编</a><br><a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/scripts/perf/bench_blockscale_pmd.py">测试代码</a> / <a href="tuning/r012/1die/tn/benchmark.json">运行配置</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -378,7 +378,7 @@
       <td>—</td>
       <td>GC 2.1978 GHz<br><a href="tuning/r013/1die/tn/environment.json">flags / env</a></td>
       <td>—</td>
-      <td><a href="../../../boltops/gemm/gluon/gemm_a8w8_blockscale.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r013/1die/tn/kernel.amdgcn">汇编</a><br><a href="../../../scripts/perf/bench_blockscale_pmd.py">测试代码</a> / <a href="tuning/r013/1die/tn/benchmark.json">运行配置</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r013/1die/tn/kernel.amdgcn">汇编</a><br><a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/scripts/perf/bench_blockscale_pmd.py">测试代码</a> / <a href="tuning/r013/1die/tn/benchmark.json">运行配置</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
