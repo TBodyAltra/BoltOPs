@@ -20,16 +20,16 @@
       "commit": "3599a58d7aebe66dc1cec4f830f82cb96e505666"
     },
     "clock_period_ps": {
+      "gc": 455,
       "cache": 455,
       "system": 1000,
-      "umc": 2276,
-      "gc": 455
+      "umc": 2276
     },
     "frequency_ghz": {
+      "gc": 2.197802197802198,
       "cache": 2.197802197802198,
       "system": 1.0,
-      "umc": 0.43936731107205623,
-      "gc": 2.197802197802198
+      "umc": 0.43936731107205623
     },
     "environment_variables": {
       "GPU_CHIP": "sb",
@@ -187,10 +187,9 @@
       "xcd_id_in_device": 0
     },
     "provenance": {
-      "reference_case": "r009-full-grid",
-      "capture_source": "active benchmark /proc/<pid>/environ and its m5out/config.json",
+      "measured_case": "r013-full-grid",
       "config_sha256": "9f4b7c0dcf8054a3e4679d48b7e116bf1cbef60f1855e1014fa8caf32cd17194",
-      "applies_to": "same controller environment for the queued 1die TN cases; each completed result is checked against its own runtime config"
+      "capture_source": "completed case runtime config and captured process environment"
     },
     "container_image": {
       "container_name": "kxu_pmd_8569_fp8_20261017",
@@ -224,10 +223,10 @@
     "path": "boltops/gemm/gluon/gemm_a8w8_blockscale.py",
     "sha256": "70813ea178d60b3046b3ae9d37ee4917ad1c395e9ffd633632271eb9561c5da3",
     "equivalence": "Module docstring restored and empty line removed only; AST excluding module docstring is identical",
-    "commit": "35bda3a379adb99cac6ad53279969c41e64e0a62",
+    "commit": "6c4f4b537a7e99915a2b110c271cdd2b65e31ba8",
     "symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_kernel",
     "line": 328,
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328",
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/6c4f4b537a7e99915a2b110c271cdd2b65e31ba8/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328",
     "compiled_sha256": "68b4dc968c0154703a250841e3dd76d1029cea4ceaae3b5480e5d9a68b02b480"
   },
   "config": {
@@ -241,7 +240,12 @@
     "sha256": "db77a192c33f2d31a4a844789ca254901b25783e3b616c83479c655ec2331c23",
     "hsaco_sha256": "672f25ee34c55253f138a25b87a35b51ff9730518c403d4385c7ff3507262dc2"
   },
-  "performance": null,
+  "performance": {
+    "kernel_us": 777.029435,
+    "kernel_cycles": 1707757.0,
+    "kernel_tops": 431.13868535495055,
+    "tops_formula": "2*M*N*K/(kernel_us*1e6)"
+  },
   "benchmark": {
     "script": "benchmark.py",
     "sha256": "69669968b15f778c4fead6dceb55b5d01f40ee8608476a7e9c3b30e3dba0d489",
@@ -285,5 +289,71 @@
       "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/p0-fp8-48multiple-20261110/single-perf-cache"
     },
     "command": "python docs/ops/gemm/tuning/r013/1die/tn/benchmark.py --record docs/ops/gemm/tuning/r013/1die/tn/record.json --output /tmp/r013-1die-tn-single-perf --single-tg-perf"
+  },
+  "simulation_run": {
+    "host_wall_seconds": 8494.061943446752
+  },
+  "validation": {
+    "max_abs": 0.0,
+    "rmse": 0.0,
+    "mismatch": 0,
+    "outside_tolerance": 0,
+    "nonfinite": 0,
+    "elements": 81788928,
+    "canary_ok": true,
+    "atol": 0.001,
+    "rtol": 0.01,
+    "completed_TGs": 2496,
+    "active_CUs": 48,
+    "completedWGs": {
+      "0": 52,
+      "1": 52,
+      "2": 52,
+      "3": 52,
+      "4": 52,
+      "5": 52,
+      "6": 52,
+      "7": 52,
+      "8": 52,
+      "9": 52,
+      "10": 52,
+      "11": 52,
+      "12": 52,
+      "13": 52,
+      "14": 52,
+      "15": 52,
+      "16": 52,
+      "17": 52,
+      "18": 52,
+      "19": 52,
+      "20": 52,
+      "21": 52,
+      "22": 52,
+      "23": 52,
+      "24": 52,
+      "25": 52,
+      "26": 52,
+      "27": 52,
+      "28": 52,
+      "29": 52,
+      "30": 52,
+      "31": 52,
+      "32": 52,
+      "33": 52,
+      "34": 52,
+      "35": 52,
+      "36": 52,
+      "37": 52,
+      "38": 52,
+      "39": 52,
+      "40": 52,
+      "41": 52,
+      "42": 52,
+      "43": 52,
+      "44": 52,
+      "45": 52,
+      "46": 52,
+      "47": 52
+    }
   }
 }
