@@ -39,43 +39,45 @@
 | [R002](#r002)<a name="r002"></a> | linear<br>BF16×BF16→BF16 | `lm_head_decode`<br>`lm_head_prefill` | 64 × 248320 × 2048 | — | prefill/decode | 3 | — | — | [gemm_a16w16][fn-a16]<br>接口 smoke 通过 |
 | [R003](#r003)<a name="r003"></a> | linear<br>BF16×BF16→BF16 | `in_proj_ba` | 2560 × 64 × 2048 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16]<br>接口 smoke 通过 |
 | [R004](#r004)<a name="r004"></a> | linear<br>BF16×BF16→BF16 | `in_proj_ba` | 6656 × 64 × 2048 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16]<br>接口 smoke 通过 |
-| [R005](#r005)<a name="r005"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `o_proj`<br>`out_proj` | 64 × 2048 × 4096 | — | decode | 2 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过<br>[48 TG PMD 最优记录](#p0-fp8-48tg-best-20261110) |
+| [R005](#r005)<a name="r005"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `o_proj`<br>`out_proj` | 64 × 2048 × 4096 | — | decode | 2 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过 |
 | [R006](#r006)<a name="r006"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `qkv_proj` | 64 × 9216 × 2048 | — | decode | 1 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过 |
 | [R007](#r007)<a name="r007"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `in_proj_qkvz` | 64 × 12288 × 2048 | — | decode | 1 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过 |
 | [R008](#r008)<a name="r008"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `o_proj`<br>`out_proj` | 2560 × 2048 × 4096 | — | prefill | 2 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过 |
-| [R009](#r009)<a name="r009"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `qkv_proj` | 2560 × 9216 × 2048 | — | prefill | 1 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过 |
-| [R010](#r010)<a name="r010"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `in_proj_qkvz` | 2560 × 12288 × 2048 | — | prefill | 1 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过 |
+| [R009](#r009)<a name="r009"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `qkv_proj` | 2560 × 9216 × 2048 | — | prefill | 1 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过<br>[单 TG 调优记录](#p0-fp8-48tg-best-20261110) |
+| [R010](#r010)<a name="r010"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `in_proj_qkvz` | 2560 × 12288 × 2048 | — | prefill | 1 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过<br>[单 TG 调优记录](#p0-fp8-48tg-best-20261110) |
 | [R011](#r011)<a name="r011"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `o_proj`<br>`out_proj` | 6656 × 2048 × 4096 | — | prefill | 2 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过 |
-| [R012](#r012)<a name="r012"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `qkv_proj` | 6656 × 9216 × 2048 | — | prefill | 1 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过 |
-| [R013](#r013)<a name="r013"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `in_proj_qkvz` | 6656 × 12288 × 2048 | — | prefill | 1 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过 |
+| [R012](#r012)<a name="r012"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `qkv_proj` | 6656 × 9216 × 2048 | — | prefill | 1 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过<br>[单 TG 调优记录](#p0-fp8-48tg-best-20261110) |
+| [R013](#r013)<a name="r013"></a> | linear<br>FP8E4M3×FP8E4M3→BF16 | `in_proj_qkvz` | 6656 × 12288 × 2048 | — | prefill | 1 | FP32@1×128（动态） | BF16@128×128（Excel） | [gemm_a8w8_blockscale][fn-fp8-aiter]<br>[w8a8_triton_block_scaled_mm][fn-fp8-vllm]<br>接口 smoke 通过<br>[单 TG 调优记录](#p0-fp8-48tg-best-20261110) |
 
 <a name="p0-fp8-48tg-best-20261110"></a>
 
-#### TG 数为 48 倍数的调优实测（2026-11-10）
+#### 完整 tile、48 倍数 TG 的单 TG 调优记录（2026-11-10）
 
-本轮 FP8 完整网格实测中，满足该条件的最佳记录为 **R005：BM24、BN128、BK128，grid=3×16=48 TG**。单 TG 调优和仅由形状推算的 TG 数不作为完整 GEMM 性能记录。
+固定 **BM128×BN256×BK128**，筛选要求为 `M%128=N%256=K%128=0`，且 `(M/128)×(N/256)` 为 48 的倍数。P0 FP8 中匹配的是 R009、R010、R012、R013；R005 的 BM24 方案含行尾 padding，不属于本表。
 
-测试环境为 node60 / `kxu_pmd_8569_fp8_20261017`，gfx946 单 die、48 CU 的 **PMD CoreArch1703 模拟器**，不是 BU 实卡验收结果。周期读取完整 dispatch 的 `system.gcSimCycles`；每个性能 case 发射三次，第一次数值校验通过但不计入热缓存均值。不同 MNK 或单 TG 的周期不能直接用来判断完整算子加速。
+**TG（全/测）** 分别表示完整 MNK 的理论网格 TG 数、此次实际发射 TG 数；**热均周期**取三次发射中后两次的 `system.gcSimCycles` 均值。以下是单 TG、完整 K、原始 N 行跨度的实测，不能当作完整网格耗时或由此估算完整 GEMM 加速。每次仅校验所计算的 128×256 tile（32768 个输出），同时检查保护行和未覆盖列。
 
-| 编号 / 方案 | M×N×K | 逻辑 BM×BN×BK | TG / 活跃 CU | WASP / WDRA | 热缓存 cycles（两次） | 热缓存均值 cycles | 对应产物 |
-| --- | --- | --- | --- | --- | --- | ---: | --- |
-| **R005，当前最佳 48 TG** | 64×2048×4096 | **24×128×128** | **48 / 48** | 开 / 关；每分区 2 waves | 42174、42396 | **42285.0** | [Gluon 源码](tuning/r005_48tg_20261110/kernel.py)、[完整汇编](tuning/r005_48tg_20261110/kernel.amdgcn) |
-| R005，48 TG 大物理 tile 对照 | 64×2048×4096 | 24×128×128；物理计算 64×256 | 48 / 48 | 开 / 开；每分区 4 waves | 51891、53692 | 52791.5 | [校验与性能原始记录](tuning/r005_48tg_20261110/measurements.json) |
-| R005，同编译选项的 8 TG 基线 | 64×2048×4096 | 64×256×128 | 8 / 8 | 开 / 开；每分区 4 waves | 54330、54435 | 54382.5 | [校验与性能原始记录](tuning/r005_48tg_20261110/measurements.json) |
+| 需求 | MNK | TG（全/测） | 热均周期 | 环境 | 实现 | 记录 |
+| --- | --- | ---: | ---: | --- | --- | --- |
+| [R009](#r009) | 2560×9216×2048 | 720 / **1** | **34,819.5** | PMD<br>**1 die / 48 CU** | [源码][p0-fp8-src] / [config][p0-fp8-cfg-9216] | [数据][p0-fp8-data] / [汇编](tuning/fp8_128x256x128_20261110/n9216_k2048.amdgcn) |
+| [R010](#r010) | 2560×12288×2048 | 960 / **1** | **34,024.0** | PMD<br>**1 die / 48 CU** | [源码][p0-fp8-src] / [config][p0-fp8-cfg-12288] | [数据][p0-fp8-data] / [汇编](tuning/fp8_128x256x128_20261110/n12288_k2048.amdgcn) |
+| [R012](#r012) | 6656×9216×2048 | 1872 / **1** | **34,722.0** | PMD<br>**1 die / 48 CU** | [源码][p0-fp8-src] / [config][p0-fp8-cfg-9216] | [数据][p0-fp8-data] / [汇编](tuning/fp8_128x256x128_20261110/n9216_k2048.amdgcn) |
+| [R013](#r013) | 6656×12288×2048 | 2496 / **1** | **34,051.0** | PMD<br>**1 die / 48 CU** | [源码][p0-fp8-src] / [config][p0-fp8-cfg-12288] | [数据][p0-fp8-data] / [汇编](tuning/fp8_128x256x128_20261110/n12288_k2048.amdgcn) |
 
-最佳 48 TG 版本相对同选项 8 TG 基线的周期减少 **22.25%**；相对 48 TG 大物理 tile 对照减少 **19.90%**。这是 block、wave 数、WDRA 与写回路径共同变化的整体结果，不能把收益全部归因于 TG 数量。仅在历史记录间比较，最初 8 TG 调度为 52190 cycles，本轮减少 18.98%；该历史版本未作为上表的同轮基线。
+环境与实现：
 
-实现与验证：
+- 环境为 node60 / `kxu_pmd_8569_fp8_20261017` 的 **PMD CoreArch1703，gfx946，1 die / 48 CU**；48 CU 指模型设备总数，本次单 TG 只使用其中一个 CU，不代表实卡验收或全 CU 吞吐。
+- Triton：`release/3.6.x@d8374cbaca28e5c4e7789fcf130b6701f71be0eb`；GPU IR 编译使用新构建的 Clang：`llvm-project/dtk-llvm-6.3.3@3599a58d7aebe66dc1cec4f830f82cb96e505666`，包含 LDS read pairing 修改。此版未加 R005 实验使用的关闭 hoist pass 选项。
+- 本轮比较原流水与两批 scale 预取；R009/R010 都是原流水更快，因此提交原流水的 release/3.6.x 适配版。表中使用**实际入库 kernel 和 config 重新编译验证**的数据，候选原始采样另见 measurements.json，不跨形状比较周期来宣称加速。
+- WASP 开启、WDRA 开启；2 Producer + 2 Consumer，每分区 4 waves，共 16 waves/TG。动态 LDS 为 **106624 B（104.125 KiB）**，实际分区 VGPR 为 **1/5/234/234**，spill=0；动态 LDS 以启动 metadata 为准。
+- A/B 为 FP8E4M3FN，输出 BF16；A scale FP32@1×128。B scale 使用 BF16 数值，在 CPU 精确提升为 FP32 后上传，kernel 接收 FP32；转换和上传不计入周期，BF16 scale profile 不会匹配这些 config。
+- 四项各三次发射均通过 tile 数值及边界检查：`max_abs=0`、`mismatch=0`、`nonfinite=0`；R009 另有 seed42 三次复验通过。**完整网格性能及完整 MNK 输出校验尚未执行**，不将这些配置标成实卡性能验收通过。
+- Gluon 源码和精确的 M/N/K、gfx946/48cu 配置位于对应代码目录；表中附环境、实测数据和汇编。相同 HSACO 的形状复用同一份汇编，二进制及文件 SHA256 见 [manifest](tuning/fp8_128x256x128_20261110/manifest.json)。汇编仅去除行尾空白，未改指令。
 
-- 使用 Gluon `warp_specialize`：2 Producer + 2 Consumer，`wasp_partition_warps=(2,2,2,2)`，共 8 waves/TG；`wasp_wdra=False`。每个 Consumer 计算 16×128，物理计算 tile 为 32×128。三个 M tile 的逻辑行起点为 0、24、48，分别写回 24、24、16 行；A 加载边界补零，C 显式 mask，处理 padding 与尾块。
-- 启动时分配的动态 LDS 为 **73984 B（72.25 KiB）**，kernel VGPR=**101**，spill=**0**；汇编的固定 LDS 为 0，动态 LDS 用量以 launch metadata 为准。A 的物理 MLS LDS tile 仍为 64×128；保留 A/B 双缓冲，以及循环前两批 scale 预取。
-- A scale 为 FP32；B scale 保留需求中的 BF16 数值，在 **CPU 精确提升到 FP32 后上传**，kernel 接收 FP32。转换和上传不计入上述周期；这不是直接 BF16 B-scale kernel 的计时。BN128 内只有一个 B scale，LDS 中复制为两个相同值以保留原 packed 读取路径。
-- seed21 完整网格三次、seed42 完整网格一次均通过：全部 131072 个 BF16 输出与 CPU 参考完全相同，`max_abs=0`、`mismatch=0`、`nonfinite=0`，前后保护行通过。每次完整网格的 `completedWGs` 都确认 **48 个 CU 各完成一个 TG**；这不表示每个 CU 的执行单元达到满利用率。
-- Triton 使用 `release/3.6.x@d8374cbaca28e5c4e7789fcf130b6701f71be0eb`；GPU IR 编译使用已构建的 `llvm-project/dtk-llvm-6.3.3@3599a58d7aebe66dc1cec4f830f82cb96e505666` Clang，包含 LDS read pairing 修改。编译器源码未改。为绕过新代码触发的 `HCU Hoist deferred global loads` 断言，最终方案和同轮对照均加 `-mllvm=-enable-hcu-hoist-deferred-loads=false`。大物理 tile 对照仍有 PMD `MLS:wrong: nm_filter out range` 告警，其数值 PASS 不代表日志无告警。
-
-最佳汇编和 PERF 对应同一个已经验证的 HSACO，SHA256 为 `da290a5cd2d00b973afdf660c2ae0b765b378f97afe1674b1c583a57ffe5aa44`。汇编仅去除行尾空白，未改指令，并保留生成时的原始符号名；原始及归档文件哈希均在 manifest 中，实际逻辑 block 以本节及 manifest 为准。[PERF 文件](tuning/r005_48tg_20261110/best.perf)来自额外的完整 48 TG 捕获，三次周期为 45929、42456、42316；选择热缓存最低的 **42316 cycles**，精度与边界检查通过。它是 trace 样本，不替代普通性能测试的均值 **42285.0** 或最低样本 **42174**。
-
-[版本、资源与文件 SHA256](tuning/r005_48tg_20261110/manifest.json) · [各次发射、精度和 CU 分布](tuning/r005_48tg_20261110/measurements.json)。这些文件是本次调优证据；需求行的接口 smoke 状态不等同于该实验配置已接入通用 dispatch。
+[p0-fp8-src]: ../../../boltops/gemm/gluon/gemm_a8w8_blockscale.py
+[p0-fp8-cfg-9216]: ../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json
+[p0-fp8-cfg-12288]: ../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json
+[p0-fp8-data]: tuning/fp8_128x256x128_20261110/measurements.json
 
 <a name="model-q35-mxfp4"></a>
 
