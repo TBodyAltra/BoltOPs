@@ -35,7 +35,7 @@
 
 | 编号 | 算子 / 精度 | 层 / 算子名 | M × N × K | batch / E | 阶段 | 来源数 | A scale | B scale | 接口参考 / 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [R001](#r001)<a name="r001"></a> | linear<br>BF16×BF16→BF16 | `in_proj_ba` | 64 × 64 × 2048 | — | decode | 1 | — | — | [gemm_a16w16][fn-a16]<br>接口 smoke 通过 |
+| [R001](#r001)<a name="r001"></a> | linear<br>BF16×BF16→BF16 | `in_proj_ba` | 64 × 64 × 2048 | — | decode | 1 | — | — | [gemm_a16w16](../../../boltops/gemm/triton/gemm_a16w16.py#L33)<br>接口 smoke 通过<br>TN PMD：ASM参考 **5.75962 μs**；Gluon **5.82150 μs**（各24次中位数）<br>`16×16×128` / 1 wave / LDS64KiB；node60 gfx946<br>Triton `d8374cba` / Clang `3599a58d7`<br>[Gluon kernel](../../../boltops/gemm/gluon/gemm_a16w16_r001.py) · [config](../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json)<br>[性能与环境](tuning/r001_best_20261110/README.md) · [Gluon汇编](tuning/r001_best_20261110/gluon.amdgcn) · [ASM参考汇编](tuning/r001_best_20261110/kernel.amdgcn) |
 | [R002](#r002)<a name="r002"></a> | linear<br>BF16×BF16→BF16 | `lm_head_decode`<br>`lm_head_prefill` | 64 × 248320 × 2048 | — | prefill/decode | 3 | — | — | [gemm_a16w16][fn-a16]<br>接口 smoke 通过 |
 | [R003](#r003)<a name="r003"></a> | linear<br>BF16×BF16→BF16 | `in_proj_ba` | 2560 × 64 × 2048 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16]<br>接口 smoke 通过 |
 | [R004](#r004)<a name="r004"></a> | linear<br>BF16×BF16→BF16 | `in_proj_ba` | 6656 × 64 × 2048 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16]<br>接口 smoke 通过 |
