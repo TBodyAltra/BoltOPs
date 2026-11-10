@@ -26,12 +26,31 @@ try:
  counters=torch.zeros(tiles,dtype=torch.int32,device='cuda') if fused else None
  sentinel=torch.full((m,n),float('nan'),dtype=torch.bfloat16);p_sentinel=torch.full((ks,m,n),float('nan'),dtype=torch.float32) if fused else None
  if fused:assert cfg['num_warps']==1
- fn=module('kernel_impl',j['source']).r001_bf16_tn
- args=(a,b,c);grid=tiles
- compile_cfg=j.get('launch_options') or {key:value for key,value in cfg.items() if key not in ['NUM_KSPLIT','BLOCK_SIZE_M','BLOCK_SIZE_N','BLOCK_SIZE_K','SPLITK_BLOCK_SIZE','GROUP_SIZE_M','WARP_SPECIALIZE','USE_MLS','LOOP_UNROLL_FACTOR']}
+ sys.path.insert(0,str(R.parents[4]))
+ import importlib
+ kernels=importlib.import_module('boltops.gemm.gluon.gemm_a16w16')
+ public=importlib.import_module('boltops.gemm.gemm_a16w16')
+ fn=getattr(kernels,j['kernel'])
+ args=(a,b.T,c);grid=tiles
+ compile_cfg=dict(j['launch_options'],M=m,N=n,K=k)
 
  handle=fn.warmup(*args,grid=(grid,),**compile_cfg)
  handle._init_handles()
+ class ObserveLaunch:
+  def __getitem__(self,dispatch_grid):
+   real=fn[dispatch_grid]
+   def invoke(*launch_args,**launch_options):
+    launched=real(*launch_args,**launch_options)
+    assert launched is handle,'public API selected a different compiled kernel/config'
+    out['verified_public_launch']=True
+    return launched
+   return invoke
+ setattr(kernels,j['kernel'],ObserveLaunch())
+ def launch_public():
+  out['verified_public_launch']=False
+  result=public.gemm_a16w16(a,b.T,out=c,backend=j['backend'])
+  assert result is c and out.get('verified_public_launch'),'public API did not launch selected Gluon kernel'
+  return handle
  for ext in ['ttgir','llir','amdgcn']:Path('kernel.'+ext).write_text(handle.asm[ext])
  blob=handle.asm['hsaco'];Path('kernel.hsaco').write_bytes(blob if isinstance(blob,bytes) else Path(blob).read_bytes())
  asm=handle.asm['amdgcn']
@@ -66,10 +85,10 @@ try:
   if i==1:ac=torch.ones((m,k),dtype=torch.bfloat16);bc=torch.ones((k,n),dtype=torch.bfloat16)
   a.copy_(ac);b.copy_(bc);c.copy_(sentinel)
   if fused:partial.copy_(p_sentinel) # Counters initialized once, never reset by host during reuse validation.
-  gold=(ac.float()@bc.float()).bfloat16().float();launched=fn[(grid,)](*args,**compile_cfg);assert launched is handle,'dispatch used another handle';assert hashlib.sha256(launched.kernel).hexdigest()==out['kernel_sha256'],'loaded binary changed';out['verified_dispatch_handle']=True;torch.cuda.synchronize()
+  gold=(ac.float()@bc.float()).bfloat16().float();launched=launch_public();assert launched is handle,'dispatch used another handle';assert hashlib.sha256(launched.kernel).hexdigest()==out['kernel_sha256'],'loaded binary changed';out['verified_dispatch_handle']=True;torch.cuda.synchronize()
   out['validation'].append(dict(input_seed=j['seed']+1000*i,accuracy=check(gold),stats=stats()));save()
  for rep in range(j.get("repeats",3)):
-  launched=fn[(grid,)](*args,**compile_cfg);assert launched is handle,'dispatch used another handle';assert hashlib.sha256(launched.kernel).hexdigest()==out['kernel_sha256'],'loaded binary changed';out['verified_dispatch_handle']=True;torch.cuda.synchronize();out['benchmarks'].append(dict(repeat=rep,accuracy=check(gold),stats=stats()));save()
+  launched=launch_public();assert launched is handle,'dispatch used another handle';assert hashlib.sha256(launched.kernel).hexdigest()==out['kernel_sha256'],'loaded binary changed';out['verified_dispatch_handle']=True;torch.cuda.synchronize();out['benchmarks'].append(dict(repeat=rep,accuracy=check(gold),stats=stats()));save()
  out.update(status='PASS',phase='complete')
 except BaseException:out.update(status='ERROR',error=traceback.format_exc());traceback.print_exc()
 finally:save();print(json.dumps(out,default=str),flush=True)

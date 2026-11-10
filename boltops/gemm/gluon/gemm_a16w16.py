@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Fixed R001 BF16 TN GEMM with explicit two-bank LDS scheduling.
 
-A[64,2048], physical W[64,2048], B=W.T, C[64,64]. One wave per TG,
+A[64,2048], physical weights B[64,2048], C[64,64].
+B is read as logical B.T using strides (1,2048); no input copy is needed. One wave per TG,
 16 output TGs, 4 BK128 chunks per bank. No assembly rewriting or Split-K.
 """
 from triton.experimental import gluon as g
@@ -30,13 +31,18 @@ def _read(sa, sb, F: gl.constexpr):
 
 
 @g.jit
-def r001_bf16_tn(
+def _gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel(
     A, B, C,
+    M: gl.constexpr,
+    N: gl.constexpr,
+    K: gl.constexpr,
     BLOCK_SIZE_M: gl.constexpr = 16,
     BLOCK_SIZE_N: gl.constexpr = 16,
     BLOCK_SIZE_K: gl.constexpr = 128,
     LOOP_UNROLL_FACTOR: gl.constexpr = 4,
 ):
+    gl.static_assert(M == 64 and N == 64 and K == 2048,
+                     "this pipeline requires MNK=(64,64,2048)")
     gl.static_assert(BLOCK_SIZE_M == 16 and BLOCK_SIZE_N == 16)
     gl.static_assert(BLOCK_SIZE_K == 128 and LOOP_UNROLL_FACTOR == 4)
     gl.static_assert(A.dtype.element_ty == gl.bfloat16)

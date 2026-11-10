@@ -1,6 +1,6 @@
 # R001 BF16 TN 最佳 PMD 记录（2026-11-10）
 
-完整 GEMM **64×64×2048**，BF16×BF16→BF16、FP32 累加、无 scale。[需求 R001](../../SHAOBO_BU_REQUIREMENTS.md#r001)。本记录保存当前最快的 **64 KiB 显式双缓冲汇编实验版**，未将该特例接入通用 `gemm_a16w16` dispatch。
+完整 GEMM **64×64×2048**，BF16×BF16→BF16、FP32 累加、无 scale。[需求 R001](../../SHAOBO_BU_REQUIREMENTS.md#r001)。本记录保存当前最快的 **64 KiB 显式双缓冲汇编实验版**，ASM参考保持独立；纯Gluon版本已按下节接入公共 `gemm_a16w16` 分派。
 
 ## 配置与性能
 
@@ -13,32 +13,30 @@
 
 无 Split-K；4×4输出网格共16TG，每TG一个wave，完整K=2048。A `[64,2048]` stride `(2048,1)`；物理W `[64,2048]` 连续，B=W.T stride `(1,2048)`；C stride `(64,1)`。TN沿用本任务约定：A沿K连续称T，B沿K连续称N。
 
-## Gluon kernel 与 config
+## Gluon 公共接口与 config
 
-新增[纯Gluon kernel](../../../../../boltops/gemm/gluon/gemm_a16w16_r001.py)和[专用config](../../../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json)。源码直接分配两组LDS、调用MLS/DS read/MMAC，当前MMAC组末尾的`sched_barrier(0)`防止下一批VMEM等待被调度到当前MMAC中间；使用buffer store输出。不需要重新汇编或修改已编译二进制。
+[公共入口](../../../../../boltops/gemm/gemm_a16w16.py)按现有GEMM组织形式选择backend；[Gluon模块](../../../../../boltops/gemm/gluon/gemm_a16w16.py)只提供device kernels，专用[config](../../../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json)用精度profile `DTYPE=bfloat16-OUT=bfloat16`、`M_EQ_64`及`kernel`字段选择实现。device kernel接收统一的M/N/K及tile参数，物理权重接口仍为W[N,K]，在MLS读取中按逻辑W.T解释；不要求调用方绕过公共入口或转置/复制存储。
+
+```python
+from boltops.gemm import gemm_a16w16
+
+# A、W均为contiguous BF16 [64,2048]。
+C = gemm_a16w16(A, W, backend="gluon")
+# backend="auto" 在精度、布局、MNK、设备/CU和记录config匹配时选Gluon。
+```
+
+Auto无显式config时只选精确匹配的记录，其余走Triton；既有显式config沿用Triton默认路径。显式Gluon不跨backend重试，未提供精度/形状配置或不支持的布局、bias、activation明确报错。显式Gluon config由公共入口复制后读取`kernel`，不修改调用方字典；网格和kernel选择均来自config。
 
 | 实现 | 完整dispatch中位数（24次） | shader中位数 | LDS / VGPR / SGPR | 对应汇编 |
 | --- | --- | --- | --- | --- |
 | 原手工ASM参考（当前最快） | **5.75962 μs** | 2.14760 μs | 64KiB / 133 / 91 | [kernel.amdgcn](kernel.amdgcn) |
-| **纯Gluon** | **5.82150 μs** | 2.20948 μs | 64KiB / 133 / 81 | [gluon.amdgcn](gluon.amdgcn) |
+| **公共接口 Gluon** | **5.81126 μs** | 2.19924 μs | 64KiB / 133 / 81 | [gluon.amdgcn](gluon.amdgcn) |
 
-Gluon均值5.81170 μs，范围5.70297–5.92183 μs，较ASM参考约慢1.07%；不把ASM的5.75962 μs标为Gluon实测。最终源码及JSON config匹配采集时SHA256，三个种子同样零容差外mismatch、零nonfinite，哨兵和16TG通过、spill=0。细节见[逐次记录](gluon_measurements.json)。
+公共接口复测使用seed23/59的auto分派及seed43的显式Gluon；每次通过观察实际JIT launch确认所选kernel/config与预编译句柄一致，返回用户提供的out。均值5.80756 μs，范围5.69796–5.93138 μs；预分配out，计时为GPU dispatch，不含Python配置查找和分配。零容差外mismatch、零nonfinite，哨兵和16TG检查通过、spill=0；[原始逐次数据](gluon_measurements.json)。
 
-该入口固定支持R001的BF16、完整TN布局；不提供其他形状的默认配置，dtype和tile在JIT时校验。通用`gemm_a16w16`的自动dispatch未更改。已配置环境中可直接调用：
+[24项接口测试](dispatch_validation.json)通过，包括auto精度/形状/双操作数布局分派、显式kernel/config选择、输入config不变、unsupported无重试、输出对象复用及公共API的auto/explicit正确性。三个种子、24暖态样本和额外PERF均从公共入口执行，没有ASM/二进制改写。
 
-```python
-from boltops.gemm.config import get_gemm_config
-from boltops.gemm.gluon.gemm_a16w16_r001 import r001_bf16_tn
-
-# A、W均为contiguous BF16 [64,2048]，C为contiguous BF16 [64,64]。
-config, _ = get_gemm_config(
-    "GEMM-A16W16", 64, 64, 2048, backend="gluon",
-    arch="gfx946", cu_num=48, layout="TN",
-)
-r001_bf16_tn[(16,)](A, W.T, C, **config)
-```
-
-[gluon.perf](gluon.perf)和[对应stats（gzip）](gluon.stats.txt.gz)来自额外seed59捕获：完整dispatch **5.709340 μs / 12548 cycles**，shader **2.097095 μs / 4609 cycles**。ISA、机器码和descriptor与最终复测一致，16CU各一个TG；单次采集不替代24次统计。使用下方同一环境，可将重放命令改为`python3 "$record_dir/gluon_replay.py" "$record_dir/gluon_job.json"`，直接编译Gluon源码和已记录config，不走ASM改写。
+[gluon.perf](gluon.perf)和[对应stats](gluon.stats.txt.gz)来自额外seed59公共auto调用：完整dispatch **5.725265 μs / 12583 cycles**，shader **2.113020 μs / 4644 cycles**。与最终复测的ISA、机器码和descriptor一致，16CU各一个TG；单次采集不替代24次统计。沿用下方环境，将命令改为`python3 "$record_dir/gluon_replay.py" "$record_dir/gluon_job.json"`可重放公共入口。
 
 ## ASM参考实现与汇编
 

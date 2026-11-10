@@ -5,7 +5,7 @@
     2048
   ],
   "mode": "direct",
-  "source": "../../../../../boltops/gemm/gluon/gemm_a16w16_r001.py",
+  "source": "../../../../../boltops/gemm/gluon/gemm_a16w16.py",
   "config": {
     "GROUP_SIZE_M": 1,
     "num_stages": 2,
@@ -22,7 +22,7 @@
     "SPLITK_BLOCK_SIZE": 2048,
     "num_warps": 1
   },
-  "name": "r001-gluon-replay",
+  "name": "r001-public-gluon-replay",
   "seed": 59,
   "repeats": 9,
   "launch_options": {
@@ -35,5 +35,7 @@
     "enable_v_mmac_cluster": 2,
     "hcu_use_gfx946_sched_model_v2": true,
     "mmac_layout_force": 2
-  }
+  },
+  "kernel": "_gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel",
+  "backend": "gluon"
 }
