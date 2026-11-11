@@ -48,9 +48,11 @@ def gemm_a16w16(
             identity. Explicit MLS/WDRA configurations do not support activation.
         backend (str | None): "auto", "triton", "gluon" or "tilelang"; None means
             "auto".
-            Explicit selection never retries another backend. Currently only Triton
-            is implemented for this operation; unimplemented backends raise
-            NotImplementedError for nonempty computation.
+            Auto selects recorded Gluon only for matching BF16 TN R001 inputs on
+            gfx946 with a tuned CU-specific config and no explicit config; otherwise
+            Triton. Explicit selection never retries another backend. Gluon currently
+            requires MNK=(64,64,2048), contiguous x/w, BF16 output, no bias or activation.
+            TileLang is not implemented for nonempty computation.
 
     Returns:
         torch.Tensor: Contiguous [M,N] result in dtype.
@@ -126,7 +128,32 @@ def gemm_a16w16(
                 )
             return out
         device = get_device_info(a.device)
-        backend = "triton" if backend == "auto" else backend
+        gluon_inputs_supported = (
+            device.arch == "gfx946"
+            and bias is None
+            and activation is None
+            and a.stride() == (k, 1)
+            and b.stride() == (k, 1)
+        )
+        gluon_profile = (
+            f"DTYPE={str(a.dtype).removeprefix('torch.')}-"
+            f"OUT={str(out_dtype).removeprefix('torch.')}"
+        )
+        gluon_config = None
+        if backend == "auto":
+            backend = "triton"
+            # Existing explicit Triton configs keep their established backend.
+            if user_config is None and gluon_inputs_supported:
+                try:
+                    gluon_config, tuned = get_gemm_config(
+                        "GEMM-A16W16", m, n, k, backend="gluon", layout="TN",
+                        profile=gluon_profile, arch=device.arch, cu_num=device.cu_count,
+                    )
+                except (FileNotFoundError, KeyError):
+                    pass
+                else:
+                    if tuned:
+                        backend = "gluon"
         if backend == "triton":
             if user_config is not None:
                 from copy import deepcopy
@@ -276,7 +303,44 @@ def gemm_a16w16(
                     )
                 return out
         elif backend == "gluon":
-            raise NotImplementedError("gemm_a16w16: no Gluon kernel is implemented")
+            if not gluon_inputs_supported:
+                raise NotImplementedError(
+                    "gemm_a16w16: no Gluon kernel for the requested layout, bias or "
+                    "activation; requires gfx946 K-contiguous x/w without bias or activation"
+                )
+            if user_config is not None:
+                from copy import deepcopy
+
+                config = deepcopy(user_config)
+            elif gluon_config is not None:
+                config = gluon_config
+            else:
+                try:
+                    config, _ = get_gemm_config(
+                        "GEMM-A16W16", m, n, k, backend="gluon", layout="TN",
+                        profile=gluon_profile, arch=device.arch, cu_num=device.cu_count,
+                    )
+                except (FileNotFoundError, KeyError):
+                    raise NotImplementedError(
+                        "gemm_a16w16: no Gluon configuration for this precision, shape and device"
+                    ) from None
+            import triton
+            from .gluon import gemm_a16w16 as kernels
+
+            selector = config.pop("kernel", None)
+            if not isinstance(selector, str) or not hasattr(kernels, selector):
+                raise ValueError("Gluon config requires a valid kernel selector")
+            kernel = getattr(kernels, selector)
+            config = {
+                key: tuple(value) if isinstance(value, list) else value
+                for key, value in config.items()
+            }
+            grid = lambda meta: (
+                triton.cdiv(m, meta["BLOCK_SIZE_M"])
+                * triton.cdiv(n, meta["BLOCK_SIZE_N"]),
+            )
+            kernel[grid](a, b, out, M=m, N=n, K=k, **config)
+            return out
         elif backend == "tilelang":
             raise NotImplementedError("gemm_a16w16: no TileLang kernel is implemented")
     return out
