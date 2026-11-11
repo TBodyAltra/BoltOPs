@@ -329,3 +329,25 @@ def test_invalid_profile_buckets(trees, bad):
     write(trees / "gfx946/triton/gemm_a16w16/DEFAULT.json", bad)
     with pytest.raises(ValueError):
         config.get_gemm_config("GEMM-A16W16", 8, arch="gfx946", profile="recipe")
+
+
+def test_p0_fp8_full_tiles_have_48_multiple_grids():
+    profile = (
+        "DTYPE=float8_e4m3fn-AS=float32-BS=float32-OUT=bfloat16-"
+        "RECIPE_A=1x128-RECIPE_B=128x128"
+    )
+    kwargs = dict(arch="gfx946", cu_num=48, backend="gluon", profile=profile)
+    for m, n, expected_tgs in [(2560, 9216, 720), (2560, 12288, 960),
+                               (6656, 9216, 1872), (6656, 12288, 2496)]:
+        params, tuned = config.get_gemm_config("GEMM-A8W8_BLOCKSCALE", m, n, 2048, **kwargs)
+        bm, bn, bk = (params["BLOCK_SIZE_" + d] for d in "MNK")
+        assert tuned and (bm, bn, bk) == (128, 256, 128)
+        assert m % bm == n % bn == 2048 % bk == 0
+        assert (m // bm) * (n // bn) == expected_tgs
+        assert expected_tgs % 48 == 0
+    for m, n in [(64, 9216), (128, 9216), (640, 12288)]:
+        _, tuned = config.get_gemm_config("GEMM-A8W8_BLOCKSCALE", m, n, 2048, **kwargs)
+        assert not tuned
+    kwargs["profile"] = profile.replace("BS=float32", "BS=bfloat16")
+    with pytest.raises(KeyError):
+        config.get_gemm_config("GEMM-A8W8_BLOCKSCALE", 2560, 9216, 2048, **kwargs)
