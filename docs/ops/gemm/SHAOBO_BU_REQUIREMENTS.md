@@ -373,10 +373,10 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r011/1die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r011/1die/tn/record.json">250.435 / 445.90</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/64dbaea9fad7a4f510cb02d6eba78bfed8865b5c/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/bb60e65d027f85d2f6aa2e6e85ef4576e68ee31b/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json">config</a> / <a href="tuning/r011/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r011/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r011/1die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r011/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
