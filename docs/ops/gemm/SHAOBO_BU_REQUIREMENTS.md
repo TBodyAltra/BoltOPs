@@ -46,31 +46,35 @@
       <th rowspan="4">A scale</th>
       <th rowspan="4">B scale</th>
       <th rowspan="4">公开接口</th>
-      <th colspan="12">性能</th>
+      <th colspan="16">性能</th>
     </tr>
     <tr>
-      <th colspan="6">1 DIE</th>
-      <th colspan="6">2 DIE</th>
+      <th colspan="8">1 DIE</th>
+      <th colspan="8">2 DIE</th>
     </tr>
     <tr>
-      <th colspan="3">TT</th>
-      <th colspan="3">TN</th>
-      <th colspan="3">TT</th>
-      <th colspan="3">TN</th>
+      <th colspan="4">TT</th>
+      <th colspan="4">TN</th>
+      <th colspan="4">TT</th>
+      <th colspan="4">TN</th>
     </tr>
     <tr>
       <th>测试环境</th>
-      <th>性能（μs）</th>
+      <th>Kernel（μs / TOPS）</th>
       <th>产物</th>
+      <th>单 TG PERF</th>
       <th>测试环境</th>
-      <th>性能（μs）</th>
+      <th>Kernel（μs / TOPS）</th>
       <th>产物</th>
+      <th>单 TG PERF</th>
       <th>测试环境</th>
-      <th>性能（μs）</th>
+      <th>Kernel（μs / TOPS）</th>
       <th>产物</th>
+      <th>单 TG PERF</th>
       <th>测试环境</th>
-      <th>性能（μs）</th>
+      <th>Kernel（μs / TOPS）</th>
       <th>产物</th>
+      <th>单 TG PERF</th>
     </tr>
   </thead>
   <tbody>
@@ -88,9 +92,13 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>2.197802 GHz<br><a href="tuning/r001/1die/tn/environment.json">flags / env</a></td>
-      <td><a href="tuning/r001/1die/tn/result.json">接口：1,023,208.4（PMD wall）<br>Kernel：2.194</a></td>
-      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json">config</a> / <a href="tuning/r001/1die/tn/kernel.amdgcn">汇编</a><br><a href="../../../scripts/perf/bench_a16w16_pmd.py">测试代码</a> / <a href="tuning/r001/1die/tn/benchmark.json">运行配置</a> / <a href="tuning/r001/1die/tn/kernel.perf">perf</a></td>
+      <td>—</td>
+      <td>2.197802 GHz<br><a href="tuning/r001/1die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r001/1die/tn/record.json">5.81399 μs<br>2.886 TOPS</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/408cf70489a34b217ce9a12dae6177ffac9b3d46/boltops/gemm/gluon/gemm_a16w16.py#L34">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/408cf70489a34b217ce9a12dae6177ffac9b3d46/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json">config</a> / <a href="tuning/r001/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r001/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r001/1die/tn/record.json">运行配置</a></td>
+      <td><a href="tuning/r001/1die/tn/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -109,6 +117,10 @@
       <td>—</td>
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -145,6 +157,10 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
     </tr>
     <tr>
       <td><a href="#r004">R004</a><a name="r004"></a></td>
@@ -157,6 +173,10 @@
       <td>—</td>
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -193,6 +213,10 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
     </tr>
     <tr>
       <td><a href="#r006">R006</a><a name="r006"></a></td>
@@ -205,6 +229,10 @@
       <td>FP32@1×128（动态）</td>
       <td>BF16@128×128（Excel）</td>
       <td><a href="../../../boltops/gemm/gemm_a8w8_blockscale.py">gemm_a8w8_blockscale</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -241,6 +269,10 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
     </tr>
     <tr>
       <td><a href="#r008">R008</a><a name="r008"></a></td>
@@ -253,6 +285,10 @@
       <td>FP32@1×128（动态）</td>
       <td>BF16@128×128（Excel）</td>
       <td><a href="../../../boltops/gemm/gemm_a8w8_blockscale.py">gemm_a8w8_blockscale</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -289,6 +325,10 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
     </tr>
     <tr>
       <td><a href="#r010">R010</a><a name="r010"></a></td>
@@ -301,6 +341,10 @@
       <td>FP32@1×128（动态）</td>
       <td>BF16@128×128（Excel）</td>
       <td><a href="../../../boltops/gemm/gemm_a8w8_blockscale.py">gemm_a8w8_blockscale</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -337,6 +381,10 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
     </tr>
     <tr>
       <td><a href="#r012">R012</a><a name="r012"></a></td>
@@ -361,6 +409,10 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
     </tr>
     <tr>
       <td><a href="#r013">R013</a><a name="r013"></a></td>
@@ -373,6 +425,10 @@
       <td>FP32@1×128（动态）</td>
       <td>BF16@128×128（Excel）</td>
       <td><a href="../../../boltops/gemm/gemm_a8w8_blockscale.py">gemm_a8w8_blockscale</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
       <td>—</td>
       <td>—</td>
       <td>—</td>

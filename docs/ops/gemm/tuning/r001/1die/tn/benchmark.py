@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: MIT
 """Validate and measure a complete BF16 GEMM through the public API on PMD."""
 import argparse
 import configparser
@@ -9,9 +11,8 @@ from pathlib import Path
 import re
 import statistics
 import sys
-import time
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = next(p for p in Path(__file__).resolve().parents if (p / 'boltops/gemm/config.py').is_file())
 
 
 def digest(path):
@@ -20,20 +21,32 @@ def digest(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--case', type=Path, required=True)
-    parser.add_argument('--environment', type=Path, required=True)
+    parser.add_argument('--record', type=Path, required=True)
+    parser.add_argument('--single-tg-perf', action='store_true')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    case = json.loads(args.case.read_text())
-    environment_path = args.environment.resolve()
-    environment = json.loads(environment_path.read_text())
-    for key, value in environment['environment_variables'].items():
-        if value is None:
-            os.environ.pop(key, None)
-        else:
-            os.environ[key] = value
+    record_path = args.record.resolve()
+    record = json.loads(record_path.read_text())
+    environment = record['environment']
+    case = dict(shape=record['shape'], dies=environment['dies'], layout=record['layout'],
+                seed=record['benchmark']['seed'], repeats=record['benchmark']['repeats'],
+                requirement=record['requirement'], config=record['config']['path'])
+    if args.single_tg_perf:
+        case['repeats'] = 3
+    marker = 'BOLTOPS_R001_REPLAY_RECORD'
+    if os.environ.get(marker) != str(record_path):
+        replay_env = dict(os.environ)
+        for key, value in environment['environment_variables'].items():
+            if value is None:
+                replay_env.pop(key, None)
+            else:
+                replay_env[key] = value
+        if args.single_tg_perf:
+            replay_env.update(record['single_tg_perf']['environment_overrides'])
+        replay_env[marker] = str(record_path)
+        os.execve(sys.executable, [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]], replay_env)
     output = args.output.resolve()
-    output.mkdir(parents=True, exist_ok=True)
+    output.mkdir(parents=True, exist_ok=False)
     os.chdir(output)
     os.environ['TRITON_CACHE_DIR'] = str(output / 'cache')
     os.environ['TRITON_HOME'] = str(output / 'triton-home')
@@ -60,7 +73,7 @@ def main():
     handle = fn.warmup(a, w, c, M=m, N=n, K=k, grid=(grid,), **options)
     handle._init_handles()
     assert handle.n_spills == 0
-    (output / 'kernel.amdgcn').write_text(handle.asm['amdgcn'])
+    (output / 'kernel.amdgcn').write_text('\n'.join(l.rstrip() for l in handle.asm['amdgcn'].splitlines()) + '\n')
     launched = []
 
     class ObserveLaunch:
@@ -82,30 +95,42 @@ def main():
         text = path.read_text()
         values = dict(re.findall(r'^(system\.(?:gcSimCycles|shaders\.firstWaveStartTick|shaders\.lastWaveEndTick))\s+([\d.eE+-]+)', text, re.M))
         completed = sum(map(int, re.findall(r'^system\.shaders\.CUs\d+\.completedWGs\s+(\d+)', text, re.M)))
-        assert completed == grid, (completed, grid)
+        assert completed == (1 if args.single_tg_perf else grid), (completed, grid)
         model = configparser.RawConfigParser(strict=False)
         model.read('m5out/config.ini')
         period = int(model.get('system.shaders.clk_domain', 'clock'))
         assert period == environment['clock_period_ps']['shader']
         cycles = float(values['system.gcSimCycles'])
-        return {'dispatch_cycles': cycles, 'dispatch_us': cycles*period/1e6,
-                'kernel_us': (float(values['system.shaders.lastWaveEndTick']) - float(values['system.shaders.firstWaveStartTick']))/1e6,
+        return {'dispatch_cycles': cycles, 'kernel_us': cycles*period/1e6,
+                'wave_interval_us': (float(values['system.shaders.lastWaveEndTick']) - float(values['system.shaders.firstWaveStartTick']))/1e6,
                 'completed_TGs': completed, 'stats_path': str(path)}
 
     def launch():
         before = len(launched)
         torch.cuda.synchronize()
-        start = time.perf_counter_ns()
-        result = public.gemm_a16w16(a, w, out=c, backend=case.get('backend', 'auto'))
+        if args.single_tg_perf:
+            result = fn[(1,)](a, w, c, M=m, N=n, K=k, **options)
+            assert result is handle
+        else:
+            result = public.gemm_a16w16(a, w, out=c, backend='auto')
+            assert result is c and len(launched) == before + 1
         torch.cuda.synchronize()
-        wall_us = (time.perf_counter_ns() - start)/1000
-        assert result is c and len(launched) == before + 1
-        record = stats()
-        record['api_end_to_end_us'] = wall_us
-        return record
+        sample = stats()
+        if args.single_tg_perf:
+            directory = Path(sample['stats_path']).parent
+            files = [p for p in directory.glob('*.perf') if re.match(r'^\d+_', p.name)]
+            assert len(files) == 1, files
+            sample['perf_path'] = str(files[0])
+        return sample
 
     def check(golden):
         actual = c.cpu().float()
+        if args.single_tg_perf:
+            untouched = actual.clone()
+            untouched[:16, :16] = float('nan')
+            assert bool(torch.isnan(untouched).all()), 'writes outside selected tile'
+            actual = actual[:16, :16]
+            golden = golden[:16, :16]
         diff = (actual - golden).abs()
         bad = (~torch.isfinite(actual)) | (diff > .001 + .01*golden.abs())
         assert bool((storage[:256].cpu() == 123).all())
@@ -139,18 +164,17 @@ def main():
         samples.append(sample)
     warm = samples[1:]
     assert warm, 'need at least two repeats'
-    result = {'requirement': case['requirement'], 'record_key': {'requirement': case['requirement'], 'dies': 1, 'layout': 'TN'},
-              'shape': case['shape'], 'full_grid_TGs': grid, 'status': 'PASS',
-              'performance': {name: statistics.median(s[name] for s in warm) for name in ('api_end_to_end_us', 'kernel_us', 'dispatch_us', 'dispatch_cycles')},
-              'time_domains': {'api_end_to_end_us': 'host wall time through public API including PMD simulation; warmed JIT, preallocated output',
-                              'kernel_us': 'PMD first wave start to last wave end', 'dispatch_us': 'PMD full dispatch gcSimCycles'},
-              'source': {'path': 'boltops/gemm/gluon/gemm_a16w16.py', 'sha256': digest(REPO/'boltops/gemm/gluon/gemm_a16w16.py'), 'symbol': symbol},
-              'config': {'path': case['config'], 'sha256': digest(config_path)},
-              'assembly': {'path': 'kernel.amdgcn', 'sha256': digest('kernel.amdgcn')},
-              'environment': {'path': str(environment_path), 'sha256': digest(environment_path)},
-              'benchmark': {'path': 'scripts/perf/bench_a16w16_pmd.py', 'sha256': digest(__file__)},
-              'resources': {'LDS_bytes': handle.metadata.shared, 'VGPR': handle.n_regs, 'spill': handle.n_spills},
-              'validation': validation, 'samples': samples, 'warm_samples': len(warm)}
+    performance = dict(kernel_us=statistics.median(s['kernel_us'] for s in warm),
+                       kernel_cycles=statistics.median(s['dispatch_cycles'] for s in warm))
+    performance['kernel_tops'] = 2*m*n*k/(performance['kernel_us']*1e6) if not args.single_tg_perf else None
+    result = dict(requirement=case['requirement'], status='PASS', single_tg=args.single_tg_perf,
+                  performance=performance, validation=validation, samples=samples,
+                  assembly_sha256=digest('kernel.amdgcn'), benchmark_sha256=digest(__file__))
+    if args.single_tg_perf:
+        best = min(samples[1:], key=lambda s: s['dispatch_cycles'])
+        import shutil
+        shutil.copyfile(best['perf_path'], 'single_tg.perf')
+        result['selected'] = dict(best, sha256=digest('single_tg.perf'))
     Path('result.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps({'status': result['status'], 'performance': result['performance']}), flush=True)
 
