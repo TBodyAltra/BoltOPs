@@ -146,6 +146,8 @@ def main():
     kernel.run = checked_run
     report = dict(
         record=str(record_path), status="RUNNING", shape=[m, n, k], measured_grid=list(grid),
+        operand_strides={name: list(tensor.stride())
+                         for name, tensor in zip(("x", "w", "x_scale", "w_scale"), operands)},
         kernel_sha256=digest, source_sha256=hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest(),
         benchmark_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         triton=triton.__version__, metadata=handle.metadata._asdict(), launches=launches,
