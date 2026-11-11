@@ -93,9 +93,9 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>2.197802 GHz<br><a href="tuning/r001/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r001/1die/tn/record.json">5.81399 μs<br>2.886 TOPS</a></td>
-      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/408cf70489a34b217ce9a12dae6177ffac9b3d46/boltops/gemm/gluon/gemm_a16w16.py#L34">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/408cf70489a34b217ce9a12dae6177ffac9b3d46/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json">config</a> / <a href="tuning/r001/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r001/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r001/1die/tn/record.json">运行配置</a></td>
+      <td><a href="tuning/r001/1die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r001/1die/tn/record.json">5.814 / 2.89</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/408cf70489a34b217ce9a12dae6177ffac9b3d46/boltops/gemm/gluon/gemm_a16w16.py#L34">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/408cf70489a34b217ce9a12dae6177ffac9b3d46/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json">config</a> / <a href="tuning/r001/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r001/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r001/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r001/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
