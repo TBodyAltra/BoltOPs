@@ -30,6 +30,10 @@ from triton.experimental.gluon.language.amd.hcu import (
 )
 
 
+from .gemm_a8w8_blockscale_persistent import (
+    _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel,
+)
+
 @g.jit
 def _initialize_pipeline_barriers(wave):
     if wave == 0:
@@ -391,4 +395,3 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
         [4, 4, 4, 4],
         [8, 8, 240, 240],
     )
-

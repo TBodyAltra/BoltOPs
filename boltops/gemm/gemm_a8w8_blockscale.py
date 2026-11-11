@@ -197,7 +197,7 @@ def gemm_a8w8_blockscale(
                 key: tuple(value) if isinstance(value, list) else value
                 for key, value in config.items()
             }
-            grid = lambda meta: (
+            grid = lambda meta: (meta["NUM_SMS"],) if "NUM_SMS" in meta else (
                 triton.cdiv(m, meta["BLOCK_SIZE_M"]),
                 triton.cdiv(n, meta["BLOCK_SIZE_N"]),
             )
