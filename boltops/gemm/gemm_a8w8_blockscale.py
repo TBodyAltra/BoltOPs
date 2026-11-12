@@ -71,7 +71,10 @@ def gemm_a8w8_blockscale(
         Scale values are numeric, not encoded
         E8M0. The current tuned Gluon recipe requires contiguous x/w/scales and uses E4M3FN inputs, FP32 A/B scales
         with A(1,128)/B(128,128), BF16 output and complete 128x256 tiles; its K
-        is 256..6144 divisible by 256. Auto uses Triton for noncontiguous matrix views; explicit Gluon reports
+        is 256..6144 divisible by 256. The same FP32-scale recipe also has a
+        64x64x128 pipeline with one producer wave and four consumer waves.
+        It requires complete tiles and K divisible by 128; auto selection is
+        recorded only for M/N/K=64/2048/4096 on gfx946/48 CU. Auto uses Triton for noncontiguous matrix views; explicit Gluon reports
         unsupported storage rather than copying tensors. Other combinations use the native Triton
         path when supported. There is no software matrix-instruction fallback.
     """

@@ -232,3 +232,43 @@ def test_r009_persistent_grid_comes_from_record(monkeypatch):
     grid, options = calls[0]
     assert grid == (48,)
     assert options["NUM_SMS"] == 48 and options["TILE_LIMIT"] == 720
+
+
+def test_fp32_scale_64x64_config_is_shape_specific():
+    profile = "DTYPE=float8_e4m3fn-AS=float32-BS=float32-OUT=bfloat16-RECIPE_A=1x128-RECIPE_B=128x128"
+    cfg, tuned = get_gemm_config(
+        "GEMM-A8W8_BLOCKSCALE", 64, 2048, 4096, profile=profile,
+        backend="gluon", arch="gfx946", cu_num=48)
+    assert tuned
+    assert [cfg["BLOCK_SIZE_" + d] for d in "MNK"] == [64, 64, 128]
+    assert cfg["wasp_partition_warps"] == [1, 4]
+    assert cfg["num_warps"] == 1 and cfg["num_stages"] == 2
+    assert cfg["wasp_wdra"] is False
+
+
+@pytest.mark.parametrize("k", [128, 256, 384])
+def test_native_gluon_fp32_scales_64x64(k):
+    if not torch.cuda.is_available():
+        pytest.skip("requires GPU")
+    from boltops.utility.arch_info import get_device_info
+    device = get_device_info()
+    if device.arch != "gfx946" or device.cu_count != 48:
+        pytest.skip("requires gfx946 with 48 CU")
+    profile = "DTYPE=float8_e4m3fn-AS=float32-BS=float32-OUT=bfloat16-RECIPE_A=1x128-RECIPE_B=128x128"
+    config, _ = get_gemm_config("GEMM-A8W8_BLOCKSCALE", 64, 2048, 4096,
+        profile=profile, backend="gluon", arch=device.arch, cu_num=device.cu_count)
+    torch.manual_seed(761)
+    m, n = 128, 192
+    x = (torch.randint(-4, 5, (m, k)).float() / 4).to(torch.float8_e4m3fn)
+    w = (torch.randint(-4, 5, (n, k)).float() / 4).to(torch.float8_e4m3fn)
+    sa = torch.randint(1, 5, (m, k // 128)).float() / 8
+    # Match R009: retain BF16 scale values in an FP32 kernel buffer.
+    sb = (torch.randint(1, 5, (2, k // 128)).float() / 8).bfloat16().float()
+    golden = torch.zeros((m, n))
+    for group in range(k // 128):
+        start, end = group * 128, (group + 1) * 128
+        golden += (x[:, start:end].float() @ w[:, start:end].float().T) * (
+            sa[:, group, None] * sb[:, group].float().repeat_interleave(128)[:n][None, :])
+    out = gemm_a8w8_blockscale(x.cuda(), w.cuda(), sa.cuda(), sb.cuda(),
+                              backend="gluon", config=config)
+    torch.testing.assert_close(out.cpu(), golden.bfloat16(), atol=0, rtol=0)
