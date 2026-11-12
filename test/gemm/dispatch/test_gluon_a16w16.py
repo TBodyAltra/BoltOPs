@@ -12,6 +12,8 @@ from boltops.gemm.config import get_gemm_config
 
 PROFILE = "DTYPE=bfloat16-OUT=bfloat16"
 KERNEL = "_gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel"
+PERSISTENT = "2048x2048x4096"
+PERSISTENT_KERNEL = "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel"
 
 
 def config_for(m=64, n=64, k=2048, profile=PROFILE, layout="TN", cu=48):
@@ -144,6 +146,61 @@ def test_public_gluon_native_correctness(backend):
     w = (torch.rand((64, 2048), generator=gen)-.5).bfloat16()
     gold = (a.float() @ w.float().T).bfloat16()
     result = gemm_a16w16(a.cuda(), w.cuda(), backend=backend)
+    torch.testing.assert_close(result.cpu(), gold, atol=.001, rtol=.01)
+
+
+@pytest.mark.parametrize("layout", ["TN", "TT"])
+def test_persistent_config_carries_tile_sms_and_kernel(layout):
+    cfg, tuned = config_for(m=2048, n=2048, k=4096, layout=layout)
+    assert tuned and cfg["kernel"] == PERSISTENT_KERNEL
+    assert (cfg["BLOCK_SIZE_M"], cfg["BLOCK_SIZE_N"], cfg["BLOCK_SIZE_K"]) == (256, 256, 64)
+    assert cfg["NUM_SMS"] == 48
+    assert cfg["wasp_partition_warps"] == [4, 4, 4]
+    assert cfg["wasp_partition_regs"] == [16, 244, 244]
+
+
+@pytest.mark.parametrize("kwargs", [
+    dict(m=1024), dict(m=2048, n=1024), dict(m=2048, k=2048),
+    dict(m=1024, layout="TT"), dict(m=2048, profile="DTYPE=float16-OUT=bfloat16"),
+])
+def test_persistent_config_is_shape_and_layout_specific(kwargs):
+    # Only the recorded complete-tile shape may select the persistent entry;
+    # everything else must miss so dispatch falls back to another backend.
+    defaults = dict(m=2048, n=2048, k=4096)
+    defaults.update(kwargs)
+    with pytest.raises(KeyError):
+        config_for(**defaults)
+
+
+@pytest.mark.parametrize("layout", ["TN", "TT"])
+def test_persistent_dispatch_launches_one_tg_per_sm(monkeypatch, layout):
+    calls = install_captures(monkeypatch)
+    module = import_module("boltops.gemm.gluon.gemm_a16w16")
+    monkeypatch.setattr(module, PERSISTENT_KERNEL, Capture("persistent", calls))
+    a = torch.empty((2048, 4096), dtype=torch.bfloat16, device="cuda")
+    w = torch.empty((2048, 4096), dtype=a.dtype, device=a.device)
+    if layout == "TT":
+        w = w.as_strided(w.shape, (1, 2048))
+    result = gemm_a16w16(a, w)
+    assert result.shape == (2048, 2048)
+    label, grid, args, params = calls[0]
+    assert label == "persistent" and grid == (48,)
+    assert args[0] is a and args[1] is w
+    assert (params["M"], params["N"], params["K"]) == (2048, 2048, 4096)
+    assert params["NUM_SMS"] == 48 and "kernel" not in params
+    assert params["B_K_CONTIGUOUS"] is (layout == "TN")
+
+
+@pytest.mark.parametrize("layout", ["TN", "TT"])
+def test_persistent_native_correctness(layout):
+    require_device()
+    gen = torch.Generator().manual_seed(21)
+    a = (torch.randn((2048, 4096), generator=gen) * .5).bfloat16()
+    w = (torch.randn((2048, 4096), generator=gen) * .5).bfloat16()
+    gold = (a.float() @ w.float().T).bfloat16()
+    a_dev = a.cuda()
+    w_dev = w.cuda() if layout == "TN" else w.T.contiguous().cuda().T
+    result = gemm_a16w16(a_dev, w_dev)
     torch.testing.assert_close(result.cpu(), gold, atol=.001, rtol=.01)
 
 

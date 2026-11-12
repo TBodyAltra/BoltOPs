@@ -2,9 +2,40 @@
 # SPDX-License-Identifier: MIT
 """FP16/BF16 dense GEMM with backend selection."""
 
+import os
+
 import torch
 from boltops.utility.arch_info import get_device_info
 from .config import get_gemm_config, validate_backend
+
+
+_BF16_MLS_PROFILE = "DTYPE=bfloat16-OUT=bfloat16-WASP-MLS-EXPERIMENTAL"
+_BF16_MLS_REQUIRED_ENV = {
+    "AMDGCN_USE_BUFFER_OPS": "1",
+    "TRITON_BUFFER_CACHE_SWIZZLE": "1",
+    "TRITON_MLS_B_INTERLEAVE": "2",
+}
+# Interleave is not a launch option (or a cache-key component on the archived
+# compiler). Require process-start configuration, never switch it during calls.
+_BF16_MLS_IMPORT_ENV = {key: os.environ.get(key) for key in _BF16_MLS_REQUIRED_ENV}
+
+
+def _validate_bf16_mls_environment(config):
+    for key, expected in _BF16_MLS_REQUIRED_ENV.items():
+        if os.environ.get(key) != expected or _BF16_MLS_IMPORT_ENV[key] != expected:
+            raise ValueError(
+                f"BF16 MLS requires {key}={expected} before importing boltops; "
+                "start a fresh process with the recorded environment and a compatible "
+                "Triton cache; changing compiler environment during calls is unsupported"
+            )
+    if config.get("buffer_cache_swizzle") is not True:
+        raise ValueError("BF16 MLS requires buffer_cache_swizzle=True")
+    # Python knob overrides can disagree with os.environ. Reject those rather
+    # than silently compiling a different pipeline or mutating global knobs.
+    from triton import knobs
+
+    if not knobs.amd.use_buffer_ops or not knobs.amd.buffer_cache_swizzle:
+        raise ValueError("BF16 MLS requires active Triton buffer-ops and BCS knobs")
 
 
 def gemm_a16w16(
@@ -48,11 +79,18 @@ def gemm_a16w16(
             identity. Explicit MLS/WDRA configurations do not support activation.
         backend (str | None): "auto", "triton", "gluon" or "tilelang"; None means
             "auto".
-            Auto selects recorded Gluon only for matching BF16 TN R001 inputs on
+            Auto selects recorded Gluon only for matching BF16 TN/TT inputs on
             gfx946 with a tuned CU-specific config and no explicit config; otherwise
-            Triton. Explicit selection never retries another backend. Gluon currently
-            requires MNK=(64,64,2048), contiguous x/w, BF16 output, no bias or activation.
-            TileLang is not implemented for nonempty computation.
+            Triton. Explicit selection never retries another backend. Gluon supports
+            MNK=(64,64,2048) TN and (2048,2048,4096) TN/TT, K-contiguous x,
+            BF16 output, no bias or activation. TileLang is not implemented for
+            nonempty computation. After Gluon selection, exact experimental BF16
+            TT profiles may select WASP/MLS on gfx946/48 CU without bias or activation.
+            BF16 MLS requires complete M/N/K tiles, BF16 output, and the recorded
+            compiler environment set before importing boltops:
+            AMDGCN_USE_BUFFER_OPS=1, TRITON_BUFFER_CACHE_SWIZZLE=1,
+            TRITON_MLS_B_INTERLEAVE=2. Keep interleave fixed for the process and
+            use a Triton cache compiled with that setting.
 
     Returns:
         torch.Tensor: Contiguous [M,N] result in dtype.
@@ -128,12 +166,13 @@ def gemm_a16w16(
                 )
             return out
         device = get_device_info(a.device)
+        gluon_layout = "TN" if b.stride() == (k, 1) else "TT"
         gluon_inputs_supported = (
             device.arch == "gfx946"
             and bias is None
             and activation is None
             and a.stride() == (k, 1)
-            and b.stride() == (k, 1)
+            and b.stride() in ((k, 1), (1, n))
         )
         gluon_profile = (
             f"DTYPE={str(a.dtype).removeprefix('torch.')}-"
@@ -146,7 +185,7 @@ def gemm_a16w16(
             if user_config is None and gluon_inputs_supported:
                 try:
                     gluon_config, tuned = get_gemm_config(
-                        "GEMM-A16W16", m, n, k, backend="gluon", layout="TN",
+                        "GEMM-A16W16", m, n, k, backend="gluon", layout=gluon_layout,
                         profile=gluon_profile, arch=device.arch, cu_num=device.cu_count,
                     )
                 except (FileNotFoundError, KeyError):
@@ -167,33 +206,67 @@ def gemm_a16w16(
                     and (a.stride() == (k, 1))
                     and (b.stride() == (1, n))
                 )
-                config, _ = get_gemm_config(
-                    "GEMM-A16W16",
-                    m,
-                    n if use_tuned_shape else None,
-                    k if use_tuned_shape else None,
-                    backend=backend,
-                    arch=device.arch,
-                    cu_num=device.cu_count,
-                )
+                config = None
+                if (
+                    device.arch == "gfx946"
+                    and device.cu_count == 48
+                    and a.dtype == out_dtype == torch.bfloat16
+                    and bias is None
+                    and activation is None
+                    and a.stride() == (k, 1)
+                    and b.stride() == (1, n)
+                ):
+                    try:
+                        candidate, tuned = get_gemm_config(
+                            "GEMM-A16W16", m, n, k, backend="triton", layout="TT",
+                            profile=_BF16_MLS_PROFILE, arch=device.arch,
+                            cu_num=device.cu_count,
+                        )
+                    except (FileNotFoundError, KeyError):
+                        pass
+                    else:
+                        if tuned:
+                            config = candidate
+                if config is None:
+                    config, _ = get_gemm_config(
+                        "GEMM-A16W16",
+                        m,
+                        n if use_tuned_shape else None,
+                        k if use_tuned_shape else None,
+                        backend=backend,
+                        arch=device.arch,
+                        cu_num=device.cu_count,
+                    )
             import triton
 
             if "use_mls" in config:
                 from .triton import gemm_a16w16_wasp as kernels
-                import os
 
+                bf16_mls = a.dtype == out_dtype == torch.bfloat16
                 if (
                     device.arch != "gfx946"
-                    or a.dtype != torch.float16
-                    or out_dtype != torch.float16
+                    or a.dtype != out_dtype
+                    or (a.dtype != torch.float16 and not bf16_mls)
+                    or (bf16_mls and (device.cu_count != 48 or not config["use_mls"]))
                     or (bias is not None)
                     or activation is not None
                     or (a.stride() != (k, 1))
                     or (b.stride() != (1, n))
                 ):
                     raise ValueError(
-                        "recorded FP16 pipeline requires gfx946, FP16 output and TT operands without bias or activation"
+                        "recorded pipeline requires gfx946, same-precision FP16 or "
+                        "BF16 output and TT operands without bias or activation; "
+                        "BF16 requires MLS and 48 CU"
                     )
+                if bf16_mls:
+                    for dim, size in zip("MNK", (m, n, k)):
+                        block = config.get(f"BLOCK_SIZE_{dim}")
+                        if type(block) is not int or block <= 0 or size % block:
+                            raise ValueError(
+                                "BF16 MLS requires M/N/K divisible by positive "
+                                "BLOCK_SIZE_M/N/K (unmasked matrix-load tails are unsafe)"
+                            )
+                    _validate_bf16_mls_environment(config)
                 wasp, wdra, use_mls, use_matrix_store = (
                     config.pop(key)
                     for key in ("wasp", "wdra", "use_mls", "use_matrix_store")
@@ -306,7 +379,8 @@ def gemm_a16w16(
             if not gluon_inputs_supported:
                 raise NotImplementedError(
                     "gemm_a16w16: no Gluon kernel for the requested layout, bias or "
-                    "activation; requires gfx946 K-contiguous x/w without bias or activation"
+                    "activation; requires gfx946 K-contiguous x and K- or N-contiguous w "
+                    "without bias or activation"
                 )
             if user_config is not None:
                 from copy import deepcopy
@@ -317,7 +391,7 @@ def gemm_a16w16(
             else:
                 try:
                     config, _ = get_gemm_config(
-                        "GEMM-A16W16", m, n, k, backend="gluon", layout="TN",
+                        "GEMM-A16W16", m, n, k, backend="gluon", layout=gluon_layout,
                         profile=gluon_profile, arch=device.arch, cu_num=device.cu_count,
                     )
                 except (FileNotFoundError, KeyError):
@@ -331,13 +405,27 @@ def gemm_a16w16(
             if not isinstance(selector, str) or not hasattr(kernels, selector):
                 raise ValueError("Gluon config requires a valid kernel selector")
             kernel = getattr(kernels, selector)
+            if selector == "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel":
+                # Physical weight strides, rather than a caller's config, own
+                # the B MLS descriptor and shared-memory order.
+                config["B_K_CONTIGUOUS"] = gluon_layout == "TN"
+            elif gluon_layout != "TN":
+                raise NotImplementedError(
+                    "gemm_a16w16: no Gluon TT kernel for the requested selector"
+                )
             config = {
                 key: tuple(value) if isinstance(value, list) else value
                 for key, value in config.items()
             }
-            grid = lambda meta: (
-                triton.cdiv(m, meta["BLOCK_SIZE_M"])
-                * triton.cdiv(n, meta["BLOCK_SIZE_N"]),
+            # A persistent entry walks the tile grid itself, so it is launched
+            # with one TG per resident SM instead of one TG per output tile.
+            grid = (
+                lambda meta: (meta["NUM_SMS"],)
+                if "NUM_SMS" in meta
+                else (
+                    triton.cdiv(m, meta["BLOCK_SIZE_M"])
+                    * triton.cdiv(n, meta["BLOCK_SIZE_N"]),
+                )
             )
             kernel[grid](a, b, out, M=m, N=n, K=k, **config)
             return out

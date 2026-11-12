@@ -3,7 +3,7 @@
 # Copyright 2020-2022 OpenAI
 # Modified by Hygon Information Technology Co., Ltd., 2026.
 # Upstream reference: https://github.com/triton-lang/triton/blob/7c56a5e40f7fd928dfd5c72902d5def0097db73a/python/tutorials/03-matrix-multiplication.py
-"""FP16 GEMM Triton kernel with optional WASP/WDRA (gfx946) and barrier knobs.
+"""FP16/BF16 MLS and load GEMM kernels with optional WASP/WDRA (gfx946).
 
 The public host entry is ``boltops.gemm.gemm_a16w16``.
 
@@ -354,7 +354,7 @@ def _gemm_fp16_load_kernel(
     if HAS_BIAS:
         bias = tl.load(bias_ptr + offs_cn, mask=offs_cn < N, other=0.0).to(tl.float32)
         accumulator += bias
-    c = accumulator.to(tl.float16)
+    c = accumulator.to(c_ptr.dtype.element_ty)
 
     c_ptrs = c_ptr + stride_cm * offs_cm[:, None] + stride_cn * offs_cn[None, :]
     c_mask = (offs_cm[:, None] < M) & (offs_cn[None, :] < N)
@@ -428,7 +428,7 @@ def _gemm_fp16_mls_kernel(
         offs_cn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
         bias = tl.load(bias_ptr + offs_cn, mask=offs_cn < N, other=0.0).to(tl.float32)
         accumulator += bias
-    c = accumulator.to(tl.float16)
+    c = accumulator.to(c_ptr.dtype.element_ty)
 
     if USE_MATRIX_STORE:
         # VGPR→GMEM matrix_store (prefer mmac_layout_force=3).
