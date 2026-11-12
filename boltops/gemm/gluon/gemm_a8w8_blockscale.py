@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Gluon block-scaled GEMM kernels, selected by recipe and tile name.
 
-The current recipe uses E4M3FN inputs, FP32 A(1,128)/B(128,128) scales,
-BF16 output and tile M/N/K=(128,256,128). Each entry owns its layouts,
+The entries use E4M3FN inputs, FP32 A(1,128)/B(128,128) scales,
+BF16 output and tiles M/N/K=(128,256,128) or (64,64,128). Each owns its layouts,
 partition resources, pipeline and compile-time legality checks.
 """
 
