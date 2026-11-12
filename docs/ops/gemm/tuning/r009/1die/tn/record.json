@@ -5,6 +5,7 @@
     9216,
     2048
   ],
+  "layout": "TN",
   "environment": {
     "type": "PMD",
     "model": "CoreArch1703",
@@ -187,13 +188,12 @@
       "xcd_id_in_device": 0
     },
     "provenance": {
-      "measured_case": "continuous-full48-perf",
+      "measured_case": "scale-pipeline-v15-full48-cu0-perf",
       "config_sha256": "9f4b7c0dcf8054a3e4679d48b7e116bf1cbef60f1855e1014fa8caf32cd17194",
-      "capture_source": "completed case runtime config and captured process environment"
+      "capture_source": "completed case runtime config and captured process environment",
+      "environment_capture": "whitelisted variables from the measured worker /proc/PID/environ"
     },
     "container_image": {
-      "container_name": "kxu_pmd_8569_fp8_20261017",
-      "container_id": "740cf5c897145f09f404fca1a14b936deaba587f32bb7549ad25664d52aa41b5",
       "image_id": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
       "repo_tags": [
         "10.65.42.71:9092/perf-model-env:8569"
@@ -204,11 +204,12 @@
       "image_created": "2026-10-12T20:20:10.804529356Z",
       "architecture": "amd64",
       "os": "linux",
+      "container_name": "kxu_pmd_8569_fp8_20261017",
+      "container_id": "740cf5c897145f09f404fca1a14b936deaba587f32bb7549ad25664d52aa41b5",
       "version": "8569",
-      "capture_source": "docker inspect running container, then docker image inspect its immutable image ID"
+      "capture_source": "docker inspect measured container and its immutable Image ID during the full run"
     }
   },
-  "layout": "TN",
   "operand_strides": {
     "x": [
       2048,
@@ -229,67 +230,34 @@
   },
   "source": {
     "path": "boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py",
-    "sha256": "761311842a097dbddd3710f4a0528c1b4da9a59766cbe52556dd440e2fd5e419",
+    "sha256": "0eb4ff7e8a233da6084f6efdf5fbdeee4dc95da8751e70282be0145506403670",
     "symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel",
-    "line": 360,
-    "compiled_prototype_sha256": "8fe7ea767ec68180e876d1a0c7e994695de9458190054bb1a413d61f02f43f20",
-    "equivalence": "Removed unused nonpersistent entry, renamed entry and added constant launch assertions; integrated and measured HSACO .text sections are byte-for-byte identical",
-    "executable_text_sha256": "769d41c0b80fac2d9da0faa979f35221e3af5d6fecb5a8f5e60edee01e7c60f3",
-    "commit": "a2bbb3a5c7b628408bca58f1d4f876212b40374a",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/a2bbb3a5c7b628408bca58f1d4f876212b40374a/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L360"
+    "line": 396,
+    "compiled_prototype_sha256": "67603b8e07baf2651f4f91e4a2598edb235356fb18eb6695e40ae1621c3963ae",
+    "equivalence": "Published entry name, launch assertions and removal of obsolete no-op scale ACK calls; executable .text is byte-for-byte identical to the full measured prototype",
+    "executable_text_sha256": "9f64789734874c958350f2133a7564c689f1ff00df65dcbd2917a8d7d0d8f995",
+    "commit": "be845a86e988ba2fac6efe07b73b497dbcd949e2",
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/be845a86e988ba2fac6efe07b73b497dbcd949e2/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L396"
   },
   "config": {
     "path": "boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json",
     "sha256": "c35a35eb0f7882866de76397b5290ffd4c985e6bebe5484b408f2cb79aaa5a00",
-    "commit": "a2bbb3a5c7b628408bca58f1d4f876212b40374a",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/a2bbb3a5c7b628408bca58f1d4f876212b40374a/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json"
+    "commit": "be845a86e988ba2fac6efe07b73b497dbcd949e2",
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/be845a86e988ba2fac6efe07b73b497dbcd949e2/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json"
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "a16b635e6cc007611d52daeb9a8933c1fa46c60ad1a8a3ec348bb25316ae286d",
-    "hsaco_sha256": "65f6415ac1bfe216f752c592c5613a0be8f1c62d8b40d4d90f592a56dc738cac",
-    "measured_hsaco_sha256": "a07b0e6af793bb12f87d952d6c65c6277405886e44968c0bc11f5134daced060",
+    "sha256": "54cd45aea74170f52f59b60b44b6f1f65d51603149c72f57eeeab22b0d977834",
+    "hsaco_sha256": "128e0a4ced1baee6e41f6bf085d7c29f66ed46c126550abcb04a249973872497",
+    "measured_hsaco_sha256": "992464e6b0285efdb0cfc672760f0e0775beb516b684ff6791a22695b8b63cf6",
     "normalization": "trailing whitespace removed only"
   },
-  "pipeline": {
-    "grid": [
-      48
-    ],
-    "tiles_per_TG": 15,
-    "mapping": "x-major",
-    "loop": "fixed-trip continuous pipeline in each WASP partition",
-    "barrier_initialization": "once per TG",
-    "tile_end_rendezvous": false,
-    "AB_prefetch": "next tile can issue after corresponding previous LDS slot release",
-    "scale_storage": "16 K-group slots reused after prior reads retired; no additional LDS allocation",
-    "wasp": true,
-    "wdra": true,
-    "shared": 106624,
-    "partition_vgpr": [
-      1,
-      8,
-      238,
-      238
-    ],
-    "spill": 0
-  },
   "performance": {
-    "kernel_us": 206.339315,
-    "kernel_cycles": 453493.0,
-    "kernel_tops": 468.3390761474613,
-    "launched_TGs": 48,
-    "tops_formula": "2*M*N*K/(kernel_us*1e6)"
-  },
-  "benchmark": {
-    "script": "benchmark.py",
-    "sha256": "b01f12e28162d7a6049dd0d901eac45e50f9267c861ac8cb0d20543a7ffcff04",
-    "seed": 21,
-    "repeats": 1,
-    "command": "python docs/ops/gemm/tuning/r009/1die/tn/benchmark.py --record docs/ops/gemm/tuning/r009/1die/tn/record.json --output /tmp/r009-1die-tn-full",
-    "full_replay_environment_overrides": {
-      "GPU_DFLAGS": "['StatLog']",
-      "HSA_TOOLS_LIB": null
-    }
+    "kernel_us": 197.72753,
+    "kernel_cycles": 434566.0,
+    "kernel_tops": 488.7370219007945,
+    "tops_formula": "2*M*N*K/(kernel_us*1e6)",
+    "launched_TGs": 48
   },
   "validation": {
     "max_abs": 0.0,
@@ -298,8 +266,6 @@
     "nonfinite": 0,
     "elements": 23592960,
     "canary_ok": true,
-    "atol": 0.001,
-    "rtol": 0.01,
     "active_CUs": 48,
     "completedWGs": {
       "0": 1,
@@ -352,48 +318,74 @@
       "47": 1
     }
   },
+  "pipeline": {
+    "grid": [
+      48
+    ],
+    "tiles_per_TG": 15,
+    "mapping": "x-major",
+    "loop": "fixed-trip continuous loop in each WASP partition",
+    "barrier_initialization": "once per TG",
+    "scale_banks": 2,
+    "scale_bank_ready_barriers": [
+      4,
+      5
+    ],
+    "scale_bank_free_barriers": [
+      14,
+      15
+    ],
+    "scale_prefetch": "two initial complete-K banks, then reuse each released bank",
+    "per_K_scale_ACK": false,
+    "MMAC_handoff": "execution-only ebarrier; A/B readiness and LDS slot release use separate abarriers",
+    "wasp": true,
+    "wdra": true,
+    "shared": 114944,
+    "partition_vgpr": [
+      1,
+      8,
+      236,
+      236
+    ],
+    "spill": 0
+  },
+  "benchmark": {
+    "script": "benchmark.py",
+    "sha256": "e4a91e21044fdc51bb3cb2a6da55cf032f0d7c797b594d5447db2d82a0f50bf7",
+    "seed": 21,
+    "repeats": 1,
+    "command": "python docs/ops/gemm/tuning/r009/1die/tn/benchmark.py --record docs/ops/gemm/tuning/r009/1die/tn/record.json --output /tmp/r009-1die-tn-full-cu0 --cu0-perf",
+    "default_full_environment_overrides": {
+      "GPU_DFLAGS": "['StatLog']",
+      "HSA_TOOLS_LIB": null
+    }
+  },
   "single_tg_perf": {
     "path": "single_tg.perf",
-    "sha256": "ab4ce1f5e76a7c75e77e2231cb11c557c105ac33dfabbdff387a713100d73ecc",
-    "scope": "One persistent TG computing 15 complete-K 128x256 tiles at the original MNK strides; separate from full-grid timing",
-    "grid": [
-      1
+    "sha256": "e0a70fd1fb49599be77a0f33c816c6f1707d32479c2c40f91986c8e867d7ff96",
+    "cu_id": 0,
+    "scope": "CU0 trace captured during the complete 48-TG dispatch; its one TG processes 15 tiles",
+    "tiles": 15,
+    "seed": 21,
+    "repeat": 0,
+    "environment_flags": [
+      "StatLog",
+      "TT0",
+      "Perf"
     ],
-    "tile_ids": [
-      0,
-      48,
-      96,
-      144,
-      192,
-      240,
-      288,
-      336,
-      384,
-      432,
-      480,
-      528,
-      576,
-      624,
-      672
-    ],
-    "repeat": 1,
-    "selection": "minimum system.gcSimCycles of repeats 1 and 2 (repeat 0 excluded)",
-    "kernel_cycles": 381366.0,
-    "validation": {
-      "max_abs": 0.0,
-      "mismatch": 0,
-      "outside_tolerance": 0,
-      "nonfinite": 0,
-      "elements": 491520,
-      "canary_ok": true
-    },
-    "hsaco_sha256": "65f6415ac1bfe216f752c592c5613a0be8f1c62d8b40d4d90f592a56dc738cac",
     "environment_overrides": {
       "GPU_DFLAGS": "['StatLog','TT0','Perf']",
-      "GPU_ARGS": "['--abs-max-tick=1000000000']",
+      "GPU_ARGS": "['--abs-max-tick=10000000000']",
       "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
-      "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/p0-fp8-48multiple-20261110/single-perf-cache"
+      "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/r009-persistent/cache"
     },
-    "command": "python docs/ops/gemm/tuning/r009/1die/tn/benchmark.py --record docs/ops/gemm/tuning/r009/1die/tn/record.json --output /tmp/r009-1die-tn-single-perf --single-tg-perf"
+    "command": "python docs/ops/gemm/tuning/r009/1die/tn/benchmark.py --record docs/ops/gemm/tuning/r009/1die/tn/record.json --output /tmp/r009-1die-tn-full-cu0 --cu0-perf",
+    "hsaco_sha256": "992464e6b0285efdb0cfc672760f0e0775beb516b684ff6791a22695b8b63cf6"
+  },
+  "comparison": {
+    "continuous_kernel_us": 206.339315,
+    "latency_reduction_percent": 4.173603561686723,
+    "speedup": 1.043553798502414,
+    "scope": "one cold complete dispatch per version, same PMD/toolchain/flags, seed21"
   }
 }
