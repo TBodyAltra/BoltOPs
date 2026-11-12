@@ -32,6 +32,8 @@ def _initialize_pipeline_barriers(wave, seed=True):
         abarrier_init(1, 4)
         abarrier_init(2, 4)
         abarrier_init(3, 4)
+        abarrier_init(4, 4)
+        abarrier_init(5, 4)
         abarrier_init(6, 4)
         abarrier_init(7, 4)
         abarrier_init(8, 8)
@@ -41,6 +43,7 @@ def _initialize_pipeline_barriers(wave, seed=True):
         abarrier_init(12, 8)
         abarrier_init(13, 4)
         abarrier_init(14, 8)
+        abarrier_init(15, 8)
     if seed and wave < 4:
         ebarrier_arrive(8, 8)
     ebarrier_sync(14, 16)
@@ -53,10 +56,19 @@ def _wait_all_lds_reads():
 
 @g.jit
 def _synchronize_mmac_turn(GROUP: gl.constexpr, WAIT: gl.constexpr):
+    # These execution barriers hand off the MMAC turn only. A/B readiness
+    # and LDS slot lifetime remain protected by the separate abarriers.
+    # Keep pending scale reads in flight across the execution handoff.
     if WAIT:
-        ebarrier_sync(8 + GROUP, 8)
+        if GROUP == 0:
+            gl.inline_asm_elementwise("s_ebarrier_sync 8, 8", constraints="=s", args=[], dtype=gl.int32, is_pure=False, pack=1)
+        else:
+            gl.inline_asm_elementwise("s_ebarrier_sync 9, 8", constraints="=s", args=[], dtype=gl.int32, is_pure=False, pack=1)
     else:
-        ebarrier_arrive(9 - GROUP, 8)
+        if GROUP == 0:
+            gl.inline_asm_elementwise("s_ebarrier_arrive 9, 8", constraints="=s", args=[], dtype=gl.int32, is_pure=False, pack=1)
+        else:
+            gl.inline_asm_elementwise("s_ebarrier_arrive 8, 8", constraints="=s", args=[], dtype=gl.int32, is_pure=False, pack=1)
         set_priority(0)
 
 
@@ -83,7 +95,6 @@ def _produce_ab_and_scales(
     REUSE=False,
 ):
     wave = get_wave_id()
-    SL: gl.constexpr = gl.BlockedLayout([1], [64], [4], [0])
     for i in range(K // 128):
         if i % 2 == 0:
             smA = smA0
@@ -110,12 +121,7 @@ def _produce_ab_and_scales(
             matrix_load(
                 smA, A + 64 * K, (64, K), (K, 1), (0, i * 128), pred=wave % 4 == 0
             )
-            ar = gl.arange(0, 128, layout=SL)
-            async_copy.buffer_load_to_shared(smAS0.index(i), AS, ar * (K // 128) + i)
-            bi = gl.arange(0, 2, layout=SL)
-            async_copy.buffer_load_to_shared(smBS.index(i), BS, bi * (K // 128) + i)
             abarrier_arrive(7 + slot * 4)
-            abarrier_try_wait(14, i % 2)
 
 
 @g.jit
@@ -135,25 +141,6 @@ def _wait_a_tile_ready(i, GROUP: gl.constexpr):
 @g.jit
 def _wait_b_tile_ready(i):
     abarrier_try_wait(9 + (i % 2) * 4, (i // 2) % 2)
-
-
-@g.jit
-def _ack_scale_tile_ready(i, GROUP: gl.constexpr):
-    if GROUP == 0:
-        abarrier_try_wait(7 + (i % 2) * 4, (i // 2) % 2)
-    # ACK means readiness observed, not completion of pending LDS reads.
-    # Scale slices are immutable; the producer writes the following distinct slice.
-    # TODO: use abarrier_arrive(14, 1) once LLVM supports this readiness-only
-    # ACK without inserting lgkmcnt(0), which drains A/B prefetch and breaks
-    # overlap. This ACK does not publish or release LDS storage.
-    gl.inline_asm_elementwise(
-        "s_abarrier_arrive $0, 14, 1",
-        constraints="=s",
-        args=[],
-        dtype=gl.int32,
-        is_pure=False,
-        pack=1,
-    )
 
 
 @g.jit
@@ -234,17 +221,16 @@ def _consume_ab_and_accumulate(
     _wait_b_tile_ready(0)
     b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
     sched_barrier(0)
-    _ack_scale_tile_ready(0, GROUP)
     sa, sb = _prefetch_scale_tile(smAS0, smAS1, smBS, 0, m, lane_m_byte, bs_group, GROUP, RF)
     _release_ab_lds_slots(0, GROUP)
     for pair in range(K // 256):
         i = pair * 2
+        j = i + 1
         sched_barrier(0)
         _synchronize_mmac_turn(GROUP, True)
         dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
         _synchronize_mmac_turn(GROUP, False)
         selected_bs = _select_b_scale_for_wave(sb, bs_group)
-        j = i + 1
         _wait_a_tile_ready(j, GROUP)
         if j % 2 == 0:
             a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
@@ -256,7 +242,6 @@ def _consume_ab_and_accumulate(
         else:
             b = async_copy.load_shared_relaxed(smB1, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
         sched_barrier(0)
-        _ack_scale_tile_ready(j, GROUP)
         next_sa, next_sb = _prefetch_scale_tile(
             smAS0, smAS1, smBS, j, m, lane_m_byte, bs_group, GROUP, RF
         )
@@ -269,12 +254,12 @@ def _consume_ab_and_accumulate(
         sched_barrier(0)
         if pair + 1 < K // 256:
             i = pair * 2 + 1
+            j = i + 1
             sched_barrier(0)
             _synchronize_mmac_turn(GROUP, True)
             dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
             _synchronize_mmac_turn(GROUP, False)
             selected_bs = _select_b_scale_for_wave(sb, bs_group)
-            j = i + 1
             _wait_a_tile_ready(j, GROUP)
             if j % 2 == 0:
                 a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
@@ -286,7 +271,6 @@ def _consume_ab_and_accumulate(
             else:
                 b = async_copy.load_shared_relaxed(smB1, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
             sched_barrier(0)
-            _ack_scale_tile_ready(j, GROUP)
             next_sa, next_sb = _prefetch_scale_tile(
                 smAS0, smAS1, smBS, j, m, lane_m_byte, bs_group, GROUP, RF
             )
@@ -319,28 +303,71 @@ def _consume_ab_and_accumulate(
 
 
 @g.jit
-def _persistent_producer(A, B, AS, BS, smAS0, smAS1, smBS,
+def _publish_scale_bank(AS, BS, smAS, smBS, BANK, K: gl.constexpr):
+    SL: gl.constexpr = gl.BlockedLayout([1], [64], [4], [0])
+    flatAS = smAS._reinterpret(gl.float32, ((K // 128) * 128,), gl.SwizzledSharedLayout(1, 1, 1, [0]))
+    flatBS = smBS._reinterpret(gl.float32, ((K // 128) * 2,), gl.SwizzledSharedLayout(1, 1, 1, [0]))
+    flat = gl.arange(0, 512, layout=SL)
+    abarrier_seq(4 + BANK)
+    for chunk in gl.static_range((K // 128) * 128 // 512):
+        index = flat + chunk * 512
+        offsets = (index % 128) * (K // 128) + index // 128
+        async_copy.buffer_load_to_shared(flatAS.slice(chunk * 512, 512), AS, offsets)
+    index_b = gl.arange(0, (K // 128) * 2, layout=SL)
+    offsets_b = (index_b % 2) * (K // 128) + index_b // 2
+    async_copy.buffer_load_to_shared(flatBS, BS, offsets_b)
+    abarrier_arrive(4 + BANK)
+
+
+@g.jit
+def _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, TILE_ID, BANK, K: gl.constexpr):
+    if BANK == 0:
+        smAS = smAS0
+        smBS = smBS0
+    else:
+        smAS = smAS1
+        smBS = smBS1
+    tile_m = (TILE_ID % 20) * 128
+    tile_n = (TILE_ID // 20) * 256
+    _publish_scale_bank(AS + tile_m * (K // 128),
+                        BS + (tile_n // 128) * (K // 128),
+                        smAS, smBS, BANK, K)
+
+
+@g.jit
+def _persistent_producer(A, B, AS, BS, smAS0, smAS1, smBS0, smBS1,
                          smA0, smA1, smB0, smB1,
                          K: gl.constexpr, N: gl.constexpr,
                          NUM_SMS: gl.constexpr, TILE_LIMIT: gl.constexpr,
                          GROUP: gl.constexpr, PID):
-    # K=2048 gives eight uses of each A/B slot and sixteen scale ACKs per
-    # tile, so all abarrier phases return to their starting parity. The
-    # slot-release waits protect next-tile A/B writes. Scale slot 0 cannot
-    # be reused before both consumers ACK prior slot 15; by that point
-    # their select-scale lgkmcnt(0) has retired reads of prior slots 0..14.
     _initialize_pipeline_barriers(get_wave_id())
+    if GROUP == 1:
+        _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, PID, 0, K)
+        if (TILE_LIMIT + NUM_SMS - 1) // NUM_SMS > 1:
+            _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, PID + NUM_SMS, 1, K)
     for step in range((TILE_LIMIT + NUM_SMS - 1) // NUM_SMS):
         tile_id = PID + step * NUM_SMS
+        bank = step % 2
+        if bank == 0:
+            smAS = smAS0
+            smBS = smBS0
+        else:
+            smAS = smAS1
+            smBS = smBS1
         tile_m = (tile_id % 20) * 128
         tile_n = (tile_id // 20) * 256
+        if GROUP == 1:
+            if step >= 2:
+                abarrier_try_wait(14 + bank, ((step // 2) + 1) % 2)
+                _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, tile_id, bank, K)
         _produce_ab_and_scales(A + tile_m * K, B + tile_n * K,
                               AS + tile_m * (K // 128), BS + (tile_n // 128) * (K // 128),
-                              smAS0, smAS1, smBS, smA0, smA1, smB0, smB1, K, GROUP, step != 0)
+                              smAS, smAS, smBS,
+                              smA0, smA1, smB0, smB1, K, GROUP, step != 0)
 
 
 @g.jit
-def _persistent_consumer(AS, BS, C, smAS0, smAS1, smBS,
+def _persistent_consumer(AS, BS, C, smAS0, smAS1, smBS0, smBS1,
                          smA0, smA1, smB0, smB1,
                          K: gl.constexpr, N: gl.constexpr,
                          NUM_SMS: gl.constexpr, TILE_LIMIT: gl.constexpr,
@@ -348,12 +375,21 @@ def _persistent_consumer(AS, BS, C, smAS0, smAS1, smBS,
     _initialize_pipeline_barriers(get_wave_id())
     for step in range((TILE_LIMIT + NUM_SMS - 1) // NUM_SMS):
         tile_id = PID + step * NUM_SMS
+        bank = step % 2
+        if bank == 0:
+            smAS = smAS0
+            smBS = smBS0
+        else:
+            smAS = smAS1
+            smBS = smBS1
         tile_m = (tile_id % 20) * 128
         tile_n = (tile_id // 20) * 256
+        abarrier_try_wait(4 + bank, (step // 2) % 2)
         _consume_ab_and_accumulate(AS + tile_m * (K // 128), BS + (tile_n // 128) * (K // 128),
                                    C + tile_m * N + tile_n,
-                                   smAS0, smAS1, smBS, smA0, smA1, smB0, smB1,
-                                   K, N, GROUP, F)
+                                   smAS, smAS, smBS,
+                                   smA0, smA1, smB0, smB1, K, N, GROUP, F)
+        abarrier_arrive(14 + bank)
 
 
 @g.jit
@@ -397,8 +433,9 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     pid = gl.program_id(0)
     scaleL: gl.constexpr = gl.SwizzledSharedLayout(1, 1, 1, [0])
     sas0 = gl.allocate_shared_memory(gl.float32, (K // 128, 128), scaleL)
-    sas1 = sas0
-    sbs = gl.allocate_shared_memory(gl.float32, (K // 128, 2), scaleL)
+    sas1 = gl.allocate_shared_memory(gl.float32, (K // 128, 128), scaleL)
+    sbs0 = gl.allocate_shared_memory(gl.float32, (K // 128, 2), scaleL)
+    sbs1 = gl.allocate_shared_memory(gl.float32, (K // 128, 2), scaleL)
     a0 = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), SA)
     a1 = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), SA)
     a0_next = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), SA)
@@ -408,15 +445,15 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     gl.warp_specialize(
         [
             (_idle_default_partition, ()),
-            (_persistent_producer, (A, B, AS, BS, sas0, sas1, sbs, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, pid)),
-            (_persistent_producer, (A, B, AS, BS, sas0, sas1, sbs, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, pid)),
+            (_persistent_producer, (A, B, AS, BS, sas0, sas1, sbs0, sbs1, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, pid)),
+            (_persistent_producer, (A, B, AS, BS, sas0, sas1, sbs0, sbs1, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, pid)),
             (
                 _persistent_consumer,
-                (AS, BS, C, sas0, sas1, sbs, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, F, pid),
+                (AS, BS, C, sas0, sas1, sbs0, sbs1, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, F, pid),
             ),
             (
                 _persistent_consumer,
-                (AS, BS, C, sas0, sas1, sbs, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, F, pid),
+                (AS, BS, C, sas0, sas1, sbs0, sbs1, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, F, pid),
             ),
         ],
         [4, 4, 4, 4],

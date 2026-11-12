@@ -46,7 +46,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--record", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--single-tg-perf", action="store_true", help="capture three single-TG launches instead of full-grid timing")
+    capture = parser.add_mutually_exclusive_group()
+    capture.add_argument("--cu0-perf", action="store_true", help="capture CU0 during the complete 48-TG dispatch")
+    capture.add_argument("--single-tg-perf", action="store_true", help="capture three single-TG launches instead of full-grid timing")
     args = parser.parse_args()
     record_path = args.record.resolve()
     record = json.loads(record_path.read_text())
@@ -68,10 +70,10 @@ def main():
                 environment.pop(key, None)
             else:
                 environment[key] = value
-        # Full-size runs collect timing only; PERF is restricted to one TG.
+        # Default full-size runs collect timing only; explicit captures trace CU0.
         environment["GPU_DFLAGS"] = "['StatLog']"
         environment.pop("HSA_TOOLS_LIB", None)
-        if args.single_tg_perf:
+        if args.single_tg_perf or args.cu0_perf:
             environment.update(record["single_tg_perf"]["environment_overrides"])
         environment[marker] = str(record_path)
         os.execve(sys.executable, [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]], environment)
