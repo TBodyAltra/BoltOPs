@@ -1,0 +1,3845 @@
+	.text
+	.amdgcn_target "amdgcn-amd-amdhsa--gfx946:xnack-"
+	.globl	_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel ; -- Begin function _gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel
+	.p2align	8
+	.type	_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel,@function
+_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel: ; @_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel
+.Lfunc_begin0:
+	.file	1 "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1111/masked_active_tt_bf16_27shapes_20261112_1506/source" "kernel_masked_active.py"
+	.loc	1 20 0                          ; kernel_masked_active.py:20:0
+	.cfi_sections .debug_frame
+	.cfi_startproc
+; %bb.0:
+	;;#ASMSTART
+	; wdra init
+  ; s_trap 0xff
+  s_getreg_b32 s16, hwreg(HW_REG_HW_ID1, 0, 5)
+	s_mul_i32 s17, s16, 256
+	s_mov_b32 m0, s17
+	s_waitcnt lgkmcnt(0)
+	ds_write_addtid_b32 v0
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_cmp_lt_i32 s16, 4
+	s_cbranch_scc0 1f
+	s_set_vgpr_size 16
+	s_mov_b32 m0, s17
+	s_waitcnt lgkmcnt(0)
+	ds_read_addtid_b32 v0
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_waitcnt lgkmcnt(0)
+  s_branch 4f
+1:
+	s_cmp_lt_i32 s16, 8
+	s_cbranch_scc0 2f
+	s_set_vgpr_size 244
+	s_mov_b32 m0, s17
+	s_waitcnt lgkmcnt(0)
+	ds_read_addtid_b32 v0
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_waitcnt lgkmcnt(0)
+	s_branch 4f
+2:
+	s_cmp_lt_i32 s16, 12
+	s_cbranch_scc0 3f
+	s_set_vgpr_size 244
+	s_mov_b32 m0, s17
+	s_waitcnt lgkmcnt(0)
+	ds_read_addtid_b32 v0
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_waitcnt lgkmcnt(0)
+	s_branch 4f
+3:
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_waitcnt lgkmcnt(0)
+4:
+  ; s_setpc_b64 vcc
+	;;#ASMEND
+	.cfi_escape 0x0f, 0x04, 0x30, 0x36, 0xe9, 0x02 ; 
+	.cfi_undefined 16
+.Ltmp0:
+	.loc	1 20 0 prologue_end             ; kernel_masked_active.py:20:0
+	s_getreg_b32 s7, hwreg(HW_REG_HW_ID1, 0, 5)
+; %bb.1:                                ; %NodeBlock1647
+	s_load_dwordx4 s[20:23], s[4:5], 0x0
+	s_load_dwordx2 s[24:25], s[4:5], 0x10
+	s_mov_b64 s[0:1], -1
+	s_mov_b64 s[18:19], 0
+	s_cmp_lt_i32 s7, 4
+	s_mov_b64 s[2:3], 0
+	s_cbranch_scc1 .LBB0_3
+; %bb.2:                                ; %NodeBlock
+	.loc	1 0 0 is_stmt 0                 ; kernel_masked_active.py:0:0
+	s_cmp_gt_i32 s7, 7
+	s_cbranch_scc1 .LBB0_4
+	s_branch .LBB0_96
+.LBB0_3:                                ; %Flow1656
+	s_and_b64 vcc, exec, s[0:1]
+	s_cbranch_vccnz .LBB0_5
+	s_branch .LBB0_7
+.LBB0_4:                                ; %LeafBlock1645
+	s_cmp_lt_i32 s7, 12
+	s_mov_b64 s[2:3], -1
+	s_cbranch_scc1 .LBB0_97
+	s_branch .LBB0_166
+.LBB0_5:                                ; %LeafBlock
+	s_cmp_lt_i32 s7, 0
+	s_mov_b64 s[18:19], -1
+	s_cselect_b64 s[2:3], -1, 0
+	s_branch .LBB0_7
+.LBB0_6:                                ; %common.ret
+	.loc	1 20 0                          ; kernel_masked_active.py:20:0
+	s_endpgm
+.LBB0_7:                                ; %Flow1660
+	.loc	1 0 0                           ; kernel_masked_active.py:0:0
+	s_and_b64 s[0:1], s[2:3], exec
+	s_cbranch_scc0 .LBB0_9
+; %bb.8:
+	s_mov_b64 s[18:19], 0
+	.loc	1 20 0                          ; kernel_masked_active.py:20:0
+	s_waitcnt lgkmcnt(0)
+	s_ebarrier_sync  0, 0
+	s_ebarrier_sync  3, 0
+	s_ebarrier_sync  5, 0
+.LBB0_9:                                ; %Flow1661
+	.loc	1 0 0                           ; kernel_masked_active.py:0:0
+	s_and_b64 s[0:1], s[18:19], exec
+	s_cbranch_scc0 .LBB0_6
+; %bb.10:
+	.loc	1 20 0                          ; kernel_masked_active.py:20:0
+	; wdra branch body with #vgpr =  16
+	;;#ASMSTART
+	; wdra placeholder
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+	s_mov_b32 s5, 0
+.Ltmp1:
+	.file	2 "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1111/masked_active_tt_bf16_27shapes_20261112_1506/source" "kernel_masked_store.py"
+	.loc	2 231 57 is_stmt 1              ; kernel_masked_store.py:231:57
+	v_readfirstlane_b32 s0, v0
+.Ltmp2:
+	.loc	1 20 0                          ; kernel_masked_active.py:20:0
+	s_waitcnt lgkmcnt(0)
+	s_ebarrier_sync  0, 0
+	; sched_barrier mask(0x00000000)
+.Ltmp3:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 15, 0
+	s_mov_b32 s1, 0
+	;;#ASMEND
+.Ltmp4:
+	; sched_barrier mask(0x00000000)
+	.loc	2 222 54                        ; kernel_masked_store.py:222:54
+	s_cmpk_gt_i32 s6, 0x4a3
+	s_cbranch_scc1 .LBB0_15
+; %bb.11:                               ; %.lr.ph437
+	.loc	2 231 57                        ; kernel_masked_store.py:231:57
+	s_bfe_u32 s0, s0, 0x20006
+	s_lshl_b32 s1, s0, 13
+	s_add_i32 s33, s1, 0
+	s_lshl_b32 s7, s0, 6
+	s_add_i32 s34, s33, 0x400
+	s_add_i32 s35, s33, 0x800
+	s_add_i32 s48, s33, 0xc00
+	s_add_i32 s49, s33, 0x10000
+	s_add_i32 s50, s33, 0x10400
+	s_add_i32 s51, s33, 0x10800
+	s_add_i32 s52, s33, 0x10c00
+	s_add_i32 s53, s33, 0x8000
+	s_add_i32 s54, s33, 0x8400
+	s_add_i32 s55, s33, 0x8800
+	s_add_i32 s56, s33, 0x8c00
+	s_add_i32 s57, s33, 0x18000
+	s_add_i32 s58, s33, 0x18400
+	s_add_i32 s59, s33, 0x18800
+	s_add_i32 s60, s33, 0x18c00
+	.loc	2 222 54                        ; kernel_masked_store.py:222:54
+	s_lshl_b32 s0, s0, 7
+	.loc	2 225 23                        ; kernel_masked_store.py:225:23
+	s_add_u32 s61, s22, s0
+	s_addc_u32 s62, s23, 0
+	.loc	2 222 54                        ; kernel_masked_store.py:222:54
+	s_lshl_b32 s1, s6, 9
+	s_or_b32 s0, s1, s0
+	s_mov_b32 s3, 0x10000
+	s_lshl_b32 s63, s6, 8
+	s_add_i32 s64, s0, s22
+	s_mov_b32 s10, 0x25180
+	s_movk_i32 s2, 0x1000
+	s_mov_b32 s65, 0
+.LBB0_12:                               ; =>This Loop Header: Depth=1
+                                        ;     Child Loop BB0_13 Depth 2
+	.loc	2 223 28                        ; kernel_masked_store.py:223:28
+	s_mul_hi_i32 s0, s6, 0x6e5478ad
+	s_lshr_b32 s1, s0, 31
+	s_ashr_i32 s0, s0, 8
+	s_add_i32 s12, s0, s1
+	.loc	2 224 27                        ; kernel_masked_store.py:224:27
+	s_mul_i32 s1, s12, 0xfffffdae
+	.loc	2 223 41                        ; kernel_masked_store.py:223:41
+	s_lshl_b32 s0, s12, 8
+	.loc	2 224 27                        ; kernel_masked_store.py:224:27
+	s_add_i32 s1, s1, s6
+	.loc	2 224 40 is_stmt 0              ; kernel_masked_store.py:224:40
+	s_lshl_b32 s8, s1, 8
+	s_or_b32 s4, s0, s7
+	s_lshl_b64 s[0:1], s[4:5], 13
+	s_or_b32 s4, s8, s7
+	s_min_i32 s8, s4, 0x25180
+	s_add_i32 s8, s8, 0xfffdaec0
+	s_cmp_gt_i32 s4, 0x2517f
+	s_cselect_b32 s4, s8, 0
+	s_and_b32 s8, s4, 0xc0
+	s_lshl_b32 s4, s4, 12
+	s_and_b32 s4, s4, 0x100000
+	s_or_b32 s4, s8, s4
+	s_or_b32 s11, s4, 0x10000
+	.loc	2 225 23 is_stmt 1              ; kernel_masked_store.py:225:23
+	s_mul_i32 s4, s12, 0x25200
+	s_sub_i32 s4, s63, s4
+	s_lshl_b64 s[8:9], s[4:5], 1
+	s_add_u32 s4, s61, s8
+	s_mul_i32 s12, s12, 0x4a400
+	s_addc_u32 s66, s62, s9
+	s_sub_i32 s67, s64, s12
+	s_add_u32 s0, s20, s0
+	s_addc_u32 s1, s21, s1
+	s_mov_b64 s[22:23], 0
+.LBB0_13:                               ;   Parent Loop BB0_12 Depth=1
+                                        ; =>  This Inner Loop Header: Depth=2
+	.loc	2 227 53                        ; kernel_masked_store.py:227:53
+	s_abarrier_try_wait  s8, 1, s65
+	.loc	2 230 54                        ; kernel_masked_store.py:230:54
+	s_and_b32 s8, s1, 0xffff
+	s_mov_b64 s[18:19], s[2:3]
+	.loc	2 231 57                        ; kernel_masked_store.py:231:57
+	s_add_u32 s68, s4, s22
+	.loc	2 230 54                        ; kernel_masked_store.py:230:54
+	s_mov_b64 s[16:17], s[0:1]
+	.loc	2 231 57                        ; kernel_masked_store.py:231:57
+	s_addc_u32 s69, s66, s23
+	.loc	2 230 54                        ; kernel_masked_store.py:230:54
+	s_mov_b32 s17, s8
+	.loc	2 231 57                        ; kernel_masked_store.py:231:57
+	s_add_i32 s8, s67, s22
+	s_and_b32 s9, s69, 0xffff
+	.loc	2 228 25                        ; kernel_masked_store.py:228:25
+	s_abarrier_seq 2
+	.loc	2 230 54                        ; kernel_masked_store.py:230:54
+	matrix_load_64x16_b16 s[16:19] s33  t  lds
+	matrix_load_64x16_b16 s[16:19] s34  moffset:16 t  lds
+	matrix_load_64x16_b16 s[16:19] s35  moffset:32 t  lds
+	matrix_load_64x16_b16 s[16:19] s48  moffset:48 t  lds
+	.loc	2 231 57                        ; kernel_masked_store.py:231:57
+	matrix_load_64x16_b16 s[8:11] s49  t  lds
+	s_add_u32 s9, s68, 0x4a3000
+	s_mov_b64 s[46:47], s[10:11]
+	s_mov_b64 s[42:43], s[10:11]
+	s_mov_b64 s[30:31], s[10:11]
+	s_mov_b64 s[18:19], s[10:11]
+	s_mov_b64 s[26:27], s[10:11]
+	s_mov_b64 s[38:39], s[10:11]
+	s_mov_b64 s[44:45], s[8:9]
+	s_mov_b64 s[40:41], s[8:9]
+	s_mov_b64 s[28:29], s[8:9]
+	s_mov_b64 s[16:17], s[8:9]
+	s_mov_b64 s[24:25], s[8:9]
+	s_mov_b64 s[36:37], s[8:9]
+	s_addc_u32 s9, s69, 0
+	s_add_i32 s44, s8, 0x4a3000
+	s_and_b32 s45, s9, 0xffff
+	s_add_u32 s9, s68, 0x946000
+	s_addc_u32 s9, s69, 0
+	s_add_i32 s40, s8, 0x946000
+	s_and_b32 s41, s9, 0xffff
+	s_add_u32 s9, s68, 0xde9000
+	s_addc_u32 s9, s69, 0
+	s_mov_b32 s47, s11
+	s_mov_b32 s43, s11
+	s_mov_b32 s31, s11
+	s_add_i32 s28, s8, 0xde9000
+	s_and_b32 s29, s9, 0xffff
+	.loc	2 230 54                        ; kernel_masked_store.py:230:54
+	s_mov_b64 s[14:15], s[2:3]
+	.loc	2 231 57                        ; kernel_masked_store.py:231:57
+	matrix_load_64x16_b16 s[44:47] s50  t  lds
+	matrix_load_64x16_b16 s[40:43] s51  t  lds
+	.loc	2 230 54                        ; kernel_masked_store.py:230:54
+	s_add_u32 s9, s0, 0x80
+	.loc	2 231 57                        ; kernel_masked_store.py:231:57
+	matrix_load_64x16_b16 s[28:31] s52  t  lds
+	.loc	2 235 28                        ; kernel_masked_store.py:235:28
+	s_abarrier_arrive  s9, 2, 1
+	.loc	2 227 53                        ; kernel_masked_store.py:227:53
+	s_abarrier_try_wait  s9, 3, s65
+	.loc	2 230 54                        ; kernel_masked_store.py:230:54
+	s_mov_b64 s[12:13], s[0:1]
+	s_addc_u32 s9, s1, 0
+	s_add_i32 s12, s0, 0x80
+	s_and_b32 s13, s9, 0xffff
+	.loc	2 231 57                        ; kernel_masked_store.py:231:57
+	s_add_u32 s9, s68, 0x128c000
+	s_addc_u32 s9, s69, 0
+	s_add_i32 s16, s8, 0x128c000
+	s_and_b32 s17, s9, 0xffff
+	s_add_u32 s9, s68, 0x172f000
+	s_addc_u32 s9, s69, 0
+	s_add_i32 s24, s8, 0x172f000
+	s_and_b32 s25, s9, 0xffff
+	s_add_u32 s9, s68, 0x1bd2000
+	s_addc_u32 s9, s69, 0
+	s_add_i32 s36, s8, 0x1bd2000
+	s_and_b32 s37, s9, 0xffff
+	s_add_u32 s9, s68, 0x2075000
+	s_addc_u32 s9, s69, 0
+	s_add_i32 s8, s8, 0x2075000
+	s_and_b32 s9, s9, 0xffff
+.Ltmp5:
+	.loc	2 204 26                        ; kernel_masked_store.py:204:26
+	s_xor_b32 s65, s65, 1
+.Ltmp6:
+	.loc	2 231 57                        ; kernel_masked_store.py:231:57
+	s_mov_b32 s19, s11
+	s_mov_b32 s27, s11
+	s_mov_b32 s39, s11
+	.loc	2 225 23                        ; kernel_masked_store.py:225:23
+	s_add_u32 s22, s22, 0x2518000
+	.loc	2 228 25                        ; kernel_masked_store.py:228:25
+	s_abarrier_seq 4
+	.loc	2 230 54                        ; kernel_masked_store.py:230:54
+	matrix_load_64x16_b16 s[12:15] s53  t  lds
+	matrix_load_64x16_b16 s[12:15] s54  moffset:16 t  lds
+	matrix_load_64x16_b16 s[12:15] s55  moffset:32 t  lds
+	matrix_load_64x16_b16 s[12:15] s56  moffset:48 t  lds
+	.loc	2 231 57                        ; kernel_masked_store.py:231:57
+	matrix_load_64x16_b16 s[16:19] s57  t  lds
+	matrix_load_64x16_b16 s[24:27] s58  t  lds
+	matrix_load_64x16_b16 s[36:39] s59  t  lds
+	matrix_load_64x16_b16 s[8:11] s60  t  lds
+	.loc	2 225 23                        ; kernel_masked_store.py:225:23
+	s_addc_u32 s23, s23, 0
+	s_add_u32 s0, s0, 0x100
+	s_addc_u32 s1, s1, 0
+	s_cmp_lg_u32 s22, 0x4a300000
+	.loc	2 235 28                        ; kernel_masked_store.py:235:28
+	s_abarrier_arrive  s8, 4, 1
+	.loc	2 225 23                        ; kernel_masked_store.py:225:23
+	s_cbranch_scc1 .LBB0_13
+; %bb.14:                               ;   in Loop: Header=BB0_12 Depth=1
+	.loc	2 222 54                        ; kernel_masked_store.py:222:54
+	s_add_i32 s0, s6, 48
+	s_addk_i32 s63, 0x3000
+	s_addk_i32 s64, 0x6000
+	s_cmpk_lt_i32 s6, 0x474
+	s_mov_b32 s6, s0
+	s_cbranch_scc1 .LBB0_12
+.LBB0_15:                               ; %._crit_edge438
+	; sched_barrier mask(0x00000000)
+.Ltmp7:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 15, 0
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp8:
+	; sched_barrier mask(0x00000000)
+	.loc	1 20 0                          ; kernel_masked_active.py:20:0
+	s_ebarrier_sync  5, 0
+	s_nop 0
+	s_endpgm
+.LBB0_16:
+	; wdra branch body with #vgpr = 244
+	;;#ASMSTART
+	; wdra placeholder
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+.Ltmp9:
+	.loc	2 166 37                        ; kernel_masked_store.py:166:37
+	;;#ASMSTART
+	s_getreg_b32 s0, hwreg(HW_REG_HW_ID1, 0, 5)
+	;;#ASMEND
+.Ltmp10:
+	.loc	2 174 15                        ; kernel_masked_store.py:174:15
+	s_cmp_lg_u32 s0, 4
+	s_cselect_b64 s[0:1], -1, 0
+.Ltmp11:
+	.file	3 "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1111/masked_active_tt_bf16_27shapes_20261112_1506/source" "kernel_masked_remap.py"
+	.loc	3 51 58                         ; kernel_masked_remap.py:51:58
+	v_readfirstlane_b32 s8, v0
+	s_mov_b64 s[4:5], -1
+.Ltmp12:
+	.loc	2 174 7                         ; kernel_masked_store.py:174:7
+	s_and_b64 vcc, exec, s[0:1]
+.Ltmp13:
+	.loc	1 20 0                          ; kernel_masked_active.py:20:0
+	s_waitcnt lgkmcnt(0)
+	s_ebarrier_sync  0, 0
+.Ltmp14:
+	.loc	2 174 7                         ; kernel_masked_store.py:174:7
+	s_cbranch_vccnz .LBB0_19
+.LBB0_17:                               ; %Flow1653
+	s_and_b64 s[4:5], s[4:5], exec
+	s_cbranch_scc0 .LBB0_21
+; %bb.18:
+	; sched_barrier mask(0x00000000)
+.Ltmp15:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_abarrier_init 1, 8
+	s_mov_b32 s4, 0
+	;;#ASMEND
+.Ltmp16:
+	; sched_barrier mask(0x00000000)
+	.loc	2 160 30 is_stmt 0              ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 4, 4
+	s_mov_b32 s4, 0
+	;;#ASMEND
+.Ltmp17:
+	; sched_barrier mask(0x00000000)
+	.loc	2 179 34 is_stmt 1              ; kernel_masked_store.py:179:34
+	;;#ASMSTART
+	s_abarrier_arrive s4, 1, 2
+	;;#ASMEND
+.Ltmp18:
+	; sched_barrier mask(0x00000000)
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_abarrier_init 2, 4
+	s_mov_b32 s4, 0
+	;;#ASMEND
+.Ltmp19:
+	; sched_barrier mask(0x00000000)
+	.loc	2 174 7                         ; kernel_masked_store.py:174:7
+	s_branch .LBB0_21
+.Ltmp20:
+.LBB0_19:                               ; %.critedge
+	; sched_barrier mask(0x00000000)
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 4, 4
+	s_mov_b32 s4, 0
+	;;#ASMEND
+.Ltmp21:
+	; sched_barrier mask(0x00000000)
+	.loc	2 179 34                        ; kernel_masked_store.py:179:34
+	;;#ASMSTART
+	s_abarrier_arrive s4, 1, 2
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+	s_mov_b64 s[4:5], 0
+.Ltmp22:
+	.loc	2 174 7                         ; kernel_masked_store.py:174:7
+	s_branch .LBB0_17
+.LBB0_20:                               ; %Flow1659
+	.loc	2 0 7 is_stmt 0                 ; kernel_masked_store.py:0:7
+	s_mov_b64 s[0:1], 0
+	s_branch .LBB0_3
+.LBB0_21:
+	; sched_barrier mask(0x00000000)
+.Ltmp23:
+	.loc	2 160 30 is_stmt 1              ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 4, 4
+	s_mov_b32 s4, 0
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+	s_mov_b64 s[4:5], -1
+.Ltmp24:
+	.loc	2 174 7                         ; kernel_masked_store.py:174:7
+	s_and_b64 vcc, exec, s[0:1]
+	s_cbranch_vccnz .LBB0_24
+.LBB0_22:                               ; %Flow1652
+	s_and_b64 s[0:1], s[4:5], exec
+	s_cbranch_scc0 .LBB0_25
+; %bb.23:
+	; sched_barrier mask(0x00000000)
+.Ltmp25:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_abarrier_init 3, 8
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp26:
+	; sched_barrier mask(0x00000000)
+	.loc	2 160 30 is_stmt 0              ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 4, 4
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp27:
+	; sched_barrier mask(0x00000000)
+	.loc	2 179 34 is_stmt 1              ; kernel_masked_store.py:179:34
+	;;#ASMSTART
+	s_abarrier_arrive s0, 3, 2
+	;;#ASMEND
+.Ltmp28:
+	; sched_barrier mask(0x00000000)
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_abarrier_init 4, 4
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp29:
+	; sched_barrier mask(0x00000000)
+	.loc	2 174 7                         ; kernel_masked_store.py:174:7
+	s_branch .LBB0_25
+.Ltmp30:
+.LBB0_24:                               ; %.critedge4
+	; sched_barrier mask(0x00000000)
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 4, 4
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp31:
+	; sched_barrier mask(0x00000000)
+	.loc	2 179 34                        ; kernel_masked_store.py:179:34
+	;;#ASMSTART
+	s_abarrier_arrive s0, 3, 2
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+	s_mov_b64 s[4:5], 0
+.Ltmp32:
+	.loc	2 174 7                         ; kernel_masked_store.py:174:7
+	s_branch .LBB0_22
+.LBB0_25:
+	; sched_barrier mask(0x00000000)
+.Ltmp33:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 4, 4
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp34:
+	; sched_barrier mask(0x00000000)
+	.loc	2 160 30 is_stmt 0              ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 15, 0
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp35:
+	; sched_barrier mask(0x00000000)
+	.loc	3 43 54 is_stmt 1               ; kernel_masked_remap.py:43:54
+	s_cmpk_gt_i32 s6, 0x4a3
+	s_cbranch_scc1 .LBB0_95
+; %bb.26:                               ; %.preheader.lr.ph
+	.loc	3 0 54 is_stmt 0                ; kernel_masked_remap.py:0:54
+	s_lshl_b32 s0, s8, 6
+	v_bfe_u32 v1, v0, 4, 2
+	v_lshrrev_b32_e32 v2, 1, v0
+	s_and_b32 s30, s0, 0x2000
+	s_lshl_b32 s0, s8, 7
+	v_and_or_b32 v216, v2, 64, v1
+	v_lshlrev_b32_e32 v1, 1, v0
+	v_and_b32_e32 v0, 64, v0
+	s_and_b32 s31, s0, 0x2000
+	v_or_b32_e32 v217, 4, v216
+	v_or_b32_e32 v218, 8, v216
+	v_or_b32_e32 v219, 12, v216
+	v_or_b32_e32 v220, 16, v216
+	v_or_b32_e32 v221, 20, v216
+	v_or_b32_e32 v222, 24, v216
+	v_or_b32_e32 v223, 28, v216
+	v_or_b32_e32 v224, 32, v216
+	v_or_b32_e32 v225, 36, v216
+	v_or_b32_e32 v226, 40, v216
+	v_or_b32_e32 v227, 44, v216
+	v_or_b32_e32 v228, 48, v216
+	v_or_b32_e32 v229, 52, v216
+	v_or_b32_e32 v230, 56, v216
+	v_or_b32_e32 v231, 60, v216
+	v_and_or_b32 v232, v1, 30, v0
+	s_mov_b32 s33, 0
+	s_add_i32 s34, 0, 0x8000
+	s_add_i32 s35, 0, 0x10000
+	s_add_i32 s36, 0, 0x18000
+	s_mov_b32 s37, 0x25180
+	s_movk_i32 s38, 0x200
+	s_mov_b32 s40, 0
+	s_mov_b32 s39, s6
+.LBB0_27:                               ; %.preheader
+                                        ; =>This Loop Header: Depth=1
+                                        ;     Child Loop BB0_28 Depth 2
+	v_mov_b32_e32 v124, 0
+	s_mov_b32 s0, 64
+	v_mov_b32_e32 v125, v124
+	v_mov_b32_e32 v126, v124
+	v_mov_b32_e32 v127, v124
+	v_mov_b32_e32 v120, v124
+	v_mov_b32_e32 v121, v124
+	v_mov_b32_e32 v122, v124
+	v_mov_b32_e32 v123, v124
+	v_mov_b32_e32 v116, v124
+	v_mov_b32_e32 v117, v124
+	v_mov_b32_e32 v118, v124
+	v_mov_b32_e32 v119, v124
+	v_mov_b32_e32 v112, v124
+	v_mov_b32_e32 v113, v124
+	v_mov_b32_e32 v114, v124
+	v_mov_b32_e32 v115, v124
+	v_mov_b32_e32 v108, v124
+	v_mov_b32_e32 v109, v124
+	v_mov_b32_e32 v110, v124
+	v_mov_b32_e32 v111, v124
+	v_mov_b32_e32 v104, v124
+	v_mov_b32_e32 v105, v124
+	v_mov_b32_e32 v106, v124
+	v_mov_b32_e32 v107, v124
+	v_mov_b32_e32 v100, v124
+	v_mov_b32_e32 v101, v124
+	v_mov_b32_e32 v102, v124
+	v_mov_b32_e32 v103, v124
+	v_mov_b32_e32 v96, v124
+	v_mov_b32_e32 v97, v124
+	v_mov_b32_e32 v98, v124
+	v_mov_b32_e32 v99, v124
+	v_mov_b32_e32 v92, v124
+	v_mov_b32_e32 v93, v124
+	v_mov_b32_e32 v94, v124
+	v_mov_b32_e32 v95, v124
+	v_mov_b32_e32 v88, v124
+	v_mov_b32_e32 v89, v124
+	v_mov_b32_e32 v90, v124
+	v_mov_b32_e32 v91, v124
+	v_mov_b32_e32 v84, v124
+	v_mov_b32_e32 v85, v124
+	v_mov_b32_e32 v86, v124
+	v_mov_b32_e32 v87, v124
+	v_mov_b32_e32 v80, v124
+	v_mov_b32_e32 v81, v124
+	v_mov_b32_e32 v82, v124
+	v_mov_b32_e32 v83, v124
+	v_mov_b32_e32 v76, v124
+	v_mov_b32_e32 v77, v124
+	v_mov_b32_e32 v78, v124
+	v_mov_b32_e32 v79, v124
+	v_mov_b32_e32 v72, v124
+	v_mov_b32_e32 v73, v124
+	v_mov_b32_e32 v74, v124
+	v_mov_b32_e32 v75, v124
+	v_mov_b32_e32 v68, v124
+	v_mov_b32_e32 v69, v124
+	v_mov_b32_e32 v70, v124
+	v_mov_b32_e32 v71, v124
+	v_mov_b32_e32 v64, v124
+	v_mov_b32_e32 v65, v124
+	v_mov_b32_e32 v66, v124
+	v_mov_b32_e32 v67, v124
+	v_mov_b32_e32 v60, v124
+	v_mov_b32_e32 v61, v124
+	v_mov_b32_e32 v62, v124
+	v_mov_b32_e32 v63, v124
+	v_mov_b32_e32 v56, v124
+	v_mov_b32_e32 v57, v124
+	v_mov_b32_e32 v58, v124
+	v_mov_b32_e32 v59, v124
+	v_mov_b32_e32 v52, v124
+	v_mov_b32_e32 v53, v124
+	v_mov_b32_e32 v54, v124
+	v_mov_b32_e32 v55, v124
+	v_mov_b32_e32 v48, v124
+	v_mov_b32_e32 v49, v124
+	v_mov_b32_e32 v50, v124
+	v_mov_b32_e32 v51, v124
+	v_mov_b32_e32 v44, v124
+	v_mov_b32_e32 v45, v124
+	v_mov_b32_e32 v46, v124
+	v_mov_b32_e32 v47, v124
+	v_mov_b32_e32 v40, v124
+	v_mov_b32_e32 v41, v124
+	v_mov_b32_e32 v42, v124
+	v_mov_b32_e32 v43, v124
+	v_mov_b32_e32 v36, v124
+	v_mov_b32_e32 v37, v124
+	v_mov_b32_e32 v38, v124
+	v_mov_b32_e32 v39, v124
+	v_mov_b32_e32 v32, v124
+	v_mov_b32_e32 v33, v124
+	v_mov_b32_e32 v34, v124
+	v_mov_b32_e32 v35, v124
+	v_mov_b32_e32 v28, v124
+	v_mov_b32_e32 v29, v124
+	v_mov_b32_e32 v30, v124
+	v_mov_b32_e32 v31, v124
+	v_mov_b32_e32 v24, v124
+	v_mov_b32_e32 v25, v124
+	v_mov_b32_e32 v26, v124
+	v_mov_b32_e32 v27, v124
+	v_mov_b32_e32 v20, v124
+	v_mov_b32_e32 v21, v124
+	v_mov_b32_e32 v22, v124
+	v_mov_b32_e32 v23, v124
+	v_mov_b32_e32 v16, v124
+	v_mov_b32_e32 v17, v124
+	v_mov_b32_e32 v18, v124
+	v_mov_b32_e32 v19, v124
+	v_mov_b32_e32 v12, v124
+	v_mov_b32_e32 v13, v124
+	v_mov_b32_e32 v14, v124
+	v_mov_b32_e32 v15, v124
+	v_mov_b32_e32 v8, v124
+	v_mov_b32_e32 v9, v124
+	v_mov_b32_e32 v10, v124
+	v_mov_b32_e32 v11, v124
+	v_mov_b32_e32 v4, v124
+	v_mov_b32_e32 v5, v124
+	v_mov_b32_e32 v6, v124
+	v_mov_b32_e32 v7, v124
+	v_mov_b32_e32 v0, v124
+	v_mov_b32_e32 v1, v124
+	v_mov_b32_e32 v2, v124
+	v_mov_b32_e32 v3, v124
+.LBB0_28:                               ;   Parent Loop BB0_27 Depth=1
+                                        ; =>  This Inner Loop Header: Depth=2
+	.loc	3 48 49 is_stmt 1               ; kernel_masked_remap.py:48:49
+	s_lshl_b32 s4, s40, 1
+	.loc	3 48 42 is_stmt 0               ; kernel_masked_remap.py:48:42
+	s_add_i32 s5, s4, 2
+	.loc	3 48 52                         ; kernel_masked_remap.py:48:52
+	s_abarrier_try_wait  s5, s5, s33
+	.loc	3 49 23 is_stmt 1               ; kernel_masked_remap.py:49:23
+	s_cmp_eq_u32 s40, 0
+	.loc	3 49 15 is_stmt 0               ; kernel_masked_remap.py:49:15
+	s_cselect_b32 s5, 0, s34
+	s_cselect_b32 s8, s35, s36
+	.loc	3 50 55 is_stmt 1               ; kernel_masked_remap.py:50:55
+	s_add_i32 s5, s5, s30
+	.loc	3 51 58                         ; kernel_masked_remap.py:51:58
+	s_add_i32 s8, s8, s31
+	.loc	3 50 55                         ; kernel_masked_remap.py:50:55
+	ds_read_matrix_trans_format v[233:236], s5 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[172:175], s5 offset:4096 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[237:240], s5 offset:1024 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[168:171], s5 offset:5120 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[212:215], s5 offset:2048 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[140:143], s5 offset:6144 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[176:179], s5 offset:3072 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[128:131], s5 offset:7168 element:2 row:2 col:1
+	.loc	3 51 58                         ; kernel_masked_remap.py:51:58
+	ds_read_matrix_format v[208:211], s8 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[204:207], s8 offset:1024 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[156:159], s8 offset:2048 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[144:147], s8 offset:3072 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[200:203], s8 offset:4096 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[196:199], s8 offset:5120 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[160:163], s8 offset:6144 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[148:151], s8 offset:7168 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[192:195], s8 offset:16384 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[188:191], s8 offset:17408 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[164:167], s8 offset:18432 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[152:155], s8 offset:19456 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[184:187], s8 offset:20480 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[180:183], s8 offset:21504 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[136:139], s8 offset:22528 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[132:135], s8 offset:23552 element:2 row:2 col:1 alt:1
+	s_mov_b32 s1, s40
+	; sched_barrier mask(0x00000000)
+.Ltmp36:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_waitcnt lgkmcnt(0)
+	s_mov_b32 s5, 0
+	;;#ASMEND
+.Ltmp37:
+	; sched_barrier mask(0x00000000)
+	.loc	3 56 45                         ; kernel_masked_remap.py:56:45
+	s_or_b32 s4, s4, 1
+	.loc	3 56 28 is_stmt 0               ; kernel_masked_remap.py:56:28
+	s_waitcnt lgkmcnt(0)
+	s_abarrier_arrive  s4, s4, 1
+	; sched_barrier mask(0x00000000)
+.Ltmp38:
+	.loc	2 160 30 is_stmt 1              ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 1, 8
+	s_setprio 1
+	s_mov_b32 s4, 0
+	;;#ASMEND
+.Ltmp39:
+	; sched_barrier mask(0x00000000)
+	.loc	3 59 42                         ; kernel_masked_remap.py:59:42
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[233:234], v[208:209], v[124:127]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[233:234], v[210:211], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[233:234], v[200:201], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[233:234], v[202:203], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[233:234], v[192:193], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[233:234], v[194:195], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[233:234], v[184:185], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[233:234], v[186:187], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[237:238], v[208:209], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[237:238], v[210:211], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[237:238], v[200:201], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[237:238], v[202:203], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[237:238], v[192:193], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[237:238], v[194:195], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[237:238], v[184:185], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[237:238], v[186:187], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[212:213], v[208:209], v[60:63]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[212:213], v[210:211], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[212:213], v[200:201], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[212:213], v[202:203], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[212:213], v[192:193], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[212:213], v[194:195], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[212:213], v[184:185], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[212:213], v[186:187], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[176:177], v[208:209], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[176:177], v[210:211], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[176:177], v[200:201], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[176:177], v[202:203], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[176:177], v[192:193], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[176:177], v[194:195], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[176:177], v[184:185], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[176:177], v[186:187], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[235:236], v[204:205], v[124:127]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[235:236], v[206:207], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[235:236], v[196:197], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[235:236], v[198:199], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[235:236], v[188:189], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[235:236], v[190:191], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[235:236], v[180:181], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[235:236], v[182:183], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[239:240], v[204:205], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[239:240], v[206:207], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[239:240], v[196:197], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[239:240], v[198:199], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[239:240], v[188:189], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[239:240], v[190:191], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[239:240], v[180:181], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[239:240], v[182:183], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[214:215], v[204:205], v[60:63]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[214:215], v[206:207], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[214:215], v[196:197], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[214:215], v[198:199], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[214:215], v[188:189], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[214:215], v[190:191], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[214:215], v[180:181], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[214:215], v[182:183], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[178:179], v[204:205], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[178:179], v[206:207], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[178:179], v[196:197], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[178:179], v[198:199], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[178:179], v[188:189], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[178:179], v[190:191], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[178:179], v[180:181], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[178:179], v[182:183], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[172:173], v[156:157], v[124:127]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[172:173], v[158:159], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[172:173], v[160:161], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[172:173], v[162:163], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[172:173], v[164:165], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[172:173], v[166:167], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[172:173], v[136:137], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[172:173], v[138:139], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[168:169], v[156:157], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[168:169], v[158:159], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[168:169], v[160:161], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[168:169], v[162:163], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[168:169], v[164:165], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[168:169], v[166:167], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[168:169], v[136:137], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[168:169], v[138:139], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[140:141], v[156:157], v[60:63]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[140:141], v[158:159], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[140:141], v[160:161], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[140:141], v[162:163], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[140:141], v[164:165], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[140:141], v[166:167], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[140:141], v[136:137], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[140:141], v[138:139], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[128:129], v[156:157], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[128:129], v[158:159], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[128:129], v[160:161], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[128:129], v[162:163], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[128:129], v[164:165], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[128:129], v[166:167], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[128:129], v[136:137], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[128:129], v[138:139], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[174:175], v[144:145], v[124:127]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[174:175], v[146:147], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[174:175], v[148:149], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[174:175], v[150:151], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[174:175], v[152:153], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[174:175], v[154:155], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[174:175], v[132:133], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[174:175], v[134:135], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[170:171], v[144:145], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[170:171], v[146:147], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[170:171], v[148:149], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[170:171], v[150:151], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[170:171], v[152:153], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[170:171], v[154:155], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[170:171], v[132:133], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[170:171], v[134:135], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[142:143], v[144:145], v[60:63]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[142:143], v[146:147], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[142:143], v[148:149], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[142:143], v[150:151], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[142:143], v[152:153], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[142:143], v[154:155], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[142:143], v[132:133], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[142:143], v[134:135], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[130:131], v[144:145], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[130:131], v[146:147], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[130:131], v[148:149], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[130:131], v[150:151], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[130:131], v[152:153], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[130:131], v[154:155], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[130:131], v[132:133], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[130:131], v[134:135], v[0:3]   lts
+	; sched_barrier mask(0x00000000)
+.Ltmp40:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_setprio 0
+	s_ebarrier_sync 1, 8
+	s_mov_b32 s4, 0
+	;;#ASMEND
+.Ltmp41:
+	; sched_barrier mask(0x00000000)
+	.loc	2 203 24                        ; kernel_masked_store.py:203:24
+	s_xor_b32 s40, s40, 1
+	.loc	2 204 26                        ; kernel_masked_store.py:204:26
+	s_xor_b32 s33, s1, s33
+.Ltmp42:
+	.loc	3 47 23                         ; kernel_masked_remap.py:47:23
+	s_add_i32 s0, s0, -1
+	s_cmp_lg_u32 s0, 0
+	s_cbranch_scc1 .LBB0_28
+; %bb.29:                               ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 68 28                         ; kernel_masked_remap.py:68:28
+	s_mul_hi_i32 s0, s39, 0x6e5478ad
+	s_lshr_b32 s1, s0, 31
+	s_ashr_i32 s0, s0, 8
+	s_add_i32 s0, s0, s1
+	.loc	3 68 41 is_stmt 0               ; kernel_masked_remap.py:68:41
+	s_lshl_b32 s41, s0, 8
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v139, s41, v216
+	v_or_b32_e32 v129, s41, v217
+	.loc	3 79 39                         ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v128, v139, s37
+	v_mul_lo_u32 v131, v129, s37
+	.loc	3 79 25 is_stmt 0               ; kernel_masked_remap.py:79:25
+	v_ashrrev_i32_e32 v129, 31, v128
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v132, s41, v218
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_lshlrev_b64 v[128:129], 1, v[128:129]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v133, v132, s37
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_mov_b32_e32 v137, s25
+	v_add_co_u32_e32 v138, vcc, s24, v128
+	v_ashrrev_i32_e32 v132, 31, v131
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v134, s41, v219
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e32 v140, vcc, v137, v129, vcc
+	v_lshlrev_b64 v[128:129], 1, v[131:132]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v135, v134, s37
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_add_co_u32_e32 v141, vcc, s24, v128
+	v_ashrrev_i32_e32 v134, 31, v133
+	.loc	3 69 27 is_stmt 1               ; kernel_masked_remap.py:69:27
+	s_mulk_i32 s0, 0xfdae
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e32 v142, vcc, v137, v129, vcc
+	v_lshlrev_b64 v[128:129], 1, v[133:134]
+	.loc	3 69 27                         ; kernel_masked_remap.py:69:27
+	s_add_i32 s0, s0, s39
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_add_co_u32_e32 v143, vcc, s24, v128
+	v_ashrrev_i32_e32 v136, 31, v135
+	.loc	3 78 25                         ; kernel_masked_remap.py:78:25
+	v_lshl_or_b32 v130, s0, 8, v232
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e32 v144, vcc, v137, v129, vcc
+	v_lshlrev_b64 v[128:129], 1, v[135:136]
+	v_add_co_u32_e32 v145, vcc, s24, v128
+	.loc	3 79 43 is_stmt 0               ; kernel_masked_remap.py:79:43
+	v_ashrrev_i32_e32 v131, 31, v130
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e32 v146, vcc, v137, v129, vcc
+	.loc	3 79 43                         ; kernel_masked_remap.py:79:43
+	v_lshlrev_b64 v[128:129], 1, v[130:131]
+	v_add_co_u32_e32 v131, vcc, v138, v128
+	v_addc_co_u32_e32 v132, vcc, v140, v129, vcc
+	v_add_co_u32_e32 v133, vcc, v141, v128
+	v_addc_co_u32_e32 v134, vcc, v142, v129, vcc
+	v_add_co_u32_e32 v135, vcc, v143, v128
+	v_addc_co_u32_e32 v136, vcc, v144, v129, vcc
+	v_add_co_u32_e32 v137, vcc, v145, v128
+	v_addc_co_u32_e32 v138, vcc, v146, v129, vcc
+	.loc	3 80 36 is_stmt 1               ; kernel_masked_remap.py:80:36
+	v_cmp_gt_i32_e32 vcc, s38, v139
+	.loc	3 80 56 is_stmt 0               ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[0:1], s37, v130
+	.loc	3 80 42                         ; kernel_masked_remap.py:80:42
+	s_and_b64 s[4:5], vcc, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[4:5]
+	s_cbranch_execz .LBB0_31
+; %bb.30:                               ; %.critedge6
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v124, v124, v125
+	v_cvt_pk_bf16_f32 v126, v126, v127
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v124, off
+	global_store_short_d16_hi v[133:134], v124, off
+	global_store_short v[135:136], v126, off
+	global_store_short_d16_hi v[137:138], v126, off
+.LBB0_31:                               ; %.critedge10
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	v_or_b32_e32 v124, 1, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[0:1], s37, v124
+	.loc	3 80 42                         ; kernel_masked_remap.py:80:42
+	s_and_b64 s[8:9], vcc, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[8:9]
+	s_cbranch_execz .LBB0_33
+; %bb.32:                               ; %.critedge12
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v120, v120, v121
+	v_cvt_pk_bf16_f32 v121, v122, v123
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v120, off offset:2
+	global_store_short_d16_hi v[133:134], v120, off offset:2
+	global_store_short v[135:136], v121, off offset:2
+	global_store_short_d16_hi v[137:138], v121, off offset:2
+.LBB0_33:                               ; %.critedge16
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	v_or_b32_e32 v120, 32, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[0:1], s37, v120
+	.loc	3 80 42                         ; kernel_masked_remap.py:80:42
+	s_and_b64 s[10:11], vcc, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[10:11]
+	s_cbranch_execz .LBB0_35
+; %bb.34:                               ; %.critedge18
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v116, v116, v117
+	v_cvt_pk_bf16_f32 v117, v118, v119
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v116, off offset:64
+	global_store_short_d16_hi v[133:134], v116, off offset:64
+	global_store_short v[135:136], v117, off offset:64
+	global_store_short_d16_hi v[137:138], v117, off offset:64
+.LBB0_35:                               ; %.critedge22
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	v_or_b32_e32 v116, 33, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[0:1], s37, v116
+	.loc	3 80 42                         ; kernel_masked_remap.py:80:42
+	s_and_b64 s[12:13], vcc, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[12:13]
+	s_cbranch_execz .LBB0_37
+; %bb.36:                               ; %.critedge24
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v112, v112, v113
+	v_cvt_pk_bf16_f32 v113, v114, v115
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v112, off offset:66
+	global_store_short_d16_hi v[133:134], v112, off offset:66
+	global_store_short v[135:136], v113, off offset:66
+	global_store_short_d16_hi v[137:138], v113, off offset:66
+.LBB0_37:                               ; %.critedge28
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	v_or_b32_e32 v112, 0x80, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[0:1], s37, v112
+	.loc	3 80 42                         ; kernel_masked_remap.py:80:42
+	s_and_b64 s[14:15], vcc, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[14:15]
+	s_cbranch_execz .LBB0_39
+; %bb.38:                               ; %.critedge30
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v108, v108, v109
+	v_cvt_pk_bf16_f32 v109, v110, v111
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v108, off offset:256
+	global_store_short_d16_hi v[133:134], v108, off offset:256
+	global_store_short v[135:136], v109, off offset:256
+	global_store_short_d16_hi v[137:138], v109, off offset:256
+.LBB0_39:                               ; %.critedge34
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	v_or_b32_e32 v108, 0x81, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[0:1], s37, v108
+	.loc	3 80 42                         ; kernel_masked_remap.py:80:42
+	s_and_b64 s[16:17], vcc, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[16:17]
+	s_cbranch_execz .LBB0_41
+; %bb.40:                               ; %.critedge36
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v104, v104, v105
+	v_cvt_pk_bf16_f32 v105, v106, v107
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v104, off offset:258
+	global_store_short_d16_hi v[133:134], v104, off offset:258
+	global_store_short v[135:136], v105, off offset:258
+	global_store_short_d16_hi v[137:138], v105, off offset:258
+.LBB0_41:                               ; %.critedge40
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	v_or_b32_e32 v104, 0xa0, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[0:1], s37, v104
+	.loc	3 80 42                         ; kernel_masked_remap.py:80:42
+	s_and_b64 s[26:27], vcc, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[26:27]
+	s_cbranch_execz .LBB0_43
+; %bb.42:                               ; %.critedge42
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v100, v100, v101
+	v_cvt_pk_bf16_f32 v101, v102, v103
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v100, off offset:320
+	global_store_short_d16_hi v[133:134], v100, off offset:320
+	global_store_short v[135:136], v101, off offset:320
+	global_store_short_d16_hi v[137:138], v101, off offset:320
+.LBB0_43:                               ; %.critedge46
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	v_or_b32_e32 v100, 0xa1, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[0:1], s37, v100
+	.loc	3 80 42                         ; kernel_masked_remap.py:80:42
+	s_and_b64 s[0:1], vcc, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[0:1]
+	s_cbranch_execz .LBB0_45
+; %bb.44:                               ; %.critedge48
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v96, v96, v97
+	v_cvt_pk_bf16_f32 v97, v98, v99
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v96, off offset:322
+	global_store_short_d16_hi v[133:134], v96, off offset:322
+	global_store_short v[135:136], v97, off offset:322
+	global_store_short_d16_hi v[137:138], v97, off offset:322
+.LBB0_45:                               ; %.critedge52
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v96, s41, v220
+	v_or_b32_e32 v97, s41, v221
+	.loc	3 79 39                         ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v96, v96, s37
+	v_mul_lo_u32 v98, v97, s37
+	.loc	3 79 25 is_stmt 0               ; kernel_masked_remap.py:79:25
+	v_ashrrev_i32_e32 v97, 31, v96
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v99, s41, v222
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_lshlrev_b64 v[96:97], 1, v[96:97]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v100, v99, s37
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_mov_b32_e32 v104, s25
+	v_add_co_u32_e32 v105, vcc, s24, v96
+	v_ashrrev_i32_e32 v99, 31, v98
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v101, s41, v223
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e32 v106, vcc, v104, v97, vcc
+	v_lshlrev_b64 v[96:97], 1, v[98:99]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v102, v101, s37
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_add_co_u32_e32 v98, vcc, s24, v96
+	v_ashrrev_i32_e32 v101, 31, v100
+	v_addc_co_u32_e32 v99, vcc, v104, v97, vcc
+	v_lshlrev_b64 v[96:97], 1, v[100:101]
+	v_add_co_u32_e32 v100, vcc, s24, v96
+	v_ashrrev_i32_e32 v103, 31, v102
+	v_addc_co_u32_e32 v101, vcc, v104, v97, vcc
+	v_lshlrev_b64 v[96:97], 1, v[102:103]
+	v_add_co_u32_e32 v102, vcc, s24, v96
+	v_addc_co_u32_e32 v103, vcc, v104, v97, vcc
+	.loc	3 79 43                         ; kernel_masked_remap.py:79:43
+	v_add_co_u32_e32 v96, vcc, v105, v128
+	v_addc_co_u32_e32 v97, vcc, v106, v129, vcc
+	v_add_co_u32_e32 v98, vcc, v98, v128
+	v_addc_co_u32_e32 v99, vcc, v99, v129, vcc
+	v_add_co_u32_e32 v100, vcc, v100, v128
+	v_addc_co_u32_e32 v101, vcc, v101, v129, vcc
+	v_add_co_u32_e32 v102, vcc, v102, v128
+	v_addc_co_u32_e32 v103, vcc, v103, v129, vcc
+	.loc	3 80 21 is_stmt 1               ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[4:5]
+	s_cbranch_execz .LBB0_47
+; %bb.46:                               ; %.critedge54
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63                         ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v92, v92, v93
+	v_cvt_pk_bf16_f32 v93, v94, v95
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v92, off
+	global_store_short_d16_hi v[98:99], v92, off
+	global_store_short v[100:101], v93, off
+	global_store_short_d16_hi v[102:103], v93, off
+.LBB0_47:                               ; %.critedge58
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[8:9]
+	s_cbranch_execz .LBB0_49
+; %bb.48:                               ; %.critedge60
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v88, v88, v89
+	v_cvt_pk_bf16_f32 v89, v90, v91
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v88, off offset:2
+	global_store_short_d16_hi v[98:99], v88, off offset:2
+	global_store_short v[100:101], v89, off offset:2
+	global_store_short_d16_hi v[102:103], v89, off offset:2
+.LBB0_49:                               ; %.critedge64
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[10:11]
+	s_cbranch_execz .LBB0_51
+; %bb.50:                               ; %.critedge66
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v84, v84, v85
+	v_cvt_pk_bf16_f32 v85, v86, v87
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v84, off offset:64
+	global_store_short_d16_hi v[98:99], v84, off offset:64
+	global_store_short v[100:101], v85, off offset:64
+	global_store_short_d16_hi v[102:103], v85, off offset:64
+.LBB0_51:                               ; %.critedge70
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[12:13]
+	s_cbranch_execz .LBB0_53
+; %bb.52:                               ; %.critedge72
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v80, v80, v81
+	v_cvt_pk_bf16_f32 v81, v82, v83
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v80, off offset:66
+	global_store_short_d16_hi v[98:99], v80, off offset:66
+	global_store_short v[100:101], v81, off offset:66
+	global_store_short_d16_hi v[102:103], v81, off offset:66
+.LBB0_53:                               ; %.critedge76
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[14:15]
+	s_cbranch_execz .LBB0_55
+; %bb.54:                               ; %.critedge78
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v76, v76, v77
+	v_cvt_pk_bf16_f32 v77, v78, v79
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v76, off offset:256
+	global_store_short_d16_hi v[98:99], v76, off offset:256
+	global_store_short v[100:101], v77, off offset:256
+	global_store_short_d16_hi v[102:103], v77, off offset:256
+.LBB0_55:                               ; %.critedge82
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[16:17]
+	s_cbranch_execz .LBB0_57
+; %bb.56:                               ; %.critedge84
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v72, v72, v73
+	v_cvt_pk_bf16_f32 v73, v74, v75
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v72, off offset:258
+	global_store_short_d16_hi v[98:99], v72, off offset:258
+	global_store_short v[100:101], v73, off offset:258
+	global_store_short_d16_hi v[102:103], v73, off offset:258
+.LBB0_57:                               ; %.critedge88
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[26:27]
+	s_cbranch_execz .LBB0_59
+; %bb.58:                               ; %.critedge90
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v68, v68, v69
+	v_cvt_pk_bf16_f32 v69, v70, v71
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v68, off offset:320
+	global_store_short_d16_hi v[98:99], v68, off offset:320
+	global_store_short v[100:101], v69, off offset:320
+	global_store_short_d16_hi v[102:103], v69, off offset:320
+.LBB0_59:                               ; %.critedge94
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[0:1]
+	s_cbranch_execz .LBB0_61
+; %bb.60:                               ; %.critedge96
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v64, v64, v65
+	v_cvt_pk_bf16_f32 v65, v66, v67
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v64, off offset:322
+	global_store_short_d16_hi v[98:99], v64, off offset:322
+	global_store_short v[100:101], v65, off offset:322
+	global_store_short_d16_hi v[102:103], v65, off offset:322
+.LBB0_61:                               ; %.critedge100
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v64, s41, v224
+	v_or_b32_e32 v65, s41, v225
+	.loc	3 79 39                         ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v64, v64, s37
+	v_mul_lo_u32 v66, v65, s37
+	.loc	3 79 25 is_stmt 0               ; kernel_masked_remap.py:79:25
+	v_ashrrev_i32_e32 v65, 31, v64
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v67, s41, v226
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_lshlrev_b64 v[64:65], 1, v[64:65]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v68, v67, s37
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_mov_b32_e32 v72, s25
+	v_add_co_u32_e32 v73, vcc, s24, v64
+	v_ashrrev_i32_e32 v67, 31, v66
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v69, s41, v227
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e32 v74, vcc, v72, v65, vcc
+	v_lshlrev_b64 v[64:65], 1, v[66:67]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v70, v69, s37
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_add_co_u32_e32 v66, vcc, s24, v64
+	v_ashrrev_i32_e32 v69, 31, v68
+	v_addc_co_u32_e32 v67, vcc, v72, v65, vcc
+	v_lshlrev_b64 v[64:65], 1, v[68:69]
+	v_add_co_u32_e32 v68, vcc, s24, v64
+	v_ashrrev_i32_e32 v71, 31, v70
+	v_addc_co_u32_e32 v69, vcc, v72, v65, vcc
+	v_lshlrev_b64 v[64:65], 1, v[70:71]
+	v_add_co_u32_e32 v70, vcc, s24, v64
+	v_addc_co_u32_e32 v71, vcc, v72, v65, vcc
+	.loc	3 79 43                         ; kernel_masked_remap.py:79:43
+	v_add_co_u32_e32 v64, vcc, v73, v128
+	v_addc_co_u32_e32 v65, vcc, v74, v129, vcc
+	v_add_co_u32_e32 v66, vcc, v66, v128
+	v_addc_co_u32_e32 v67, vcc, v67, v129, vcc
+	v_add_co_u32_e32 v68, vcc, v68, v128
+	v_addc_co_u32_e32 v69, vcc, v69, v129, vcc
+	v_add_co_u32_e32 v70, vcc, v70, v128
+	v_addc_co_u32_e32 v71, vcc, v71, v129, vcc
+	.loc	3 80 21 is_stmt 1               ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[4:5]
+	s_cbranch_execz .LBB0_63
+; %bb.62:                               ; %.critedge102
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63                         ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v60, v60, v61
+	v_cvt_pk_bf16_f32 v61, v62, v63
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v60, off
+	global_store_short_d16_hi v[66:67], v60, off
+	global_store_short v[68:69], v61, off
+	global_store_short_d16_hi v[70:71], v61, off
+.LBB0_63:                               ; %.critedge106
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[8:9]
+	s_cbranch_execz .LBB0_65
+; %bb.64:                               ; %.critedge108
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v56, v56, v57
+	v_cvt_pk_bf16_f32 v57, v58, v59
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v56, off offset:2
+	global_store_short_d16_hi v[66:67], v56, off offset:2
+	global_store_short v[68:69], v57, off offset:2
+	global_store_short_d16_hi v[70:71], v57, off offset:2
+.LBB0_65:                               ; %.critedge112
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[10:11]
+	s_cbranch_execz .LBB0_67
+; %bb.66:                               ; %.critedge114
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v52, v52, v53
+	v_cvt_pk_bf16_f32 v53, v54, v55
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v52, off offset:64
+	global_store_short_d16_hi v[66:67], v52, off offset:64
+	global_store_short v[68:69], v53, off offset:64
+	global_store_short_d16_hi v[70:71], v53, off offset:64
+.LBB0_67:                               ; %.critedge118
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[12:13]
+	s_cbranch_execz .LBB0_69
+; %bb.68:                               ; %.critedge120
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v48, v48, v49
+	v_cvt_pk_bf16_f32 v49, v50, v51
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v48, off offset:66
+	global_store_short_d16_hi v[66:67], v48, off offset:66
+	global_store_short v[68:69], v49, off offset:66
+	global_store_short_d16_hi v[70:71], v49, off offset:66
+.LBB0_69:                               ; %.critedge124
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[14:15]
+	s_cbranch_execz .LBB0_71
+; %bb.70:                               ; %.critedge126
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v44, v44, v45
+	v_cvt_pk_bf16_f32 v45, v46, v47
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v44, off offset:256
+	global_store_short_d16_hi v[66:67], v44, off offset:256
+	global_store_short v[68:69], v45, off offset:256
+	global_store_short_d16_hi v[70:71], v45, off offset:256
+.LBB0_71:                               ; %.critedge130
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[16:17]
+	s_cbranch_execz .LBB0_73
+; %bb.72:                               ; %.critedge132
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v40, v40, v41
+	v_cvt_pk_bf16_f32 v41, v42, v43
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v40, off offset:258
+	global_store_short_d16_hi v[66:67], v40, off offset:258
+	global_store_short v[68:69], v41, off offset:258
+	global_store_short_d16_hi v[70:71], v41, off offset:258
+.LBB0_73:                               ; %.critedge136
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[26:27]
+	s_cbranch_execz .LBB0_75
+; %bb.74:                               ; %.critedge138
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v36, v36, v37
+	v_cvt_pk_bf16_f32 v37, v38, v39
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v36, off offset:320
+	global_store_short_d16_hi v[66:67], v36, off offset:320
+	global_store_short v[68:69], v37, off offset:320
+	global_store_short_d16_hi v[70:71], v37, off offset:320
+.LBB0_75:                               ; %.critedge142
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[0:1]
+	s_cbranch_execz .LBB0_77
+; %bb.76:                               ; %.critedge144
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v32, v32, v33
+	v_cvt_pk_bf16_f32 v33, v34, v35
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v32, off offset:322
+	global_store_short_d16_hi v[66:67], v32, off offset:322
+	global_store_short v[68:69], v33, off offset:322
+	global_store_short_d16_hi v[70:71], v33, off offset:322
+.LBB0_77:                               ; %.critedge148
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v32, s41, v228
+	v_or_b32_e32 v33, s41, v229
+	.loc	3 79 39                         ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v32, v32, s37
+	v_mul_lo_u32 v34, v33, s37
+	.loc	3 79 25 is_stmt 0               ; kernel_masked_remap.py:79:25
+	v_ashrrev_i32_e32 v33, 31, v32
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v35, s41, v230
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_lshlrev_b64 v[32:33], 1, v[32:33]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v36, v35, s37
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_mov_b32_e32 v40, s25
+	v_add_co_u32_e32 v41, vcc, s24, v32
+	v_ashrrev_i32_e32 v35, 31, v34
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v37, s41, v231
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e32 v42, vcc, v40, v33, vcc
+	v_lshlrev_b64 v[32:33], 1, v[34:35]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v38, v37, s37
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_add_co_u32_e32 v34, vcc, s24, v32
+	v_ashrrev_i32_e32 v37, 31, v36
+	v_addc_co_u32_e32 v35, vcc, v40, v33, vcc
+	v_lshlrev_b64 v[32:33], 1, v[36:37]
+	v_add_co_u32_e32 v36, vcc, s24, v32
+	v_ashrrev_i32_e32 v39, 31, v38
+	v_addc_co_u32_e32 v37, vcc, v40, v33, vcc
+	v_lshlrev_b64 v[32:33], 1, v[38:39]
+	v_add_co_u32_e32 v38, vcc, s24, v32
+	v_addc_co_u32_e32 v39, vcc, v40, v33, vcc
+	.loc	3 79 43                         ; kernel_masked_remap.py:79:43
+	v_add_co_u32_e32 v32, vcc, v41, v128
+	v_addc_co_u32_e32 v33, vcc, v42, v129, vcc
+	v_add_co_u32_e32 v34, vcc, v34, v128
+	v_addc_co_u32_e32 v35, vcc, v35, v129, vcc
+	v_add_co_u32_e32 v36, vcc, v36, v128
+	v_addc_co_u32_e32 v37, vcc, v37, v129, vcc
+	v_add_co_u32_e32 v38, vcc, v38, v128
+	v_addc_co_u32_e32 v39, vcc, v39, v129, vcc
+	.loc	3 80 21 is_stmt 1               ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[28:29], s[4:5]
+	s_cbranch_execz .LBB0_79
+; %bb.78:                               ; %.critedge150
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63                         ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v28, v28, v29
+	v_cvt_pk_bf16_f32 v29, v30, v31
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v28, off
+	global_store_short_d16_hi v[34:35], v28, off
+	global_store_short v[36:37], v29, off
+	global_store_short_d16_hi v[38:39], v29, off
+.LBB0_79:                               ; %.critedge154
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[28:29]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[4:5], s[8:9]
+	s_cbranch_execz .LBB0_81
+; %bb.80:                               ; %.critedge156
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v24, v24, v25
+	v_cvt_pk_bf16_f32 v25, v26, v27
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v24, off offset:2
+	global_store_short_d16_hi v[34:35], v24, off offset:2
+	global_store_short v[36:37], v25, off offset:2
+	global_store_short_d16_hi v[38:39], v25, off offset:2
+.LBB0_81:                               ; %.critedge160
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[4:5]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[4:5], s[10:11]
+	s_cbranch_execz .LBB0_83
+; %bb.82:                               ; %.critedge162
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v20, v20, v21
+	v_cvt_pk_bf16_f32 v21, v22, v23
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v20, off offset:64
+	global_store_short_d16_hi v[34:35], v20, off offset:64
+	global_store_short v[36:37], v21, off offset:64
+	global_store_short_d16_hi v[38:39], v21, off offset:64
+.LBB0_83:                               ; %.critedge166
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[4:5]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[4:5], s[12:13]
+	s_cbranch_execz .LBB0_85
+; %bb.84:                               ; %.critedge168
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v16, v16, v17
+	v_cvt_pk_bf16_f32 v17, v18, v19
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v16, off offset:66
+	global_store_short_d16_hi v[34:35], v16, off offset:66
+	global_store_short v[36:37], v17, off offset:66
+	global_store_short_d16_hi v[38:39], v17, off offset:66
+.LBB0_85:                               ; %.critedge172
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[4:5]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[4:5], s[14:15]
+	s_cbranch_execz .LBB0_87
+; %bb.86:                               ; %.critedge174
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v12, v12, v13
+	v_cvt_pk_bf16_f32 v13, v14, v15
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v12, off offset:256
+	global_store_short_d16_hi v[34:35], v12, off offset:256
+	global_store_short v[36:37], v13, off offset:256
+	global_store_short_d16_hi v[38:39], v13, off offset:256
+.LBB0_87:                               ; %.critedge178
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[4:5]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[4:5], s[16:17]
+	s_cbranch_execz .LBB0_89
+; %bb.88:                               ; %.critedge180
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v8, v8, v9
+	v_cvt_pk_bf16_f32 v9, v10, v11
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v8, off offset:258
+	global_store_short_d16_hi v[34:35], v8, off offset:258
+	global_store_short v[36:37], v9, off offset:258
+	global_store_short_d16_hi v[38:39], v9, off offset:258
+.LBB0_89:                               ; %.critedge184
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[4:5]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[4:5], s[26:27]
+	s_cbranch_execz .LBB0_91
+; %bb.90:                               ; %.critedge186
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v4, v4, v5
+	v_cvt_pk_bf16_f32 v5, v6, v7
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v4, off offset:320
+	global_store_short_d16_hi v[34:35], v4, off offset:320
+	global_store_short v[36:37], v5, off offset:320
+	global_store_short_d16_hi v[38:39], v5, off offset:320
+.LBB0_91:                               ; %.critedge190
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[4:5]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[4:5], s[0:1]
+	s_cbranch_execz .LBB0_93
+; %bb.92:                               ; %.critedge192
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v0, v0, v1
+	v_cvt_pk_bf16_f32 v1, v2, v3
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v0, off offset:322
+	global_store_short_d16_hi v[34:35], v0, off offset:322
+	global_store_short v[36:37], v1, off offset:322
+	global_store_short_d16_hi v[38:39], v1, off offset:322
+.LBB0_93:                               ; %.critedge196
+                                        ;   in Loop: Header=BB0_27 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[4:5]
+	.loc	3 43 54 is_stmt 1               ; kernel_masked_remap.py:43:54
+	s_add_i32 s0, s39, 48
+	s_cmpk_lt_i32 s39, 0x474
+	s_mov_b32 s39, s0
+	s_cbranch_scc1 .LBB0_27
+; %bb.94:                               ; %Flow1650
+.LBB0_95:                               ; %._crit_edge421
+	; sched_barrier mask(0x00000000)
+.Ltmp43:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 15, 0
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp44:
+	; sched_barrier mask(0x00000000)
+	.loc	2 160 30 is_stmt 0              ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_abarrier_inv 1
+	s_abarrier_inv 2
+	s_abarrier_inv 3
+	s_abarrier_inv 4
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp45:
+	; sched_barrier mask(0x00000000)
+	.loc	1 20 0 is_stmt 1                ; kernel_masked_active.py:20:0
+	s_ebarrier_sync  5, 0
+	;;#ASMSTART
+	; mma_epilogue_partition_1
+	;;#ASMEND
+	s_mov_b64 s[0:1], 0
+	s_branch .LBB0_3
+.LBB0_96:                               ; %Flow1657
+	.loc	1 0 0 is_stmt 0                 ; kernel_masked_active.py:0:0
+	s_and_b64 vcc, exec, s[0:1]
+	s_cbranch_vccnz .LBB0_16
+	s_branch .LBB0_20
+.LBB0_97:
+	.loc	1 20 0                          ; kernel_masked_active.py:20:0
+	; wdra branch body with #vgpr = 244
+	;;#ASMSTART
+	; wdra placeholder
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+	s_mov_b32 s1, 0
+.Ltmp46:
+	.loc	3 51 58 is_stmt 1               ; kernel_masked_remap.py:51:58
+	v_readfirstlane_b32 s0, v0
+.Ltmp47:
+	.loc	1 20 0                          ; kernel_masked_active.py:20:0
+	s_waitcnt lgkmcnt(0)
+	s_ebarrier_sync  0, 0
+	; sched_barrier mask(0x00000000)
+.Ltmp48:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 15, 0
+	s_mov_b32 s2, 0
+	;;#ASMEND
+.Ltmp49:
+	; sched_barrier mask(0x00000000)
+	.loc	3 43 54                         ; kernel_masked_remap.py:43:54
+	s_cmpk_gt_i32 s6, 0x4a3
+	s_cbranch_scc1 .LBB0_167
+; %bb.98:                               ; %.lr.ph
+	.loc	3 0 54 is_stmt 0                ; kernel_masked_remap.py:0:54
+	v_bfe_u32 v1, v0, 4, 2
+	v_lshrrev_b32_e32 v2, 1, v0
+	s_lshl_b32 s2, s0, 6
+	s_lshl_b32 s0, s0, 7
+	v_and_or_b32 v208, v2, 64, v1
+	v_lshlrev_b32_e32 v1, 1, v0
+	v_and_b32_e32 v0, 64, v0
+	s_and_b32 s26, s2, 0x2000
+	s_and_b32 s27, s0, 0x2000
+	v_or_b32_e32 v209, 4, v208
+	v_or_b32_e32 v210, 8, v208
+	v_or_b32_e32 v211, 12, v208
+	v_or_b32_e32 v212, 16, v208
+	v_or_b32_e32 v213, 20, v208
+	v_or_b32_e32 v214, 24, v208
+	v_or_b32_e32 v215, 28, v208
+	v_or_b32_e32 v216, 32, v208
+	v_or_b32_e32 v217, 36, v208
+	v_or_b32_e32 v218, 40, v208
+	v_or_b32_e32 v219, 44, v208
+	v_or_b32_e32 v220, 48, v208
+	v_or_b32_e32 v221, 52, v208
+	v_or_b32_e32 v222, 56, v208
+	v_or_b32_e32 v223, 60, v208
+	v_and_or_b32 v224, v1, 30, v0
+	s_add_i32 s28, 0, 0x8000
+	s_add_i32 s29, 0, 0x10000
+	s_add_i32 s30, 0, 0x18000
+	s_mov_b32 s31, 0x25180
+	s_mov_b32 s34, 0
+	s_mov_b32 s33, s6
+.LBB0_99:                               ; =>This Loop Header: Depth=1
+                                        ;     Child Loop BB0_100 Depth 2
+	; sched_barrier mask(0x00000000)
+.Ltmp50:
+	.loc	2 160 30 is_stmt 1              ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 1, 8
+	s_mov_b32 s0, 0
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+	v_mov_b32_e32 v124, 0
+	s_mov_b32 s0, 63
+	v_mov_b32_e32 v125, v124
+	v_mov_b32_e32 v126, v124
+	v_mov_b32_e32 v127, v124
+	v_mov_b32_e32 v120, v124
+	v_mov_b32_e32 v121, v124
+	v_mov_b32_e32 v122, v124
+	v_mov_b32_e32 v123, v124
+	v_mov_b32_e32 v116, v124
+	v_mov_b32_e32 v117, v124
+	v_mov_b32_e32 v118, v124
+	v_mov_b32_e32 v119, v124
+	v_mov_b32_e32 v112, v124
+	v_mov_b32_e32 v113, v124
+	v_mov_b32_e32 v114, v124
+	v_mov_b32_e32 v115, v124
+	v_mov_b32_e32 v108, v124
+	v_mov_b32_e32 v109, v124
+	v_mov_b32_e32 v110, v124
+	v_mov_b32_e32 v111, v124
+	v_mov_b32_e32 v104, v124
+	v_mov_b32_e32 v105, v124
+	v_mov_b32_e32 v106, v124
+	v_mov_b32_e32 v107, v124
+	v_mov_b32_e32 v100, v124
+	v_mov_b32_e32 v101, v124
+	v_mov_b32_e32 v102, v124
+	v_mov_b32_e32 v103, v124
+	v_mov_b32_e32 v96, v124
+	v_mov_b32_e32 v97, v124
+	v_mov_b32_e32 v98, v124
+	v_mov_b32_e32 v99, v124
+	v_mov_b32_e32 v92, v124
+	v_mov_b32_e32 v93, v124
+	v_mov_b32_e32 v94, v124
+	v_mov_b32_e32 v95, v124
+	v_mov_b32_e32 v88, v124
+	v_mov_b32_e32 v89, v124
+	v_mov_b32_e32 v90, v124
+	v_mov_b32_e32 v91, v124
+	v_mov_b32_e32 v84, v124
+	v_mov_b32_e32 v85, v124
+	v_mov_b32_e32 v86, v124
+	v_mov_b32_e32 v87, v124
+	v_mov_b32_e32 v80, v124
+	v_mov_b32_e32 v81, v124
+	v_mov_b32_e32 v82, v124
+	v_mov_b32_e32 v83, v124
+	v_mov_b32_e32 v76, v124
+	v_mov_b32_e32 v77, v124
+	v_mov_b32_e32 v78, v124
+	v_mov_b32_e32 v79, v124
+	v_mov_b32_e32 v72, v124
+	v_mov_b32_e32 v73, v124
+	v_mov_b32_e32 v74, v124
+	v_mov_b32_e32 v75, v124
+	v_mov_b32_e32 v68, v124
+	v_mov_b32_e32 v69, v124
+	v_mov_b32_e32 v70, v124
+	v_mov_b32_e32 v71, v124
+	v_mov_b32_e32 v64, v124
+	v_mov_b32_e32 v65, v124
+	v_mov_b32_e32 v66, v124
+	v_mov_b32_e32 v67, v124
+	v_mov_b32_e32 v60, v124
+	v_mov_b32_e32 v61, v124
+	v_mov_b32_e32 v62, v124
+	v_mov_b32_e32 v63, v124
+	v_mov_b32_e32 v56, v124
+	v_mov_b32_e32 v57, v124
+	v_mov_b32_e32 v58, v124
+	v_mov_b32_e32 v59, v124
+	v_mov_b32_e32 v52, v124
+	v_mov_b32_e32 v53, v124
+	v_mov_b32_e32 v54, v124
+	v_mov_b32_e32 v55, v124
+	v_mov_b32_e32 v48, v124
+	v_mov_b32_e32 v49, v124
+	v_mov_b32_e32 v50, v124
+	v_mov_b32_e32 v51, v124
+	v_mov_b32_e32 v44, v124
+	v_mov_b32_e32 v45, v124
+	v_mov_b32_e32 v46, v124
+	v_mov_b32_e32 v47, v124
+	v_mov_b32_e32 v40, v124
+	v_mov_b32_e32 v41, v124
+	v_mov_b32_e32 v42, v124
+	v_mov_b32_e32 v43, v124
+	v_mov_b32_e32 v36, v124
+	v_mov_b32_e32 v37, v124
+	v_mov_b32_e32 v38, v124
+	v_mov_b32_e32 v39, v124
+	v_mov_b32_e32 v32, v124
+	v_mov_b32_e32 v33, v124
+	v_mov_b32_e32 v34, v124
+	v_mov_b32_e32 v35, v124
+	v_mov_b32_e32 v28, v124
+	v_mov_b32_e32 v29, v124
+	v_mov_b32_e32 v30, v124
+	v_mov_b32_e32 v31, v124
+	v_mov_b32_e32 v24, v124
+	v_mov_b32_e32 v25, v124
+	v_mov_b32_e32 v26, v124
+	v_mov_b32_e32 v27, v124
+	v_mov_b32_e32 v20, v124
+	v_mov_b32_e32 v21, v124
+	v_mov_b32_e32 v22, v124
+	v_mov_b32_e32 v23, v124
+	v_mov_b32_e32 v16, v124
+	v_mov_b32_e32 v17, v124
+	v_mov_b32_e32 v18, v124
+	v_mov_b32_e32 v19, v124
+	v_mov_b32_e32 v12, v124
+	v_mov_b32_e32 v13, v124
+	v_mov_b32_e32 v14, v124
+	v_mov_b32_e32 v15, v124
+	v_mov_b32_e32 v8, v124
+	v_mov_b32_e32 v9, v124
+	v_mov_b32_e32 v10, v124
+	v_mov_b32_e32 v11, v124
+	v_mov_b32_e32 v4, v124
+	v_mov_b32_e32 v5, v124
+	v_mov_b32_e32 v6, v124
+	v_mov_b32_e32 v7, v124
+	v_mov_b32_e32 v0, v124
+	v_mov_b32_e32 v1, v124
+	v_mov_b32_e32 v2, v124
+	v_mov_b32_e32 v3, v124
+	s_mov_b32 s2, s34
+.Ltmp51:
+.LBB0_100:                              ;   Parent Loop BB0_99 Depth=1
+                                        ; =>  This Inner Loop Header: Depth=2
+	.loc	2 0 30 is_stmt 0                ; kernel_masked_store.py:0:30
+	s_mov_b32 s35, s1
+	.loc	3 48 49 is_stmt 1               ; kernel_masked_remap.py:48:49
+	s_lshl_b32 s1, s2, 1
+	s_mov_b32 s34, s2
+	.loc	3 48 42 is_stmt 0               ; kernel_masked_remap.py:48:42
+	s_add_i32 s2, s1, 2
+	.loc	3 48 52                         ; kernel_masked_remap.py:48:52
+	s_abarrier_try_wait  s2, s2, s35
+	.loc	3 49 23 is_stmt 1               ; kernel_masked_remap.py:49:23
+	s_cmp_eq_u32 s34, 0
+	.loc	3 49 15 is_stmt 0               ; kernel_masked_remap.py:49:15
+	s_cselect_b32 s2, 0, s28
+	s_cselect_b32 s3, s29, s30
+	.loc	3 50 55 is_stmt 1               ; kernel_masked_remap.py:50:55
+	s_add_i32 s2, s2, s26
+	s_addk_i32 s2, 0x4000
+	.loc	3 51 58                         ; kernel_masked_remap.py:51:58
+	s_add_i32 s3, s3, s27
+	.loc	3 50 55                         ; kernel_masked_remap.py:50:55
+	ds_read_matrix_trans_format v[225:228], s2 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[229:232], s2 offset:4096 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[233:236], s2 offset:1024 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[237:240], s2 offset:5120 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[204:207], s2 offset:2048 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[200:203], s2 offset:6144 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[132:135], s2 offset:3072 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[128:131], s2 offset:7168 element:2 row:2 col:1
+	.loc	3 51 58                         ; kernel_masked_remap.py:51:58
+	ds_read_matrix_format v[196:199], s3 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[192:195], s3 offset:1024 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[188:191], s3 offset:2048 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[184:187], s3 offset:3072 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[180:183], s3 offset:4096 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[176:179], s3 offset:5120 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[172:175], s3 offset:6144 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[168:171], s3 offset:7168 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[164:167], s3 offset:16384 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[160:163], s3 offset:17408 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[156:159], s3 offset:18432 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[152:155], s3 offset:19456 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[148:151], s3 offset:20480 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[144:147], s3 offset:21504 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[140:143], s3 offset:22528 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[136:139], s3 offset:23552 element:2 row:2 col:1 alt:1
+	; sched_barrier mask(0x00000000)
+.Ltmp52:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_waitcnt lgkmcnt(0)
+	s_mov_b32 s2, 0
+	;;#ASMEND
+.Ltmp53:
+	; sched_barrier mask(0x00000000)
+	.loc	3 56 45                         ; kernel_masked_remap.py:56:45
+	s_or_b32 s1, s1, 1
+	.loc	3 56 28 is_stmt 0               ; kernel_masked_remap.py:56:28
+	s_waitcnt lgkmcnt(0)
+	s_abarrier_arrive  s1, s1, 1
+	; sched_barrier mask(0x00000000)
+.Ltmp54:
+	.loc	2 160 30 is_stmt 1              ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 1, 8
+	s_setprio 1
+	s_mov_b32 s1, 0
+	;;#ASMEND
+.Ltmp55:
+	; sched_barrier mask(0x00000000)
+	.loc	3 59 42                         ; kernel_masked_remap.py:59:42
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[225:226], v[196:197], v[124:127]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[225:226], v[198:199], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[225:226], v[180:181], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[225:226], v[182:183], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[225:226], v[164:165], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[225:226], v[166:167], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[225:226], v[148:149], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[225:226], v[150:151], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[233:234], v[196:197], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[233:234], v[198:199], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[233:234], v[180:181], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[233:234], v[182:183], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[233:234], v[164:165], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[233:234], v[166:167], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[233:234], v[148:149], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[233:234], v[150:151], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[204:205], v[196:197], v[60:63]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[204:205], v[198:199], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[204:205], v[180:181], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[204:205], v[182:183], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[204:205], v[164:165], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[204:205], v[166:167], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[204:205], v[148:149], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[204:205], v[150:151], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[132:133], v[196:197], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[132:133], v[198:199], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[132:133], v[180:181], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[132:133], v[182:183], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[132:133], v[164:165], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[132:133], v[166:167], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[132:133], v[148:149], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[132:133], v[150:151], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[227:228], v[192:193], v[124:127]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[227:228], v[194:195], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[227:228], v[176:177], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[227:228], v[178:179], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[227:228], v[160:161], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[227:228], v[162:163], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[227:228], v[144:145], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[227:228], v[146:147], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[235:236], v[192:193], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[235:236], v[194:195], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[235:236], v[176:177], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[235:236], v[178:179], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[235:236], v[160:161], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[235:236], v[162:163], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[235:236], v[144:145], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[235:236], v[146:147], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[206:207], v[192:193], v[60:63]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[206:207], v[194:195], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[206:207], v[176:177], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[206:207], v[178:179], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[206:207], v[160:161], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[206:207], v[162:163], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[206:207], v[144:145], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[206:207], v[146:147], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[134:135], v[192:193], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[134:135], v[194:195], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[134:135], v[176:177], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[134:135], v[178:179], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[134:135], v[160:161], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[134:135], v[162:163], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[134:135], v[144:145], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[134:135], v[146:147], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[229:230], v[188:189], v[124:127]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[229:230], v[190:191], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[229:230], v[172:173], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[229:230], v[174:175], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[229:230], v[156:157], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[229:230], v[158:159], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[229:230], v[140:141], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[229:230], v[142:143], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[237:238], v[188:189], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[237:238], v[190:191], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[237:238], v[172:173], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[237:238], v[174:175], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[237:238], v[156:157], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[237:238], v[158:159], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[237:238], v[140:141], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[237:238], v[142:143], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[200:201], v[188:189], v[60:63]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[200:201], v[190:191], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[200:201], v[172:173], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[200:201], v[174:175], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[200:201], v[156:157], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[200:201], v[158:159], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[200:201], v[140:141], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[200:201], v[142:143], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[128:129], v[188:189], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[128:129], v[190:191], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[128:129], v[172:173], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[128:129], v[174:175], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[128:129], v[156:157], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[128:129], v[158:159], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[128:129], v[140:141], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[128:129], v[142:143], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[231:232], v[184:185], v[124:127]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[231:232], v[186:187], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[231:232], v[168:169], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[231:232], v[170:171], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[231:232], v[152:153], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[231:232], v[154:155], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[231:232], v[136:137], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[231:232], v[138:139], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[239:240], v[184:185], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[239:240], v[186:187], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[239:240], v[168:169], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[239:240], v[170:171], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[239:240], v[152:153], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[239:240], v[154:155], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[239:240], v[136:137], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[239:240], v[138:139], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[202:203], v[184:185], v[60:63]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[202:203], v[186:187], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[202:203], v[168:169], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[202:203], v[170:171], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[202:203], v[152:153], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[202:203], v[154:155], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[202:203], v[136:137], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[202:203], v[138:139], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[130:131], v[184:185], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[130:131], v[186:187], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[130:131], v[168:169], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[130:131], v[170:171], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[130:131], v[152:153], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[130:131], v[154:155], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[130:131], v[136:137], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[130:131], v[138:139], v[0:3]   lts
+	; sched_barrier mask(0x00000000)
+.Ltmp56:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_setprio 0
+	s_ebarrier_sync 1, 8
+	s_mov_b32 s1, 0
+	;;#ASMEND
+.Ltmp57:
+	; sched_barrier mask(0x00000000)
+	.loc	2 203 24                        ; kernel_masked_store.py:203:24
+	s_xor_b32 s2, s34, 1
+	.loc	2 204 26                        ; kernel_masked_store.py:204:26
+	s_xor_b32 s1, s34, s35
+.Ltmp58:
+	.loc	3 47 23                         ; kernel_masked_remap.py:47:23
+	s_add_i32 s0, s0, -1
+	s_cmp_lg_u32 s0, 0
+	s_cbranch_scc1 .LBB0_100
+; %bb.101:                              ; %.peel.begin
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 48 49                         ; kernel_masked_remap.py:48:49
+	s_lshl_b32 s0, s2, 1
+	.loc	3 48 42 is_stmt 0               ; kernel_masked_remap.py:48:42
+	s_add_i32 s2, s0, 2
+	.loc	3 48 52                         ; kernel_masked_remap.py:48:52
+	s_abarrier_try_wait  s1, s2, s1
+	.loc	3 49 23 is_stmt 1               ; kernel_masked_remap.py:49:23
+	s_cmp_eq_u32 s34, 1
+	.loc	3 49 15 is_stmt 0               ; kernel_masked_remap.py:49:15
+	s_cselect_b32 s1, 0, s28
+	s_cselect_b32 s2, s29, s30
+	.loc	3 50 55 is_stmt 1               ; kernel_masked_remap.py:50:55
+	s_add_i32 s1, s1, s26
+	s_addk_i32 s1, 0x4000
+	.loc	3 51 58                         ; kernel_masked_remap.py:51:58
+	s_add_i32 s2, s2, s27
+	.loc	3 50 55                         ; kernel_masked_remap.py:50:55
+	ds_read_matrix_trans_format v[128:131], s1 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[132:135], s1 offset:4096 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[136:139], s1 offset:1024 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[140:143], s1 offset:5120 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[144:147], s1 offset:2048 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[148:151], s1 offset:6144 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[152:155], s1 offset:3072 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[156:159], s1 offset:7168 element:2 row:2 col:1
+	.loc	3 51 58                         ; kernel_masked_remap.py:51:58
+	ds_read_matrix_format v[160:163], s2 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[164:167], s2 offset:1024 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[168:171], s2 offset:2048 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[172:175], s2 offset:3072 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[176:179], s2 offset:4096 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[180:183], s2 offset:5120 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[184:187], s2 offset:6144 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[188:191], s2 offset:7168 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[192:195], s2 offset:16384 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[196:199], s2 offset:17408 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[200:203], s2 offset:18432 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[204:207], s2 offset:19456 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[225:228], s2 offset:20480 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[229:232], s2 offset:21504 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[233:236], s2 offset:22528 element:2 row:2 col:1 alt:1
+	ds_read_matrix_format v[237:240], s2 offset:23552 element:2 row:2 col:1 alt:1
+	; sched_barrier mask(0x00000000)
+.Ltmp59:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_waitcnt lgkmcnt(0)
+	s_mov_b32 s1, 0
+	;;#ASMEND
+.Ltmp60:
+	; sched_barrier mask(0x00000000)
+	.loc	3 56 45                         ; kernel_masked_remap.py:56:45
+	s_or_b32 s0, s0, 1
+	.loc	3 56 28 is_stmt 0               ; kernel_masked_remap.py:56:28
+	s_waitcnt lgkmcnt(0)
+	s_abarrier_arrive  s0, s0, 1
+	; sched_barrier mask(0x00000000)
+.Ltmp61:
+	.loc	2 160 30 is_stmt 1              ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 1, 8
+	s_setprio 1
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp62:
+	; sched_barrier mask(0x00000000)
+	.loc	3 59 42                         ; kernel_masked_remap.py:59:42
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[128:129], v[160:161], v[124:127]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[128:129], v[162:163], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[128:129], v[176:177], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[128:129], v[178:179], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[128:129], v[192:193], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[128:129], v[194:195], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[128:129], v[225:226], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[128:129], v[227:228], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[136:137], v[160:161], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[136:137], v[162:163], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[136:137], v[176:177], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[136:137], v[178:179], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[136:137], v[192:193], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[136:137], v[194:195], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[136:137], v[225:226], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[136:137], v[227:228], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[144:145], v[160:161], v[60:63]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[144:145], v[162:163], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[144:145], v[176:177], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[144:145], v[178:179], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[144:145], v[192:193], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[144:145], v[194:195], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[144:145], v[225:226], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[144:145], v[227:228], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[152:153], v[160:161], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[152:153], v[162:163], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[152:153], v[176:177], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[152:153], v[178:179], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[152:153], v[192:193], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[152:153], v[194:195], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[152:153], v[225:226], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[152:153], v[227:228], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[130:131], v[164:165], v[124:127]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[130:131], v[166:167], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[130:131], v[180:181], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[130:131], v[182:183], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[130:131], v[196:197], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[130:131], v[198:199], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[130:131], v[229:230], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[130:131], v[231:232], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[138:139], v[164:165], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[138:139], v[166:167], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[138:139], v[180:181], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[138:139], v[182:183], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[138:139], v[196:197], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[138:139], v[198:199], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[138:139], v[229:230], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[138:139], v[231:232], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[146:147], v[164:165], v[60:63]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[146:147], v[166:167], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[146:147], v[180:181], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[146:147], v[182:183], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[146:147], v[196:197], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[146:147], v[198:199], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[146:147], v[229:230], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[146:147], v[231:232], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[154:155], v[164:165], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[154:155], v[166:167], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[154:155], v[180:181], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[154:155], v[182:183], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[154:155], v[196:197], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[154:155], v[198:199], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[154:155], v[229:230], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[154:155], v[231:232], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[132:133], v[168:169], v[124:127]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[132:133], v[170:171], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[132:133], v[184:185], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[132:133], v[186:187], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[132:133], v[200:201], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[132:133], v[202:203], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[132:133], v[233:234], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[132:133], v[235:236], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[140:141], v[168:169], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[140:141], v[170:171], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[140:141], v[184:185], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[140:141], v[186:187], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[140:141], v[200:201], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[140:141], v[202:203], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[140:141], v[233:234], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[140:141], v[235:236], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[148:149], v[168:169], v[60:63]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[148:149], v[170:171], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[148:149], v[184:185], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[148:149], v[186:187], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[148:149], v[200:201], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[148:149], v[202:203], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[148:149], v[233:234], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[148:149], v[235:236], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[156:157], v[168:169], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[156:157], v[170:171], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[156:157], v[184:185], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[156:157], v[186:187], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[156:157], v[200:201], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[156:157], v[202:203], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[156:157], v[233:234], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[156:157], v[235:236], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[134:135], v[172:173], v[124:127]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[134:135], v[174:175], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[134:135], v[188:189], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[134:135], v[190:191], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[134:135], v[204:205], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[134:135], v[206:207], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[134:135], v[237:238], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[134:135], v[239:240], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[142:143], v[172:173], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[142:143], v[174:175], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[142:143], v[188:189], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[142:143], v[190:191], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[142:143], v[204:205], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[142:143], v[206:207], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[142:143], v[237:238], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[142:143], v[239:240], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[150:151], v[172:173], v[60:63]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[150:151], v[174:175], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[150:151], v[188:189], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[150:151], v[190:191], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[150:151], v[204:205], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[150:151], v[206:207], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[150:151], v[237:238], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[150:151], v[239:240], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[158:159], v[172:173], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[158:159], v[174:175], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[158:159], v[188:189], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[158:159], v[190:191], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[158:159], v[204:205], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[158:159], v[206:207], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[158:159], v[237:238], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[158:159], v[239:240], v[0:3]   lts
+	; sched_barrier mask(0x00000000)
+.Ltmp63:
+	.loc	2 160 30                        ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_setprio 0
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp64:
+	; sched_barrier mask(0x00000000)
+	.loc	3 68 28                         ; kernel_masked_remap.py:68:28
+	s_mul_hi_i32 s0, s33, 0x6e5478ad
+	s_lshr_b32 s1, s0, 31
+	s_ashr_i32 s0, s0, 8
+	s_add_i32 s0, s0, s1
+	.loc	3 68 41 is_stmt 0               ; kernel_masked_remap.py:68:41
+	s_lshl_b32 s36, s0, 8
+	.loc	3 68 47                         ; kernel_masked_remap.py:68:47
+	s_bitset1_b32 s36, 7
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v128, s36, v208
+	v_or_b32_e32 v129, s36, v209
+	.loc	3 79 39                         ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v128, v128, s31
+	v_mul_lo_u32 v131, v129, s31
+	.loc	3 79 25 is_stmt 0               ; kernel_masked_remap.py:79:25
+	v_ashrrev_i32_e32 v129, 31, v128
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v132, s36, v210
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_lshlrev_b64 v[128:129], 1, v[128:129]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v133, v132, s31
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_mov_b32_e32 v137, s25
+	v_add_co_u32_e32 v138, vcc, s24, v128
+	v_ashrrev_i32_e32 v132, 31, v131
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v134, s36, v211
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e32 v139, vcc, v137, v129, vcc
+	v_lshlrev_b64 v[128:129], 1, v[131:132]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v135, v134, s31
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_add_co_u32_e32 v140, vcc, s24, v128
+	v_ashrrev_i32_e32 v134, 31, v133
+	.loc	3 69 27 is_stmt 1               ; kernel_masked_remap.py:69:27
+	s_mulk_i32 s0, 0xfdae
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e32 v141, vcc, v137, v129, vcc
+	v_lshlrev_b64 v[128:129], 1, v[133:134]
+	.loc	3 69 27                         ; kernel_masked_remap.py:69:27
+	s_add_i32 s0, s0, s33
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_add_co_u32_e32 v142, vcc, s24, v128
+	v_ashrrev_i32_e32 v136, 31, v135
+	.loc	3 78 25                         ; kernel_masked_remap.py:78:25
+	v_lshl_or_b32 v130, s0, 8, v224
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e32 v143, vcc, v137, v129, vcc
+	v_lshlrev_b64 v[128:129], 1, v[135:136]
+	v_add_co_u32_e32 v144, vcc, s24, v128
+	.loc	3 79 43 is_stmt 0               ; kernel_masked_remap.py:79:43
+	v_ashrrev_i32_e32 v131, 31, v130
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e32 v145, vcc, v137, v129, vcc
+	.loc	3 79 43                         ; kernel_masked_remap.py:79:43
+	v_lshlrev_b64 v[128:129], 1, v[130:131]
+	v_add_co_u32_e32 v131, vcc, v138, v128
+	v_addc_co_u32_e32 v132, vcc, v139, v129, vcc
+	v_add_co_u32_e32 v133, vcc, v140, v128
+	v_addc_co_u32_e32 v134, vcc, v141, v129, vcc
+	v_add_co_u32_e32 v135, vcc, v142, v128
+	v_addc_co_u32_e32 v136, vcc, v143, v129, vcc
+	v_add_co_u32_e32 v137, vcc, v144, v128
+	v_addc_co_u32_e32 v138, vcc, v145, v129, vcc
+	.loc	3 80 56 is_stmt 1               ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e32 vcc, s31, v130
+	.loc	3 80 21 is_stmt 0               ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], vcc
+	s_cbranch_execz .LBB0_103
+; %bb.102:                              ; %.critedge198
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v124, v124, v125
+	v_cvt_pk_bf16_f32 v126, v126, v127
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v124, off
+	global_store_short_d16_hi v[133:134], v124, off
+	global_store_short v[135:136], v126, off
+	global_store_short_d16_hi v[137:138], v126, off
+.LBB0_103:                              ; %.critedge202
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	v_or_b32_e32 v124, 1, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[0:1], s31, v124
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[2:3], s[0:1]
+	s_cbranch_execz .LBB0_105
+; %bb.104:                              ; %.critedge204
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v120, v120, v121
+	v_cvt_pk_bf16_f32 v121, v122, v123
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v120, off offset:2
+	global_store_short_d16_hi v[133:134], v120, off offset:2
+	global_store_short v[135:136], v121, off offset:2
+	global_store_short_d16_hi v[137:138], v121, off offset:2
+.LBB0_105:                              ; %.critedge208
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[2:3]
+	v_or_b32_e32 v120, 32, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[2:3], s31, v120
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[4:5], s[2:3]
+	s_cbranch_execz .LBB0_107
+; %bb.106:                              ; %.critedge210
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v116, v116, v117
+	v_cvt_pk_bf16_f32 v117, v118, v119
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v116, off offset:64
+	global_store_short_d16_hi v[133:134], v116, off offset:64
+	global_store_short v[135:136], v117, off offset:64
+	global_store_short_d16_hi v[137:138], v117, off offset:64
+.LBB0_107:                              ; %.critedge214
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[4:5]
+	v_or_b32_e32 v116, 33, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[4:5], s31, v116
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[8:9], s[4:5]
+	s_cbranch_execz .LBB0_109
+; %bb.108:                              ; %.critedge216
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v112, v112, v113
+	v_cvt_pk_bf16_f32 v113, v114, v115
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v112, off offset:66
+	global_store_short_d16_hi v[133:134], v112, off offset:66
+	global_store_short v[135:136], v113, off offset:66
+	global_store_short_d16_hi v[137:138], v113, off offset:66
+.LBB0_109:                              ; %.critedge220
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[8:9]
+	v_or_b32_e32 v112, 0x80, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[14:15], s31, v112
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[8:9], s[14:15]
+	s_cbranch_execz .LBB0_111
+; %bb.110:                              ; %.critedge222
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v108, v108, v109
+	v_cvt_pk_bf16_f32 v109, v110, v111
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v108, off offset:256
+	global_store_short_d16_hi v[133:134], v108, off offset:256
+	global_store_short v[135:136], v109, off offset:256
+	global_store_short_d16_hi v[137:138], v109, off offset:256
+.LBB0_111:                              ; %.critedge226
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[8:9]
+	v_or_b32_e32 v108, 0x81, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[8:9], s31, v108
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[10:11], s[8:9]
+	s_cbranch_execz .LBB0_113
+; %bb.112:                              ; %.critedge228
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v104, v104, v105
+	v_cvt_pk_bf16_f32 v105, v106, v107
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v104, off offset:258
+	global_store_short_d16_hi v[133:134], v104, off offset:258
+	global_store_short v[135:136], v105, off offset:258
+	global_store_short_d16_hi v[137:138], v105, off offset:258
+.LBB0_113:                              ; %.critedge232
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[10:11]
+	v_or_b32_e32 v104, 0xa0, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[10:11], s31, v104
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[12:13], s[10:11]
+	s_cbranch_execz .LBB0_115
+; %bb.114:                              ; %.critedge234
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v100, v100, v101
+	v_cvt_pk_bf16_f32 v101, v102, v103
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v100, off offset:320
+	global_store_short_d16_hi v[133:134], v100, off offset:320
+	global_store_short v[135:136], v101, off offset:320
+	global_store_short_d16_hi v[137:138], v101, off offset:320
+.LBB0_115:                              ; %.critedge238
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[12:13]
+	v_or_b32_e32 v100, 0xa1, v130
+	.loc	3 80 56                         ; kernel_masked_remap.py:80:56
+	v_cmp_gt_i32_e64 s[12:13], s31, v100
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[12:13]
+	s_cbranch_execz .LBB0_117
+; %bb.116:                              ; %.critedge240
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v96, v96, v97
+	v_cvt_pk_bf16_f32 v97, v98, v99
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[131:132], v96, off offset:322
+	global_store_short_d16_hi v[133:134], v96, off offset:322
+	global_store_short v[135:136], v97, off offset:322
+	global_store_short_d16_hi v[137:138], v97, off offset:322
+.LBB0_117:                              ; %.critedge244
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v96, s36, v212
+	v_or_b32_e32 v97, s36, v213
+	.loc	3 79 39                         ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v96, v96, s31
+	v_mul_lo_u32 v98, v97, s31
+	.loc	3 79 25 is_stmt 0               ; kernel_masked_remap.py:79:25
+	v_ashrrev_i32_e32 v97, 31, v96
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v99, s36, v214
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_lshlrev_b64 v[96:97], 1, v[96:97]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v100, v99, s31
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_mov_b32_e32 v104, s25
+	v_add_co_u32_e64 v105, s[16:17], s24, v96
+	v_ashrrev_i32_e32 v99, 31, v98
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v101, s36, v215
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e64 v106, s[16:17], v104, v97, s[16:17]
+	v_lshlrev_b64 v[96:97], 1, v[98:99]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v102, v101, s31
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_add_co_u32_e64 v98, s[16:17], s24, v96
+	v_ashrrev_i32_e32 v101, 31, v100
+	v_addc_co_u32_e64 v99, s[16:17], v104, v97, s[16:17]
+	v_lshlrev_b64 v[96:97], 1, v[100:101]
+	v_add_co_u32_e64 v100, s[16:17], s24, v96
+	v_ashrrev_i32_e32 v103, 31, v102
+	v_addc_co_u32_e64 v101, s[16:17], v104, v97, s[16:17]
+	v_lshlrev_b64 v[96:97], 1, v[102:103]
+	v_add_co_u32_e64 v102, s[16:17], s24, v96
+	v_addc_co_u32_e64 v103, s[16:17], v104, v97, s[16:17]
+	.loc	3 79 43                         ; kernel_masked_remap.py:79:43
+	v_add_co_u32_e64 v96, s[16:17], v105, v128
+	v_addc_co_u32_e64 v97, s[16:17], v106, v129, s[16:17]
+	v_add_co_u32_e64 v98, s[16:17], v98, v128
+	v_addc_co_u32_e64 v99, s[16:17], v99, v129, s[16:17]
+	v_add_co_u32_e64 v100, s[16:17], v100, v128
+	v_addc_co_u32_e64 v101, s[16:17], v101, v129, s[16:17]
+	v_add_co_u32_e64 v102, s[16:17], v102, v128
+	v_addc_co_u32_e64 v103, s[16:17], v103, v129, s[16:17]
+	.loc	3 80 21 is_stmt 1               ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], vcc
+	s_cbranch_execz .LBB0_119
+; %bb.118:                              ; %.critedge246
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63                         ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v92, v92, v93
+	v_cvt_pk_bf16_f32 v93, v94, v95
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v92, off
+	global_store_short_d16_hi v[98:99], v92, off
+	global_store_short v[100:101], v93, off
+	global_store_short_d16_hi v[102:103], v93, off
+.LBB0_119:                              ; %.critedge250
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[0:1]
+	s_cbranch_execz .LBB0_121
+; %bb.120:                              ; %.critedge252
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v88, v88, v89
+	v_cvt_pk_bf16_f32 v89, v90, v91
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v88, off offset:2
+	global_store_short_d16_hi v[98:99], v88, off offset:2
+	global_store_short v[100:101], v89, off offset:2
+	global_store_short_d16_hi v[102:103], v89, off offset:2
+.LBB0_121:                              ; %.critedge256
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[2:3]
+	s_cbranch_execz .LBB0_123
+; %bb.122:                              ; %.critedge258
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v84, v84, v85
+	v_cvt_pk_bf16_f32 v85, v86, v87
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v84, off offset:64
+	global_store_short_d16_hi v[98:99], v84, off offset:64
+	global_store_short v[100:101], v85, off offset:64
+	global_store_short_d16_hi v[102:103], v85, off offset:64
+.LBB0_123:                              ; %.critedge262
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[4:5]
+	s_cbranch_execz .LBB0_125
+; %bb.124:                              ; %.critedge264
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v80, v80, v81
+	v_cvt_pk_bf16_f32 v81, v82, v83
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v80, off offset:66
+	global_store_short_d16_hi v[98:99], v80, off offset:66
+	global_store_short v[100:101], v81, off offset:66
+	global_store_short_d16_hi v[102:103], v81, off offset:66
+.LBB0_125:                              ; %.critedge268
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[14:15]
+	s_cbranch_execz .LBB0_127
+; %bb.126:                              ; %.critedge270
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v76, v76, v77
+	v_cvt_pk_bf16_f32 v77, v78, v79
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v76, off offset:256
+	global_store_short_d16_hi v[98:99], v76, off offset:256
+	global_store_short v[100:101], v77, off offset:256
+	global_store_short_d16_hi v[102:103], v77, off offset:256
+.LBB0_127:                              ; %.critedge274
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[8:9]
+	s_cbranch_execz .LBB0_129
+; %bb.128:                              ; %.critedge276
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v72, v72, v73
+	v_cvt_pk_bf16_f32 v73, v74, v75
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v72, off offset:258
+	global_store_short_d16_hi v[98:99], v72, off offset:258
+	global_store_short v[100:101], v73, off offset:258
+	global_store_short_d16_hi v[102:103], v73, off offset:258
+.LBB0_129:                              ; %.critedge280
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[10:11]
+	s_cbranch_execz .LBB0_131
+; %bb.130:                              ; %.critedge282
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v68, v68, v69
+	v_cvt_pk_bf16_f32 v69, v70, v71
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v68, off offset:320
+	global_store_short_d16_hi v[98:99], v68, off offset:320
+	global_store_short v[100:101], v69, off offset:320
+	global_store_short_d16_hi v[102:103], v69, off offset:320
+.LBB0_131:                              ; %.critedge286
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[12:13]
+	s_cbranch_execz .LBB0_133
+; %bb.132:                              ; %.critedge288
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v64, v64, v65
+	v_cvt_pk_bf16_f32 v65, v66, v67
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[96:97], v64, off offset:322
+	global_store_short_d16_hi v[98:99], v64, off offset:322
+	global_store_short v[100:101], v65, off offset:322
+	global_store_short_d16_hi v[102:103], v65, off offset:322
+.LBB0_133:                              ; %.critedge292
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v64, s36, v216
+	v_or_b32_e32 v65, s36, v217
+	.loc	3 79 39                         ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v64, v64, s31
+	v_mul_lo_u32 v66, v65, s31
+	.loc	3 79 25 is_stmt 0               ; kernel_masked_remap.py:79:25
+	v_ashrrev_i32_e32 v65, 31, v64
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v67, s36, v218
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_lshlrev_b64 v[64:65], 1, v[64:65]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v68, v67, s31
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_mov_b32_e32 v72, s25
+	v_add_co_u32_e64 v73, s[16:17], s24, v64
+	v_ashrrev_i32_e32 v67, 31, v66
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v69, s36, v219
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e64 v74, s[16:17], v72, v65, s[16:17]
+	v_lshlrev_b64 v[64:65], 1, v[66:67]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v70, v69, s31
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_add_co_u32_e64 v66, s[16:17], s24, v64
+	v_ashrrev_i32_e32 v69, 31, v68
+	v_addc_co_u32_e64 v67, s[16:17], v72, v65, s[16:17]
+	v_lshlrev_b64 v[64:65], 1, v[68:69]
+	v_add_co_u32_e64 v68, s[16:17], s24, v64
+	v_ashrrev_i32_e32 v71, 31, v70
+	v_addc_co_u32_e64 v69, s[16:17], v72, v65, s[16:17]
+	v_lshlrev_b64 v[64:65], 1, v[70:71]
+	v_add_co_u32_e64 v70, s[16:17], s24, v64
+	v_addc_co_u32_e64 v71, s[16:17], v72, v65, s[16:17]
+	.loc	3 79 43                         ; kernel_masked_remap.py:79:43
+	v_add_co_u32_e64 v64, s[16:17], v73, v128
+	v_addc_co_u32_e64 v65, s[16:17], v74, v129, s[16:17]
+	v_add_co_u32_e64 v66, s[16:17], v66, v128
+	v_addc_co_u32_e64 v67, s[16:17], v67, v129, s[16:17]
+	v_add_co_u32_e64 v68, s[16:17], v68, v128
+	v_addc_co_u32_e64 v69, s[16:17], v69, v129, s[16:17]
+	v_add_co_u32_e64 v70, s[16:17], v70, v128
+	v_addc_co_u32_e64 v71, s[16:17], v71, v129, s[16:17]
+	.loc	3 80 21 is_stmt 1               ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], vcc
+	s_cbranch_execz .LBB0_135
+; %bb.134:                              ; %.critedge294
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63                         ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v60, v60, v61
+	v_cvt_pk_bf16_f32 v61, v62, v63
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v60, off
+	global_store_short_d16_hi v[66:67], v60, off
+	global_store_short v[68:69], v61, off
+	global_store_short_d16_hi v[70:71], v61, off
+.LBB0_135:                              ; %.critedge298
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[0:1]
+	s_cbranch_execz .LBB0_137
+; %bb.136:                              ; %.critedge300
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v56, v56, v57
+	v_cvt_pk_bf16_f32 v57, v58, v59
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v56, off offset:2
+	global_store_short_d16_hi v[66:67], v56, off offset:2
+	global_store_short v[68:69], v57, off offset:2
+	global_store_short_d16_hi v[70:71], v57, off offset:2
+.LBB0_137:                              ; %.critedge304
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[2:3]
+	s_cbranch_execz .LBB0_139
+; %bb.138:                              ; %.critedge306
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v52, v52, v53
+	v_cvt_pk_bf16_f32 v53, v54, v55
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v52, off offset:64
+	global_store_short_d16_hi v[66:67], v52, off offset:64
+	global_store_short v[68:69], v53, off offset:64
+	global_store_short_d16_hi v[70:71], v53, off offset:64
+.LBB0_139:                              ; %.critedge310
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[4:5]
+	s_cbranch_execz .LBB0_141
+; %bb.140:                              ; %.critedge312
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v48, v48, v49
+	v_cvt_pk_bf16_f32 v49, v50, v51
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v48, off offset:66
+	global_store_short_d16_hi v[66:67], v48, off offset:66
+	global_store_short v[68:69], v49, off offset:66
+	global_store_short_d16_hi v[70:71], v49, off offset:66
+.LBB0_141:                              ; %.critedge316
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[14:15]
+	s_cbranch_execz .LBB0_143
+; %bb.142:                              ; %.critedge318
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v44, v44, v45
+	v_cvt_pk_bf16_f32 v45, v46, v47
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v44, off offset:256
+	global_store_short_d16_hi v[66:67], v44, off offset:256
+	global_store_short v[68:69], v45, off offset:256
+	global_store_short_d16_hi v[70:71], v45, off offset:256
+.LBB0_143:                              ; %.critedge322
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[8:9]
+	s_cbranch_execz .LBB0_145
+; %bb.144:                              ; %.critedge324
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v40, v40, v41
+	v_cvt_pk_bf16_f32 v41, v42, v43
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v40, off offset:258
+	global_store_short_d16_hi v[66:67], v40, off offset:258
+	global_store_short v[68:69], v41, off offset:258
+	global_store_short_d16_hi v[70:71], v41, off offset:258
+.LBB0_145:                              ; %.critedge328
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[10:11]
+	s_cbranch_execz .LBB0_147
+; %bb.146:                              ; %.critedge330
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v36, v36, v37
+	v_cvt_pk_bf16_f32 v37, v38, v39
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v36, off offset:320
+	global_store_short_d16_hi v[66:67], v36, off offset:320
+	global_store_short v[68:69], v37, off offset:320
+	global_store_short_d16_hi v[70:71], v37, off offset:320
+.LBB0_147:                              ; %.critedge334
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[12:13]
+	s_cbranch_execz .LBB0_149
+; %bb.148:                              ; %.critedge336
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v32, v32, v33
+	v_cvt_pk_bf16_f32 v33, v34, v35
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[64:65], v32, off offset:322
+	global_store_short_d16_hi v[66:67], v32, off offset:322
+	global_store_short v[68:69], v33, off offset:322
+	global_store_short_d16_hi v[70:71], v33, off offset:322
+.LBB0_149:                              ; %.critedge340
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v32, s36, v220
+	v_or_b32_e32 v33, s36, v221
+	.loc	3 79 39                         ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v32, v32, s31
+	v_mul_lo_u32 v34, v33, s31
+	.loc	3 79 25 is_stmt 0               ; kernel_masked_remap.py:79:25
+	v_ashrrev_i32_e32 v33, 31, v32
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v35, s36, v222
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_lshlrev_b64 v[32:33], 1, v[32:33]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v36, v35, s31
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_mov_b32_e32 v40, s25
+	v_add_co_u32_e64 v41, s[16:17], s24, v32
+	v_ashrrev_i32_e32 v35, 31, v34
+	.loc	3 74 25 is_stmt 1               ; kernel_masked_remap.py:74:25
+	v_or_b32_e32 v37, s36, v223
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_addc_co_u32_e64 v42, s[16:17], v40, v33, s[16:17]
+	v_lshlrev_b64 v[32:33], 1, v[34:35]
+	.loc	3 79 39 is_stmt 0               ; kernel_masked_remap.py:79:39
+	v_mul_lo_u32 v38, v37, s31
+	.loc	3 79 25                         ; kernel_masked_remap.py:79:25
+	v_add_co_u32_e64 v34, s[16:17], s24, v32
+	v_ashrrev_i32_e32 v37, 31, v36
+	v_addc_co_u32_e64 v35, s[16:17], v40, v33, s[16:17]
+	v_lshlrev_b64 v[32:33], 1, v[36:37]
+	v_add_co_u32_e64 v36, s[16:17], s24, v32
+	v_ashrrev_i32_e32 v39, 31, v38
+	v_addc_co_u32_e64 v37, s[16:17], v40, v33, s[16:17]
+	v_lshlrev_b64 v[32:33], 1, v[38:39]
+	v_add_co_u32_e64 v38, s[16:17], s24, v32
+	v_addc_co_u32_e64 v39, s[16:17], v40, v33, s[16:17]
+	.loc	3 79 43                         ; kernel_masked_remap.py:79:43
+	v_add_co_u32_e64 v32, s[16:17], v41, v128
+	v_addc_co_u32_e64 v33, s[16:17], v42, v129, s[16:17]
+	v_add_co_u32_e64 v34, s[16:17], v34, v128
+	v_addc_co_u32_e64 v35, s[16:17], v35, v129, s[16:17]
+	v_add_co_u32_e64 v36, s[16:17], v36, v128
+	v_addc_co_u32_e64 v37, s[16:17], v37, v129, s[16:17]
+	v_add_co_u32_e64 v38, s[16:17], v38, v128
+	v_addc_co_u32_e64 v39, s[16:17], v39, v129, s[16:17]
+	.loc	3 80 21 is_stmt 1               ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], vcc
+	s_cbranch_execz .LBB0_151
+; %bb.150:                              ; %.critedge342
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63                         ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v28, v28, v29
+	v_cvt_pk_bf16_f32 v29, v30, v31
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v28, off
+	global_store_short_d16_hi v[34:35], v28, off
+	global_store_short v[36:37], v29, off
+	global_store_short_d16_hi v[38:39], v29, off
+.LBB0_151:                              ; %.critedge346
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[16:17], s[0:1]
+	s_cbranch_execz .LBB0_153
+; %bb.152:                              ; %.critedge348
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v24, v24, v25
+	v_cvt_pk_bf16_f32 v25, v26, v27
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v24, off offset:2
+	global_store_short_d16_hi v[34:35], v24, off offset:2
+	global_store_short v[36:37], v25, off offset:2
+	global_store_short_d16_hi v[38:39], v25, off offset:2
+.LBB0_153:                              ; %.critedge352
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[16:17]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[2:3]
+	s_cbranch_execz .LBB0_155
+; %bb.154:                              ; %.critedge354
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v20, v20, v21
+	v_cvt_pk_bf16_f32 v21, v22, v23
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v20, off offset:64
+	global_store_short_d16_hi v[34:35], v20, off offset:64
+	global_store_short v[36:37], v21, off offset:64
+	global_store_short_d16_hi v[38:39], v21, off offset:64
+.LBB0_155:                              ; %.critedge358
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[4:5]
+	s_cbranch_execz .LBB0_157
+; %bb.156:                              ; %.critedge360
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v16, v16, v17
+	v_cvt_pk_bf16_f32 v17, v18, v19
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v16, off offset:66
+	global_store_short_d16_hi v[34:35], v16, off offset:66
+	global_store_short v[36:37], v17, off offset:66
+	global_store_short_d16_hi v[38:39], v17, off offset:66
+.LBB0_157:                              ; %.critedge364
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[14:15]
+	s_cbranch_execz .LBB0_159
+; %bb.158:                              ; %.critedge366
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v12, v12, v13
+	v_cvt_pk_bf16_f32 v13, v14, v15
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v12, off offset:256
+	global_store_short_d16_hi v[34:35], v12, off offset:256
+	global_store_short v[36:37], v13, off offset:256
+	global_store_short_d16_hi v[38:39], v13, off offset:256
+.LBB0_159:                              ; %.critedge370
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[8:9]
+	s_cbranch_execz .LBB0_161
+; %bb.160:                              ; %.critedge372
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v8, v8, v9
+	v_cvt_pk_bf16_f32 v9, v10, v11
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v8, off offset:258
+	global_store_short_d16_hi v[34:35], v8, off offset:258
+	global_store_short v[36:37], v9, off offset:258
+	global_store_short_d16_hi v[38:39], v9, off offset:258
+.LBB0_161:                              ; %.critedge376
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[10:11]
+	s_cbranch_execz .LBB0_163
+; %bb.162:                              ; %.critedge378
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v4, v4, v5
+	v_cvt_pk_bf16_f32 v5, v6, v7
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v4, off offset:320
+	global_store_short_d16_hi v[34:35], v4, off offset:320
+	global_store_short v[36:37], v5, off offset:320
+	global_store_short_d16_hi v[38:39], v5, off offset:320
+.LBB0_163:                              ; %.critedge382
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	s_and_saveexec_b64 s[0:1], s[12:13]
+	s_cbranch_execz .LBB0_165
+; %bb.164:                              ; %.critedge384
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 79 63 is_stmt 1               ; kernel_masked_remap.py:79:63
+	v_cvt_pk_bf16_f32 v0, v0, v1
+	v_cvt_pk_bf16_f32 v1, v2, v3
+	.loc	3 80 21                         ; kernel_masked_remap.py:80:21
+	global_store_short v[32:33], v0, off offset:322
+	global_store_short_d16_hi v[34:35], v0, off offset:322
+	global_store_short v[36:37], v1, off offset:322
+	global_store_short_d16_hi v[38:39], v1, off offset:322
+.LBB0_165:                              ; %.critedge388
+                                        ;   in Loop: Header=BB0_99 Depth=1
+	.loc	3 0 21 is_stmt 0                ; kernel_masked_remap.py:0:21
+	s_or_b64 exec, exec, s[0:1]
+.Ltmp65:
+	.loc	2 204 26 is_stmt 1              ; kernel_masked_store.py:204:26
+	s_xor_b32 s1, s35, 1
+.Ltmp66:
+	.loc	3 43 54                         ; kernel_masked_remap.py:43:54
+	s_add_i32 s0, s33, 48
+	s_cmpk_lt_i32 s33, 0x474
+	s_mov_b32 s33, s0
+	s_cbranch_scc1 .LBB0_99
+	s_branch .LBB0_167
+.LBB0_166:                              ; %Flow1658
+	.loc	3 0 54 is_stmt 0                ; kernel_masked_remap.py:0:54
+	s_mov_b64 s[0:1], 0
+	s_branch .LBB0_96
+.LBB0_167:                              ; %._crit_edge
+	; sched_barrier mask(0x00000000)
+.Ltmp67:
+	.loc	2 160 30 is_stmt 1              ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_ebarrier_sync 15, 0
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp68:
+	; sched_barrier mask(0x00000000)
+	.loc	2 160 30 is_stmt 0              ; kernel_masked_store.py:160:30
+	;;#ASMSTART
+	s_abarrier_inv 1
+	s_abarrier_inv 2
+	s_abarrier_inv 3
+	s_abarrier_inv 4
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp69:
+	; sched_barrier mask(0x00000000)
+	.loc	1 20 0 is_stmt 1                ; kernel_masked_active.py:20:0
+	s_ebarrier_sync  5, 0
+	;;#ASMSTART
+	; mma_epilogue_partition_2
+	;;#ASMEND
+	s_mov_b64 s[2:3], 0
+	s_mov_b64 s[0:1], 0
+	s_branch .LBB0_96
+.Ltmp70:
+	.section	.rodata,"a",@progbits
+	.p2align	6, 0x0
+	.amdhsa_kernel _gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel
+		.amdhsa_group_segment_fixed_size 0
+		.amdhsa_private_segment_fixed_size 0
+		.amdhsa_kernarg_size 40
+		.amdhsa_user_sgpr_count 6
+		.amdhsa_user_sgpr_private_segment_buffer 1
+		.amdhsa_user_sgpr_dispatch_ptr 0
+		.amdhsa_user_sgpr_queue_ptr 0
+		.amdhsa_user_sgpr_kernarg_segment_ptr 1
+		.amdhsa_user_sgpr_dispatch_id 0
+		.amdhsa_user_sgpr_flat_scratch_init 0
+		.amdhsa_user_sgpr_private_segment_size 0
+		.amdhsa_uses_dynamic_stack 0
+		.amdhsa_system_sgpr_private_segment_wavefront_offset 0
+		.amdhsa_system_sgpr_workgroup_id_x 1
+		.amdhsa_system_sgpr_workgroup_id_y 0
+		.amdhsa_system_sgpr_workgroup_id_z 0
+		.amdhsa_system_sgpr_workgroup_info 0
+		.amdhsa_system_vgpr_workitem_id 0
+		.amdhsa_next_free_vgpr 168
+		.amdhsa_next_free_sgpr 70
+		.amdhsa_reserve_flat_scratch 0
+		.amdhsa_reserve_xnack_mask 0
+		.amdhsa_float_round_mode_32 0
+		.amdhsa_float_round_mode_16_64 0
+		.amdhsa_float_denorm_mode_32 3
+		.amdhsa_float_denorm_mode_16_64 3
+		.amdhsa_dx10_clamp 1
+		.amdhsa_ieee_mode 1
+		.amdhsa_fp16_overflow 0
+		.amdhsa_matrix_excp 0
+		.amdhsa_cancellation_excp 0
+		.amdhsa_vgpr_alloc_mode 1
+		.amdhsa_bf16_overflow 0
+		.amdhsa_bf8_overflow 0
+		.amdhsa_fp8_overflow 0
+		.amdhsa_bf16_denorm_mode 3
+		.amdhsa_scale_buffer_size 0
+		.amdhsa_tf32_overflow 0
+		.amdhsa_tf32_denorm_mode 3
+		.amdhsa_bf16_rounding_mode 0
+		.amdhsa_uc_cc_ack_early_return 1
+		.amdhsa_exception_fp_ieee_invalid_op 0
+		.amdhsa_exception_fp_denorm_src 0
+		.amdhsa_exception_fp_ieee_div_zero 0
+		.amdhsa_exception_fp_ieee_overflow 0
+		.amdhsa_exception_fp_ieee_underflow 0
+		.amdhsa_exception_fp_ieee_inexact 0
+		.amdhsa_exception_int_div_zero 0
+	.end_amdhsa_kernel
+	.text
+.Lfunc_end0:
+	.size	_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel, .Lfunc_end0-_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel
+	.cfi_endproc
+                                        ; -- End function
+	.section	.AMDGPU.csdata,"",@progbits
+; Kernel info:
+; codeLenInByte = 13260
+; NumSgprs: 72
+; NumVgprs: 168
+; ScratchSize: 0
+; MemoryBound: 0
+; FloatMode: 240
+; IeeeMode: 1
+; LDSByteSize: 0 bytes/workgroup (compile time only)
+; SGPRBlocks: 8
+; VGPRBlocks: 41
+; NumSGPRsForWavesPerEU: 72
+; NumVGPRsForWavesPerEU: 168
+; Occupancy: 3
+; WaveLimiterHint : 0
+; COMPUTE_PGM_RSRC2:SCRATCH_EN: 0
+; COMPUTE_PGM_RSRC2:USER_SGPR: 6
+; COMPUTE_PGM_RSRC2:TRAP_HANDLER: 0
+; COMPUTE_PGM_RSRC2:TGID_X_EN: 1
+; COMPUTE_PGM_RSRC2:TGID_Y_EN: 0
+; COMPUTE_PGM_RSRC2:TGID_Z_EN: 0
+; COMPUTE_PGM_RSRC2:TIDIG_COMP_CNT: 0
+; COMPUTE_PGM_RSRC3_GFX938:BF16_OVFL: 0
+; COMPUTE_PGM_RSRC3_GFX938:BF8_OVFL: 0
+; COMPUTE_PGM_RSRC3_GFX938:FP8_OVFL: 0
+; COMPUTE_PGM_RSRC3_GFX938:BF16_DENORM: 3
+; COMPUTE_PGM_RSRC3_GFX946:SCALE_BUFFER_SIZE: 0
+; COMPUTE_PGM_RSRC3_GFX946:TF32_OVFL: 0
+; COMPUTE_PGM_RSRC3_GFX946:TF32_DENORM: 3
+; COMPUTE_PGM_RSRC3_GFX946:BF16_RMODE: 0
+; COMPUTE_PGM_RSRC3_GFX946:UC_CC_ACK_EARLY_RETURN: 1
+	.section	.debug_abbrev,"",@progbits
+	.byte	1                               ; Abbreviation Code
+	.byte	17                              ; DW_TAG_compile_unit
+	.byte	1                               ; DW_CHILDREN_yes
+	.byte	37                              ; DW_AT_producer
+	.byte	14                              ; DW_FORM_strp
+	.byte	19                              ; DW_AT_language
+	.byte	5                               ; DW_FORM_data2
+	.byte	3                               ; DW_AT_name
+	.byte	14                              ; DW_FORM_strp
+	.byte	16                              ; DW_AT_stmt_list
+	.byte	23                              ; DW_FORM_sec_offset
+	.byte	27                              ; DW_AT_comp_dir
+	.byte	14                              ; DW_FORM_strp
+	.byte	17                              ; DW_AT_low_pc
+	.byte	1                               ; DW_FORM_addr
+	.byte	18                              ; DW_AT_high_pc
+	.byte	6                               ; DW_FORM_data4
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	2                               ; Abbreviation Code
+	.byte	46                              ; DW_TAG_subprogram
+	.byte	0                               ; DW_CHILDREN_no
+	.byte	3                               ; DW_AT_name
+	.byte	14                              ; DW_FORM_strp
+	.byte	32                              ; DW_AT_inline
+	.byte	11                              ; DW_FORM_data1
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	3                               ; Abbreviation Code
+	.byte	46                              ; DW_TAG_subprogram
+	.byte	1                               ; DW_CHILDREN_yes
+	.byte	17                              ; DW_AT_low_pc
+	.byte	1                               ; DW_FORM_addr
+	.byte	18                              ; DW_AT_high_pc
+	.byte	6                               ; DW_FORM_data4
+	.byte	49                              ; DW_AT_abstract_origin
+	.byte	19                              ; DW_FORM_ref4
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	4                               ; Abbreviation Code
+	.byte	29                              ; DW_TAG_inlined_subroutine
+	.byte	1                               ; DW_CHILDREN_yes
+	.byte	49                              ; DW_AT_abstract_origin
+	.byte	19                              ; DW_FORM_ref4
+	.byte	85                              ; DW_AT_ranges
+	.byte	23                              ; DW_FORM_sec_offset
+	.byte	88                              ; DW_AT_call_file
+	.byte	11                              ; DW_FORM_data1
+	.byte	89                              ; DW_AT_call_line
+	.byte	11                              ; DW_FORM_data1
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	5                               ; Abbreviation Code
+	.byte	29                              ; DW_TAG_inlined_subroutine
+	.byte	1                               ; DW_CHILDREN_yes
+	.byte	49                              ; DW_AT_abstract_origin
+	.byte	19                              ; DW_FORM_ref4
+	.byte	17                              ; DW_AT_low_pc
+	.byte	1                               ; DW_FORM_addr
+	.byte	18                              ; DW_AT_high_pc
+	.byte	6                               ; DW_FORM_data4
+	.byte	88                              ; DW_AT_call_file
+	.byte	11                              ; DW_FORM_data1
+	.byte	89                              ; DW_AT_call_line
+	.byte	11                              ; DW_FORM_data1
+	.byte	87                              ; DW_AT_call_column
+	.byte	11                              ; DW_FORM_data1
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	6                               ; Abbreviation Code
+	.byte	29                              ; DW_TAG_inlined_subroutine
+	.byte	0                               ; DW_CHILDREN_no
+	.byte	49                              ; DW_AT_abstract_origin
+	.byte	19                              ; DW_FORM_ref4
+	.byte	17                              ; DW_AT_low_pc
+	.byte	1                               ; DW_FORM_addr
+	.byte	18                              ; DW_AT_high_pc
+	.byte	6                               ; DW_FORM_data4
+	.byte	88                              ; DW_AT_call_file
+	.byte	11                              ; DW_FORM_data1
+	.byte	89                              ; DW_AT_call_line
+	.byte	11                              ; DW_FORM_data1
+	.byte	87                              ; DW_AT_call_column
+	.byte	11                              ; DW_FORM_data1
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	7                               ; Abbreviation Code
+	.byte	29                              ; DW_TAG_inlined_subroutine
+	.byte	1                               ; DW_CHILDREN_yes
+	.byte	49                              ; DW_AT_abstract_origin
+	.byte	19                              ; DW_FORM_ref4
+	.byte	85                              ; DW_AT_ranges
+	.byte	23                              ; DW_FORM_sec_offset
+	.byte	88                              ; DW_AT_call_file
+	.byte	11                              ; DW_FORM_data1
+	.byte	89                              ; DW_AT_call_line
+	.byte	11                              ; DW_FORM_data1
+	.byte	87                              ; DW_AT_call_column
+	.byte	11                              ; DW_FORM_data1
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	8                               ; Abbreviation Code
+	.byte	29                              ; DW_TAG_inlined_subroutine
+	.byte	0                               ; DW_CHILDREN_no
+	.byte	49                              ; DW_AT_abstract_origin
+	.byte	19                              ; DW_FORM_ref4
+	.byte	85                              ; DW_AT_ranges
+	.byte	23                              ; DW_FORM_sec_offset
+	.byte	88                              ; DW_AT_call_file
+	.byte	11                              ; DW_FORM_data1
+	.byte	89                              ; DW_AT_call_line
+	.byte	11                              ; DW_FORM_data1
+	.byte	87                              ; DW_AT_call_column
+	.byte	11                              ; DW_FORM_data1
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	0                               ; EOM(3)
+	.section	.debug_info,"",@progbits
+.Lcu_begin0:
+	.long	.Ldebug_info_end0-.Ldebug_info_start0 ; Length of Unit
+.Ldebug_info_start0:
+	.short	4                               ; DWARF version number
+	.long	.debug_abbrev                   ; Offset Into Abbrev. Section
+	.byte	8                               ; Address Size (in bytes)
+	.byte	1                               ; Abbrev [1] 0xb:0x234 DW_TAG_compile_unit
+	.long	.Linfo_string0                  ; DW_AT_producer
+	.short	2                               ; DW_AT_language
+	.long	.Linfo_string1                  ; DW_AT_name
+	.long	.Lline_table_start0             ; DW_AT_stmt_list
+	.long	.Linfo_string2                  ; DW_AT_comp_dir
+	.quad	.Lfunc_begin0                   ; DW_AT_low_pc
+	.long	.Lfunc_end0-.Lfunc_begin0       ; DW_AT_high_pc
+	.byte	2                               ; Abbrev [2] 0x2a:0x6 DW_TAG_subprogram
+	.long	.Linfo_string3                  ; DW_AT_name
+	.byte	1                               ; DW_AT_inline
+	.byte	3                               ; Abbrev [3] 0x30:0x20e DW_TAG_subprogram
+	.quad	.Lfunc_begin0                   ; DW_AT_low_pc
+	.long	.Lfunc_end0-.Lfunc_begin0       ; DW_AT_high_pc
+	.long	42                              ; DW_AT_abstract_origin
+	.byte	4                               ; Abbrev [4] 0x41:0x1fc DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges0                 ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.byte	20                              ; DW_AT_call_line
+	.byte	5                               ; Abbrev [5] 0x4c:0x29 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp3                          ; DW_AT_low_pc
+	.long	.Ltmp4-.Ltmp3                   ; DW_AT_high_pc
+	.byte	2                               ; DW_AT_call_file
+	.byte	211                             ; DW_AT_call_line
+	.byte	21                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x60:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp3                          ; DW_AT_low_pc
+	.long	.Ltmp4-.Ltmp3                   ; DW_AT_high_pc
+	.byte	2                               ; DW_AT_call_file
+	.byte	191                             ; DW_AT_call_line
+	.byte	15                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	6                               ; Abbrev [6] 0x75:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp5                          ; DW_AT_low_pc
+	.long	.Ltmp6-.Ltmp5                   ; DW_AT_high_pc
+	.byte	2                               ; DW_AT_call_file
+	.byte	236                             ; DW_AT_call_line
+	.byte	46                              ; DW_AT_call_column
+	.byte	5                               ; Abbrev [5] 0x89:0x29 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp7                          ; DW_AT_low_pc
+	.long	.Ltmp8-.Ltmp7                   ; DW_AT_high_pc
+	.byte	2                               ; DW_AT_call_file
+	.byte	237                             ; DW_AT_call_line
+	.byte	19                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x9d:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp7                          ; DW_AT_low_pc
+	.long	.Ltmp8-.Ltmp7                   ; DW_AT_high_pc
+	.byte	2                               ; DW_AT_call_file
+	.byte	196                             ; DW_AT_call_line
+	.byte	15                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	7                               ; Abbrev [7] 0xb2:0xf1 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges1                 ; DW_AT_ranges
+	.byte	3                               ; DW_AT_call_file
+	.byte	31                              ; DW_AT_call_line
+	.byte	21                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0xbe:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp9                          ; DW_AT_low_pc
+	.long	.Ltmp10-.Ltmp9                  ; DW_AT_high_pc
+	.byte	2                               ; DW_AT_call_file
+	.byte	186                             ; DW_AT_call_line
+	.byte	15                              ; DW_AT_call_column
+	.byte	7                               ; Abbrev [7] 0xd2:0x2d DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges2                 ; DW_AT_ranges
+	.byte	2                               ; DW_AT_call_file
+	.byte	187                             ; DW_AT_call_line
+	.byte	75                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0xde:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp15                         ; DW_AT_low_pc
+	.long	.Ltmp16-.Ltmp15                 ; DW_AT_high_pc
+	.byte	2                               ; DW_AT_call_file
+	.byte	175                             ; DW_AT_call_line
+	.byte	19                              ; DW_AT_call_column
+	.byte	8                               ; Abbrev [8] 0xf2:0xc DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges3                 ; DW_AT_ranges
+	.byte	2                               ; DW_AT_call_file
+	.byte	176                             ; DW_AT_call_line
+	.byte	15                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	7                               ; Abbrev [7] 0xff:0x35 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges4                 ; DW_AT_ranges
+	.byte	2                               ; DW_AT_call_file
+	.byte	188                             ; DW_AT_call_line
+	.byte	63                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x10b:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp18                         ; DW_AT_low_pc
+	.long	.Ltmp19-.Ltmp18                 ; DW_AT_high_pc
+	.byte	2                               ; DW_AT_call_file
+	.byte	175                             ; DW_AT_call_line
+	.byte	19                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x11f:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp23                         ; DW_AT_low_pc
+	.long	.Ltmp24-.Ltmp23                 ; DW_AT_high_pc
+	.byte	2                               ; DW_AT_call_file
+	.byte	176                             ; DW_AT_call_line
+	.byte	15                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	7                               ; Abbrev [7] 0x134:0x2d DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges5                 ; DW_AT_ranges
+	.byte	2                               ; DW_AT_call_file
+	.byte	189                             ; DW_AT_call_line
+	.byte	79                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x140:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp25                         ; DW_AT_low_pc
+	.long	.Ltmp26-.Ltmp25                 ; DW_AT_high_pc
+	.byte	2                               ; DW_AT_call_file
+	.byte	175                             ; DW_AT_call_line
+	.byte	19                              ; DW_AT_call_column
+	.byte	8                               ; Abbrev [8] 0x154:0xc DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges6                 ; DW_AT_ranges
+	.byte	2                               ; DW_AT_call_file
+	.byte	176                             ; DW_AT_call_line
+	.byte	15                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	7                               ; Abbrev [7] 0x161:0x35 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges7                 ; DW_AT_ranges
+	.byte	2                               ; DW_AT_call_file
+	.byte	190                             ; DW_AT_call_line
+	.byte	67                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x16d:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp28                         ; DW_AT_low_pc
+	.long	.Ltmp29-.Ltmp28                 ; DW_AT_high_pc
+	.byte	2                               ; DW_AT_call_file
+	.byte	175                             ; DW_AT_call_line
+	.byte	19                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x181:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp33                         ; DW_AT_low_pc
+	.long	.Ltmp34-.Ltmp33                 ; DW_AT_high_pc
+	.byte	2                               ; DW_AT_call_file
+	.byte	176                             ; DW_AT_call_line
+	.byte	15                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	8                               ; Abbrev [8] 0x196:0xc DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges8                 ; DW_AT_ranges
+	.byte	2                               ; DW_AT_call_file
+	.byte	191                             ; DW_AT_call_line
+	.byte	15                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	8                               ; Abbrev [8] 0x1a3:0xc DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges9                 ; DW_AT_ranges
+	.byte	3                               ; DW_AT_call_file
+	.byte	55                              ; DW_AT_call_line
+	.byte	23                              ; DW_AT_call_column
+	.byte	8                               ; Abbrev [8] 0x1af:0xc DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges10                ; DW_AT_ranges
+	.byte	3                               ; DW_AT_call_file
+	.byte	58                              ; DW_AT_call_line
+	.byte	23                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x1bb:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp40                         ; DW_AT_low_pc
+	.long	.Ltmp41-.Ltmp40                 ; DW_AT_high_pc
+	.byte	3                               ; DW_AT_call_file
+	.byte	66                              ; DW_AT_call_line
+	.byte	27                              ; DW_AT_call_column
+	.byte	8                               ; Abbrev [8] 0x1cf:0xc DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges11                ; DW_AT_ranges
+	.byte	3                               ; DW_AT_call_file
+	.byte	67                              ; DW_AT_call_line
+	.byte	46                              ; DW_AT_call_column
+	.byte	7                               ; Abbrev [7] 0x1db:0x25 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges12                ; DW_AT_ranges
+	.byte	3                               ; DW_AT_call_file
+	.byte	81                              ; DW_AT_call_line
+	.byte	19                              ; DW_AT_call_column
+	.byte	8                               ; Abbrev [8] 0x1e7:0xc DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges13                ; DW_AT_ranges
+	.byte	2                               ; DW_AT_call_file
+	.byte	196                             ; DW_AT_call_line
+	.byte	15                              ; DW_AT_call_column
+	.byte	8                               ; Abbrev [8] 0x1f3:0xc DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges14                ; DW_AT_ranges
+	.byte	2                               ; DW_AT_call_file
+	.byte	198                             ; DW_AT_call_line
+	.byte	19                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	6                               ; Abbrev [6] 0x200:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp50                         ; DW_AT_low_pc
+	.long	.Ltmp51-.Ltmp50                 ; DW_AT_high_pc
+	.byte	3                               ; DW_AT_call_file
+	.byte	46                              ; DW_AT_call_line
+	.byte	23                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x214:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp56                         ; DW_AT_low_pc
+	.long	.Ltmp57-.Ltmp56                 ; DW_AT_high_pc
+	.byte	3                               ; DW_AT_call_file
+	.byte	62                              ; DW_AT_call_line
+	.byte	31                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x228:0x14 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp63                         ; DW_AT_low_pc
+	.long	.Ltmp64-.Ltmp63                 ; DW_AT_high_pc
+	.byte	3                               ; DW_AT_call_file
+	.byte	64                              ; DW_AT_call_line
+	.byte	31                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	0                               ; End Of Children Mark
+	.byte	0                               ; End Of Children Mark
+.Ldebug_info_end0:
+	.section	.debug_ranges,"",@progbits
+.Ldebug_ranges0:
+	.quad	.Ltmp1-.Lfunc_begin0
+	.quad	.Ltmp2-.Lfunc_begin0
+	.quad	.Ltmp3-.Lfunc_begin0
+	.quad	.Ltmp8-.Lfunc_begin0
+	.quad	.Ltmp9-.Lfunc_begin0
+	.quad	.Ltmp13-.Lfunc_begin0
+	.quad	.Ltmp14-.Lfunc_begin0
+	.quad	.Ltmp45-.Lfunc_begin0
+	.quad	.Ltmp46-.Lfunc_begin0
+	.quad	.Ltmp47-.Lfunc_begin0
+	.quad	.Ltmp48-.Lfunc_begin0
+	.quad	.Ltmp69-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges1:
+	.quad	.Ltmp9-.Lfunc_begin0
+	.quad	.Ltmp11-.Lfunc_begin0
+	.quad	.Ltmp12-.Lfunc_begin0
+	.quad	.Ltmp13-.Lfunc_begin0
+	.quad	.Ltmp14-.Lfunc_begin0
+	.quad	.Ltmp35-.Lfunc_begin0
+	.quad	.Ltmp48-.Lfunc_begin0
+	.quad	.Ltmp49-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges2:
+	.quad	.Ltmp10-.Lfunc_begin0
+	.quad	.Ltmp11-.Lfunc_begin0
+	.quad	.Ltmp12-.Lfunc_begin0
+	.quad	.Ltmp13-.Lfunc_begin0
+	.quad	.Ltmp14-.Lfunc_begin0
+	.quad	.Ltmp18-.Lfunc_begin0
+	.quad	.Ltmp20-.Lfunc_begin0
+	.quad	.Ltmp22-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges3:
+	.quad	.Ltmp16-.Lfunc_begin0
+	.quad	.Ltmp17-.Lfunc_begin0
+	.quad	.Ltmp20-.Lfunc_begin0
+	.quad	.Ltmp21-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges4:
+	.quad	.Ltmp18-.Lfunc_begin0
+	.quad	.Ltmp20-.Lfunc_begin0
+	.quad	.Ltmp22-.Lfunc_begin0
+	.quad	.Ltmp24-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges5:
+	.quad	.Ltmp24-.Lfunc_begin0
+	.quad	.Ltmp28-.Lfunc_begin0
+	.quad	.Ltmp30-.Lfunc_begin0
+	.quad	.Ltmp32-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges6:
+	.quad	.Ltmp26-.Lfunc_begin0
+	.quad	.Ltmp27-.Lfunc_begin0
+	.quad	.Ltmp30-.Lfunc_begin0
+	.quad	.Ltmp31-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges7:
+	.quad	.Ltmp28-.Lfunc_begin0
+	.quad	.Ltmp30-.Lfunc_begin0
+	.quad	.Ltmp32-.Lfunc_begin0
+	.quad	.Ltmp34-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges8:
+	.quad	.Ltmp34-.Lfunc_begin0
+	.quad	.Ltmp35-.Lfunc_begin0
+	.quad	.Ltmp48-.Lfunc_begin0
+	.quad	.Ltmp49-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges9:
+	.quad	.Ltmp36-.Lfunc_begin0
+	.quad	.Ltmp37-.Lfunc_begin0
+	.quad	.Ltmp52-.Lfunc_begin0
+	.quad	.Ltmp53-.Lfunc_begin0
+	.quad	.Ltmp59-.Lfunc_begin0
+	.quad	.Ltmp60-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges10:
+	.quad	.Ltmp38-.Lfunc_begin0
+	.quad	.Ltmp39-.Lfunc_begin0
+	.quad	.Ltmp54-.Lfunc_begin0
+	.quad	.Ltmp55-.Lfunc_begin0
+	.quad	.Ltmp61-.Lfunc_begin0
+	.quad	.Ltmp62-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges11:
+	.quad	.Ltmp41-.Lfunc_begin0
+	.quad	.Ltmp42-.Lfunc_begin0
+	.quad	.Ltmp57-.Lfunc_begin0
+	.quad	.Ltmp58-.Lfunc_begin0
+	.quad	.Ltmp65-.Lfunc_begin0
+	.quad	.Ltmp66-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges12:
+	.quad	.Ltmp43-.Lfunc_begin0
+	.quad	.Ltmp45-.Lfunc_begin0
+	.quad	.Ltmp67-.Lfunc_begin0
+	.quad	.Ltmp69-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges13:
+	.quad	.Ltmp43-.Lfunc_begin0
+	.quad	.Ltmp44-.Lfunc_begin0
+	.quad	.Ltmp67-.Lfunc_begin0
+	.quad	.Ltmp68-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges14:
+	.quad	.Ltmp44-.Lfunc_begin0
+	.quad	.Ltmp45-.Lfunc_begin0
+	.quad	.Ltmp68-.Lfunc_begin0
+	.quad	.Ltmp69-.Lfunc_begin0
+	.quad	0
+	.quad	0
+	.section	.debug_str,"MS",@progbits,1
+.Linfo_string0:
+	.asciz	"triton"                        ; string offset=0
+.Linfo_string1:
+	.asciz	"kernel_masked_active.py"       ; string offset=7
+.Linfo_string2:
+	.asciz	"/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1111/masked_active_tt_bf16_27shapes_20261112_1506/source" ; string offset=31
+.Linfo_string3:
+	.asciz	"_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel" ; string offset=136
+	.ident	"clang version 18.0.0 (/buildspace/das-build/staging-pmd-6.3.3/llvm-project/clang 47a7d59a80a4313d0c33d4667c3c8573604d0dbc)"
+	.section	".note.GNU-stack","",@progbits
+	.addrsig
+	.addrsig_sym global_smem
+	.amdgpu_metadata
+---
+amdhsa.kernels:
+  - .args:
+      - .address_space:  global
+        .offset:         0
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         8
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         16
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         24
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         32
+        .size:           8
+        .value_kind:     global_buffer
+    .group_segment_fixed_size: 0
+    .kernarg_segment_align: 8
+    .kernarg_segment_size: 40
+    .language:       OpenCL C
+    .language_version:
+      - 2
+      - 0
+    .max_flat_workgroup_size: 768
+    .name:           _gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel
+    .private_segment_fixed_size: 0
+    .sgpr_count:     72
+    .sgpr_spill_count: 0
+    .symbol:         _gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.kd
+    .unfolded_args:
+      - .address_space:  global
+        .offset:         0
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         8
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         16
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         24
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         32
+        .size:           8
+        .value_kind:     global_buffer
+    .uniform_work_group_size: 1
+    .uses_dynamic_stack: false
+    .vgpr_count:     168
+    .vgpr_spill_count: 0
+    .wavefront_size: 64
+amdhsa.target:   'amdgcn-amd-amdhsa--gfx946:xnack-'
+amdhsa.version:
+  - 1
+  - 2
+...
+
+	.end_amdgpu_metadata
+	.section	.debug_line,"",@progbits
+.Lline_table_start0:

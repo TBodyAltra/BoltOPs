@@ -38,6 +38,25 @@ def _validate_bf16_mls_environment(config):
         raise ValueError("BF16 MLS requires active Triton buffer-ops and BCS knobs")
 
 
+def _get_gluon_config(m, n, k, *, layout, profile, arch, cu_num):
+    """Share same-precision persistent launch geometry between FP16 and BF16."""
+    try:
+        return get_gemm_config(
+            "GEMM-A16W16", m, n, k, backend="gluon", layout=layout,
+            profile=profile, arch=arch, cu_num=cu_num,
+        )
+    except (FileNotFoundError, KeyError):
+        if profile != "DTYPE=float16-OUT=float16":
+            raise
+        config, tuned = get_gemm_config(
+            "GEMM-A16W16", m, n, k, backend="gluon", layout=layout,
+            profile="DTYPE=bfloat16-OUT=bfloat16", arch=arch, cu_num=cu_num,
+        )
+        if config.get("kernel") != "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel":
+            raise KeyError("FP16 requires a persistent Gluon configuration")
+        return config, tuned
+
+
 def gemm_a16w16(
     x,
     w,
@@ -79,12 +98,14 @@ def gemm_a16w16(
             identity. Explicit MLS/WDRA configurations do not support activation.
         backend (str | None): "auto", "triton", "gluon" or "tilelang"; None means
             "auto".
-            Auto selects recorded Gluon only for matching BF16 TN/TT inputs on
-            gfx946 with a tuned CU-specific config and no explicit config; otherwise
-            Triton. Explicit selection never retries another backend. Gluon supports
-            MNK=(64,64,2048) TN and (2048,2048,4096) TN/TT, K-contiguous x,
-            BF16 output, no bias or activation. TileLang is not implemented for
-            nonempty computation. After Gluon selection, exact experimental BF16
+            Auto selects recorded Gluon for matching same-precision BF16/FP16
+            TN/TT inputs on gfx946 with a tuned CU-specific config and no explicit
+            config; otherwise Triton. Explicit selection never retries another
+            backend. Gluon supports the fixed BF16 MNK=(64,64,2048) TN entry and
+            a 48-CU persistent FP16/BF16 TN/TT entry with automatic tail handling,
+            K-contiguous x, matching input/output dtype, no bias or activation.
+            FP16 can reuse the persistent BF16 launch geometry. TileLang is not
+            implemented for nonempty computation. After Gluon selection, exact experimental BF16
             TT profiles may select WASP/MLS on gfx946/48 CU without bias or activation.
             BF16 MLS requires complete M/N/K tiles, BF16 output, and the recorded
             compiler environment set before importing boltops:
@@ -184,8 +205,8 @@ def gemm_a16w16(
             # Existing explicit Triton configs keep their established backend.
             if user_config is None and gluon_inputs_supported:
                 try:
-                    gluon_config, tuned = get_gemm_config(
-                        "GEMM-A16W16", m, n, k, backend="gluon", layout=gluon_layout,
+                    gluon_config, tuned = _get_gluon_config(
+                        m, n, k, layout=gluon_layout,
                         profile=gluon_profile, arch=device.arch, cu_num=device.cu_count,
                     )
                 except (FileNotFoundError, KeyError):
@@ -390,8 +411,8 @@ def gemm_a16w16(
                 config = gluon_config
             else:
                 try:
-                    config, _ = get_gemm_config(
-                        "GEMM-A16W16", m, n, k, backend="gluon", layout=gluon_layout,
+                    config, _ = _get_gluon_config(
+                        m, n, k, layout=gluon_layout,
                         profile=gluon_profile, arch=device.arch, cu_num=device.cu_count,
                     )
                 except (FileNotFoundError, KeyError):
@@ -408,6 +429,10 @@ def gemm_a16w16(
             if selector == "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel":
                 # Physical weight strides, rather than a caller's config, own
                 # the B MLS descriptor and shared-memory order.
+                if a.dtype != out_dtype or device.cu_count != 48:
+                    raise ValueError(
+                        "persistent Gluon requires 48 CU and matching FP16 or BF16 input/output"
+                    )
                 config["B_K_CONTIGUOUS"] = gluon_layout == "TN"
             elif gluon_layout != "TN":
                 raise NotImplementedError(
@@ -417,10 +442,11 @@ def gemm_a16w16(
                 key: tuple(value) if isinstance(value, list) else value
                 for key, value in config.items()
             }
-            # A persistent entry walks the tile grid itself, so it is launched
-            # with one TG per resident SM instead of one TG per output tile.
+            # Match the kernel's active persistent stride, including tiny grids.
             grid = (
-                lambda meta: (meta["NUM_SMS"],)
+                lambda meta: (min(meta["NUM_SMS"],
+                                  triton.cdiv(m, meta["BLOCK_SIZE_M"])
+                                  * triton.cdiv(n, meta["BLOCK_SIZE_N"])),)
                 if "NUM_SMS" in meta
                 else (
                     triton.cdiv(m, meta["BLOCK_SIZE_M"])

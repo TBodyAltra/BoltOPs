@@ -204,6 +204,27 @@ def test_persistent_native_correctness(layout):
     torch.testing.assert_close(result.cpu(), gold, atol=.001, rtol=.01)
 
 
+@pytest.mark.parametrize("dtype", [torch.bfloat16, torch.float16])
+def test_persistent_native_tt_tail_correctness(dtype):
+    require_device()
+    m, n, k = 17, 33, 65
+    gen = torch.Generator().manual_seed(21)
+    a = (torch.randn((m, k), generator=gen) * .5).to(dtype)
+    b = (torch.randn((k, n), generator=gen) * .5).to(dtype)
+    gold = (a.float() @ b.float()).to(dtype)
+    a_dev, b_dev = a.cuda(), b.cuda()
+    storage = torch.full((m*n + 128,), 123., dtype=dtype, device=a_dev.device)
+    out = storage[64:-64].view(m, n)
+    cfg, _ = config_for(m=2048, n=2048, k=4096, layout="TT")
+    result = gemm_a16w16(a_dev, b_dev.T, dtype=dtype, out=out,
+                         config=cfg, backend="gluon")
+    assert result is out
+    torch.testing.assert_close(result.cpu(), gold, atol=.001, rtol=.01)
+    assert bool(torch.all(storage[:64].cpu() == 123))
+    assert bool(torch.all(storage[-64:].cpu() == 123))
+    assert torch.equal(a_dev.cpu(), a) and torch.equal(b_dev.cpu(), b)
+
+
 @pytest.mark.parametrize("selector", [None, "missing_kernel"])
 def test_explicit_gluon_config_requires_selector(monkeypatch, selector):
     calls = install_captures(monkeypatch)
