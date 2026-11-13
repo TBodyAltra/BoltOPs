@@ -454,21 +454,417 @@
 
 需求来源：`shape_08_q35_mxfp4_128k_s150.xlsx`。
 
-| 编号 | 算子 / 精度 | 层 / 算子名 | M × N × K | batch / E | 阶段 | 来源数 | A scale | B scale | 公开接口 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [R014](#r014)<a name="r014"></a> | linear<br>BF16×BF16→BF16 | `in_proj_ba` | 12 × 64 × 2048 | — | decode | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R015](#r015)<a name="r015"></a> | linear<br>BF16×BF16→BF16 | `o_proj`<br>`out_proj` | 12 × 2048 × 4096 | — | decode | 2 | — | — | [gemm_a16w16][fn-a16] |
-| [R016](#r016)<a name="r016"></a> | linear<br>BF16×BF16→BF16 | `qkv_proj` | 12 × 9216 × 2048 | — | decode | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R017](#r017)<a name="r017"></a> | linear<br>BF16×BF16→BF16 | `in_proj_qkvz` | 12 × 12288 × 2048 | — | decode | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R018](#r018)<a name="r018"></a> | linear<br>BF16×BF16→BF16 | `lm_head_decode`<br>`lm_head_prefill` | 12 × 248320 × 2048 | — | prefill/decode | 3 | — | — | [gemm_a16w16][fn-a16] |
-| [R019](#r019)<a name="r019"></a> | linear<br>BF16×BF16→BF16 | `in_proj_ba` | 2048 × 64 × 2048 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R020](#r020)<a name="r020"></a> | linear<br>BF16×BF16→BF16 | `o_proj`<br>`out_proj` | 2048 × 2048 × 4096 | — | prefill | 2 | — | — | [gemm_a16w16][fn-a16] |
-| [R021](#r021)<a name="r021"></a> | linear<br>BF16×BF16→BF16 | `qkv_proj` | 2048 × 9216 × 2048 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R022](#r022)<a name="r022"></a> | linear<br>BF16×BF16→BF16 | `in_proj_qkvz` | 2048 × 12288 × 2048 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R023](#r023)<a name="r023"></a> | linear<br>BF16×BF16→BF16 | `in_proj_ba` | 6656 × 64 × 2048 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R024](#r024)<a name="r024"></a> | linear<br>BF16×BF16→BF16 | `o_proj`<br>`out_proj` | 6656 × 2048 × 4096 | — | prefill | 2 | — | — | [gemm_a16w16][fn-a16] |
-| [R025](#r025)<a name="r025"></a> | linear<br>BF16×BF16→BF16 | `qkv_proj` | 6656 × 9216 × 2048 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R026](#r026)<a name="r026"></a> | linear<br>BF16×BF16→BF16 | `in_proj_qkvz` | 6656 × 12288 × 2048 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
+<table>
+  <thead>
+    <tr>
+      <th rowspan="4">编号</th>
+      <th rowspan="4">算子 / 精度</th>
+      <th rowspan="4">层 / 算子名</th>
+      <th rowspan="4">M × N × K</th>
+      <th rowspan="4">batch / E</th>
+      <th rowspan="4">阶段</th>
+      <th rowspan="4">来源数</th>
+      <th rowspan="4">A scale</th>
+      <th rowspan="4">B scale</th>
+      <th rowspan="4">公开接口</th>
+      <th colspan="16">性能</th>
+    </tr>
+    <tr>
+      <th colspan="8">1 DIE</th>
+      <th colspan="8">2 DIE</th>
+    </tr>
+    <tr>
+      <th colspan="4">TT</th>
+      <th colspan="4">TN</th>
+      <th colspan="4">TT</th>
+      <th colspan="4">TN</th>
+    </tr>
+    <tr>
+      <th>测试环境</th>
+      <th>Kernel（μs / TOPS）</th>
+      <th>产物</th>
+      <th>单 TG PERF</th>
+      <th>测试环境</th>
+      <th>Kernel（μs / TOPS）</th>
+      <th>产物</th>
+      <th>单 TG PERF</th>
+      <th>测试环境</th>
+      <th>Kernel（μs / TOPS）</th>
+      <th>产物</th>
+      <th>单 TG PERF</th>
+      <th>测试环境</th>
+      <th>Kernel（μs / TOPS）</th>
+      <th>产物</th>
+      <th>单 TG PERF</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="#r014">R014</a><a name="r014"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>in_proj_ba</code></td>
+      <td>12 × 64 × 2048</td>
+      <td>—</td>
+      <td>decode</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r015">R015</a><a name="r015"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>o_proj</code><br><code>out_proj</code></td>
+      <td>12 × 2048 × 4096</td>
+      <td>—</td>
+      <td>decode</td>
+      <td>2</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r016">R016</a><a name="r016"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>qkv_proj</code></td>
+      <td>12 × 9216 × 2048</td>
+      <td>—</td>
+      <td>decode</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r017">R017</a><a name="r017"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>in_proj_qkvz</code></td>
+      <td>12 × 12288 × 2048</td>
+      <td>—</td>
+      <td>decode</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r018">R018</a><a name="r018"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>lm_head_decode</code><br><code>lm_head_prefill</code></td>
+      <td>12 × 248320 × 2048</td>
+      <td>—</td>
+      <td>prefill/decode</td>
+      <td>3</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r019">R019</a><a name="r019"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>in_proj_ba</code></td>
+      <td>2048 × 64 × 2048</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r020">R020</a><a name="r020"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>o_proj</code><br><code>out_proj</code></td>
+      <td>2048 × 2048 × 4096</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>2</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r021">R021</a><a name="r021"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>qkv_proj</code></td>
+      <td>2048 × 9216 × 2048</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r021/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r021/1die/tt/record.json">209.014 / 369.88</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=9216-K=2048-TT.json">config</a> / <a href="tuning/r021/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r021/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r021/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r021/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r022">R022</a><a name="r022"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>in_proj_qkvz</code></td>
+      <td>2048 × 12288 × 2048</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r022/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r022/1die/tt/record.json">295.076 / 349.33</a></td>
+      <td><a href="../../../boltops/gemm/triton/gemm_a16w16_wasp.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/triton/gemm_a16w16/GEMM-A16W16-N=12288-K=2048-TT.json">config</a> / <a href="tuning/r022/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r022/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r022/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r022/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r023">R023</a><a name="r023"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>in_proj_ba</code></td>
+      <td>6656 × 64 × 2048</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r024">R024</a><a name="r024"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>o_proj</code><br><code>out_proj</code></td>
+      <td>6656 × 2048 × 4096</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>2</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r024/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r024/1die/tt/record.json">321.095 / 347.78</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=2048-K=4096-TT.json">config</a> / <a href="tuning/r024/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r024/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r024/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r024/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r025">R025</a><a name="r025"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>qkv_proj</code></td>
+      <td>6656 × 9216 × 2048</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r025/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r025/1die/tt/record.json">671.566 / 374.13</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=9216-K=2048-TT.json">config</a> / <a href="tuning/r025/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r025/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r025/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r025/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r026">R026</a><a name="r026"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>in_proj_qkvz</code></td>
+      <td>6656 × 12288 × 2048</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r026/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r026/1die/tt/record.json">910.267 / 368.03</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=12288-K=2048-TT.json">config</a> / <a href="tuning/r026/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r026/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r026/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r026/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+  </tbody>
+</table>
 
 <a name="model-qwen3-vl-8b"></a>
 
@@ -478,28 +874,613 @@
 
 需求来源：`shape_12_qwen3vl8b_226_s150.xlsx`。
 
-| 编号 | 算子 / 精度 | 层 / 算子名 | M × N × K | batch / E | 阶段 | 来源数 | A scale | B scale | 公开接口 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [R027](#r027)<a name="r027"></a> | linear<br>BF16×BF16→BF16 | `o_proj` | 512 × 4096 × 4096 | — | decode | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R028](#r028)<a name="r028"></a> | linear<br>BF16×BF16→BF16 | `mlp_down_proj` | 512 × 4096 × 12288 | — | decode | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R029](#r029)<a name="r029"></a> | linear<br>BF16×BF16→BF16 | `qkv_proj` | 512 × 6144 × 4096 | — | decode | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R030](#r030)<a name="r030"></a> | linear<br>BF16×BF16→BF16 | `mlp_gate_up_proj` | 512 × 24576 × 4096 | — | decode | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R031](#r031)<a name="r031"></a> | linear<br>BF16×BF16→BF16 | `lm_head_decode`<br>`lm_head_prefill` | 512 × 151936 × 4096 | — | prefill/decode | 3 | — | — | [gemm_a16w16][fn-a16] |
-| [R032](#r032)<a name="r032"></a> | linear<br>BF16×BF16→BF16 | `o_proj` | 2560 × 4096 × 4096 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R033](#r033)<a name="r033"></a> | linear<br>BF16×BF16→BF16 | `mlp_down_proj` | 2560 × 4096 × 12288 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R034](#r034)<a name="r034"></a> | linear<br>BF16×BF16→BF16 | `qkv_proj` | 2560 × 6144 × 4096 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R035](#r035)<a name="r035"></a> | linear<br>BF16×BF16→BF16 | `mlp_gate_up_proj` | 2560 × 24576 × 4096 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R036](#r036)<a name="r036"></a> | linear<br>BF16×BF16→BF16 | `merger_fc2` | 5684 × 4096 × 4608 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R037](#r037)<a name="r037"></a> | linear<br>BF16×BF16→BF16 | `merger_fc1` | 5684 × 4608 × 4608 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R038](#r038)<a name="r038"></a> | linear<br>BF16×BF16→BF16 | `o_proj` | 6656 × 4096 × 4096 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R039](#r039)<a name="r039"></a> | linear<br>BF16×BF16→BF16 | `mlp_down_proj` | 6656 × 4096 × 12288 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R040](#r040)<a name="r040"></a> | linear<br>BF16×BF16→BF16 | `qkv_proj` | 6656 × 6144 × 4096 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R041](#r041)<a name="r041"></a> | linear<br>BF16×BF16→BF16 | `mlp_gate_up_proj` | 6656 × 24576 × 4096 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R042](#r042)<a name="r042"></a> | linear<br>BF16×BF16→BF16 | `vit_o_proj` | 22736 × 1152 × 1152 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R043](#r043)<a name="r043"></a> | linear<br>BF16×BF16→BF16 | `vit_patch_embed` | 22736 × 1152 × 1536 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R044](#r044)<a name="r044"></a> | linear<br>BF16×BF16→BF16 | `vit_mlp_fc2` | 22736 × 1152 × 4304 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R045](#r045)<a name="r045"></a> | linear<br>BF16×BF16→BF16 | `vit_qkv_proj` | 22736 × 3456 × 1152 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
-| [R046](#r046)<a name="r046"></a> | linear<br>BF16×BF16→BF16 | `vit_mlp_fc1` | 22736 × 4304 × 1152 | — | prefill | 1 | — | — | [gemm_a16w16][fn-a16] |
+<table>
+  <thead>
+    <tr>
+      <th rowspan="4">编号</th>
+      <th rowspan="4">算子 / 精度</th>
+      <th rowspan="4">层 / 算子名</th>
+      <th rowspan="4">M × N × K</th>
+      <th rowspan="4">batch / E</th>
+      <th rowspan="4">阶段</th>
+      <th rowspan="4">来源数</th>
+      <th rowspan="4">A scale</th>
+      <th rowspan="4">B scale</th>
+      <th rowspan="4">公开接口</th>
+      <th colspan="16">性能</th>
+    </tr>
+    <tr>
+      <th colspan="8">1 DIE</th>
+      <th colspan="8">2 DIE</th>
+    </tr>
+    <tr>
+      <th colspan="4">TT</th>
+      <th colspan="4">TN</th>
+      <th colspan="4">TT</th>
+      <th colspan="4">TN</th>
+    </tr>
+    <tr>
+      <th>测试环境</th>
+      <th>Kernel（μs / TOPS）</th>
+      <th>产物</th>
+      <th>单 TG PERF</th>
+      <th>测试环境</th>
+      <th>Kernel（μs / TOPS）</th>
+      <th>产物</th>
+      <th>单 TG PERF</th>
+      <th>测试环境</th>
+      <th>Kernel（μs / TOPS）</th>
+      <th>产物</th>
+      <th>单 TG PERF</th>
+      <th>测试环境</th>
+      <th>Kernel（μs / TOPS）</th>
+      <th>产物</th>
+      <th>单 TG PERF</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="#r027">R027</a><a name="r027"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>o_proj</code></td>
+      <td>512 × 4096 × 4096</td>
+      <td>—</td>
+      <td>decode</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r028">R028</a><a name="r028"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>mlp_down_proj</code></td>
+      <td>512 × 4096 × 12288</td>
+      <td>—</td>
+      <td>decode</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r029">R029</a><a name="r029"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>qkv_proj</code></td>
+      <td>512 × 6144 × 4096</td>
+      <td>—</td>
+      <td>decode</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r029/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r029/1die/tt/record.json">71.112 / 362.38</a></td>
+      <td><a href="../../../boltops/gemm/triton/gemm_a16w16_wasp.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/triton/gemm_a16w16/GEMM-A16W16-N=6144-K=4096-TT.json">config</a> / <a href="tuning/r029/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r029/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r029/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r029/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r030">R030</a><a name="r030"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>mlp_gate_up_proj</code></td>
+      <td>512 × 24576 × 4096</td>
+      <td>—</td>
+      <td>decode</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r030/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r030/1die/tt/record.json">274.730 / 375.20</a></td>
+      <td><a href="../../../boltops/gemm/triton/gemm_a16w16_wasp.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/triton/gemm_a16w16/GEMM-A16W16-N=24576-K=4096-TT.json">config</a> / <a href="tuning/r030/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r030/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r030/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r030/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r031">R031</a><a name="r031"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>lm_head_decode</code><br><code>lm_head_prefill</code></td>
+      <td>512 × 151936 × 4096</td>
+      <td>—</td>
+      <td>prefill/decode</td>
+      <td>3</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r031/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r031/1die/tt/record.json">1662.514 / 383.31</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=151936-K=4096-TT.json">config</a> / <a href="tuning/r031/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r031/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r031/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r031/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r032">R032</a><a name="r032"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>o_proj</code></td>
+      <td>2560 × 4096 × 4096</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r033">R033</a><a name="r033"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>mlp_down_proj</code></td>
+      <td>2560 × 4096 × 12288</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r033/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r033/1die/tt/record.json">744.225 / 346.26</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=12288-TT.json">config</a> / <a href="tuning/r033/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r033/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r033/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r033/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r034">R034</a><a name="r034"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>qkv_proj</code></td>
+      <td>2560 × 6144 × 4096</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r034/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r034/1die/tt/record.json">322.808 / 399.15</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=6144-K=4096-TT.json">config</a> / <a href="tuning/r034/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r034/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r034/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r034/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r035">R035</a><a name="r035"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>mlp_gate_up_proj</code></td>
+      <td>2560 × 24576 × 4096</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r035/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r035/1die/tt/record.json">1313.301 / 392.44</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=24576-K=4096-TT.json">config</a> / <a href="tuning/r035/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r035/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r035/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r035/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r036">R036</a><a name="r036"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>merger_fc2</code></td>
+      <td>5684 × 4096 × 4608</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r036/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r036/1die/tt/record.json">585.274 / 366.60</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=4608-TT.json">config</a> / <a href="tuning/r036/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r036/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r036/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r036/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r037">R037</a><a name="r037"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>merger_fc1</code></td>
+      <td>5684 × 4608 × 4608</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r037/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r037/1die/tt/record.json">665.232 / 362.86</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=4608-K=4608-TT.json">config</a> / <a href="tuning/r037/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r037/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r037/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r037/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r038">R038</a><a name="r038"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>o_proj</code></td>
+      <td>6656 × 4096 × 4096</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r038/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r038/1die/tt/record.json">571.565 / 390.75</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=4096-TT.json">config</a> / <a href="tuning/r038/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r038/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r038/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r038/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r039">R039</a><a name="r039"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>mlp_down_proj</code></td>
+      <td>6656 × 4096 × 12288</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r039/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r039/1die/tt/record.json">1663.247 / 402.84</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=12288-TT.json">config</a> / <a href="tuning/r039/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r039/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r039/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r039/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r040">R040</a><a name="r040"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>qkv_proj</code></td>
+      <td>6656 × 6144 × 4096</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r040/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r040/1die/tt/record.json">822.670 / 407.22</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=6144-K=4096-TT.json">config</a> / <a href="tuning/r040/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r040/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r040/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r040/1die/tt/single_tg.perf">PERF</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r041">R041</a><a name="r041"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>mlp_gate_up_proj</code></td>
+      <td>6656 × 24576 × 4096</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r042">R042</a><a name="r042"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>vit_o_proj</code></td>
+      <td>22736 × 1152 × 1152</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r043">R043</a><a name="r043"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>vit_patch_embed</code></td>
+      <td>22736 × 1152 × 1536</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r044">R044</a><a name="r044"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>vit_mlp_fc2</code></td>
+      <td>22736 × 1152 × 4304</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r045">R045</a><a name="r045"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>vit_qkv_proj</code></td>
+      <td>22736 × 3456 × 1152</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><a href="#r046">R046</a><a name="r046"></a></td>
+      <td>linear<br>BF16×BF16→BF16</td>
+      <td><code>vit_mlp_fc1</code></td>
+      <td>22736 × 4304 × 1152</td>
+      <td>—</td>
+      <td>prefill</td>
+      <td>1</td>
+      <td>—</td>
+      <td>—</td>
+      <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+  </tbody>
+</table>
 
 <a name="january-byte-p1"></a>
 
