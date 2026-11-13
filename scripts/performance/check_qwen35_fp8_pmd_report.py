@@ -8,8 +8,7 @@ import sys
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[3]
-SPEC = importlib.util.spec_from_file_location('qwen35_pmd_report', ROOT / 'scripts/performance/qwen35_fp8_pmd_regression.py')
+SPEC = importlib.util.spec_from_file_location('qwen35_pmd_report', Path(__file__).with_name('qwen35_fp8_pmd_regression.py'))
 reg = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = reg
 SPEC.loader.exec_module(reg)

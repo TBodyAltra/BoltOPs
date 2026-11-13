@@ -22,7 +22,9 @@ protocol needed to replay the published benchmark.
 
 ## Run
 
-Source the recorded gfx946 / 1-DIE / 48-CU PMD environment first. The runner
+These are standalone scripts for the Shaobo PMD environment, separate from
+the NMZ CI suite under `test/`. Source the recorded gfx946 / 1-DIE / 48-CU
+PMD environment first. The runner
 starts each benchmark in a separate process, model directory and compilation
 cache. It replays the original complete-MNK benchmark via the current code and
 configuration. Output directories must be new. Logs and failed measurements
@@ -55,16 +57,12 @@ kernels again:
 python scripts/performance/qwen35_fp8_pmd_regression.py --evaluate --output /tmp/qwen35-fp8-regression --max-regression-percent 1
 ```
 
-## Pytest
+## Check the report validator
 
-The full-size tests require `--bench` and explicit PMD opt-in. They are skipped
-in an ordinary test run.
+The optional CPU-only self-checks require pytest and start no PMD kernels:
 
 ```bash
-BOLTOPS_RUN_PMD_REGRESSION=1 pytest test/gemm/performance/test_qwen35_fp8_pmd.py --bench --pmd-output /tmp/qwen35-pytest
-pytest test/gemm/performance/test_qwen35_fp8_pmd.py --bench --pmd-results /tmp/qwen35-fp8-regression
-pytest --confcutdir=test/gemm/performance test/gemm/performance/test_pmd_regression_report.py
+python -m pytest --confcutdir=scripts/performance scripts/performance/check_qwen35_fp8_pmd_report.py -q
 ```
 
-`--pmd-max-regression-percent` overrides the same 1% default for pytest. The
-report-validation unit tests need no GPU or PMD runtime.
+The scripts do not add tests, options or markers to the NMZ CI suite.
