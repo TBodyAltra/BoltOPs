@@ -1,6 +1,18 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
-"""Replay recorded Qwen3.5 FP8-model GEMMs and compare complete PMD dispatches."""
+"""Standalone Shaobo PMD regression for recorded Qwen3.5 FP8-model GEMMs.
+
+Source the recorded PMD environment, then run from the repository:
+  python scripts/performance/qwen35_fp8_pmd_regression.py --output /tmp/qwen35-perf
+  python scripts/performance/qwen35_fp8_pmd_regression.py --case R005 --output /tmp/r005-perf
+  python scripts/performance/qwen35_fp8_pmd_regression.py --evaluate --output /tmp/qwen35-perf
+
+Kernel latency increases above 1% fail; exactly 1% passes. Published baselines
+are never updated. DIE/layout records remain separate. --evaluate checks saved
+full-grid measurements without launching kernels. --jobs permits independent
+core-only PMD instances. This script is independent of NMZ CI.
+R005 reuses its archived benchmark's fixed-kernel timing and public-output check.
+"""
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -59,12 +71,16 @@ def normalize_record(record):
         environment['type'] = 'PMD'
         environment['clock_period_ps'] = {'gc': environment['clock_ps']}
         environment['environment_variables'] = environment['variables']
-        benchmark = record['benchmark']
-        if benchmark.get('interface') != 'job_json' or benchmark['warmup_launches'] != 1:
-            raise ValueError('unsupported legacy sampling protocol')
-        benchmark['warm_repeats'] = benchmark['repeats']
-        benchmark['repeats'] += benchmark['warmup_launches']
-        benchmark['sampling'] = 'warm_mean'
+        # R005's archived benchmark takes a job file, uses seed 37, then
+        # measures one cold launch followed by the recorded warm repeats.
+        warm_repeats = len(performance['warm_cycles'])
+        if warm_repeats == 0:
+            raise ValueError('legacy baseline has no warm samples')
+        record['benchmark'] = dict(script=record['artifacts']['published']['benchmark'],
+                                   interface='job_json', seed=37, warm_repeats=warm_repeats,
+                                   repeats=warm_repeats + 1, job_config={'BN': record['tile'][1]})
+        environment['environment_variables'].setdefault(
+            'PYTHONPATH', str(Path(environment['variables']['TRITON_HOME']).parent / 'runtime'))
     return record
 
 

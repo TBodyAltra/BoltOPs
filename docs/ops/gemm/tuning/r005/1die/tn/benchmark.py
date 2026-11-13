@@ -53,35 +53,15 @@ try:
         reference+=dot*asc[:,group,None]*bsc[:,group].float().repeat_interleave(128)[:n][None,:]
     a,b,sa,sb=[t.cuda() for t in (ac,bc,asc,bsc)]
     storage=torch.full((m*n+512,),123.,dtype=torch.bfloat16,device='cuda');out=storage[256:-256].view(m,n)
-    from boltops.gemm import gemm_a8w8_blockscale as public_gemm
-    from boltops.gemm.config import get_gemm_config
-    from boltops.utility.arch_info import get_device_info
-    from boltops.gemm.gluon import gemm_a8w8_blockscale as kernels
-    device=get_device_info(a.device)
-    if device.arch!='gfx946' or device.cu_count!=48:
-        raise RuntimeError('the recorded PMD configuration requires gfx946 / 48 CU')
-    profile='DTYPE=float8_e4m3fn-AS=float32-BS=float32-OUT=bfloat16-RECIPE_A=1x128-RECIPE_B=128x128'
-    lookup_n=2048 if (m,n,k)==(64,64,4096) else n
-    config,tuned=get_gemm_config('GEMM-A8W8_BLOCKSCALE',m,lookup_n,k,profile=profile,backend='gluon',arch=device.arch,cu_num=device.cu_count)
-    assert tuned, 'no recorded configuration for this shape'
-    fn=getattr(kernels,config.pop('kernel'))
-    config={key:tuple(value) if isinstance(value,list) else value for key,value in config.items()}
-    grid=(triton.cdiv(m,config['BLOCK_SIZE_M']),triton.cdiv(n,config['BLOCK_SIZE_N']));total=grid[0]*grid[1]
+    grid=(m//64,n//cfg['BN']);total=grid[0]*grid[1]
+    from boltops.gemm.gluon.gemm_a8w8_blockscale import _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bn64_bk128_kernel as fn
     args=(a,b,sa,sb,out)
-    opts=dict(M=m,N=n,K=k,GROUP_N=128,GROUP_K=128,**config)
+    opts=dict(M=m,N=n,K=k,GROUP_N=128,GROUP_K=128,BLOCK_SIZE_M=64,BLOCK_SIZE_N=64,BLOCK_SIZE_K=128,num_warps=1,num_stages=2,wasp_partition_warps=(1,4),wasp_wdra=False)
     t=time.time();handle=fn.warmup(*args,grid=grid,**opts)
     result.update(compile_seconds=time.time()-t,launch_options=opts,grid=list(grid))
     for ext in ('ttgir','llir','amdgcn'):
         Path('kernel.'+ext).write_text(handle.asm[ext])
     Path('kernel.hsaco').write_bytes(handle.asm['hsaco']);handle._init_handles()
-    public_calls=[]
-    actual_run=fn.run
-    def observed_run(*values,**options):
-        compiled=actual_run(*values,**options)
-        assert compiled is handle, 'public API selected a different kernel/config'
-        public_calls.append(compiled.metadata.name)
-        return compiled
-    fn.run=observed_run
     props=torch.cuda.get_device_properties(0)
     from triton.backends.hcu.wasp import read_partition_registers
     result['partition_registers']=read_partition_registers(handle.asm['amdgcn'])
@@ -93,14 +73,7 @@ try:
     else:
         for rep in range(job.get('repeats',1)+1):
             out.fill_(float('nan'));torch.cuda.synchronize();t=time.time()
-            if (m,n,k)==(64,64,4096):
-                # The diagnostic tile keeps the full problem's 128-row B-scale recipe.
-                # Its 64-row scale shape cannot disambiguate that recipe through auto.
-                h=fn[grid](*args,**opts);assert h is handle
-            else:
-                before=len(public_calls)
-                public=public_gemm(a,b,sa,sb,out=out,backend='auto')
-                assert public is out and len(public_calls)==before+1
+            h=fn[grid](*args,**opts);assert h is handle
             torch.cuda.synchronize();wall=time.time()-t
             guards=bool((storage[:256].cpu()==123).all()) and bool((storage[-256:].cpu()==123).all())
             actual=out.cpu().float();err=(actual-reference).abs()

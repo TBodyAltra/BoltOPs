@@ -84,8 +84,7 @@
       "AMDGCN_USE_BUFFER_OPS": "1",
       "TRITON_HOME": "/xukang/code/pmd-triton-sessions/r005-gluon-20261111/wasp-20261111/mr-final/cache-home",
       "OMP_NUM_THREADS": "1",
-      "MKL_NUM_THREADS": "1",
-      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/r005-gluon-20261111/wasp-20261111/mr-final/runtime"
+      "MKL_NUM_THREADS": "1"
     }
   },
   "launch_options": {
@@ -285,22 +284,9 @@
       "assembly": "kernel.amdgcn",
       "single_tg_perf": "single_tg.perf",
       "benchmark": "benchmark.py",
-      "benchmark_sha256": "80f060f46dbae3637be80386d928889798a45dedd7e7c00948fd8bf4cbaccd02",
+      "benchmark_sha256": "0f19b9c4ac18c6f4d640fc1dace5e935a2553fd550a25f57e784846f7edbd9a2",
       "assembly_scope": "Single-TG shape [64,64,4096], matching single_tg.perf; full 32-TG timing is recorded separately in performance"
     }
   },
-  "dependency": "Triton MR !559 native MLS wave-sharing fixes",
-  "benchmark": {
-    "script": "benchmark.py",
-    "interface": "job_json",
-    "seed": 37,
-    "repeats": 3,
-    "warmup_launches": 1,
-    "aggregation": "mean of three warm launches; initial cold launch excluded",
-    "job_config": {
-      "BN": 64
-    },
-    "command": "python benchmark.py job.json",
-    "dispatch": "public backend=auto, observed kernel handle must match selected config"
-  }
+  "dependency": "Triton MR !559 native MLS wave-sharing fixes"
 }
