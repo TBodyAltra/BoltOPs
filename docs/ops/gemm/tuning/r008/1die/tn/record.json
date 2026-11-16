@@ -34,17 +34,17 @@
       "OPENBLAS_NUM_THREADS": "1",
       "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
       "TRITON_BUILD_PROTON": "OFF",
-      "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/qwen35-fp8-port-20261116/cache",
+      "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/r008-mmac-turn-order-20261116/published-cache",
       "GPU_DFLAGS": "['StatLog']",
       "GPU_CHIP": "sb",
       "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm",
       "TRITON_BUILD_DIR": "/xukang/code/pmd-triton-sessions/r001-gluon-20261110/build",
       "TRITON_BACKENDS_IN_TREE": "1",
       "AMDGCN_USE_BUFFER_OPS": "1",
-      "TRITON_HOME": "/xukang/code/pmd-triton-sessions/qwen35-fp8-port-20261116/cache-home",
+      "TRITON_HOME": "/xukang/code/pmd-triton-sessions/r008-mmac-turn-order-20261116/published-home",
       "OMP_NUM_THREADS": "1",
       "MKL_NUM_THREADS": "1",
-      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/r005-gluon-20261111/wasp-20261111/mr-final/runtime",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/r008-mmac-turn-order-20261116/repo:/xukang/code/pmd-triton-sessions/r005-gluon-20261111/wasp-20261111/mr-final/runtime",
       "HSA_TOOLS_LIB": null
     },
     "gpu_configuration": {
@@ -201,47 +201,61 @@
   },
   "source": {
     "path": "boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py",
-    "symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_k4096_kernel",
-    "line": 754,
-    "commit": "345e68710e34416b6f8fc5a0af9b77cfae66ee04",
-    "sha256": "78bb8e8d5336b4b741bd5bc7509c6d002a311c6cfe8e2854926c1853cf1131a5",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L754",
+    "symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_chunked_scale_kernel",
+    "line": 750,
+    "commit": "d9f85cc8553b1f7417578cc47c2d688df7fcd648",
+    "sha256": "370dccdf755d7045dcad76ad04eb2f40e0da0c4408e12257011e8bd5af1b184a",
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/d9f85cc8553b1f7417578cc47c2d688df7fcd648/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L750",
     "equivalence": {
-      "prototype_text_sha256": "f4dcd970346aaa3f851c823047823b9e7a1fbea8ff2535a7f1e3c7fc35dc0678",
-      "published_text_sha256": "f4dcd970346aaa3f851c823047823b9e7a1fbea8ff2535a7f1e3c7fc35dc0678",
+      "profiled_text_sha256": "7b763c8e280adbe8b44fdfc997eb1e8e17b5ceb297e3b3d105c41d8f8946df03",
+      "integrated_text_sha256": "7b763c8e280adbe8b44fdfc997eb1e8e17b5ceb297e3b3d105c41d8f8946df03",
       "identical": true,
-      "launch_abi_and_resources_identical": true,
-      "notes": "Published entry and private helper names differ; executable .text and all numeric .amdhsa launch/resource directives match the fully measured prototype."
+      "scope": "Current repository replay and integrated source; does not imply equivalence to the pre-fix full-grid executable."
     }
   },
   "config": {
     "path": "boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json",
-    "commit": "345e68710e34416b6f8fc5a0af9b77cfae66ee04",
-    "sha256": "eaadc25780fdb42d6bec22ab4245b7a639a6abde6237fc12a949fd124bac42dd",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json"
+    "commit": "d9f85cc8553b1f7417578cc47c2d688df7fcd648",
+    "sha256": "8f75d7e57a2dbb28214da03cbd98b6aa63437fc26b9fd7423079e749969ff50b",
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/d9f85cc8553b1f7417578cc47c2d688df7fcd648/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json"
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "5e3cc177f303f69bf8f62a9df0cf4a65802e2b7cd7f3c750529d36d28c3dab7f",
-    "hsaco_sha256": "5d55dd435a6819c9f0de91a8717483d115c507d994071ad3075cb40388f3d8d9",
-    "scope": "Full-shape specialization, captured with a one-TG profiling grid; instruction text matches complete-grid validation."
+    "sha256": "710c8e18c6b7ba1f3fe9e9b11f01658658cf234b74e1e03600a8af0e8ac00896",
+    "hsaco_sha256": "2a9bf5db2eef75837b039a1958b0401908da08ac7f36cfc4522fd0cefaf196db",
+    "executable_text_sha256": "7b763c8e280adbe8b44fdfc997eb1e8e17b5ceb297e3b3d105c41d8f8946df03",
+    "scope": "Current fixed full-shape specialization captured by the repository benchmark with grid=(1,); one TG executes four tiles. Current full-grid performance is unmeasured."
   },
   "performance": {
     "kernel_us": 107.27444,
     "kernel_cycles": 235768.0,
     "kernel_tops": 400.3719148755286,
     "tops_formula": "2*M*N*K/(kernel_us*1e6)",
-    "launched_TGs": 48
+    "launched_TGs": 48,
+    "status": "HISTORICAL_FULL_GRID_BASELINE",
+    "scope": "Before the MMAC turn-order fix; retained as the full-grid regression baseline only",
+    "source_commit": "345e68710e34416b6f8fc5a0af9b77cfae66ee04",
+    "record_permalink": "https://github.com/TBodyAltra/BoltOPs/blob/81e43d74d8a3254be35058b5166d85fb83b3ca46/docs/ops/gemm/tuning/r008/1die/tn/record.json"
   },
   "validation": {
     "max_abs": 0.0,
     "mismatch": 0,
     "outside_tolerance": 0,
     "nonfinite": 0,
+    "elements": 131072,
     "canary_ok": true,
-    "elements": 5242880,
-    "full_grid_evidence": "Complete prototype launch, 48 TGs / 160 output tiles; published executable and ABI are identical. Published public dispatch and multi-tile/tail behavior are covered by native tests and the four-tile one-TG replay.",
-    "tests": "26 dispatch/native correctness tests passed; non-unit scales, alternate MNK, scale-bank reuse and uneven last TG round covered."
+    "scope": "Current four-tile single-TG replay and small native correctness tests",
+    "full_grid_status": "NOT_RETESTED_AFTER_FIX",
+    "tests": "14 passed, 17 deselected; R008/R009 native assembly order, non-unit scales, K2048/4096/6144, scale-bank reuse and uneven last TG rounds.",
+    "assembly_order": {
+      "static_sites": 6,
+      "MMACs_per_turn": 64,
+      "sequence": [
+        "ebarrier_sync",
+        "64 native MMAC instructions",
+        "opposite ebarrier_arrive"
+      ]
+    }
   },
   "pipeline": {
     "block": [
@@ -277,25 +291,27 @@
       14,
       15
     ],
-    "mapping": "x-major; per-TG trip count handles 160 tiles distributed over 48 TGs"
+    "mapping": "x-major; per-TG trip count handles 160 tiles distributed over 48 TGs",
+    "mmac_turn_order": "Compiler sched_barrier(0) fences surround native ebarrier handoffs; the complete expanded MMAC group stays inside the turn. No extra lgkmcnt(0) is emitted."
   },
   "benchmark": {
     "script": "benchmark.py",
     "sha256": "7876ae45571d8c45ddd74b971131fdc977a120a438f1efb9b2d1d4c656ca3671",
     "seed": 21,
     "repeats": 1,
-    "command": "python docs/ops/gemm/tuning/r008/1die/tn/benchmark.py --record docs/ops/gemm/tuning/r008/1die/tn/record.json --output /tmp/r008-1die-tn"
+    "command": "python docs/ops/gemm/tuning/r008/1die/tn/benchmark.py --record docs/ops/gemm/tuning/r008/1die/tn/record.json --output /tmp/r008-1die-tn-fixed --single-tg-perf",
+    "scope": "Recorded result uses --single-tg-perf. Omitting the flag runs the complete grid, which has not been remeasured after this fix."
   },
   "single_tg_perf": {
     "path": "single_tg.perf",
-    "scope": "Profiling-only one-TG launch from the full-shape kernel; full-grid timing uses 48 TGs. Unselected outputs are checked against a sentinel.",
+    "scope": "Current fixed entry, profiling-only grid=(1,) from M2560/N2048/K4096 with NUM_SMS48/TILE_LIMIT160. Unselected outputs and guards are checked. This is not a complete-grid timing.",
     "tiles": 4,
     "environment_overrides": {
       "GPU_DFLAGS": "['StatLog','TT0','Perf']",
       "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
     },
-    "sha256": "d5eca13cfa58381936a5517ba1cca72d26a2d6555838d78090f944fcfd267bc9",
-    "hsaco_sha256": "5d55dd435a6819c9f0de91a8717483d115c507d994071ad3075cb40388f3d8d9",
+    "sha256": "c4c509b9368f98a2be285c84fbc8c8ff496bf3f1bb96f9bdf7e41f4c27e87887",
+    "hsaco_sha256": "2a9bf5db2eef75837b039a1958b0401908da08ac7f36cfc4522fd0cefaf196db",
     "perf_embedded_hsaco_verified": true,
     "source_shape": [
       2560,
@@ -309,36 +325,58 @@
       "nonfinite": 0,
       "elements": 131072,
       "canary_ok": true
+    },
+    "tile_ids": [
+      0,
+      48,
+      96,
+      144
+    ],
+    "measured_grid": [
+      1
+    ],
+    "active_CUs": 1,
+    "performance": {
+      "kernel_cycles": 210534.0,
+      "kernel_us": 95.79297,
+      "hostSeconds": 37.92,
+      "simulator_wall_seconds": 30.044040543027222,
+      "instructions": {
+        "VALU": 74782.0,
+        "MMOP": 65536.0,
+        "LDS": 25632.0,
+        "VMEM": 3464.0,
+        "SCA": 39838.0
+      }
     }
   },
   "provenance": {
-    "measurement": "/xukang/code/pmd-triton-sessions/qwen35-fp8-port-20261116/runs/R008-parallel-candidate",
-    "source_sha256": "16ef1ca3568f2fdde1bfdb088440187cefcf1e9c66ee4e8415618bb3e16f389e",
-    "full_hsaco_sha256": "ee1f0185fb50bc26d8036a06321bc6bc18167fbfa8c4b0ada771c85ce423e069",
-    "published_single_result": "/xukang/code/pmd-triton-sessions/qwen35-fp8-r006-r007-mr-20261116/r008-single-v3/result.json",
+    "measurement": "/xukang/code/pmd-triton-sessions/r008-mmac-turn-order-20261116/published-single",
+    "source_commit": "d9f85cc8553b1f7417578cc47c2d688df7fcd648",
+    "published_source_sha256": "370dccdf755d7045dcad76ad04eb2f40e0da0c4408e12257011e8bd5af1b184a",
+    "published_hsaco_sha256": "2a9bf5db2eef75837b039a1958b0401908da08ac7f36cfc4522fd0cefaf196db",
+    "published_single_result": "/xukang/code/pmd-triton-sessions/r008-mmac-turn-order-20261116/published-single/result.json",
     "published_full_result": null,
-    "raw_logs": "Outside the Git worktree; only essential record, replay script, assembly and one PERF snapshot are published."
+    "raw_logs": "Outside Git; archive only the selected current assembly/PERF and essential records."
   },
   "comparison": {
-    "control_kernel_us": 111.48137,
-    "candidate_kernel_us": 107.27444,
-    "latency_reduction_percent": 3.773661913196802,
-    "protocol": "Same seed21, compiler, frequency and complete shape; compare first cold dispatch after compile-only warmup",
-    "candidate_samples_us": [
-      107.27444
-    ],
-    "control_samples_us": [
-      111.48137
-    ],
-    "notes": "Later samples are warm-cache observations and are not used as the cold baseline."
+    "scope": "One TG / four tiles / one cold launch after compile-only warmup per independent process",
+    "control_kernel_us": 109.27279999999999,
+    "control_kernel_cycles": 240160.0,
+    "candidate_kernel_us": 95.79297,
+    "candidate_kernel_cycles": 210534.0,
+    "latency_reduction_percent": 12.335942704863424,
+    "control_evidence": "/xukang/code/pmd-triton-sessions/r008-mmac-turn-order-20261116/profiles/baseline/result.json",
+    "candidate_evidence": "/xukang/code/pmd-triton-sessions/r008-mmac-turn-order-20261116/published-single/result.json",
+    "notes": "The baseline instruction text matches the historical linked PERF. The candidate is replayed directly through the repository kernel. No full-grid speedup is claimed."
   },
   "current_entry": {
     "path": "boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py",
     "symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_chunked_scale_kernel",
-    "line": 754,
-    "commit": "b8ca55769e44f65db8f515529656b92332df89f3",
-    "sha256": "51634b025d77330a2338a5764bdb62df674b59a2ae60820cea7ba2591cbedbfc",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/b8ca55769e44f65db8f515529656b92332df89f3/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L754",
+    "line": 750,
+    "commit": "d9f85cc8553b1f7417578cc47c2d688df7fcd648",
+    "sha256": "370dccdf755d7045dcad76ad04eb2f40e0da0c4408e12257011e8bd5af1b184a",
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/d9f85cc8553b1f7417578cc47c2d688df7fcd648/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L750",
     "supported_k": [
       2048,
       4096,
@@ -348,19 +386,78 @@
     "scale_bank_count": 2,
     "config": {
       "path": "boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json",
-      "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/b8ca55769e44f65db8f515529656b92332df89f3/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json"
+      "commit": "d9f85cc8553b1f7417578cc47c2d688df7fcd648",
+      "sha256": "8f75d7e57a2dbb28214da03cbd98b6aa63437fc26b9fd7423079e749969ff50b",
+      "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/d9f85cc8553b1f7417578cc47c2d688df7fcd648/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json"
     },
     "validation": {
-      "selected_tests_passed": 12,
+      "selected_tests_passed": 14,
       "deselected_tests": 17,
-      "command": "python3 -m pytest -q repo/test/gemm/dispatch/test_gluon_blockscale.py -k \"qwen or chunked\"",
-      "evidence_directory": "/xukang/code/pmd-triton-sessions/qwen35-fp8-chunked-scale-rename-20261116",
-      "R008_text_identical": true,
-      "R008_launch_abi_and_resources_identical": true,
-      "R008_text_sha256": "f4dcd970346aaa3f851c823047823b9e7a1fbea8ff2535a7f1e3c7fc35dc0678",
+      "profiled_text_matches_integrated_source": true,
+      "executable_text_sha256": "7b763c8e280adbe8b44fdfc997eb1e8e17b5ceb297e3b3d105c41d8f8946df03",
+      "historical_full_grid_executable_identical": false,
       "LDS_bytes": 114944,
+      "VGPR": 128,
       "spill": 0
     },
-    "notes": "The source/config/assembly/PERF fields above describe the original measured capture and retain its original symbol and fixed commits. This current entry replaces that symbol, removes the K=4096-only assertion and accepts complete 2048-element K chunks up to K=6144. Native non-unit-scale tests cover K=2048/4096/6144, bank reuse and uneven last TG rounds; K=3072 is rejected. Existing R008 instructions and ABI/resources are identical. Only recorded tuned shapes are selected automatically; other supported K values have correctness validation, without a performance claim."
+    "notes": "Native ebarrier interfaces plus compiler scheduling fences. Current assembly/PERF and single-TG precision are verified; complete-grid performance remains pending."
+  },
+  "current_full_grid_performance": {
+    "status": "NOT_MEASURED",
+    "kernel_us": null,
+    "kernel_tops": null,
+    "launched_TGs": 48,
+    "output_tiles": 160,
+    "notes": "Do not apply the one-TG latency reduction to the historical full-grid baseline."
+  },
+  "historical_full_grid": {
+    "record_permalink": "https://github.com/TBodyAltra/BoltOPs/blob/81e43d74d8a3254be35058b5166d85fb83b3ca46/docs/ops/gemm/tuning/r008/1die/tn/record.json",
+    "source": {
+      "path": "boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py",
+      "symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_k4096_kernel",
+      "line": 754,
+      "commit": "345e68710e34416b6f8fc5a0af9b77cfae66ee04",
+      "sha256": "78bb8e8d5336b4b741bd5bc7509c6d002a311c6cfe8e2854926c1853cf1131a5",
+      "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L754",
+      "equivalence": {
+        "prototype_text_sha256": "f4dcd970346aaa3f851c823047823b9e7a1fbea8ff2535a7f1e3c7fc35dc0678",
+        "published_text_sha256": "f4dcd970346aaa3f851c823047823b9e7a1fbea8ff2535a7f1e3c7fc35dc0678",
+        "identical": true,
+        "launch_abi_and_resources_identical": true,
+        "notes": "Published entry and private helper names differ; executable .text and all numeric .amdhsa launch/resource directives match the fully measured prototype."
+      }
+    },
+    "performance": {
+      "kernel_us": 107.27444,
+      "kernel_cycles": 235768.0,
+      "kernel_tops": 400.3719148755286,
+      "tops_formula": "2*M*N*K/(kernel_us*1e6)",
+      "launched_TGs": 48
+    },
+    "validation": {
+      "max_abs": 0.0,
+      "mismatch": 0,
+      "outside_tolerance": 0,
+      "nonfinite": 0,
+      "canary_ok": true,
+      "elements": 5242880,
+      "full_grid_evidence": "Complete prototype launch, 48 TGs / 160 output tiles; published executable and ABI are identical. Published public dispatch and multi-tile/tail behavior are covered by native tests and the four-tile one-TG replay.",
+      "tests": "26 dispatch/native correctness tests passed; non-unit scales, alternate MNK, scale-bank reuse and uneven last TG round covered."
+    },
+    "comparison": {
+      "control_kernel_us": 111.48137,
+      "candidate_kernel_us": 107.27444,
+      "latency_reduction_percent": 3.773661913196802,
+      "protocol": "Same seed21, compiler, frequency and complete shape; compare first cold dispatch after compile-only warmup",
+      "candidate_samples_us": [
+        107.27444
+      ],
+      "control_samples_us": [
+        111.48137
+      ],
+      "notes": "Later samples are warm-cache observations and are not used as the cold baseline."
+    },
+    "assembly_permalink": "https://github.com/TBodyAltra/BoltOPs/blob/81e43d74d8a3254be35058b5166d85fb83b3ca46/docs/ops/gemm/tuning/r008/1die/tn/kernel.amdgcn",
+    "perf_permalink": "https://github.com/TBodyAltra/BoltOPs/blob/81e43d74d8a3254be35058b5166d85fb83b3ca46/docs/ops/gemm/tuning/r008/1die/tn/single_tg.perf"
   }
 }
