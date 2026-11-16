@@ -288,9 +288,9 @@ def _consume_ab_and_accumulate(
     # Keep scale reads ahead of the final scale arithmetic.
     sched_barrier(0)
     acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
-    packed = acc.to(gl.bfloat16).to(gl.float16, bitcast=True)
+    packed = acc.to(gl.bfloat16)
     matrix_store(
-        C.to(gl.pointer_type(gl.float16)),
+        C,
         packed,
         (128, N),
         (N, 1),
