@@ -274,7 +274,7 @@ def test_native_gluon_fp32_scales_64x64(k):
     torch.testing.assert_close(out.cpu(), golden.bfloat16(), atol=0, rtol=0)
 
 
-@pytest.mark.parametrize("m,n,k,tgs", [(64, 12288, 2048, 96), (64, 9216, 2048, 144)])
+@pytest.mark.parametrize("m,n,k,tgs", [(64, 12288, 2048, 96), (64, 9216, 2048, 144), (2560, 2048, 4096, 48)])
 def test_qwen_recorded_pipeline_grid(monkeypatch, m, n, k, tgs):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
@@ -317,6 +317,8 @@ def test_qwen_recorded_pipeline_grid(monkeypatch, m, n, k, tgs):
         ((64, 12288, 2048), (64, 256, 2048), 2),
         ((64, 9216, 2048), (64, 192, 512), 3),
         ((64, 9216, 2048), (128, 192, 2048), 6),
+        ((2560, 2048, 4096), (384, 256, 4096), 1),
+        ((2560, 2048, 4096), (256, 768, 4096), 4),
     ],
 )
 def test_qwen_native_scale_pipelines(record_shape, shape, tgs):
