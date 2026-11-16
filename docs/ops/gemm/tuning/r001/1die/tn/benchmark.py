@@ -22,7 +22,9 @@ def digest(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--record', type=Path, required=True)
-    parser.add_argument('--single-tg-perf', action='store_true')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--single-tg-perf', action='store_true')
+    mode.add_argument('--perf', action='store_true', help='capture the full output grid')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     record_path = args.record.resolve()
@@ -31,7 +33,7 @@ def main():
     case = dict(shape=record['shape'], dies=environment['dies'], layout=record['layout'],
                 seed=record['benchmark']['seed'], repeats=record['benchmark']['repeats'],
                 requirement=record['requirement'], config=record['config']['path'])
-    if args.single_tg_perf:
+    if args.single_tg_perf or args.perf:
         case['repeats'] = 3
     marker = 'BOLTOPS_R001_REPLAY_RECORD'
     if os.environ.get(marker) != str(record_path):
@@ -41,8 +43,9 @@ def main():
                 replay_env.pop(key, None)
             else:
                 replay_env[key] = value
-        if args.single_tg_perf:
-            replay_env.update(record['single_tg_perf']['environment_overrides'])
+        if args.single_tg_perf or args.perf:
+            key = 'single_tg_perf' if args.single_tg_perf else 'perf'
+            replay_env.update(record[key]['environment_overrides'])
         replay_env[marker] = str(record_path)
         os.execve(sys.executable, [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]], replay_env)
     output = args.output.resolve()
@@ -62,7 +65,8 @@ def main():
     kernels = importlib.import_module('boltops.gemm.gluon.gemm_a16w16')
     config_path = REPO / case['config']
     config = json.loads(config_path.read_text())['profiles']['DTYPE=bfloat16-OUT=bfloat16']['M_EQ_64']
-    options = dict(config)
+    options = {key: tuple(value) if isinstance(value, list) else value
+               for key, value in config.items()}
     symbol = options.pop('kernel')
     fn = getattr(kernels, symbol)
     grid = triton.cdiv(m, options['BLOCK_SIZE_M']) * triton.cdiv(n, options['BLOCK_SIZE_N'])
@@ -73,6 +77,12 @@ def main():
     handle = fn.warmup(a, w, c, M=m, N=n, K=k, grid=(grid,), **options)
     handle._init_handles()
     assert handle.n_spills == 0
+    md = json.loads(json.dumps(handle.metadata._asdict(), default=str))
+    assert md['wasp_enabled'] and not md['wasp_wdra']
+    assert tuple(md['wasp_partition_warps']) == (1, 1)
+    assert md['num_warps'] == 2 and md['shared'] == 65536
+    binary_sha256 = hashlib.sha256(handle.kernel).hexdigest()
+    Path('kernel.hsaco').write_bytes(handle.kernel)
     (output / 'kernel.amdgcn').write_text('\n'.join(l.rstrip() for l in handle.asm['amdgcn'].splitlines()) + '\n')
     launched = []
 
@@ -103,7 +113,8 @@ def main():
         cycles = float(values['system.gcSimCycles'])
         return {'dispatch_cycles': cycles, 'kernel_us': cycles*period/1e6,
                 'wave_interval_us': (float(values['system.shaders.lastWaveEndTick']) - float(values['system.shaders.firstWaveStartTick']))/1e6,
-                'completed_TGs': completed, 'stats_path': str(path)}
+                'completed_TGs': completed, 'stats_path': str(path),
+                'active_CUs': sum(int(x) > 0 for x in re.findall(r'^system\.shaders\.CUs\d+\.completedWGs\s+(\d+)', text, re.M))}
 
     def launch():
         before = len(launched)
@@ -115,8 +126,9 @@ def main():
             result = public.gemm_a16w16(a, w, out=c, backend='auto')
             assert result is c and len(launched) == before + 1
         torch.cuda.synchronize()
+        assert hashlib.sha256(handle.kernel).hexdigest() == binary_sha256
         sample = stats()
-        if args.single_tg_perf:
+        if args.single_tg_perf or args.perf:
             directory = Path(sample['stats_path']).parent
             files = [p for p in directory.glob('*.perf') if re.match(r'^\d+_', p.name)]
             assert len(files) == 1, files
@@ -165,16 +177,23 @@ def main():
     warm = samples[1:]
     assert warm, 'need at least two repeats'
     performance = dict(kernel_us=statistics.median(s['kernel_us'] for s in warm),
-                       kernel_cycles=statistics.median(s['dispatch_cycles'] for s in warm))
+                       kernel_cycles=statistics.median(s['dispatch_cycles'] for s in warm),
+                       shader_us=statistics.median(s['wave_interval_us'] for s in warm))
     performance['kernel_tops'] = 2*m*n*k/(performance['kernel_us']*1e6) if not args.single_tg_perf else None
     result = dict(requirement=case['requirement'], status='PASS', single_tg=args.single_tg_perf,
                   performance=performance, validation=validation, samples=samples,
-                  assembly_sha256=digest('kernel.amdgcn'), benchmark_sha256=digest(__file__))
-    if args.single_tg_perf:
+                  assembly_sha256=digest('kernel.amdgcn'), benchmark_sha256=digest(__file__),
+                  binary_sha256=binary_sha256, metadata=md, VGPR=handle.n_regs, spills=handle.n_spills,
+                  public_api_verified=not args.single_tg_perf)
+    if args.single_tg_perf or args.perf:
         best = min(samples[1:], key=lambda s: s['dispatch_cycles'])
         import shutil
-        shutil.copyfile(best['perf_path'], 'single_tg.perf')
-        result['selected'] = dict(best, sha256=digest('single_tg.perf'))
+        if args.perf:
+            best = samples[-1]
+        filename = 'single_tg.perf' if args.single_tg_perf else 'full_grid.perf'
+        shutil.copyfile(best['perf_path'], filename)
+        assert Path(filename).read_bytes()[1:8] == b'HYGPERF'
+        result['selected'] = dict(best, sha256=digest(filename))
     Path('result.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps({'status': result['status'], 'performance': result['performance']}), flush=True)
 
