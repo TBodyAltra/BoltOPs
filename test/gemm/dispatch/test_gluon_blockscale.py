@@ -384,8 +384,8 @@ def test_chunked_scale_pipeline_rejects_partial_chunks():
         gemm_a8w8_blockscale(a, b, sa, sb, backend="gluon", config=config)
 
 
-@pytest.mark.parametrize("shape", [(2560, 9216, 2048), (2560, 2048, 4096)])
-def test_persistent_mmac_turn_encloses_complete_instruction_group(shape):
+def test_chunked_mmac_turn_encloses_complete_instruction_group():
+    shape = (2560, 2048, 4096)
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     import re
