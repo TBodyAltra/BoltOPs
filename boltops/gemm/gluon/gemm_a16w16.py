@@ -6,8 +6,8 @@ Two entries share one public contract: x[M,K] and w[N,K], with the logical
 transpose of w handled inside the kernel and no operand copy. R001 requires
 K-contiguous x/w (TN). The persistent entry also accepts N-contiguous w (TT).
 
-R001 is a fixed 64x64x2048 pipeline with two LDS banks per operand tile and one
-wave per TG. It is a small-shape kernel: 16 output TGs, 4 BK128 chunks per bank.
+R001 is a fixed 64x64x2048 WASP pipeline: one Producer and one Consumer
+wave per TG, two 32-KiB LDS slots, 16 output TGs and 4 BK128 chunks per slot.
 
 R020 uses a 256x256x64 persistent pipeline with bounded operand loads,
 masked tail stores and min(48, output tiles) active thread groups. FP16 and
@@ -20,7 +20,7 @@ from triton.experimental.gluon.language.amd.cdna4 import async_copy
 from triton.experimental.gluon.language.amd.hcu import (
     MlsSharedLayout, MmacInterleave2Layout, MmacLayout, matrix_load, matrix_store,
     sched_barrier, wait_lgkmcnt,
-    abarrier_arrive, abarrier_seq,
+    abarrier_arrive, abarrier_seq, abarrier_init, abarrier_try_wait, ebarrier_sync,
 )
 try:
     from triton.experimental.gluon.language.amd.hcu import abarrier_wait
@@ -29,7 +29,7 @@ except ImportError:
 
 
 @g.jit
-def _produce(A, B, sa, sb, om, on, START: gl.constexpr):
+def _r001_produce(A, B, sa, sb, om, on, START: gl.constexpr):
     for j in gl.static_range(4):
         matrix_load(sa[j], A, (64, 2048), (2048, 1),
                     (om, (START + j) * 128), warps=(1, 1))
@@ -38,10 +38,78 @@ def _produce(A, B, sa, sb, om, on, START: gl.constexpr):
 
 
 @g.jit
-def _read(sa, sb, F: gl.constexpr):
+def _r001_read(sa, sb, F: gl.constexpr):
     a = async_copy.load_shared_relaxed(sa, gl.DotOperandLayout(0, F, 4))
     b = async_copy.load_shared_relaxed(sb, gl.DotOperandLayout(1, F, 4))
     return a, b
+
+
+@g.jit
+def _r001_idle():
+    pass
+
+
+@g.jit
+def _r001_producer(A, B, a0, b0, a1, b1):
+    # Per-slot EMPTY=2*slot, READY=2*slot+1. One wave contributes to each.
+    # Prime EMPTY phase 0; later phases are released by the Consumer only.
+    for bid in gl.static_range(4):
+        abarrier_init(bid, 1)
+    abarrier_arrive(0)
+    abarrier_arrive(2)
+    ebarrier_sync(0, 2)
+    pid = gl.program_id(0)
+    om, on = (pid // 4) * 16, (pid % 4) * 16
+    for batch in gl.static_range(4):
+        if batch % 2 == 0:
+            sa, sb = a0, b0
+        elif batch % 2 == 1:
+            sa, sb = a1, b1
+        abarrier_try_wait((batch % 2) * 2, batch // 2)
+        # READY tracks completion of both A and B MLS transfers.
+        abarrier_seq((batch % 2) * 2 + 1)
+        _r001_produce(A, B, sa, sb, om, on, batch * 4)
+        abarrier_arrive((batch % 2) * 2 + 1)
+    ebarrier_sync(15, 2)
+
+
+@g.jit
+def _r001_consumer(C, a0, b0, a1, b1, F: gl.constexpr):
+    ebarrier_sync(0, 2)
+    pid = gl.program_id(0)
+    om, on = (pid // 4) * 16, (pid % 4) * 16
+    acc = gl.full((16, 16), 0, gl.float32, F)
+    for batch in gl.static_range(4):
+        if batch % 2 == 0:
+            ca, cb = a0, b0
+        elif batch % 2 == 1:
+            ca, cb = a1, b1
+        abarrier_try_wait((batch % 2) * 2 + 1, batch // 2)
+        x0, y0 = _r001_read(ca[0], cb[0], F)
+        x1, y1 = _r001_read(ca[1], cb[1], F)
+        x2, y2 = _r001_read(ca[2], cb[2], F)
+        x3, y3 = _r001_read(ca[3], cb[3], F)
+        sched_barrier(0)
+        wait_lgkmcnt(15)
+        sched_barrier(0)
+        acc = gl.amd.cdna4.mfma(x0, y0, acc)
+        sched_barrier(0)
+        wait_lgkmcnt(15)
+        acc = gl.amd.cdna4.mfma(x1, y1, acc)
+        sched_barrier(0)
+        wait_lgkmcnt(8)
+        acc = gl.amd.cdna4.mfma(x2, y2, acc)
+        sched_barrier(0)
+        wait_lgkmcnt(0)
+        # All reads of this slot have returned; Producer can refill it while
+        # Consumer executes the last eight K16 MMAC instructions.
+        abarrier_arrive((batch % 2) * 2)
+        acc = gl.amd.cdna4.mfma(x3, y3, acc)
+        sched_barrier(0)
+    m = om + gl.arange(0, 16, layout=gl.SliceLayout(1, F))
+    n = on + gl.arange(0, 16, layout=gl.SliceLayout(0, F))
+    gl.amd.cdna3.buffer_store(acc.to(gl.bfloat16), C, m[:, None] * 64 + n[None, :])
+    ebarrier_sync(15, 2)
 
 
 @g.jit
@@ -83,37 +151,13 @@ def _gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel(
           gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB),
           gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB),
           gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB))
-    pid = gl.program_id(0)
-    om = (pid // 4) * 16
-    on = (pid % 4) * 16
-    acc = gl.full((16, 16), 0, gl.float32, F)
-    _produce(A, B, a0, b0, om, on, 0)
-    for batch in gl.static_range(4):
-        if batch % 2 == 0:
-            ca, cb = a0, b0
-            na, nb = a1, b1
-        else:
-            ca, cb = a1, b1
-            na, nb = a0, b0
-        async_copy.wait_group(0)
-        x0, y0 = _read(ca[0], cb[0], F)
-        x1, y1 = _read(ca[1], cb[1], F)
-        x2, y2 = _read(ca[2], cb[2], F)
-        x3, y3 = _read(ca[3], cb[3], F)
-        sched_barrier(0)
-        if batch < 3:
-            _produce(A, B, na, nb, om, on, (batch + 1) * 4)
-        sched_barrier(0)
-        wait_lgkmcnt(0)
-        acc = gl.amd.cdna4.mfma(x0, y0, acc)
-        acc = gl.amd.cdna4.mfma(x1, y1, acc)
-        acc = gl.amd.cdna4.mfma(x2, y2, acc)
-        acc = gl.amd.cdna4.mfma(x3, y3, acc)
-        # Keep next-batch VMEM waits/DS reads after the current MMAC group.
-        sched_barrier(0)
-    m = om + gl.arange(0, 16, layout=gl.SliceLayout(1, F))
-    n = on + gl.arange(0, 16, layout=gl.SliceLayout(0, F))
-    gl.amd.cdna3.buffer_store(acc.to(gl.bfloat16), C, m[:, None] * 64 + n[None, :])
+    # HCU removes the empty default: exactly one Producer + one Consumer.
+    # Register requests are hints; WDRA is disabled by the recorded config.
+    gl.warp_specialize([
+        (_r001_idle, ()),
+        (_r001_producer, (A, B, a0, b0, a1, b1)),
+        (_r001_consumer, (C, a0, b0, a1, b1, F)),
+    ], [1, 1], [32, 160])
 
 
 # ---------------------------------------------------------------------------

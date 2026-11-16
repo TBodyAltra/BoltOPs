@@ -34,6 +34,7 @@ def require_device():
 def test_config_has_precision_profile_and_kernel_selector():
     cfg, tuned = config_for()
     assert tuned and cfg['kernel'] == KERNEL
+    assert cfg['wasp_partition_warps'] == [1, 1] and cfg['wasp_wdra'] is False
     assert (cfg['BLOCK_SIZE_M'], cfg['BLOCK_SIZE_N'], cfg['BLOCK_SIZE_K']) == (16, 16, 128)
     for kwargs in [dict(m=63), dict(n=128), dict(k=1024), dict(layout="TT"),
                    dict(profile="DTYPE=float16-OUT=bfloat16")]:
@@ -98,6 +99,8 @@ def test_auto_selects_only_recorded_contract(monkeypatch, case, expected):
         _, grid, args, params = calls[0]
         assert grid == (16,) and args[0] is a and args[1] is w and args[2] is out
         assert (params['M'], params['N'], params['K']) == (64, 64, 2048)
+        assert params['wasp_partition_warps'] == (1, 1)
+        assert params['wasp_wdra'] is False
 
 
 def test_explicit_gluon_selects_kernel_without_mutating_config(monkeypatch):
