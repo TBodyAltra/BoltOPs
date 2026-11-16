@@ -29,7 +29,7 @@ except ImportError:
 
 
 @g.jit
-def _r001_produce(A, B, sa, sb, om, on, START: gl.constexpr):
+def _load_mls_batch(A, B, sa, sb, om, on, START: gl.constexpr):
     for j in gl.static_range(4):
         matrix_load(sa[j], A, (64, 2048), (2048, 1),
                     (om, (START + j) * 128), warps=(1, 1))
@@ -38,19 +38,19 @@ def _r001_produce(A, B, sa, sb, om, on, START: gl.constexpr):
 
 
 @g.jit
-def _r001_read(sa, sb, F: gl.constexpr):
+def _read_mmac_operands(sa, sb, F: gl.constexpr):
     a = async_copy.load_shared_relaxed(sa, gl.DotOperandLayout(0, F, 4))
     b = async_copy.load_shared_relaxed(sb, gl.DotOperandLayout(1, F, 4))
     return a, b
 
 
 @g.jit
-def _r001_idle():
+def _idle_partition():
     pass
 
 
 @g.jit
-def _r001_producer(A, B, a0, b0, a1, b1):
+def _mls_producer(A, B, a0, b0, a1, b1):
     # Per-slot EMPTY=2*slot, READY=2*slot+1. One wave contributes to each.
     # Prime EMPTY phase 0; later phases are released by the Consumer only.
     for bid in gl.static_range(4):
@@ -68,13 +68,13 @@ def _r001_producer(A, B, a0, b0, a1, b1):
         abarrier_try_wait((batch % 2) * 2, batch // 2)
         # READY tracks completion of both A and B MLS transfers.
         abarrier_seq((batch % 2) * 2 + 1)
-        _r001_produce(A, B, sa, sb, om, on, batch * 4)
+        _load_mls_batch(A, B, sa, sb, om, on, batch * 4)
         abarrier_arrive((batch % 2) * 2 + 1)
     ebarrier_sync(15, 2)
 
 
 @g.jit
-def _r001_consumer(C, a0, b0, a1, b1, F: gl.constexpr):
+def _mmac_consumer(C, a0, b0, a1, b1, F: gl.constexpr):
     ebarrier_sync(0, 2)
     pid = gl.program_id(0)
     om, on = (pid // 4) * 16, (pid % 4) * 16
@@ -85,10 +85,10 @@ def _r001_consumer(C, a0, b0, a1, b1, F: gl.constexpr):
         elif batch % 2 == 1:
             ca, cb = a1, b1
         abarrier_try_wait((batch % 2) * 2 + 1, batch // 2)
-        x0, y0 = _r001_read(ca[0], cb[0], F)
-        x1, y1 = _r001_read(ca[1], cb[1], F)
-        x2, y2 = _r001_read(ca[2], cb[2], F)
-        x3, y3 = _r001_read(ca[3], cb[3], F)
+        x0, y0 = _read_mmac_operands(ca[0], cb[0], F)
+        x1, y1 = _read_mmac_operands(ca[1], cb[1], F)
+        x2, y2 = _read_mmac_operands(ca[2], cb[2], F)
+        x3, y3 = _read_mmac_operands(ca[3], cb[3], F)
         sched_barrier(0)
         wait_lgkmcnt(15)
         sched_barrier(0)
@@ -154,9 +154,9 @@ def _gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel(
     # HCU removes the empty default: exactly one Producer + one Consumer.
     # Register requests are hints; WDRA is disabled by the recorded config.
     gl.warp_specialize([
-        (_r001_idle, ()),
-        (_r001_producer, (A, B, a0, b0, a1, b1)),
-        (_r001_consumer, (C, a0, b0, a1, b1, F)),
+        (_idle_partition, ()),
+        (_mls_producer, (A, B, a0, b0, a1, b1)),
+        (_mmac_consumer, (C, a0, b0, a1, b1, F)),
     ], [1, 1], [32, 160])
 
 
