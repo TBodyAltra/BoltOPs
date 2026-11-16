@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
-"""R009 persistent Gluon GEMM with a continuous WASP/WDRA pipeline."""
+"""Persistent Gluon GEMM with whole-K or bounded FP32 scale banks."""
 
 from triton.experimental import gluon as g
 from triton.experimental.gluon import language as gl
@@ -454,6 +454,365 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
             (
                 _persistent_consumer,
                 (AS, BS, C, sas0, sas1, sbs0, sbs1, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, F, pid),
+            ),
+        ],
+        [4, 4, 4, 4],
+        [8, 8, 240, 240],
+    )
+
+
+# Two 16-group scale banks bound LDS use independently of the total K length.
+@g.jit
+def _produce_ab_scale_chunk_groups(
+    A,
+    B,
+    AS,
+    BS,
+    smAS0,
+    smAS1,
+    smBS,
+    smA0,
+    smA1,
+    smB0,
+    smB1,
+    K: gl.constexpr,
+    GROUP: gl.constexpr,
+    REUSE=False,
+    GSTART=0,
+    GCOUNT: gl.constexpr = 0,
+):
+    wave = get_wave_id()
+    for group_index in range(GCOUNT):
+        i = GSTART + group_index
+        if i % 2 == 0:
+            smA = smA0
+            smB = smB0
+        else:
+            smA = smA1
+            smB = smB1
+        slot = i % 2
+        if GROUP == 0:
+            if i >= 2 or REUSE:
+                abarrier_try_wait(slot * 2, ((i // 2) + 1) % 2)
+            abarrier_seq(slot * 2 + 1)
+            matrix_load(smA, A, (64, K), (K, 1), (0, i * 128), pred=wave % 4 == 0)
+            abarrier_arrive(slot * 2 + 1)
+            if i >= 2 or REUSE:
+                abarrier_try_wait(8 + slot * 4, ((i // 2) + 1) % 2)
+            abarrier_seq(9 + slot * 4)
+            matrix_load(smB, B, (K, 256), (1, K), (i * 128, 0))
+            abarrier_arrive(9 + slot * 4)
+        else:
+            if i >= 2 or REUSE:
+                abarrier_try_wait(6 + slot * 4, ((i // 2) + 1) % 2)
+            abarrier_seq(7 + slot * 4)
+            matrix_load(
+                smA, A + 64 * K, (64, K), (K, 1), (0, i * 128), pred=wave % 4 == 0
+            )
+            abarrier_arrive(7 + slot * 4)
+
+
+@g.jit
+def _prefetch_fp32_scale_chunk(smAS0, smAS1, smBS0, smBS1, i, m, lane_m_byte,
+                         bs_group, GROUP: gl.constexpr, F: gl.constexpr,
+                         STEP, CHUNKS: gl.constexpr):
+    segment = STEP * CHUNKS + i // 16
+    bank = segment % 2
+    if i % 16 == 0:
+        abarrier_try_wait(4 + bank, (segment // 2) % 2)
+    if bank == 0:
+        smAS = smAS0
+        smBS = smBS0
+    else:
+        smAS = smAS1
+        smBS = smBS1
+    sa = smAS.index(i % 16).slice(GROUP * 64, 64).load(gl.SliceLayout(1, F))
+    bits = smBS.index(i % 16)._reinterpret(gl.uint64, (1,), gl.SwizzledSharedLayout(1, 1, 1, [0]))
+    sb = bits.load(gl.BlockedLayout([1], [64], [4], [0])).reshape(())
+    return sa, sb
+
+
+@g.jit
+def _release_fp32_scale_chunk(i, STEP, CHUNKS: gl.constexpr):
+    if (i + 1) % 16 == 0:
+        segment = STEP * CHUNKS + i // 16
+        abarrier_arrive(14 + segment % 2)
+
+
+@g.jit
+def _consume_ab_chunked_scales(
+    AS,
+    BS,
+    C,
+    smAS0,
+    smAS1,
+    smBS0,
+    smBS1,
+    smA0,
+    smA1,
+    smB0,
+    smB1,
+    K: gl.constexpr,
+    N: gl.constexpr,
+    GROUP: gl.constexpr,
+    F: gl.constexpr,
+    STEP,
+    CHUNKS: gl.constexpr,
+):
+    wave = get_wave_id()
+    RF: gl.constexpr = MmacInterleave2Layout(F)
+    acc = gl.full((64, 256), 0, gl.float32, RF)
+    # TODO: replace with gl.full once LLVM keeps the zero VGPR tuple outside
+    # the loop instead of rematerializing it and repacking registers per MMAC.
+    zero_mmac = gl.inline_asm_elementwise(
+        "v_mov_b32 $0, 0\n\tv_mov_b32 $1, 0\n\tv_mov_b32 $2, 0\n\tv_mov_b32 $3, 0",
+        constraints="=v,=v,=v,=v,v,v,v,v",
+        args=[gl.full((64, 256), 0, gl.int32, RF)],
+        dtype=gl.float32,
+        is_pure=True,
+        pack=4,
+    )
+    m = gl.arange(0, 64, layout=gl.SliceLayout(1, RF))
+    bs_group = (wave % 4) // 2
+    # Preserve a common lane base so A-scale reads combine into ds_read2.
+    lane_m_byte = (m % 4) * 4
+    _wait_a_tile_ready(0, GROUP)
+    a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
+    _wait_b_tile_ready(0)
+    b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
+    sched_barrier(0)
+    sa, sb = _prefetch_fp32_scale_chunk(smAS0, smAS1, smBS0, smBS1, 0, m, lane_m_byte, bs_group, GROUP, RF, STEP, CHUNKS)
+    _release_ab_lds_slots(0, GROUP)
+    for pair in range(K // 256):
+        i = pair * 2
+        j = i + 1
+        sched_barrier(0)
+        _synchronize_mmac_turn(GROUP, True)
+        dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
+        _synchronize_mmac_turn(GROUP, False)
+        selected_bs = _select_b_scale_for_wave(sb, bs_group)
+        _release_fp32_scale_chunk(i, STEP, CHUNKS)
+        _wait_a_tile_ready(j, GROUP)
+        if j % 2 == 0:
+            a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
+        else:
+            a = async_copy.load_shared_relaxed(smA1, gl.DotOperandLayout(0, F, 8))
+        _wait_b_tile_ready(j)
+        if j % 2 == 0:
+            b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
+        else:
+            b = async_copy.load_shared_relaxed(smB1, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
+        sched_barrier(0)
+        next_sa, next_sb = _prefetch_fp32_scale_chunk(
+            smAS0, smAS1, smBS0, smBS1, j, m, lane_m_byte, bs_group, GROUP, RF, STEP, CHUNKS
+        )
+        # Keep next-scale reads ahead of the current scale arithmetic.
+        sched_barrier(0)
+        acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
+        _release_ab_lds_slots(j, GROUP)
+        sa = next_sa
+        sb = next_sb
+        sched_barrier(0)
+        if pair + 1 < K // 256:
+            i = pair * 2 + 1
+            j = i + 1
+            sched_barrier(0)
+            _synchronize_mmac_turn(GROUP, True)
+            dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
+            _synchronize_mmac_turn(GROUP, False)
+            selected_bs = _select_b_scale_for_wave(sb, bs_group)
+            _release_fp32_scale_chunk(i, STEP, CHUNKS)
+            _wait_a_tile_ready(j, GROUP)
+            if j % 2 == 0:
+                a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
+            else:
+                a = async_copy.load_shared_relaxed(smA1, gl.DotOperandLayout(0, F, 8))
+            _wait_b_tile_ready(j)
+            if j % 2 == 0:
+                b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
+            else:
+                b = async_copy.load_shared_relaxed(smB1, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
+            sched_barrier(0)
+            next_sa, next_sb = _prefetch_fp32_scale_chunk(
+                smAS0, smAS1, smBS0, smBS1, j, m, lane_m_byte, bs_group, GROUP, RF, STEP, CHUNKS
+            )
+            # Keep next-scale reads ahead of the current scale arithmetic.
+            sched_barrier(0)
+            acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
+            _release_ab_lds_slots(j, GROUP)
+            sa = next_sa
+            sb = next_sb
+            sched_barrier(0)
+    _synchronize_mmac_turn(GROUP, True)
+    dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
+    _synchronize_mmac_turn(GROUP, False)
+    selected_bs = _select_b_scale_for_wave(sb, bs_group)
+    _release_fp32_scale_chunk(K // 128 - 1, STEP, CHUNKS)
+    # Keep scale reads ahead of the final scale arithmetic.
+    sched_barrier(0)
+    acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
+    packed = acc.to(gl.bfloat16).to(gl.float16, bitcast=True)
+    matrix_store(
+        C.to(gl.pointer_type(gl.float16)),
+        packed,
+        (128, N),
+        (N, 1),
+        (GROUP * 64, 0),
+        tile=(32, 32),
+        interleave=1,
+        version=3,
+        order=(1, 0),
+    )
+
+
+@g.jit
+def _publish_fp32_scale_chunk(AS, BS, smAS0, smAS1, smBS0, smBS1,
+                         SEGMENT, PID, K: gl.constexpr, NUM_SMS: gl.constexpr,
+                         M_TILES: gl.constexpr, CHUNKS: gl.constexpr):
+    bank = SEGMENT % 2
+    if bank == 0:
+        smAS = smAS0
+        smBS = smBS0
+    else:
+        smAS = smAS1
+        smBS = smBS1
+    tile_id = PID + (SEGMENT // CHUNKS) * NUM_SMS
+    tile_m = (tile_id % M_TILES) * 128
+    tile_n = (tile_id // M_TILES) * 256
+    k_group = (SEGMENT % CHUNKS) * 16
+    SL: gl.constexpr = gl.BlockedLayout([1], [64], [4], [0])
+    flatAS = smAS._reinterpret(gl.float32, (16 * 128,), gl.SwizzledSharedLayout(1, 1, 1, [0]))
+    flatBS = smBS._reinterpret(gl.float32, (16 * 2,), gl.SwizzledSharedLayout(1, 1, 1, [0]))
+    flat = gl.arange(0, 512, layout=SL)
+    abarrier_seq(4 + bank)
+    for chunk in gl.static_range(4):
+        index = flat + chunk * 512
+        offsets = (tile_m + index % 128) * (K // 128) + k_group + index // 128
+        async_copy.buffer_load_to_shared(flatAS.slice(chunk * 512, 512), AS, offsets)
+    index_b = gl.arange(0, 32, layout=SL)
+    offsets_b = (tile_n // 128 + index_b % 2) * (K // 128) + k_group + index_b // 2
+    async_copy.buffer_load_to_shared(flatBS, BS, offsets_b)
+    abarrier_arrive(4 + bank)
+
+
+@g.jit
+def _produce_chunked_scale_tiles(A, B, AS, BS, smAS0, smAS1, smBS0, smBS1,
+                         smA0, smA1, smB0, smB1, K: gl.constexpr, N: gl.constexpr,
+                         NUM_SMS: gl.constexpr, TILE_LIMIT: gl.constexpr,
+                         GROUP: gl.constexpr, PID, M_TILES: gl.constexpr):
+    CHUNKS: gl.constexpr = K // 2048
+    _initialize_pipeline_barriers(get_wave_id())
+    steps = TILE_LIMIT // NUM_SMS
+    if TILE_LIMIT % NUM_SMS:
+        steps += (PID < TILE_LIMIT % NUM_SMS)
+    if GROUP == 1:
+        _publish_fp32_scale_chunk(AS, BS, smAS0, smAS1, smBS0, smBS1,
+                             0, PID, K, NUM_SMS, M_TILES, CHUNKS)
+        if steps * CHUNKS > 1:
+            _publish_fp32_scale_chunk(AS, BS, smAS0, smAS1, smBS0, smBS1,
+                                 1, PID, K, NUM_SMS, M_TILES, CHUNKS)
+    for step in range(steps):
+        tile_id = PID + step * NUM_SMS
+        tile_m = (tile_id % M_TILES) * 128
+        tile_n = (tile_id // M_TILES) * 256
+        if GROUP == 0:
+            _produce_ab_scale_chunk_groups(A + tile_m * K, B + tile_n * K, AS, BS,
+                                  smAS0, smAS1, smBS0, smA0, smA1, smB0, smB1,
+                                  K, GROUP, step != 0, 0, K // 128)
+        else:
+            for chunk in range(CHUNKS):
+                segment = step * CHUNKS + chunk
+                if segment >= 2:
+                    abarrier_try_wait(14 + segment % 2, ((segment // 2) + 1) % 2)
+                    _publish_fp32_scale_chunk(AS, BS, smAS0, smAS1, smBS0, smBS1,
+                                         segment, PID, K, NUM_SMS, M_TILES, CHUNKS)
+                _produce_ab_scale_chunk_groups(A + tile_m * K, B + tile_n * K, AS, BS,
+                                      smAS0, smAS1, smBS0, smA0, smA1, smB0, smB1,
+                                      K, GROUP, segment != 0, chunk * 16, 16)
+
+
+@g.jit
+def _consume_chunked_scale_tiles(AS, BS, C, smAS0, smAS1, smBS0, smBS1,
+                         smA0, smA1, smB0, smB1, K: gl.constexpr, N: gl.constexpr,
+                         NUM_SMS: gl.constexpr, TILE_LIMIT: gl.constexpr,
+                         GROUP: gl.constexpr, F: gl.constexpr, PID, M_TILES: gl.constexpr):
+    _initialize_pipeline_barriers(get_wave_id())
+    steps = TILE_LIMIT // NUM_SMS
+    if TILE_LIMIT % NUM_SMS:
+        steps += (PID < TILE_LIMIT % NUM_SMS)
+    for step in range(steps):
+        tile_id = PID + step * NUM_SMS
+        tile_m = (tile_id % M_TILES) * 128
+        tile_n = (tile_id // M_TILES) * 256
+        _consume_ab_chunked_scales(AS, BS, C + tile_m * N + tile_n,
+                                   smAS0, smAS1, smBS0, smBS1,
+                                   smA0, smA1, smB0, smB1, K, N, GROUP, F,
+                                   step, K // 2048)
+
+
+@g.jit
+def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_chunked_scale_kernel(
+    A,
+    B,
+    AS,
+    BS,
+    C,
+    M: gl.constexpr,
+    N: gl.constexpr,
+    K: gl.constexpr,
+    GROUP_N: gl.constexpr,
+    GROUP_K: gl.constexpr,
+    BLOCK_SIZE_M: gl.constexpr,
+    BLOCK_SIZE_N: gl.constexpr,
+    BLOCK_SIZE_K: gl.constexpr,
+    NUM_SMS: gl.constexpr,
+    TILE_LIMIT: gl.constexpr,
+):
+    gl.static_assert(NUM_SMS > 0 and NUM_SMS <= 48 and NUM_SMS <= TILE_LIMIT)
+    gl.static_assert(TILE_LIMIT == (M // 128) * (N // 256))
+    gl.static_assert(K >= 2048 and K <= 6144 and K % 2048 == 0,
+                     "chunked-scale pipeline requires K=2048,4096,6144 (complete 16-group chunks)")
+    gl.static_assert((BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K) == (128, 256, 128),
+                     "this pipeline requires tile (128,256,128)")
+    gl.static_assert(M % 128 == 0 and N % 256 == 0 and K % 256 == 0 and K >= 256 and K <= 6144,
+                     "this pipeline requires complete tiles and K=256..6144 divisible by 256")
+    gl.static_assert(GROUP_N == 128 and GROUP_K == 128,
+                     "this pipeline requires A(1,128)/B(128,128) scales")
+    gl.static_assert(A.dtype.element_ty == gl.float8e4nv and B.dtype.element_ty == gl.float8e4nv,
+                     "this pipeline requires E4M3FN inputs")
+    gl.static_assert(AS.dtype.element_ty == gl.float32 and BS.dtype.element_ty == gl.float32,
+                     "this pipeline requires FP32 scales")
+    gl.static_assert(C.dtype.element_ty == gl.bfloat16, "this pipeline requires BF16 output")
+    SA: gl.constexpr = MlsSharedLayout(0, (64, 128))
+    SB: gl.constexpr = MlsSharedLayout(1, (128, 64), alt=1, order=(0, 1))
+    F: gl.constexpr = gl.amd.AMDMFMALayout(
+        version=4, instr_shape=[16, 16, 32], mmac_layout=MmacLayout.LTS,
+        warps_per_cta=[1, 4], tiles_per_warp=[4, 4],
+    )
+    pid = gl.program_id(0)
+    scaleL: gl.constexpr = gl.SwizzledSharedLayout(1, 1, 1, [0])
+    sas0 = gl.allocate_shared_memory(gl.float32, (16, 128), scaleL)
+    sas1 = gl.allocate_shared_memory(gl.float32, (16, 128), scaleL)
+    sbs0 = gl.allocate_shared_memory(gl.float32, (16, 2), scaleL)
+    sbs1 = gl.allocate_shared_memory(gl.float32, (16, 2), scaleL)
+    a0 = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), SA)
+    a1 = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), SA)
+    a0_next = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), SA)
+    a1_next = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), SA)
+    b_next = gl.allocate_shared_memory(gl.float8e4nv, (128, 256), SB)
+    b = gl.allocate_shared_memory(gl.float8e4nv, (128, 256), SB)
+    gl.warp_specialize(
+        [
+            (_idle_default_partition, ()),
+            (_produce_chunked_scale_tiles, (A, B, AS, BS, sas0, sas1, sbs0, sbs1, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, pid, M // 128)),
+            (_produce_chunked_scale_tiles, (A, B, AS, BS, sas0, sas1, sbs0, sbs1, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, pid, M // 128)),
+            (
+                _consume_chunked_scale_tiles,
+                (AS, BS, C, sas0, sas1, sbs0, sbs1, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, F, pid, M // 128),
+            ),
+            (
+                _consume_chunked_scale_tiles,
+                (AS, BS, C, sas0, sas1, sbs0, sbs1, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, F, pid, M // 128),
             ),
         ],
         [4, 4, 4, 4],
