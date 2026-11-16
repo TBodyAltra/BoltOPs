@@ -290,7 +290,7 @@
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r008/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r008/1die/tn/record.json">历史全 grid：107.274 / 400.37</a><br>当前全 grid：待测<br><a href="tuning/r008/1die/tn/README.md">单 TG（4 tiles）：95.793 μs</a></td>
+      <td><a href="tuning/r008/1die/tn/record.json">待测 / —</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/d9f85cc8553b1f7417578cc47c2d688df7fcd648/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L750">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/d9f85cc8553b1f7417578cc47c2d688df7fcd648/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json">config</a> / <a href="tuning/r008/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r008/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r008/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r008/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -318,7 +318,7 @@
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r009/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r009/1die/tn/record.json">历史全 grid：197.728 / 488.74</a><br>同步修复后：待测</td>
+      <td><a href="tuning/r009/1die/tn/record.json">待测 / —</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/be845a86e988ba2fac6efe07b73b497dbcd949e2/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L396">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/be845a86e988ba2fac6efe07b73b497dbcd949e2/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r009/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r009/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r009/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r009/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
