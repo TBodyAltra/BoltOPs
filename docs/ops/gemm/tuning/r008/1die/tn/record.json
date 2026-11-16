@@ -331,5 +331,36 @@
       111.48137
     ],
     "notes": "Later samples are warm-cache observations and are not used as the cold baseline."
+  },
+  "current_entry": {
+    "path": "boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py",
+    "symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_chunked_scale_kernel",
+    "line": 754,
+    "commit": "b8ca55769e44f65db8f515529656b92332df89f3",
+    "sha256": "51634b025d77330a2338a5764bdb62df674b59a2ae60820cea7ba2591cbedbfc",
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/b8ca55769e44f65db8f515529656b92332df89f3/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L754",
+    "supported_k": [
+      2048,
+      4096,
+      6144
+    ],
+    "scale_groups_per_bank": 16,
+    "scale_bank_count": 2,
+    "config": {
+      "path": "boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json",
+      "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/b8ca55769e44f65db8f515529656b92332df89f3/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json"
+    },
+    "validation": {
+      "selected_tests_passed": 12,
+      "deselected_tests": 17,
+      "command": "python3 -m pytest -q repo/test/gemm/dispatch/test_gluon_blockscale.py -k \"qwen or chunked\"",
+      "evidence_directory": "/xukang/code/pmd-triton-sessions/qwen35-fp8-chunked-scale-rename-20261116",
+      "R008_text_identical": true,
+      "R008_launch_abi_and_resources_identical": true,
+      "R008_text_sha256": "f4dcd970346aaa3f851c823047823b9e7a1fbea8ff2535a7f1e3c7fc35dc0678",
+      "LDS_bytes": 114944,
+      "spill": 0
+    },
+    "notes": "The source/config/assembly/PERF fields above describe the original measured capture and retain its original symbol and fixed commits. This current entry replaces that symbol, removes the K=4096-only assertion and accepts complete 2048-element K chunks up to K=6144. Native non-unit-scale tests cover K=2048/4096/6144, bank reuse and uneven last TG rounds; K=3072 is rejected. Existing R008 instructions and ABI/resources are identical. Only recorded tuned shapes are selected automatically; other supported K values have correctness validation, without a performance claim."
   }
 }
