@@ -56,20 +56,16 @@ def _wait_all_lds_reads():
 
 @g.jit
 def _synchronize_mmac_turn(GROUP: gl.constexpr, WAIT: gl.constexpr):
-    # These execution barriers hand off the MMAC turn only. A/B readiness
-    # and LDS slot lifetime remain protected by the separate abarriers.
-    # Keep pending scale reads in flight across the execution handoff.
+    # Keep the expanded hardware MMAC group inside its execution-barrier turn.
+    # The handoff has no SSA dependency on the dot operands or result; fence
+    # scheduling explicitly without adding hardware memory waits.
+    sched_barrier(0)
     if WAIT:
-        if GROUP == 0:
-            gl.inline_asm_elementwise("s_ebarrier_sync 8, 8", constraints="=s", args=[], dtype=gl.int32, is_pure=False, pack=1)
-        else:
-            gl.inline_asm_elementwise("s_ebarrier_sync 9, 8", constraints="=s", args=[], dtype=gl.int32, is_pure=False, pack=1)
+        ebarrier_sync(8 + GROUP, 8)
     else:
-        if GROUP == 0:
-            gl.inline_asm_elementwise("s_ebarrier_arrive 9, 8", constraints="=s", args=[], dtype=gl.int32, is_pure=False, pack=1)
-        else:
-            gl.inline_asm_elementwise("s_ebarrier_arrive 8, 8", constraints="=s", args=[], dtype=gl.int32, is_pure=False, pack=1)
+        ebarrier_arrive(9 - GROUP, 8)
         set_priority(0)
+    sched_barrier(0)
 
 
 @g.jit
