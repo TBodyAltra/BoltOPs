@@ -101,7 +101,7 @@ def gemm_a16w16(
             Auto selects recorded Gluon for matching same-precision BF16/FP16
             TN/TT inputs on gfx946 with a tuned CU-specific config and no explicit
             config; otherwise Triton. Explicit selection never retries another
-            backend. Gluon supports the fixed BF16 MNK=(64,64,2048) TN entry and
+            backend. Gluon supports fixed BF16 MNK=(64,64,2048) TN/TT entries and
             a 48-CU persistent FP16/BF16 TN/TT entry with automatic tail handling,
             K-contiguous x, matching input/output dtype, no bias or activation.
             FP16 can reuse the persistent BF16 launch geometry. TileLang is not
@@ -434,6 +434,14 @@ def gemm_a16w16(
                         "persistent Gluon requires 48 CU and matching FP16 or BF16 input/output"
                     )
                 config["B_K_CONTIGUOUS"] = gluon_layout == "TN"
+            elif selector == "_gemm_a16w16_bf16_tt_bm16_bn32_bk128_kernel":
+                if (gluon_layout != "TT" or (m, n, k) != (64, 64, 2048)
+                        or a.dtype != torch.bfloat16 or out_dtype != torch.bfloat16
+                        or device.cu_count != 48):
+                    raise ValueError(
+                        "fixed BF16 TT Gluon requires MNK=(64,64,2048), "
+                        "48 CU and BF16 input/output with N-contiguous weights"
+                    )
             elif gluon_layout != "TN":
                 raise NotImplementedError(
                     "gemm_a16w16: no Gluon TT kernel for the requested selector"
