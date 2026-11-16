@@ -80,7 +80,7 @@ def timing_protocol(record):
     repeats = positive(benchmark['repeats'], 'benchmark repeats', integer=True)
     mode = benchmark.get('timing_mode')
     aggregation = performance.get('aggregation', '')
-    if mode == 'existing_first_timed' and repeats >= 2:
+    if (mode == 'existing_first_timed' or (mode is None and aggregation.startswith('first timed repeat'))) and repeats >= 2:
         return 'first_timed'
     if (mode == 'legacy_median' or (mode is None and aggregation.startswith('median of repeats'))) and repeats >= 2:
         return 'warm_median'
@@ -247,7 +247,8 @@ def verify_sample(record, sample, measurement, clock):
     for key in ('max_abs', 'mean_abs_vs_fp32', 'rounding_floor'):
         if key in accuracy and (not math.isfinite(accuracy[key]) or accuracy[key] < 0):
             raise ValueError(f'invalid numerical error summary: {key}')
-    if record['benchmark'].get('timing_mode') in ('legacy_median', 'existing_first_timed'):
+    if (record['benchmark'].get('timing_mode') in ('legacy_median', 'existing_first_timed')
+            or record['source'].get('symbol') == '_gemm_fp16_mls_kernel'):
         if accuracy['mean_abs_vs_fp32'] > 1.05 * accuracy['rounding_floor'] + 1e-6:
             raise ValueError('mean numerical error exceeds recorded rounding tolerance')
         if accuracy['atol'] != .02 or accuracy['rtol'] != .01:
@@ -344,7 +345,7 @@ def evaluate(case, case_output, max_regression_percent=1.0):
         for index, sample in enumerate(samples):
             if sample.get('index', index) != index or sample.get('phase', 'warmup' if index == 0 else 'timed') != ('warmup' if index == 0 else 'timed'):
                 raise ValueError('warmup/timed sample order differs from baseline')
-        if record['benchmark'].get('timing_mode'):
+        if record['benchmark'].get('timing_mode') or record['source'].get('symbol') == '_gemm_fp16_mls_kernel':
             seed = record['benchmark']['seed']
             if result['timing_input'] != dict(seed=seed, input_kind='normal_random'):
                 raise ValueError('timing inputs differ from baseline')
@@ -411,7 +412,7 @@ def replay_record(case, output):
     record['environment']['environment_variables'].update(
         HOME=str(runtime / 'home'), TMPDIR=str(runtime / 'temp'),
         TRITON_CACHE_DIR=str(runtime / 'cache'), TRITON_HOME=str(runtime / 'triton-home'),
-        GPU_OUT='g' if 'runtime_configuration' in record['environment'] else 'm5out',
+        GPU_OUT='m5out' if case.record['source']['symbol'] == '_gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel' else 'g',
         RPY_HISTORY_LOG=str(runtime / 'history.log'), RPY_HISTORY_SIZE='1024',
         BOLTOPS_GEMM_CONFIG_DIR=None, PYTHONDONTWRITEBYTECODE='1', PYTHONOPTIMIZE=None)
     return record

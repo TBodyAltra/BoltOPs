@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Replay one cold BF16 TT dispatch through the repository public API on PMD.
 
-Archived results/assembly/PERF belong to the original masked-active experiment,
-not to a benchmark of the integrated production source. This script measures a
-new production replay in a fresh output directory without changing the archive.
-CU0 PERF covers one persistent TG in that same full-grid dispatch; the optional
---single-tg-perf flag selects this same protocol, never an extra grid=(1,) run.
+The default mode measures one cold full-grid public-API dispatch with CU0 PERF.
+--single-tg-perf runs the same compiled persistent kernel with grid=(1,), keeping
+the original shape, strides and NUM_SMS. TG0 processes tile IDs 0, full_grid_TGs,
+2*full_grid_TGs, etc. Three independent correctness cases precede three timing
+repeats; repeat 0 is excluded and the faster of repeats 1 and 2 supplies the PERF.
 --dry-run verifies local artifacts and configuration without Torch/GPU imports.
 """
 import argparse
@@ -32,12 +32,136 @@ def digest(path):
 def options(record):
     cfg = record['config']
     data = json.loads((REPO / cfg['path']).read_text())
-    params = deepcopy(data['profiles'][cfg['profile']][cfg['bucket']])
+    profile = cfg.get('profile', 'DTYPE=bfloat16-OUT=bfloat16')
+    bucket = cfg.get('bucket', f"M_EQ_{record['shape'][0]}")
+    params = deepcopy(data['profiles'][profile][bucket])
     assert params.pop('kernel') == record['source']['symbol']
     params.update(zip('MNK', record['shape']))
     params.update(B_K_CONTIGUOUS=False, FORCE_MASKED_STORE=False)
-    assert params == cfg['resolved_launch'], 'production config differs from measured launch'
+    if 'resolved_launch' in cfg:
+        assert params == cfg['resolved_launch'], 'production config differs from measured launch'
     return params
+
+
+def single_tg_plan(record):
+    m, n, k = record['shape']
+    columns = (n + 255) // 256
+    tile_ids = list(range(0, ((m + 255) // 256) * columns, record['full_grid_TGs']))
+    tiles = [(i // columns * 256, i % columns * 256) for i in tile_ids]
+    elements = sum(min(256, m - row) * min(256, n - col) for row, col in tiles)
+    return tile_ids, tiles, elements
+
+
+def measure_single_tg(record, params, fn, torch, lib, output):
+    """Measure TG0's original persistent work without changing its binary."""
+    m, n, k = record['shape']
+    tile_ids, tiles, elements = single_tg_plan(record)
+    guard = record['benchmark'].get('guard_elements_each_side', 65536)
+    ai = torch.full((m * k + 2 * guard,), float('nan'), dtype=torch.bfloat16)
+    bi = torch.full((k * n + 2 * guard,), float('nan'), dtype=torch.bfloat16)
+    ci = torch.full((m * n + 2 * guard,), 123., dtype=torch.bfloat16)
+    ci[guard:-guard] = float('nan')
+    ar, br, cr = ai.cuda(), bi.cuda(), ci.cuda()
+    a, b, c = ar[guard:-guard].view(m, k), br[guard:-guard].view(k, n), cr[guard:-guard].view(m, n)
+    handle = fn.warmup(a, b, c, grid=(1,), **params)
+    handle._init_handles()
+    assert handle.n_spills == 0
+    (output / 'kernel.amdgcn').write_text(handle.asm['amdgcn'])
+    (output / 'kernel.hsaco').write_bytes(handle.asm['hsaco'])
+    assert digest(output / 'kernel.amdgcn') == record['assembly']['sha256'], 'single/full compiled assembly differs'
+
+    def prepare(seed, kind):
+        generator = torch.Generator().manual_seed(seed)
+        if kind == 'ones':
+            ah = torch.ones((m, k), dtype=torch.bfloat16)
+            bh = torch.ones((k, n), dtype=torch.bfloat16)
+        elif kind == 'uniform_random':
+            ah = (torch.rand((m, k), generator=generator) - .5).bfloat16()
+            bh = (torch.rand((k, n), generator=generator) - .5).bfloat16()
+        else:
+            ah = (torch.randn((m, k), generator=generator) * .5).bfloat16()
+            bh = (torch.randn((k, n), generator=generator) * .5).bfloat16()
+        ai[guard:-guard].copy_(ah.reshape(-1))
+        bi[guard:-guard].copy_(bh.reshape(-1))
+        ar.copy_(ai)
+        br.copy_(bi)
+        golden = [(ah[row:row + 256].float() @ bh[:, col:col + 256].float()).bfloat16().float()
+                  for row, col in tiles]
+        return golden
+
+    def launch(index, phase, golden):
+        cr.copy_(ci)
+        torch.cuda.synchronize()
+        before = set((output / 'g').glob('*/*/stats.txt'))
+        assert fn[(1,)](a, b, c, **params) is handle
+        torch.cuda.synchronize()
+        paths = set((output / 'g').glob('*/*/stats.txt')) - before
+        assert len(paths) == 1, paths
+        path = paths.pop()
+        text = path.read_text()
+        assert 'End Simulation Statistics' in text
+        def stat(name):
+            values = re.findall(r'^' + re.escape(name) + r'\s+([\deE.+-]+)', text, re.M)
+            assert len(values) == 1, name
+            return float(values[0])
+        groups = {int(cu): int(count) for cu, count in re.findall(
+            r'^system\.shaders\.CUs(\d+)\.completedWGs\s+(\d+)', text, re.M)}
+        mmops = sum(int(value) for value in re.findall(
+            r'^system\.shaders\.CUs\d+\.numInstrTypeExecuted::MMOP\s+(\d+)', text, re.M))
+        assert len(groups) == 48 and sum(groups.values()) == groups[0] == 1, groups
+        assert mmops == len(tile_ids) * 2 * 256 * 256 * k // 8192, mmops
+        perfs = [p for p in path.parent.glob('*.perf') if not p.name.startswith('stats_')]
+        assert len(perfs) == 1 and perfs[0].stat().st_size > 0, perfs
+        host = cr.cpu()
+        observed = host[guard:-guard].view(m, n)
+        outside = nonfinite = 0
+        maximum = 0.
+        for (row, col), expected in zip(tiles, golden):
+            actual = observed[row:row + expected.shape[0], col:col + expected.shape[1]].float()
+            outside += int((~torch.isclose(actual, expected, atol=.001, rtol=.01)).sum())
+            nonfinite += int((~torch.isfinite(actual)).sum())
+            maximum = max(maximum, float((actual - expected).abs().max()))
+            observed[row:row + expected.shape[0], col:col + expected.shape[1]] = float('nan')
+        canary = bool((host[:guard] == 123).all() and (host[-guard:] == 123).all())
+        unselected = bool(torch.isnan(observed).all())
+        inputs = bool(torch.equal(ar.cpu().view(torch.uint8), ai.view(torch.uint8)) and
+                      torch.equal(br.cpu().view(torch.uint8), bi.view(torch.uint8)))
+        accuracy = dict(elements=elements, mismatches=outside, nonfinite=nonfinite, max_abs=maximum,
+            canary_ok=canary, unselected_output_nan=unselected, inputs_byte_identical=inputs,
+            atol=.001, rtol=.01)
+        assert outside == nonfinite == 0 and canary and unselected and inputs, accuracy
+        cycles, frequency = stat('system.gcSimCycles'), stat('gcFrequency')
+        sample = dict(index=index, phase=phase, status='PASS', dispatch_cycles=cycles,
+            kernel_us=cycles / (frequency * 1000),
+            wave_interval_us=(stat('system.shaders.lastWaveEndTick') - stat('system.shaders.firstWaveStartTick')) / 1e6,
+            completed_TGs=1, stats_path=str(path.relative_to(output)), stats_sha256=digest(path),
+            perf_path=str(perfs[0].relative_to(output)), accuracy=accuracy)
+        print(json.dumps(dict(requirement=record['requirement'], phase=phase, index=index,
+            kernel_us=sample['kernel_us'], status='PASS', accuracy=accuracy)), flush=True)
+        return sample
+
+    validation = []
+    for index in range(3):
+        seed = record['benchmark']['seed'] + 1000 * index
+        kind = 'ones' if index == 1 else 'uniform_random'
+        golden = prepare(seed, kind)
+        sample = launch(index, 'correctness', golden)
+        sample.update(seed=seed, input_kind=kind)
+        validation.append(sample)
+    golden = prepare(record['benchmark']['seed'], 'normal_random')
+    samples = [launch(index, 'warmup' if index == 0 else 'timed', golden) for index in range(3)]
+    selected = min(samples[1:], key=lambda sample: sample['dispatch_cycles'])
+    shutil.copyfile(output / selected['perf_path'], output / 'single_tg.perf')
+    result = dict(requirement=record['requirement'], status='PASS', single_tg=True,
+        shape=record['shape'], grid=[1], persistent_tile_ids=tile_ids,
+        performance=dict(kernel_cycles=selected['dispatch_cycles'], kernel_us=selected['kernel_us']),
+        validation=validation, samples=samples, selected=dict(selected, sha256=digest(output / 'single_tg.perf')),
+        assembly_sha256=digest(output / 'kernel.amdgcn'), hsaco_sha256=digest(output / 'kernel.hsaco'),
+        benchmark_sha256=digest(__file__), source_sha256=digest(REPO / record['source']['path']),
+        config_sha256=digest(REPO / record['config']['path']), public_api_sha256=digest(REPO / record['public_api']['path']),
+        runtime=dict(torch=torch.__version__, libtriton_sha256=digest(lib.__file__)))
+    (output / 'result.json').write_text(json.dumps(result, indent=2, allow_nan=False) + '\n')
+    print(json.dumps(dict(status='PASS', performance=result['performance'])), flush=True)
 
 
 def main():
@@ -65,7 +189,9 @@ def main():
     grid = min(48, ((m + 255) // 256) * ((n + 255) // 256))
     assert record['layout'] == 'TT' and record['environment']['dies'] == 1
     assert record['environment']['cu_count'] == 48 and grid == record['full_grid_TGs']
-    build = args.triton_build or Path(record['environment']['toolchain']['triton_build'])
+    build_path = record['environment'].get('toolchain', {}).get(
+        'triton_build', record['environment']['environment_variables']['PYTHONPATH'])
+    build = args.triton_build or Path(build_path)
     plan = dict(requirement=record['requirement'], shape=[m, n, k], layout='TT',
         launch='repository public gemm_a16w16, backend=' + record['public_api']['backend'], source=record['source']['path'],
         config=record['config']['path'], grid=[grid], seed=record['benchmark']['seed'],
@@ -73,6 +199,11 @@ def main():
         host_padding=False, full_output_validation=True,
         single_tg_scope=record['single_tg_perf']['scope'], triton_build=str(build), output=str(output),
         archived_measurement='Original experimental source/binary only; production replay is a new measurement.')
+    if args.single_tg_perf:
+        tile_ids, _, elements = single_tg_plan(record)
+        plan.update(grid=[1], repeats=3, execution_warmups=1, correctness_dispatches=3,
+            total_gemm_dispatches=6, full_output_validation=False, selected_output_elements=elements,
+            persistent_tile_ids=tile_ids, single_tg_scope='TG0 original persistent work, original shape/strides/NUM_SMS; independent grid=(1,) dispatch')
     if args.dry_run:
         print(json.dumps(plan, ensure_ascii=False, indent=2))
         return
@@ -88,6 +219,8 @@ def main():
                 env.pop(key, None)
             else:
                 env[key] = value
+        if args.single_tg_perf:
+            env.update(record['single_tg_perf']['environment_overrides'])
         env.update(GPU_OUT='g', TRITON_CACHE_DIR=str(output / 'cache'), HOME=str(output / 'HOME'),
             TMPDIR=str(output / 'temp'), RPY_HISTORY_LOG=str(output / 'history.log'),
             RPY_HISTORY_SIZE='1024', PYTHONPATH=str(build), OMP_NUM_THREADS='1',
@@ -119,10 +252,12 @@ def main():
     assert torch.cuda.get_device_properties(0).multi_processor_count == 48
     torch.set_num_threads(1)
     torch.set_num_interop_threads(1)
+    if args.single_tg_perf:
+        return measure_single_tg(record, params, fn, torch, lib, output)
     generator = torch.Generator().manual_seed(record['benchmark']['seed'])
     ah = (torch.randn((m, k), generator=generator) * .5).bfloat16()
     bh = (torch.randn((k, n), generator=generator) * .5).bfloat16()
-    guard = record['benchmark']['guard_elements_each_side']
+    guard = record['benchmark'].get('guard_elements_each_side', 65536)
     def guarded(host):
         initial = torch.full((host.numel() + 2 * guard,), float('nan'), dtype=torch.bfloat16)
         initial[guard:-guard] = host.reshape(-1)

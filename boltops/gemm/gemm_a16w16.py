@@ -102,7 +102,8 @@ def gemm_a16w16(
             TN/TT inputs on gfx946 with a tuned CU-specific config and no explicit
             config; otherwise Triton. Explicit selection never retries another
             backend. Gluon supports the fixed BF16 MNK=(64,64,2048) TN entry and
-            a 48-CU persistent FP16/BF16 TN/TT entry with automatic tail handling,
+            a persistent FP16/BF16 TN/TT entry with one active TG per device CU
+            (bounded by the output tile count), automatic tail handling,
             K-contiguous x, matching input/output dtype, no bias or activation.
             FP16 can reuse the persistent BF16 launch geometry. TileLang is not
             implemented for nonempty computation. After Gluon selection, exact experimental BF16
@@ -427,13 +428,14 @@ def gemm_a16w16(
                 raise ValueError("Gluon config requires a valid kernel selector")
             kernel = getattr(kernels, selector)
             if selector == "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel":
-                # Physical weight strides, rather than a caller's config, own
-                # the B MLS descriptor and shared-memory order.
-                if a.dtype != out_dtype or device.cu_count != 48:
+                # Derive the MLS layout from physical weight strides.
+                if a.dtype != out_dtype:
                     raise ValueError(
-                        "persistent Gluon requires 48 CU and matching FP16 or BF16 input/output"
+                        "persistent Gluon requires matching FP16 or BF16 input/output"
                     )
                 config["B_K_CONTIGUOUS"] = gluon_layout == "TN"
+                # Use the input device's CU count for both grid and persistent stride.
+                config["NUM_SMS"] = device.cu_count
             elif gluon_layout != "TN":
                 raise NotImplementedError(
                     "gemm_a16w16: no Gluon TT kernel for the requested selector"
@@ -442,11 +444,14 @@ def gemm_a16w16(
                 key: tuple(value) if isinstance(value, list) else value
                 for key, value in config.items()
             }
-            # Match the kernel's active persistent stride, including tiny grids.
             grid = (
-                lambda meta: (min(meta["NUM_SMS"],
-                                  triton.cdiv(m, meta["BLOCK_SIZE_M"])
-                                  * triton.cdiv(n, meta["BLOCK_SIZE_N"])),)
+                lambda meta: (
+                    min(
+                        meta["NUM_SMS"],
+                        triton.cdiv(m, meta["BLOCK_SIZE_M"])
+                        * triton.cdiv(n, meta["BLOCK_SIZE_N"]),
+                    ),
+                )
                 if "NUM_SMS" in meta
                 else (
                     triton.cdiv(m, meta["BLOCK_SIZE_M"])
