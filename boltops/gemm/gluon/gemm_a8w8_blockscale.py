@@ -34,7 +34,7 @@ from triton.experimental.gluon.language.amd.hcu import (
 
 
 from .gemm_a8w8_blockscale_persistent import (
-    _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_k4096_kernel,
+    _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_chunked_scale_kernel,
     _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel,
 )
 

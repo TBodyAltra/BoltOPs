@@ -317,7 +317,9 @@ def test_qwen_recorded_pipeline_grid(monkeypatch, m, n, k, tgs):
         ((64, 12288, 2048), (64, 256, 2048), 2),
         ((64, 9216, 2048), (64, 192, 512), 3),
         ((64, 9216, 2048), (128, 192, 2048), 6),
+        ((2560, 2048, 4096), (256, 768, 2048), 4),
         ((2560, 2048, 4096), (384, 256, 4096), 1),
+        ((2560, 2048, 4096), (384, 256, 6144), 1),
         ((2560, 2048, 4096), (256, 768, 4096), 4),
     ],
 )
@@ -358,3 +360,25 @@ def test_qwen_native_scale_pipelines(record_shape, shape, tgs):
     torch.testing.assert_close(result.cpu(), golden.bfloat16(), atol=0, rtol=0)
     assert bool((storage[:256].cpu() == -4096).all())
     assert bool((storage[-256:].cpu() == -4096).all())
+
+
+def test_chunked_scale_pipeline_rejects_partial_chunks():
+    if not torch.cuda.is_available():
+        pytest.skip("requires GPU allocations")
+    from boltops.utility.arch_info import get_device_info
+    from triton.compiler.errors import CompilationError
+
+    device = get_device_info()
+    if device.arch != "gfx946" or device.cu_count != 48:
+        pytest.skip("requires gfx946 with 48 CU")
+    config, _ = get_gemm_config(
+        "GEMM-A8W8_BLOCKSCALE", 2560, 2048, 4096, profile=PROFILE,
+        backend="gluon", arch=device.arch, cu_num=device.cu_count,
+    )
+    config.update(NUM_SMS=1, TILE_LIMIT=1)
+    a = torch.empty((128, 3072), dtype=torch.float8_e4m3fn, device="cuda")
+    b = torch.empty((256, 3072), dtype=a.dtype, device=a.device)
+    sa = torch.empty((128, 24), dtype=torch.float32, device=a.device)
+    sb = torch.empty((2, 24), dtype=torch.float32, device=a.device)
+    with pytest.raises(CompilationError, match="complete 16-group chunks"):
+        gemm_a8w8_blockscale(a, b, sa, sb, backend="gluon", config=config)

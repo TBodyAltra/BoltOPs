@@ -461,9 +461,9 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     )
 
 
-# K4096 uses two 16-group scale banks to remain within LDS capacity.
+# Two 16-group scale banks bound LDS use independently of the total K length.
 @g.jit
-def _produce_ab_k4096_groups(
+def _produce_ab_scale_chunk_groups(
     A,
     B,
     AS,
@@ -540,7 +540,7 @@ def _release_fp32_scale_chunk(i, STEP, CHUNKS: gl.constexpr):
 
 
 @g.jit
-def _consume_ab_k4096(
+def _consume_ab_chunked_scales(
     AS,
     BS,
     C,
@@ -696,7 +696,7 @@ def _publish_fp32_scale_chunk(AS, BS, smAS0, smAS1, smBS0, smBS1,
 
 
 @g.jit
-def _produce_k4096_tiles(A, B, AS, BS, smAS0, smAS1, smBS0, smBS1,
+def _produce_chunked_scale_tiles(A, B, AS, BS, smAS0, smAS1, smBS0, smBS1,
                          smA0, smA1, smB0, smB1, K: gl.constexpr, N: gl.constexpr,
                          NUM_SMS: gl.constexpr, TILE_LIMIT: gl.constexpr,
                          GROUP: gl.constexpr, PID, M_TILES: gl.constexpr):
@@ -716,7 +716,7 @@ def _produce_k4096_tiles(A, B, AS, BS, smAS0, smAS1, smBS0, smBS1,
         tile_m = (tile_id % M_TILES) * 128
         tile_n = (tile_id // M_TILES) * 256
         if GROUP == 0:
-            _produce_ab_k4096_groups(A + tile_m * K, B + tile_n * K, AS, BS,
+            _produce_ab_scale_chunk_groups(A + tile_m * K, B + tile_n * K, AS, BS,
                                   smAS0, smAS1, smBS0, smA0, smA1, smB0, smB1,
                                   K, GROUP, step != 0, 0, K // 128)
         else:
@@ -726,13 +726,13 @@ def _produce_k4096_tiles(A, B, AS, BS, smAS0, smAS1, smBS0, smBS1,
                     abarrier_try_wait(14 + segment % 2, ((segment // 2) + 1) % 2)
                     _publish_fp32_scale_chunk(AS, BS, smAS0, smAS1, smBS0, smBS1,
                                          segment, PID, K, NUM_SMS, M_TILES, CHUNKS)
-                _produce_ab_k4096_groups(A + tile_m * K, B + tile_n * K, AS, BS,
+                _produce_ab_scale_chunk_groups(A + tile_m * K, B + tile_n * K, AS, BS,
                                       smAS0, smAS1, smBS0, smA0, smA1, smB0, smB1,
                                       K, GROUP, segment != 0, chunk * 16, 16)
 
 
 @g.jit
-def _consume_k4096_tiles(AS, BS, C, smAS0, smAS1, smBS0, smBS1,
+def _consume_chunked_scale_tiles(AS, BS, C, smAS0, smAS1, smBS0, smBS1,
                          smA0, smA1, smB0, smB1, K: gl.constexpr, N: gl.constexpr,
                          NUM_SMS: gl.constexpr, TILE_LIMIT: gl.constexpr,
                          GROUP: gl.constexpr, F: gl.constexpr, PID, M_TILES: gl.constexpr):
@@ -744,14 +744,14 @@ def _consume_k4096_tiles(AS, BS, C, smAS0, smAS1, smBS0, smBS1,
         tile_id = PID + step * NUM_SMS
         tile_m = (tile_id % M_TILES) * 128
         tile_n = (tile_id // M_TILES) * 256
-        _consume_ab_k4096(AS, BS, C + tile_m * N + tile_n,
+        _consume_ab_chunked_scales(AS, BS, C + tile_m * N + tile_n,
                                    smAS0, smAS1, smBS0, smBS1,
                                    smA0, smA1, smB0, smB1, K, N, GROUP, F,
                                    step, K // 2048)
 
 
 @g.jit
-def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_k4096_kernel(
+def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_chunked_scale_kernel(
     A,
     B,
     AS,
@@ -770,7 +770,8 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
 ):
     gl.static_assert(NUM_SMS > 0 and NUM_SMS <= 48 and NUM_SMS <= TILE_LIMIT)
     gl.static_assert(TILE_LIMIT == (M // 128) * (N // 256))
-    gl.static_assert(K == 4096)
+    gl.static_assert(K >= 2048 and K <= 6144 and K % 2048 == 0,
+                     "chunked-scale pipeline requires K=2048,4096,6144 (complete 16-group chunks)")
     gl.static_assert((BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K) == (128, 256, 128),
                      "this pipeline requires tile (128,256,128)")
     gl.static_assert(M % 128 == 0 and N % 256 == 0 and K % 256 == 0 and K >= 256 and K <= 6144,
@@ -803,14 +804,14 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     gl.warp_specialize(
         [
             (_idle_default_partition, ()),
-            (_produce_k4096_tiles, (A, B, AS, BS, sas0, sas1, sbs0, sbs1, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, pid, M // 128)),
-            (_produce_k4096_tiles, (A, B, AS, BS, sas0, sas1, sbs0, sbs1, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, pid, M // 128)),
+            (_produce_chunked_scale_tiles, (A, B, AS, BS, sas0, sas1, sbs0, sbs1, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, pid, M // 128)),
+            (_produce_chunked_scale_tiles, (A, B, AS, BS, sas0, sas1, sbs0, sbs1, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, pid, M // 128)),
             (
-                _consume_k4096_tiles,
+                _consume_chunked_scale_tiles,
                 (AS, BS, C, sas0, sas1, sbs0, sbs1, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, F, pid, M // 128),
             ),
             (
-                _consume_k4096_tiles,
+                _consume_chunked_scale_tiles,
                 (AS, BS, C, sas0, sas1, sbs0, sbs1, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, F, pid, M // 128),
             ),
         ],
