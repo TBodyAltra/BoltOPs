@@ -280,7 +280,7 @@ optest --display                                            # HTML report from l
 ## BF16 GEMM measurements on PMD
 
 2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 1 DIE / 48 CU.
-BF16 inputs/output, FP32 accumulation, complete K. Environment, configs, assembly, raw measurements and PERF: [R001 TN](docs/ops/gemm/tuning/r001/1die/tn/README.md), [R001 TT](docs/ops/gemm/tuning/r001/1die/tt/README.md), [R003 TT](docs/ops/gemm/tuning/r003/1die/tt/README.md), [R004 TT](docs/ops/gemm/tuning/r004/1die/tt/README.md).
+BF16 inputs/output, FP32 accumulation, complete K. Environment, configs, assembly, raw measurements and PERF: [R001 TN](docs/ops/gemm/tuning/r001/1die/tn/record.json), [R001 TT](docs/ops/gemm/tuning/r001/1die/tt/record.json), [R003 TT](docs/ops/gemm/tuning/r003/1die/tt/record.json), [R004 TT](docs/ops/gemm/tuning/r004/1die/tt/record.json).
 
 | Case / layout | M × N × K | Full dispatch (µs) | MMAC utilization | Validation / timing |
 |---|---|---:|---:|---|
