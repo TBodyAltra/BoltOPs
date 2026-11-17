@@ -19,7 +19,7 @@ MMAC 利用率沿用需求表口径：完整 dispatch 的有效 TOPS / 同频全
 
 ## 配置选择与实现
 
-公共入口按架构/CU、布局、精度及 MNK 查询 config，再启动 config 指定的 kernel，不维护逐 kernel 名称分支。所有 dense Gluon 入口统一接收由实际权重 stride 推导的 `B_K_CONTIGUOUS`；固定布局、形状、精度和整除约束由 kernel 的 JIT 断言检查。persistent 的 FP16 参数已显式列为 precision profile，替代按 kernel 名称复用 BF16 参数。
+公共入口按架构/CU、布局、精度及 MNK 查询 config，再启动 config 指定的 kernel，不维护逐 kernel 名称分支。所有 dense Gluon 入口统一接收由实际权重 stride 推导的 `B_K_CONTIGUOUS`；固定布局、形状、精度和整除约束由 kernel 的 JIT 断言检查。保留原有 FP16 persistent 配置回退：FP16 未命中时，仅允许借用原 persistent kernel 的 BF16 配置。
 
 R003/R004 共用 1P+4C、64 列、三槽流水。`SLOTS` 是 LDS 槽位数量，独立于编译选项 `num_stages`。更大 BK、不同 wave 配比、LDS 槽位及 persistent 候选的比较用于前期选型；本表仅报告当前选定实现的完整复测，抽样 grid 不作为完整性能。
 
@@ -27,6 +27,8 @@ R003/R004 共用 1P+4C、64 列、三槽流水。`SLOTS` 是 LDS 槽位数量，
 
 ## 回归范围
 
-当前环境下分发/原生小规模回归 **55 passed、4 deselected**，配置检查 **32 passed**。4 个未执行用例为 persistent 大网格与尾块用例；两个 persistent TT 尾块编译失败已在重构前源码复现，不计为通过，本轮未测 persistent 性能。此前的对照诊断保留在[验证记录](dispatch_refactor_validation.json)。
+完整性能复测时，分发/原生小规模回归 **55 passed、4 deselected**，配置检查 **32 passed**。4 个未执行用例为 persistent 大网格与尾块用例；两个 persistent TT 尾块编译失败已在重构前源码复现，不计为通过，本轮未测 persistent 性能。此前的对照诊断保留在[验证记录](dispatch_refactor_validation.json)。
 
 本轮[验证命令及运行时核对](retest_validation.json)、[分发日志](retest_dispatch.log)、[配置日志](retest_config.log)随记录保存。
+
+恢复原有 FP16 回退后，重新检查 **59 passed、4 deselected**，配置检查 **32 passed**，覆盖 TN/TT、FP16/BF16、auto/显式 Gluon；见[命令与结果](fp16_fallback_validation.json)、[分发日志](fp16_fallback_dispatch.log)和[配置日志](fp16_fallback_config.log)。

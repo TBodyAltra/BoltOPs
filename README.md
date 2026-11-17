@@ -289,7 +289,7 @@ BF16 inputs/output, FP32 accumulation, complete K. [Environment, configs, assemb
 | R003 TT | 2560 × 64 × 2048 | 10.565 | 14.70% | Random / ones / random; median of 9 warm samples |
 | R004 TT | 6656 × 64 × 2048 | 25.327 | 15.94% | Random / ones / random; median of 9 warm samples |
 
-All full-grid outputs have zero mismatches/nonfinite values at abs0.001+rel0.01; output guards and complete TG counts passed. SGPR/VGPR spills are zero. Current dispatch/native checks: 55 passed, 4 persistent cases deselected; configuration checks: 32 passed. Two known persistent TT tail compilation failures were reproduced before the refactor and are not counted as passes. PERF uses the same HSACO as the measured full grid. These are PMD results; detailed sampling scopes and hashes are linked above.
+All full-grid outputs have zero mismatches/nonfinite values at abs0.001+rel0.01; output guards and complete TG counts passed. SGPR/VGPR spills are zero. Current dispatch/native checks: 59 passed, 4 persistent cases deselected; configuration checks: 32 passed. Two known persistent TT tail compilation failures were reproduced before the refactor and are not counted as passes. PERF uses the same HSACO as the measured full grid. These are PMD results; detailed sampling scopes and hashes are linked above.
 
 ## License
 
