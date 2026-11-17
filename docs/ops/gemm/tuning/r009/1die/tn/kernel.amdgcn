@@ -6,7 +6,7 @@
 	.type	_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel,@function
 _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel: ; @_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel
 .Lfunc_begin0:
-	.file	1 "/xukang/code/pmd-triton-sessions/r009-matrix-store-latest/repo/boltops/gemm/gluon" "gemm_a8w8_blockscale_persistent.py"
+	.file	1 "/xukang/code/pmd-triton-sessions/r009-llvm-test-patch/repo/boltops/gemm/gluon" "gemm_a8w8_blockscale_persistent.py"
 	.loc	1 396 0                         ; gemm_a8w8_blockscale_persistent.py:396:0
 	.cfi_sections .debug_frame
 	.cfi_startproc
@@ -3173,7 +3173,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	ds_read_matrix_trans_format v[60:63], s27 offset:4096 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[56:59], s27 offset:1024 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[52:55], s27 offset:5120 element:1 row:3 col:1
-	ds_read_matrix_trans_format v[20:23], s27 offset:2048 element:1 row:3 col:1
+	ds_read_matrix_trans_format v[16:19], s27 offset:2048 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[12:15], s27 offset:6144 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[8:11], s27 offset:3072 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[4:7], s27 offset:7168 element:1 row:3 col:1
@@ -3182,13 +3182,13 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_abarrier_try_wait  s31, 9, 0
 .Ltmp71:
 	.loc	1 222 45                        ; gemm_a8w8_blockscale_persistent.py:222:45 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	ds_read_matrix_trans_format v[40:43], s22 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[36:39], s22 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[24:27], s22 offset:32 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[44:47], s22 offset:4096 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[48:51], s22 offset:4128 element:1 row:2 col:2 alt:1
-	ds_read_matrix_trans_format v[16:19], s22 offset:2048 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[20:23], s22 offset:2048 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[28:31], s22 offset:2080 element:1 row:2 col:2 alt:1
-	ds_read_matrix_trans_format v[36:39], s22 offset:6144 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[40:43], s22 offset:6144 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[32:35], s22 offset:6176 element:1 row:2 col:2 alt:1
 	.loc	1 216 23                        ; gemm_a8w8_blockscale_persistent.py:216:23 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
 	s_ashr_i32 s31, s0, 31
@@ -3311,7 +3311,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_mov_b32 s30, s1
 	; sched_barrier mask(0x00000000)
 	.loc	1 231 38 is_stmt 1              ; gemm_a8w8_blockscale_persistent.py:231:38 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[64:65], v[40:41], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[64:65], v[36:37], v[0:3]   lts
 .Ltmp79:
 	.loc	1 64 38                         ; gemm_a8w8_blockscale_persistent.py:64:38 @[ gemm_a8w8_blockscale_persistent.py:230:38 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	;;#ASMSTART
@@ -3319,7 +3319,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	;;#ASMEND
 .Ltmp80:
 	.loc	1 231 38                        ; gemm_a8w8_blockscale_persistent.py:231:38 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[64:65], v[42:43], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[64:65], v[38:39], v[0:3]   lts
 .Ltmp81:
 	.loc	1 69 38                         ; gemm_a8w8_blockscale_persistent.py:69:38 @[ gemm_a8w8_blockscale_persistent.py:232:38 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	;;#ASMSTART
@@ -3327,20 +3327,20 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	;;#ASMEND
 .Ltmp82:
 	.loc	1 231 38                        ; gemm_a8w8_blockscale_persistent.py:231:38 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[64:65], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[64:65], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[185:188], v[56:57], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[56:57], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[56:57], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[56:57], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[20:21], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[20:21], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[20:21], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[20:21], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[8:9], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[8:9], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[8:9], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[8:9], v[18:19], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[64:65], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[64:65], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[185:188], v[56:57], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[56:57], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[56:57], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[56:57], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[16:17], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[16:17], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[16:17], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[16:17], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[8:9], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[8:9], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[8:9], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[8:9], v[22:23], v[0:3]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[66:67], v[24:25], v[169:172]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[66:67], v[26:27], v[173:176]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[66:67], v[28:29], v[177:180]   lts
@@ -3349,30 +3349,30 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[58:59], v[26:27], v[189:192]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[58:59], v[28:29], v[193:196]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[58:59], v[30:31], v[197:200]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[22:23], v[24:25], v[201:204]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[22:23], v[26:27], v[205:208]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[22:23], v[28:29], v[209:212]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[22:23], v[30:31], v[213:216]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[18:19], v[24:25], v[201:204]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[18:19], v[26:27], v[205:208]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[18:19], v[28:29], v[209:212]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[18:19], v[30:31], v[213:216]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[10:11], v[24:25], v[217:220]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[10:11], v[26:27], v[221:224]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[10:11], v[28:29], v[225:228]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[10:11], v[30:31], v[229:232]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[60:61], v[44:45], v[169:172]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[60:61], v[46:47], v[173:176]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[60:61], v[36:37], v[177:180]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[60:61], v[38:39], v[181:184]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[60:61], v[40:41], v[177:180]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[60:61], v[42:43], v[181:184]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[185:188], v[52:53], v[44:45], v[185:188]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[52:53], v[46:47], v[189:192]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[52:53], v[36:37], v[193:196]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[52:53], v[38:39], v[197:200]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[52:53], v[40:41], v[193:196]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[52:53], v[42:43], v[197:200]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[12:13], v[44:45], v[201:204]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[12:13], v[46:47], v[205:208]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[12:13], v[36:37], v[209:212]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[12:13], v[38:39], v[213:216]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[12:13], v[40:41], v[209:212]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[12:13], v[42:43], v[213:216]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[4:5], v[44:45], v[217:220]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[4:5], v[46:47], v[221:224]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[4:5], v[36:37], v[225:228]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[4:5], v[38:39], v[229:232]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[4:5], v[40:41], v[225:228]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[4:5], v[42:43], v[229:232]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[62:63], v[48:49], v[169:172]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[62:63], v[50:51], v[173:176]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[62:63], v[32:33], v[177:180]   lts
@@ -3407,7 +3407,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	ds_read_matrix_trans_format v[60:63], s28 offset:4096 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[56:59], s28 offset:1024 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[52:55], s28 offset:5120 element:1 row:3 col:1
-	ds_read_matrix_trans_format v[20:23], s28 offset:2048 element:1 row:3 col:1
+	ds_read_matrix_trans_format v[16:19], s28 offset:2048 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[12:15], s28 offset:6144 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[8:11], s28 offset:3072 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[4:7], s28 offset:7168 element:1 row:3 col:1
@@ -3416,13 +3416,13 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_abarrier_try_wait  s1, 13, s1
 .Ltmp89:
 	.loc	1 241 53                        ; gemm_a8w8_blockscale_persistent.py:241:53 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	ds_read_matrix_trans_format v[40:43], s19 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[36:39], s19 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[24:27], s19 offset:32 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[44:47], s19 offset:4096 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[48:51], s19 offset:4128 element:1 row:2 col:2 alt:1
-	ds_read_matrix_trans_format v[16:19], s19 offset:2048 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[20:23], s19 offset:2048 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[28:31], s19 offset:2080 element:1 row:2 col:2 alt:1
-	ds_read_matrix_trans_format v[36:39], s19 offset:6144 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[40:43], s19 offset:6144 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[32:35], s19 offset:6176 element:1 row:2 col:2 alt:1
 .Ltmp90:
 	.loc	1 181 43                        ; gemm_a8w8_blockscale_persistent.py:181:43 @[ gemm_a8w8_blockscale_persistent.py:233:51 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
@@ -3552,7 +3552,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 .LBB0_176:                              ;   in Loop: Header=BB0_174 Depth=2
 	; sched_barrier mask(0x00000000)
 	.loc	1 260 42 is_stmt 1              ; gemm_a8w8_blockscale_persistent.py:260:42 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[64:65], v[40:41], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[64:65], v[36:37], v[0:3]   lts
 .Ltmp96:
 	.loc	1 64 38                         ; gemm_a8w8_blockscale_persistent.py:64:38 @[ gemm_a8w8_blockscale_persistent.py:259:42 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	;;#ASMSTART
@@ -3560,7 +3560,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	;;#ASMEND
 .Ltmp97:
 	.loc	1 260 42                        ; gemm_a8w8_blockscale_persistent.py:260:42 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[64:65], v[42:43], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[64:65], v[38:39], v[0:3]   lts
 .Ltmp98:
 	.loc	1 69 38                         ; gemm_a8w8_blockscale_persistent.py:69:38 @[ gemm_a8w8_blockscale_persistent.py:261:42 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	;;#ASMSTART
@@ -3568,20 +3568,20 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	;;#ASMEND
 .Ltmp99:
 	.loc	1 260 42                        ; gemm_a8w8_blockscale_persistent.py:260:42 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[64:65], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[64:65], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[185:188], v[56:57], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[56:57], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[56:57], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[56:57], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[20:21], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[20:21], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[20:21], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[20:21], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[8:9], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[8:9], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[8:9], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[8:9], v[18:19], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[64:65], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[64:65], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[185:188], v[56:57], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[56:57], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[56:57], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[56:57], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[16:17], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[16:17], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[16:17], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[16:17], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[8:9], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[8:9], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[8:9], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[8:9], v[22:23], v[0:3]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[66:67], v[24:25], v[169:172]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[66:67], v[26:27], v[173:176]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[66:67], v[28:29], v[177:180]   lts
@@ -3590,30 +3590,30 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[58:59], v[26:27], v[189:192]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[58:59], v[28:29], v[193:196]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[58:59], v[30:31], v[197:200]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[22:23], v[24:25], v[201:204]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[22:23], v[26:27], v[205:208]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[22:23], v[28:29], v[209:212]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[22:23], v[30:31], v[213:216]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[18:19], v[24:25], v[201:204]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[18:19], v[26:27], v[205:208]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[18:19], v[28:29], v[209:212]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[18:19], v[30:31], v[213:216]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[10:11], v[24:25], v[217:220]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[10:11], v[26:27], v[221:224]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[10:11], v[28:29], v[225:228]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[10:11], v[30:31], v[229:232]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[60:61], v[44:45], v[169:172]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[60:61], v[46:47], v[173:176]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[60:61], v[36:37], v[177:180]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[60:61], v[38:39], v[181:184]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[60:61], v[40:41], v[177:180]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[60:61], v[42:43], v[181:184]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[185:188], v[52:53], v[44:45], v[185:188]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[52:53], v[46:47], v[189:192]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[52:53], v[36:37], v[193:196]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[52:53], v[38:39], v[197:200]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[52:53], v[40:41], v[193:196]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[52:53], v[42:43], v[197:200]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[12:13], v[44:45], v[201:204]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[12:13], v[46:47], v[205:208]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[12:13], v[36:37], v[209:212]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[12:13], v[38:39], v[213:216]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[12:13], v[40:41], v[209:212]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[12:13], v[42:43], v[213:216]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[4:5], v[44:45], v[217:220]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[4:5], v[46:47], v[221:224]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[4:5], v[36:37], v[225:228]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[4:5], v[38:39], v[229:232]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[4:5], v[40:41], v[225:228]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[4:5], v[42:43], v[229:232]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[62:63], v[48:49], v[169:172]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[62:63], v[50:51], v[173:176]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[62:63], v[32:33], v[177:180]   lts
@@ -3648,7 +3648,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	ds_read_matrix_trans_format v[60:63], s27 offset:4096 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[56:59], s27 offset:1024 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[52:55], s27 offset:5120 element:1 row:3 col:1
-	ds_read_matrix_trans_format v[20:23], s27 offset:2048 element:1 row:3 col:1
+	ds_read_matrix_trans_format v[16:19], s27 offset:2048 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[12:15], s27 offset:6144 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[8:11], s27 offset:3072 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[4:7], s27 offset:7168 element:1 row:3 col:1
@@ -3657,13 +3657,13 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_abarrier_try_wait  s30, 9, s30
 .Ltmp106:
 	.loc	1 270 57                        ; gemm_a8w8_blockscale_persistent.py:270:57 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	ds_read_matrix_trans_format v[40:43], s22 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[36:39], s22 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[24:27], s22 offset:32 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[44:47], s22 offset:4096 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[48:51], s22 offset:4128 element:1 row:2 col:2 alt:1
-	ds_read_matrix_trans_format v[16:19], s22 offset:2048 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[20:23], s22 offset:2048 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[28:31], s22 offset:2080 element:1 row:2 col:2 alt:1
-	ds_read_matrix_trans_format v[36:39], s22 offset:6144 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[40:43], s22 offset:6144 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[32:35], s22 offset:6176 element:1 row:2 col:2 alt:1
 .Ltmp107:
 	.loc	1 181 43                        ; gemm_a8w8_blockscale_persistent.py:181:43 @[ gemm_a8w8_blockscale_persistent.py:262:55 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
@@ -3773,25 +3773,25 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_branch .LBB0_174
 .LBB0_178:                              ;   in Loop: Header=BB0_173 Depth=1
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[150:153], v[64:65], v[40:41], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[150:153], v[64:65], v[36:37], v[0:3]   lts
 .Ltmp113:
 	.loc	1 377 31                        ; gemm_a8w8_blockscale_persistent.py:377:31 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_mul_i32 s0, s18, 48
 .Ltmp114:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[154:157], v[64:65], v[42:43], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[154:157], v[64:65], v[38:39], v[0:3]   lts
 .Ltmp115:
 	.loc	1 377 24                        ; gemm_a8w8_blockscale_persistent.py:377:24 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_add_i32 s0, s0, s6
 .Ltmp116:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[158:161], v[64:65], v[16:17], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[158:161], v[64:65], v[20:21], v[0:3]   lts
 .Ltmp117:
 	.loc	1 386 29                        ; gemm_a8w8_blockscale_persistent.py:386:29 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_mul_hi_i32 s1, s0, 0x66666667
 .Ltmp118:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[162:165], v[64:65], v[18:19], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[162:165], v[64:65], v[22:23], v[0:3]   lts
 .Ltmp119:
 	.loc	1 386 29                        ; gemm_a8w8_blockscale_persistent.py:386:29 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_lshr_b32 s30, s1, 31
@@ -3833,13 +3833,13 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_ashr_i32 s31, s30, 31
 .Ltmp132:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[158:161], v[60:61], v[36:37], v[158:161]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[158:161], v[60:61], v[40:41], v[158:161]   lts
 .Ltmp133:
 	.loc	1 386 35                        ; gemm_a8w8_blockscale_persistent.py:386:35 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_lshl_b32 s0, s1, 8
 .Ltmp134:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[162:165], v[60:61], v[38:39], v[162:165]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[162:165], v[60:61], v[42:43], v[162:165]   lts
 .Ltmp135:
 	.loc	1 389 39                        ; gemm_a8w8_blockscale_persistent.py:389:39 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_lshl_b64 s[30:31], s[30:31], 1
@@ -3869,19 +3869,19 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_lshl_b64 s[0:1], s[0:1], 1
 .Ltmp144:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[60:63], v[56:57], v[40:41], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[60:63], v[56:57], v[36:37], v[0:3]   lts
 .Ltmp145:
 	.loc	1 389 52                        ; gemm_a8w8_blockscale_persistent.py:389:52 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_add_u32 s0, s30, s0
 .Ltmp146:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[64:67], v[56:57], v[42:43], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[64:67], v[56:57], v[38:39], v[0:3]   lts
 .Ltmp147:
 	.loc	1 389 52                        ; gemm_a8w8_blockscale_persistent.py:389:52 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_addc_u32 s1, s31, s1
 .Ltmp148:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[168:171], v[56:57], v[16:17], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[168:171], v[56:57], v[20:21], v[0:3]   lts
 .Ltmp149:
 	.loc	1 64 38                         ; gemm_a8w8_blockscale_persistent.py:64:38 @[ gemm_a8w8_blockscale_persistent.py:284:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	;;#ASMSTART
@@ -3889,7 +3889,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	;;#ASMEND
 .Ltmp150:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[172:175], v[56:57], v[18:19], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[172:175], v[56:57], v[22:23], v[0:3]   lts
 .Ltmp151:
 	.loc	1 69 38                         ; gemm_a8w8_blockscale_persistent.py:69:38 @[ gemm_a8w8_blockscale_persistent.py:286:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	;;#ASMSTART
@@ -3903,44 +3903,44 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	v_mmac_f32_16x16x32_fp8_fp8 v[172:175], v[58:59], v[30:31], v[172:175]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[60:63], v[52:53], v[44:45], v[60:63]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[64:67], v[52:53], v[46:47], v[64:67]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[168:171], v[52:53], v[36:37], v[168:171]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[172:175], v[52:53], v[38:39], v[172:175]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[168:171], v[52:53], v[40:41], v[168:171]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[172:175], v[52:53], v[42:43], v[172:175]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[60:63], v[54:55], v[48:49], v[60:63]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[64:67], v[54:55], v[50:51], v[64:67]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[168:171], v[54:55], v[32:33], v[168:171]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[172:175], v[54:55], v[34:35], v[172:175]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[52:55], v[20:21], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[56:59], v[20:21], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[20:21], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[20:21], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[52:55], v[22:23], v[24:25], v[52:55]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[56:59], v[22:23], v[26:27], v[56:59]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[22:23], v[28:29], v[176:179]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[22:23], v[30:31], v[180:183]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[52:55], v[16:17], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[56:59], v[16:17], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[16:17], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[16:17], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[52:55], v[18:19], v[24:25], v[52:55]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[56:59], v[18:19], v[26:27], v[56:59]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[18:19], v[28:29], v[176:179]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[18:19], v[30:31], v[180:183]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[52:55], v[12:13], v[44:45], v[52:55]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[56:59], v[12:13], v[46:47], v[56:59]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[12:13], v[36:37], v[176:179]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[12:13], v[38:39], v[180:183]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[12:13], v[40:41], v[176:179]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[12:13], v[42:43], v[180:183]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[52:55], v[14:15], v[48:49], v[52:55]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[56:59], v[14:15], v[50:51], v[56:59]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[14:15], v[32:33], v[176:179]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[14:15], v[34:35], v[180:183]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[12:15], v[8:9], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[20:23], v[8:9], v[42:43], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[12:15], v[8:9], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[16:19], v[8:9], v[38:39], v[0:3]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[12:15], v[10:11], v[24:25], v[12:15]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[20:23], v[10:11], v[26:27], v[20:23]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[24:27], v[8:9], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[0:3], v[8:9], v[18:19], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[16:19], v[10:11], v[26:27], v[16:19]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[24:27], v[8:9], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[36:39], v[8:9], v[22:23], v[0:3]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[24:27], v[10:11], v[28:29], v[24:27]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[0:3], v[10:11], v[30:31], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[36:39], v[10:11], v[30:31], v[36:39]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[12:15], v[4:5], v[44:45], v[12:15]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[20:23], v[4:5], v[46:47], v[20:23]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[24:27], v[4:5], v[36:37], v[24:27]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[0:3], v[4:5], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[16:19], v[4:5], v[46:47], v[16:19]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[24:27], v[4:5], v[40:41], v[24:27]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[36:39], v[4:5], v[42:43], v[36:39]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[12:15], v[6:7], v[48:49], v[12:15]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[20:23], v[6:7], v[50:51], v[20:23]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[16:19], v[6:7], v[50:51], v[16:19]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[24:27], v[6:7], v[32:33], v[24:27]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[0:3], v[6:7], v[34:35], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[36:39], v[6:7], v[34:35], v[36:39]   lts
 .Ltmp153:
 	.loc	1 72 21                         ; gemm_a8w8_blockscale_persistent.py:72:21 @[ gemm_a8w8_blockscale_persistent.py:286:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	s_setprio 0
@@ -3948,101 +3948,104 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	.loc	1 180 17                        ; gemm_a8w8_blockscale_persistent.py:180:17 @[ gemm_a8w8_blockscale_persistent.py:287:47 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	s_waitcnt lgkmcnt(0)
 	.loc	1 181 43                        ; gemm_a8w8_blockscale_persistent.py:181:43 @[ gemm_a8w8_blockscale_persistent.py:287:47 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
-	v_cndmask_b32_e32 v4, v133, v132, vcc
+	v_cndmask_b32_e32 v0, v133, v132, vcc
 .Ltmp155:
 	; sched_barrier mask(0x00000000)
-	.loc	1 290 58                        ; gemm_a8w8_blockscale_persistent.py:290:58 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mov_b32_e32 v9, v12
 	.loc	1 297 8                         ; gemm_a8w8_blockscale_persistent.py:297:8 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
 	s_add_u32 s0, s0, s29
 	.loc	1 290 58                        ; gemm_a8w8_blockscale_persistent.py:290:58 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mov_b32_e32 v5, v172
-	v_mov_b32_e32 v7, v150
-	v_mov_b32_e32 v10, v13
-	v_mov_b32_e32 v11, v64
+	v_mov_b32_e32 v1, v56
+	v_mov_b32_e32 v3, v158
+	v_mov_b32_e32 v5, v24
+	v_mov_b32_e32 v7, v172
+	v_mov_b32_e32 v9, v150
+	v_mov_b32_e32 v11, v12
 	.loc	1 297 8                         ; gemm_a8w8_blockscale_persistent.py:297:8 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
 	s_addc_u32 s30, s1, 0
 	.loc	1 290 58                        ; gemm_a8w8_blockscale_persistent.py:290:58 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mov_b32_e32 v6, v173
-	v_mov_b32_e32 v8, v151
-	v_mov_b32_e32 v12, v65
-	v_mov_b64_e32 v[16:17], v[176:177]
-	v_mov_b64_e32 v[18:19], v[162:163]
-	v_mov_b64_e32 v[28:29], v[182:183]
-	v_mov_b64_e32 v[30:31], v[52:53]
-	v_mov_b64_e32 v[32:33], v[62:63]
-	v_mov_b64_e32 v[34:35], v[154:155]
-	v_mov_b64_e32 v[36:37], v[58:59]
-	v_mov_b64_e32 v[38:39], v[168:169]
-	v_mov_b64_e32 v[40:41], v[160:161]
+	v_mov_b32_e32 v2, v57
+	v_mov_b32_e32 v4, v159
+	v_mov_b32_e32 v6, v25
+	v_mov_b32_e32 v8, v173
+	v_mov_b32_e32 v10, v151
+	v_mov_b32_e32 v12, v13
+	v_mov_b64_e32 v[20:21], v[64:65]
+	v_mov_b64_e32 v[22:23], v[176:177]
+	v_mov_b64_e32 v[24:25], v[170:171]
+	v_mov_b64_e32 v[28:29], v[162:163]
+	v_mov_b64_e32 v[30:31], v[36:37]
+	v_mov_b64_e32 v[32:33], v[182:183]
+	v_mov_b64_e32 v[34:35], v[52:53]
+	v_mov_b64_e32 v[36:37], v[62:63]
+	v_mov_b64_e32 v[40:41], v[154:155]
 	.loc	1 297 8                         ; gemm_a8w8_blockscale_persistent.py:297:8 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
 	s_and_b32 s1, s30, 0xffff
 	.loc	1 290 58                        ; gemm_a8w8_blockscale_persistent.py:290:58 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
 	;;#ASMSTART
-	v_pk_mul_f32 v[7:8], v[7:8], v[134:135]
+	v_pk_mul_f32 v[9:10], v[9:10], v[134:135]
 	v_pk_mul_f32 v[152:153], v[152:153], v[136:137]
-	v_pk_mul_f32 v[34:35], v[34:35], v[134:135]
+	v_pk_mul_f32 v[40:41], v[40:41], v[134:135]
 	v_pk_mul_f32 v[156:157], v[156:157], v[136:137]
-	v_pk_mul_f32 v[158:159], v[158:159], v[134:135]
-	v_pk_mul_f32 v[40:41], v[40:41], v[136:137]
-	v_pk_mul_f32 v[18:19], v[18:19], v[134:135]
+	v_pk_mul_f32 v[3:4], v[3:4], v[134:135]
+	v_pk_mul_f32 v[160:161], v[160:161], v[136:137]
+	v_pk_mul_f32 v[28:29], v[28:29], v[134:135]
 	v_pk_mul_f32 v[164:165], v[164:165], v[136:137]
 	v_pk_mul_f32 v[60:61], v[60:61], v[138:139]
-	v_pk_mul_f32 v[32:33], v[32:33], v[140:141]
-	v_pk_mul_f32 v[11:12], v[11:12], v[138:139]
+	v_pk_mul_f32 v[36:37], v[36:37], v[140:141]
+	v_pk_mul_f32 v[20:21], v[20:21], v[138:139]
 	v_pk_mul_f32 v[66:67], v[66:67], v[140:141]
-	v_pk_mul_f32 v[38:39], v[38:39], v[138:139]
-	v_pk_mul_f32 v[170:171], v[170:171], v[140:141]
-	v_pk_mul_f32 v[5:6], v[5:6], v[138:139]
+	v_pk_mul_f32 v[168:169], v[168:169], v[138:139]
+	v_pk_mul_f32 v[24:25], v[24:25], v[140:141]
+	v_pk_mul_f32 v[7:8], v[7:8], v[138:139]
 	v_pk_mul_f32 v[174:175], v[174:175], v[140:141]
-	v_pk_mul_f32 v[30:31], v[30:31], v[142:143]
+	v_pk_mul_f32 v[34:35], v[34:35], v[142:143]
 	v_pk_mul_f32 v[54:55], v[54:55], v[144:145]
-	v_pk_mul_f32 v[56:57], v[56:57], v[142:143]
-	v_pk_mul_f32 v[36:37], v[36:37], v[144:145]
-	v_pk_mul_f32 v[16:17], v[16:17], v[142:143]
+	v_pk_mul_f32 v[1:2], v[1:2], v[142:143]
+	v_pk_mul_f32 v[58:59], v[58:59], v[144:145]
+	v_pk_mul_f32 v[22:23], v[22:23], v[142:143]
 	v_pk_mul_f32 v[178:179], v[178:179], v[144:145]
 	v_pk_mul_f32 v[180:181], v[180:181], v[142:143]
-	v_pk_mul_f32 v[28:29], v[28:29], v[144:145]
-	v_pk_mul_f32 v[9:10], v[9:10], v[146:147]
+	v_pk_mul_f32 v[32:33], v[32:33], v[144:145]
+	v_pk_mul_f32 v[11:12], v[11:12], v[146:147]
 	v_pk_mul_f32 v[14:15], v[14:15], v[148:149]
-	v_pk_mul_f32 v[20:21], v[20:21], v[146:147]
-	v_pk_mul_f32 v[22:23], v[22:23], v[148:149]
-	v_pk_mul_f32 v[24:25], v[24:25], v[146:147]
+	v_pk_mul_f32 v[16:17], v[16:17], v[146:147]
+	v_pk_mul_f32 v[18:19], v[18:19], v[148:149]
+	v_pk_mul_f32 v[5:6], v[5:6], v[146:147]
 	v_pk_mul_f32 v[26:27], v[26:27], v[148:149]
-	v_pk_mul_f32 v[0:1], v[0:1], v[146:147]
-	v_pk_mul_f32 v[2:3], v[2:3], v[148:149]
-	v_pk_fma_f32 v[98:99], v[7:8], v[4:5], v[98:99] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[96:97], v[152:153], v[4:5], v[96:97] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[110:111], v[34:35], v[4:5], v[110:111] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[108:109], v[156:157], v[4:5], v[108:109] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[78:79], v[158:159], v[4:5], v[78:79] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[76:77], v[40:41], v[4:5], v[76:77] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[86:87], v[18:19], v[4:5], v[86:87] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[84:85], v[164:165], v[4:5], v[84:85] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[126:127], v[60:61], v[4:5], v[126:127] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[124:125], v[32:33], v[4:5], v[124:125] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[130:131], v[11:12], v[4:5], v[130:131] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[128:129], v[66:67], v[4:5], v[128:129] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[106:107], v[38:39], v[4:5], v[106:107] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[104:105], v[170:171], v[4:5], v[104:105] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[118:119], v[5:6], v[4:5], v[118:119] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[116:117], v[174:175], v[4:5], v[116:117] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[82:83], v[30:31], v[4:5], v[82:83] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[80:81], v[54:55], v[4:5], v[80:81] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[94:95], v[56:57], v[4:5], v[94:95] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[92:93], v[36:37], v[4:5], v[92:93] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[70:71], v[16:17], v[4:5], v[70:71] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[68:69], v[178:179], v[4:5], v[68:69] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[74:75], v[180:181], v[4:5], v[74:75] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[72:73], v[28:29], v[4:5], v[72:73] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[114:115], v[9:10], v[4:5], v[114:115] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[112:113], v[14:15], v[4:5], v[112:113] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[122:123], v[20:21], v[4:5], v[122:123] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[120:121], v[22:23], v[4:5], v[120:121] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[90:91], v[24:25], v[4:5], v[90:91] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[88:89], v[26:27], v[4:5], v[88:89] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[102:103], v[0:1], v[4:5], v[102:103] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[100:101], v[2:3], v[4:5], v[100:101] op_sel_hi:[1,0,1]
+	v_pk_mul_f32 v[30:31], v[30:31], v[146:147]
+	v_pk_mul_f32 v[38:39], v[38:39], v[148:149]
+	v_pk_fma_f32 v[98:99], v[9:10], v[0:1], v[98:99] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[96:97], v[152:153], v[0:1], v[96:97] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[110:111], v[40:41], v[0:1], v[110:111] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[108:109], v[156:157], v[0:1], v[108:109] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[78:79], v[3:4], v[0:1], v[78:79] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[76:77], v[160:161], v[0:1], v[76:77] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[86:87], v[28:29], v[0:1], v[86:87] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[84:85], v[164:165], v[0:1], v[84:85] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[126:127], v[60:61], v[0:1], v[126:127] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[124:125], v[36:37], v[0:1], v[124:125] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[130:131], v[20:21], v[0:1], v[130:131] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[128:129], v[66:67], v[0:1], v[128:129] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[106:107], v[168:169], v[0:1], v[106:107] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[104:105], v[24:25], v[0:1], v[104:105] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[118:119], v[7:8], v[0:1], v[118:119] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[116:117], v[174:175], v[0:1], v[116:117] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[82:83], v[34:35], v[0:1], v[82:83] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[80:81], v[54:55], v[0:1], v[80:81] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[94:95], v[1:2], v[0:1], v[94:95] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[92:93], v[58:59], v[0:1], v[92:93] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[70:71], v[22:23], v[0:1], v[70:71] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[68:69], v[178:179], v[0:1], v[68:69] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[74:75], v[180:181], v[0:1], v[74:75] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[72:73], v[32:33], v[0:1], v[72:73] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[114:115], v[11:12], v[0:1], v[114:115] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[112:113], v[14:15], v[0:1], v[112:113] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[122:123], v[16:17], v[0:1], v[122:123] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[120:121], v[18:19], v[0:1], v[120:121] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[90:91], v[5:6], v[0:1], v[90:91] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[88:89], v[26:27], v[0:1], v[88:89] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[102:103], v[30:31], v[0:1], v[102:103] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[100:101], v[38:39], v[0:1], v[100:101] op_sel_hi:[1,0,1]
 
 	;;#ASMEND
 	.loc	1 297 8                         ; gemm_a8w8_blockscale_persistent.py:297:8 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
@@ -4240,7 +4243,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	ds_read_matrix_trans_format v[60:63], s25 offset:4096 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[56:59], s25 offset:1024 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[52:55], s25 offset:5120 element:1 row:3 col:1
-	ds_read_matrix_trans_format v[20:23], s25 offset:2048 element:1 row:3 col:1
+	ds_read_matrix_trans_format v[16:19], s25 offset:2048 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[12:15], s25 offset:6144 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[8:11], s25 offset:3072 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[4:7], s25 offset:7168 element:1 row:3 col:1
@@ -4249,13 +4252,13 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_abarrier_try_wait  s29, 9, 0
 .Ltmp173:
 	.loc	1 222 45                        ; gemm_a8w8_blockscale_persistent.py:222:45 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	ds_read_matrix_trans_format v[40:43], s20 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[36:39], s20 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[24:27], s20 offset:32 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[44:47], s20 offset:4096 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[48:51], s20 offset:4128 element:1 row:2 col:2 alt:1
-	ds_read_matrix_trans_format v[16:19], s20 offset:2048 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[20:23], s20 offset:2048 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[28:31], s20 offset:2080 element:1 row:2 col:2 alt:1
-	ds_read_matrix_trans_format v[36:39], s20 offset:6144 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[40:43], s20 offset:6144 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[32:35], s20 offset:6176 element:1 row:2 col:2 alt:1
 	.loc	1 216 23                        ; gemm_a8w8_blockscale_persistent.py:216:23 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
 	s_ashr_i32 s29, s0, 31
@@ -4378,7 +4381,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_mov_b32 s28, s1
 	; sched_barrier mask(0x00000000)
 	.loc	1 231 38 is_stmt 1              ; gemm_a8w8_blockscale_persistent.py:231:38 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[64:65], v[40:41], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[64:65], v[36:37], v[0:3]   lts
 .Ltmp181:
 	.loc	1 66 38                         ; gemm_a8w8_blockscale_persistent.py:66:38 @[ gemm_a8w8_blockscale_persistent.py:230:38 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	;;#ASMSTART
@@ -4386,7 +4389,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	;;#ASMEND
 .Ltmp182:
 	.loc	1 231 38                        ; gemm_a8w8_blockscale_persistent.py:231:38 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[64:65], v[42:43], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[64:65], v[38:39], v[0:3]   lts
 .Ltmp183:
 	.loc	1 71 38                         ; gemm_a8w8_blockscale_persistent.py:71:38 @[ gemm_a8w8_blockscale_persistent.py:232:38 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	;;#ASMSTART
@@ -4394,20 +4397,20 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	;;#ASMEND
 .Ltmp184:
 	.loc	1 231 38                        ; gemm_a8w8_blockscale_persistent.py:231:38 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[64:65], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[64:65], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[185:188], v[56:57], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[56:57], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[56:57], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[56:57], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[20:21], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[20:21], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[20:21], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[20:21], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[8:9], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[8:9], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[8:9], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[8:9], v[18:19], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[64:65], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[64:65], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[185:188], v[56:57], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[56:57], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[56:57], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[56:57], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[16:17], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[16:17], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[16:17], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[16:17], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[8:9], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[8:9], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[8:9], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[8:9], v[22:23], v[0:3]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[66:67], v[24:25], v[169:172]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[66:67], v[26:27], v[173:176]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[66:67], v[28:29], v[177:180]   lts
@@ -4416,30 +4419,30 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[58:59], v[26:27], v[189:192]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[58:59], v[28:29], v[193:196]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[58:59], v[30:31], v[197:200]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[22:23], v[24:25], v[201:204]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[22:23], v[26:27], v[205:208]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[22:23], v[28:29], v[209:212]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[22:23], v[30:31], v[213:216]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[18:19], v[24:25], v[201:204]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[18:19], v[26:27], v[205:208]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[18:19], v[28:29], v[209:212]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[18:19], v[30:31], v[213:216]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[10:11], v[24:25], v[217:220]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[10:11], v[26:27], v[221:224]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[10:11], v[28:29], v[225:228]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[10:11], v[30:31], v[229:232]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[60:61], v[44:45], v[169:172]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[60:61], v[46:47], v[173:176]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[60:61], v[36:37], v[177:180]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[60:61], v[38:39], v[181:184]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[60:61], v[40:41], v[177:180]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[60:61], v[42:43], v[181:184]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[185:188], v[52:53], v[44:45], v[185:188]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[52:53], v[46:47], v[189:192]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[52:53], v[36:37], v[193:196]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[52:53], v[38:39], v[197:200]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[52:53], v[40:41], v[193:196]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[52:53], v[42:43], v[197:200]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[12:13], v[44:45], v[201:204]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[12:13], v[46:47], v[205:208]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[12:13], v[36:37], v[209:212]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[12:13], v[38:39], v[213:216]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[12:13], v[40:41], v[209:212]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[12:13], v[42:43], v[213:216]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[4:5], v[44:45], v[217:220]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[4:5], v[46:47], v[221:224]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[4:5], v[36:37], v[225:228]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[4:5], v[38:39], v[229:232]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[4:5], v[40:41], v[225:228]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[4:5], v[42:43], v[229:232]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[62:63], v[48:49], v[169:172]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[62:63], v[50:51], v[173:176]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[62:63], v[32:33], v[177:180]   lts
@@ -4474,7 +4477,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	ds_read_matrix_trans_format v[60:63], s26 offset:4096 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[56:59], s26 offset:1024 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[52:55], s26 offset:5120 element:1 row:3 col:1
-	ds_read_matrix_trans_format v[20:23], s26 offset:2048 element:1 row:3 col:1
+	ds_read_matrix_trans_format v[16:19], s26 offset:2048 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[12:15], s26 offset:6144 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[8:11], s26 offset:3072 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[4:7], s26 offset:7168 element:1 row:3 col:1
@@ -4483,13 +4486,13 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_abarrier_try_wait  s1, 13, s1
 .Ltmp191:
 	.loc	1 241 53                        ; gemm_a8w8_blockscale_persistent.py:241:53 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	ds_read_matrix_trans_format v[40:43], s19 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[36:39], s19 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[24:27], s19 offset:32 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[44:47], s19 offset:4096 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[48:51], s19 offset:4128 element:1 row:2 col:2 alt:1
-	ds_read_matrix_trans_format v[16:19], s19 offset:2048 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[20:23], s19 offset:2048 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[28:31], s19 offset:2080 element:1 row:2 col:2 alt:1
-	ds_read_matrix_trans_format v[36:39], s19 offset:6144 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[40:43], s19 offset:6144 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[32:35], s19 offset:6176 element:1 row:2 col:2 alt:1
 .Ltmp192:
 	.loc	1 181 43                        ; gemm_a8w8_blockscale_persistent.py:181:43 @[ gemm_a8w8_blockscale_persistent.py:233:51 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
@@ -4619,7 +4622,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 .LBB0_190:                              ;   in Loop: Header=BB0_188 Depth=2
 	; sched_barrier mask(0x00000000)
 	.loc	1 260 42 is_stmt 1              ; gemm_a8w8_blockscale_persistent.py:260:42 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[64:65], v[40:41], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[64:65], v[36:37], v[0:3]   lts
 .Ltmp198:
 	.loc	1 66 38                         ; gemm_a8w8_blockscale_persistent.py:66:38 @[ gemm_a8w8_blockscale_persistent.py:259:42 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	;;#ASMSTART
@@ -4627,7 +4630,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	;;#ASMEND
 .Ltmp199:
 	.loc	1 260 42                        ; gemm_a8w8_blockscale_persistent.py:260:42 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[64:65], v[42:43], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[64:65], v[38:39], v[0:3]   lts
 .Ltmp200:
 	.loc	1 71 38                         ; gemm_a8w8_blockscale_persistent.py:71:38 @[ gemm_a8w8_blockscale_persistent.py:261:42 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	;;#ASMSTART
@@ -4635,20 +4638,20 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	;;#ASMEND
 .Ltmp201:
 	.loc	1 260 42                        ; gemm_a8w8_blockscale_persistent.py:260:42 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[64:65], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[64:65], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[185:188], v[56:57], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[56:57], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[56:57], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[56:57], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[20:21], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[20:21], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[20:21], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[20:21], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[8:9], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[8:9], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[8:9], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[8:9], v[18:19], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[64:65], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[64:65], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[185:188], v[56:57], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[56:57], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[56:57], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[56:57], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[16:17], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[16:17], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[16:17], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[16:17], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[8:9], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[8:9], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[8:9], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[8:9], v[22:23], v[0:3]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[66:67], v[24:25], v[169:172]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[66:67], v[26:27], v[173:176]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[66:67], v[28:29], v[177:180]   lts
@@ -4657,30 +4660,30 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[58:59], v[26:27], v[189:192]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[58:59], v[28:29], v[193:196]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[58:59], v[30:31], v[197:200]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[22:23], v[24:25], v[201:204]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[22:23], v[26:27], v[205:208]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[22:23], v[28:29], v[209:212]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[22:23], v[30:31], v[213:216]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[18:19], v[24:25], v[201:204]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[18:19], v[26:27], v[205:208]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[18:19], v[28:29], v[209:212]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[18:19], v[30:31], v[213:216]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[10:11], v[24:25], v[217:220]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[10:11], v[26:27], v[221:224]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[10:11], v[28:29], v[225:228]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[10:11], v[30:31], v[229:232]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[60:61], v[44:45], v[169:172]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[60:61], v[46:47], v[173:176]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[60:61], v[36:37], v[177:180]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[60:61], v[38:39], v[181:184]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[60:61], v[40:41], v[177:180]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[181:184], v[60:61], v[42:43], v[181:184]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[185:188], v[52:53], v[44:45], v[185:188]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[189:192], v[52:53], v[46:47], v[189:192]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[52:53], v[36:37], v[193:196]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[52:53], v[38:39], v[197:200]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[193:196], v[52:53], v[40:41], v[193:196]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[197:200], v[52:53], v[42:43], v[197:200]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[201:204], v[12:13], v[44:45], v[201:204]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[205:208], v[12:13], v[46:47], v[205:208]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[12:13], v[36:37], v[209:212]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[12:13], v[38:39], v[213:216]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[209:212], v[12:13], v[40:41], v[209:212]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[213:216], v[12:13], v[42:43], v[213:216]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[217:220], v[4:5], v[44:45], v[217:220]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[221:224], v[4:5], v[46:47], v[221:224]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[4:5], v[36:37], v[225:228]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[4:5], v[38:39], v[229:232]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[225:228], v[4:5], v[40:41], v[225:228]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[229:232], v[4:5], v[42:43], v[229:232]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[169:172], v[62:63], v[48:49], v[169:172]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[173:176], v[62:63], v[50:51], v[173:176]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[177:180], v[62:63], v[32:33], v[177:180]   lts
@@ -4715,7 +4718,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	ds_read_matrix_trans_format v[60:63], s25 offset:4096 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[56:59], s25 offset:1024 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[52:55], s25 offset:5120 element:1 row:3 col:1
-	ds_read_matrix_trans_format v[20:23], s25 offset:2048 element:1 row:3 col:1
+	ds_read_matrix_trans_format v[16:19], s25 offset:2048 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[12:15], s25 offset:6144 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[8:11], s25 offset:3072 element:1 row:3 col:1
 	ds_read_matrix_trans_format v[4:7], s25 offset:7168 element:1 row:3 col:1
@@ -4724,13 +4727,13 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_abarrier_try_wait  s28, 9, s28
 .Ltmp208:
 	.loc	1 270 57                        ; gemm_a8w8_blockscale_persistent.py:270:57 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	ds_read_matrix_trans_format v[40:43], s20 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[36:39], s20 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[24:27], s20 offset:32 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[44:47], s20 offset:4096 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[48:51], s20 offset:4128 element:1 row:2 col:2 alt:1
-	ds_read_matrix_trans_format v[16:19], s20 offset:2048 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[20:23], s20 offset:2048 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[28:31], s20 offset:2080 element:1 row:2 col:2 alt:1
-	ds_read_matrix_trans_format v[36:39], s20 offset:6144 element:1 row:2 col:2 alt:1
+	ds_read_matrix_trans_format v[40:43], s20 offset:6144 element:1 row:2 col:2 alt:1
 	ds_read_matrix_trans_format v[32:35], s20 offset:6176 element:1 row:2 col:2 alt:1
 .Ltmp209:
 	.loc	1 181 43                        ; gemm_a8w8_blockscale_persistent.py:181:43 @[ gemm_a8w8_blockscale_persistent.py:262:55 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
@@ -4840,25 +4843,25 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_branch .LBB0_188
 .LBB0_192:                              ;   in Loop: Header=BB0_187 Depth=1
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[150:153], v[64:65], v[40:41], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[150:153], v[64:65], v[36:37], v[0:3]   lts
 .Ltmp215:
 	.loc	1 377 31                        ; gemm_a8w8_blockscale_persistent.py:377:31 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_mul_i32 s0, s18, 48
 .Ltmp216:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[154:157], v[64:65], v[42:43], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[154:157], v[64:65], v[38:39], v[0:3]   lts
 .Ltmp217:
 	.loc	1 377 24                        ; gemm_a8w8_blockscale_persistent.py:377:24 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_add_i32 s0, s0, s6
 .Ltmp218:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[158:161], v[64:65], v[16:17], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[158:161], v[64:65], v[20:21], v[0:3]   lts
 .Ltmp219:
 	.loc	1 386 29                        ; gemm_a8w8_blockscale_persistent.py:386:29 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_mul_hi_i32 s1, s0, 0x66666667
 .Ltmp220:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[162:165], v[64:65], v[18:19], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[162:165], v[64:65], v[22:23], v[0:3]   lts
 .Ltmp221:
 	.loc	1 386 29                        ; gemm_a8w8_blockscale_persistent.py:386:29 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_lshr_b32 s28, s1, 31
@@ -4900,13 +4903,13 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_ashr_i32 s29, s28, 31
 .Ltmp234:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[158:161], v[60:61], v[36:37], v[158:161]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[158:161], v[60:61], v[40:41], v[158:161]   lts
 .Ltmp235:
 	.loc	1 386 35                        ; gemm_a8w8_blockscale_persistent.py:386:35 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_lshl_b32 s0, s1, 8
 .Ltmp236:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[162:165], v[60:61], v[38:39], v[162:165]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[162:165], v[60:61], v[42:43], v[162:165]   lts
 .Ltmp237:
 	.loc	1 389 39                        ; gemm_a8w8_blockscale_persistent.py:389:39 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_lshl_b64 s[28:29], s[28:29], 1
@@ -4936,19 +4939,19 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_lshl_b64 s[0:1], s[0:1], 1
 .Ltmp246:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[60:63], v[56:57], v[40:41], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[60:63], v[56:57], v[36:37], v[0:3]   lts
 .Ltmp247:
 	.loc	1 389 52                        ; gemm_a8w8_blockscale_persistent.py:389:52 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_add_u32 s0, s28, s0
 .Ltmp248:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[64:67], v[56:57], v[42:43], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[64:67], v[56:57], v[38:39], v[0:3]   lts
 .Ltmp249:
 	.loc	1 389 52                        ; gemm_a8w8_blockscale_persistent.py:389:52 @[ gemm_a8w8_blockscale_persistent.py:396 ]
 	s_addc_u32 s1, s29, s1
 .Ltmp250:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[168:171], v[56:57], v[16:17], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[168:171], v[56:57], v[20:21], v[0:3]   lts
 .Ltmp251:
 	.loc	1 66 38                         ; gemm_a8w8_blockscale_persistent.py:66:38 @[ gemm_a8w8_blockscale_persistent.py:284:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	;;#ASMSTART
@@ -4956,7 +4959,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	;;#ASMEND
 .Ltmp252:
 	.loc	1 285 34                        ; gemm_a8w8_blockscale_persistent.py:285:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mmac_f32_16x16x32_fp8_fp8 v[172:175], v[56:57], v[18:19], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[172:175], v[56:57], v[22:23], v[0:3]   lts
 .Ltmp253:
 	.loc	1 71 38                         ; gemm_a8w8_blockscale_persistent.py:71:38 @[ gemm_a8w8_blockscale_persistent.py:286:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	;;#ASMSTART
@@ -4970,44 +4973,44 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	v_mmac_f32_16x16x32_fp8_fp8 v[172:175], v[58:59], v[30:31], v[172:175]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[60:63], v[52:53], v[44:45], v[60:63]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[64:67], v[52:53], v[46:47], v[64:67]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[168:171], v[52:53], v[36:37], v[168:171]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[172:175], v[52:53], v[38:39], v[172:175]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[168:171], v[52:53], v[40:41], v[168:171]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[172:175], v[52:53], v[42:43], v[172:175]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[60:63], v[54:55], v[48:49], v[60:63]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[64:67], v[54:55], v[50:51], v[64:67]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[168:171], v[54:55], v[32:33], v[168:171]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[172:175], v[54:55], v[34:35], v[172:175]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[52:55], v[20:21], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[56:59], v[20:21], v[42:43], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[20:21], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[20:21], v[18:19], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[52:55], v[22:23], v[24:25], v[52:55]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[56:59], v[22:23], v[26:27], v[56:59]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[22:23], v[28:29], v[176:179]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[22:23], v[30:31], v[180:183]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[52:55], v[16:17], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[56:59], v[16:17], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[16:17], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[16:17], v[22:23], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[52:55], v[18:19], v[24:25], v[52:55]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[56:59], v[18:19], v[26:27], v[56:59]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[18:19], v[28:29], v[176:179]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[18:19], v[30:31], v[180:183]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[52:55], v[12:13], v[44:45], v[52:55]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[56:59], v[12:13], v[46:47], v[56:59]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[12:13], v[36:37], v[176:179]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[12:13], v[38:39], v[180:183]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[12:13], v[40:41], v[176:179]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[12:13], v[42:43], v[180:183]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[52:55], v[14:15], v[48:49], v[52:55]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[56:59], v[14:15], v[50:51], v[56:59]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[176:179], v[14:15], v[32:33], v[176:179]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[180:183], v[14:15], v[34:35], v[180:183]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[12:15], v[8:9], v[40:41], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[20:23], v[8:9], v[42:43], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[12:15], v[8:9], v[36:37], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[16:19], v[8:9], v[38:39], v[0:3]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[12:15], v[10:11], v[24:25], v[12:15]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[20:23], v[10:11], v[26:27], v[20:23]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[24:27], v[8:9], v[16:17], v[0:3]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[0:3], v[8:9], v[18:19], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[16:19], v[10:11], v[26:27], v[16:19]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[24:27], v[8:9], v[20:21], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[36:39], v[8:9], v[22:23], v[0:3]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[24:27], v[10:11], v[28:29], v[24:27]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[0:3], v[10:11], v[30:31], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[36:39], v[10:11], v[30:31], v[36:39]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[12:15], v[4:5], v[44:45], v[12:15]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[20:23], v[4:5], v[46:47], v[20:23]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[24:27], v[4:5], v[36:37], v[24:27]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[0:3], v[4:5], v[38:39], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[16:19], v[4:5], v[46:47], v[16:19]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[24:27], v[4:5], v[40:41], v[24:27]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[36:39], v[4:5], v[42:43], v[36:39]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[12:15], v[6:7], v[48:49], v[12:15]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[20:23], v[6:7], v[50:51], v[20:23]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[16:19], v[6:7], v[50:51], v[16:19]   lts
 	v_mmac_f32_16x16x32_fp8_fp8 v[24:27], v[6:7], v[32:33], v[24:27]   lts
-	v_mmac_f32_16x16x32_fp8_fp8 v[0:3], v[6:7], v[34:35], v[0:3]   lts
+	v_mmac_f32_16x16x32_fp8_fp8 v[36:39], v[6:7], v[34:35], v[36:39]   lts
 .Ltmp255:
 	.loc	1 72 21                         ; gemm_a8w8_blockscale_persistent.py:72:21 @[ gemm_a8w8_blockscale_persistent.py:286:34 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	s_setprio 0
@@ -5015,7 +5018,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	.loc	1 180 17                        ; gemm_a8w8_blockscale_persistent.py:180:17 @[ gemm_a8w8_blockscale_persistent.py:287:47 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
 	s_waitcnt lgkmcnt(0)
 	.loc	1 181 43                        ; gemm_a8w8_blockscale_persistent.py:181:43 @[ gemm_a8w8_blockscale_persistent.py:287:47 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ] ]
-	v_cndmask_b32_e32 v4, v133, v132, vcc
+	v_cndmask_b32_e32 v0, v133, v132, vcc
 .Ltmp257:
 	; sched_barrier mask(0x00000000)
 	.loc	1 297 8                         ; gemm_a8w8_blockscale_persistent.py:297:8 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
@@ -5024,95 +5027,98 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	s_add_u32 s0, s28, 0x120000
 	s_addc_u32 s1, s29, 0
 	.loc	1 290 58                        ; gemm_a8w8_blockscale_persistent.py:290:58 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mov_b32_e32 v5, v20
-	v_mov_b32_e32 v7, v168
-	v_mov_b32_e32 v9, v180
+	v_mov_b32_e32 v1, v180
+	v_mov_b32_e32 v3, v60
+	v_mov_b32_e32 v5, v56
+	v_mov_b32_e32 v7, v158
+	v_mov_b32_e32 v9, v24
 	v_mov_b32_e32 v11, v12
 	.loc	1 297 8                         ; gemm_a8w8_blockscale_persistent.py:297:8 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
 	s_and_b32 s1, s1, 0xffff
 	.loc	1 290 58                        ; gemm_a8w8_blockscale_persistent.py:290:58 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
-	v_mov_b32_e32 v6, v21
-	v_mov_b32_e32 v8, v169
-	v_mov_b32_e32 v10, v181
-	v_mov_b64_e32 v[16:17], v[60:61]
-	v_mov_b64_e32 v[18:19], v[56:57]
-	v_mov_b64_e32 v[20:21], v[158:159]
-	v_mov_b64_e32 v[28:29], v[178:179]
-	v_mov_b64_e32 v[30:31], v[172:173]
-	v_mov_b64_e32 v[32:33], v[164:165]
-	v_mov_b64_e32 v[34:35], v[150:151]
+	v_mov_b32_e32 v2, v181
+	v_mov_b32_e32 v4, v61
+	v_mov_b32_e32 v6, v57
+	v_mov_b32_e32 v8, v159
+	v_mov_b32_e32 v10, v25
+	v_mov_b64_e32 v[20:21], v[172:173]
+	v_mov_b64_e32 v[22:23], v[150:151]
+	v_mov_b64_e32 v[24:25], v[38:39]
 	v_mov_b32_e32 v12, v13
-	v_mov_b64_e32 v[36:37], v[54:55]
-	v_mov_b64_e32 v[38:39], v[64:65]
-	v_mov_b64_e32 v[40:41], v[156:157]
+	v_mov_b64_e32 v[28:29], v[54:55]
+	v_mov_b64_e32 v[30:31], v[64:65]
+	v_mov_b64_e32 v[32:33], v[156:157]
+	v_mov_b64_e32 v[34:35], v[176:177]
+	v_mov_b64_e32 v[38:39], v[170:171]
+	v_mov_b64_e32 v[40:41], v[162:163]
 	.loc	1 297 8                         ; gemm_a8w8_blockscale_persistent.py:297:8 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
 	s_add_u32 s33, s28, 0x1b0000
 	.loc	1 290 58                        ; gemm_a8w8_blockscale_persistent.py:290:58 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
 	;;#ASMSTART
-	v_pk_mul_f32 v[34:35], v[34:35], v[134:135]
+	v_pk_mul_f32 v[22:23], v[22:23], v[134:135]
 	v_pk_mul_f32 v[152:153], v[152:153], v[136:137]
 	v_pk_mul_f32 v[154:155], v[154:155], v[134:135]
-	v_pk_mul_f32 v[40:41], v[40:41], v[136:137]
-	v_pk_mul_f32 v[20:21], v[20:21], v[134:135]
-	v_pk_mul_f32 v[160:161], v[160:161], v[136:137]
-	v_pk_mul_f32 v[162:163], v[162:163], v[134:135]
 	v_pk_mul_f32 v[32:33], v[32:33], v[136:137]
-	v_pk_mul_f32 v[16:17], v[16:17], v[138:139]
+	v_pk_mul_f32 v[7:8], v[7:8], v[134:135]
+	v_pk_mul_f32 v[160:161], v[160:161], v[136:137]
+	v_pk_mul_f32 v[40:41], v[40:41], v[134:135]
+	v_pk_mul_f32 v[164:165], v[164:165], v[136:137]
+	v_pk_mul_f32 v[3:4], v[3:4], v[138:139]
 	v_pk_mul_f32 v[62:63], v[62:63], v[140:141]
-	v_pk_mul_f32 v[38:39], v[38:39], v[138:139]
-	v_pk_mul_f32 v[66:67], v[66:67], v[140:141]
-	v_pk_mul_f32 v[7:8], v[7:8], v[138:139]
-	v_pk_mul_f32 v[170:171], v[170:171], v[140:141]
 	v_pk_mul_f32 v[30:31], v[30:31], v[138:139]
+	v_pk_mul_f32 v[66:67], v[66:67], v[140:141]
+	v_pk_mul_f32 v[168:169], v[168:169], v[138:139]
+	v_pk_mul_f32 v[38:39], v[38:39], v[140:141]
+	v_pk_mul_f32 v[20:21], v[20:21], v[138:139]
 	v_pk_mul_f32 v[174:175], v[174:175], v[140:141]
 	v_pk_mul_f32 v[52:53], v[52:53], v[142:143]
-	v_pk_mul_f32 v[36:37], v[36:37], v[144:145]
-	v_pk_mul_f32 v[18:19], v[18:19], v[142:143]
-	v_pk_mul_f32 v[58:59], v[58:59], v[144:145]
-	v_pk_mul_f32 v[176:177], v[176:177], v[142:143]
 	v_pk_mul_f32 v[28:29], v[28:29], v[144:145]
-	v_pk_mul_f32 v[9:10], v[9:10], v[142:143]
+	v_pk_mul_f32 v[5:6], v[5:6], v[142:143]
+	v_pk_mul_f32 v[58:59], v[58:59], v[144:145]
+	v_pk_mul_f32 v[34:35], v[34:35], v[142:143]
+	v_pk_mul_f32 v[178:179], v[178:179], v[144:145]
+	v_pk_mul_f32 v[1:2], v[1:2], v[142:143]
 	v_pk_mul_f32 v[182:183], v[182:183], v[144:145]
 	v_pk_mul_f32 v[11:12], v[11:12], v[146:147]
 	v_pk_mul_f32 v[14:15], v[14:15], v[148:149]
-	v_pk_mul_f32 v[5:6], v[5:6], v[146:147]
-	v_pk_mul_f32 v[22:23], v[22:23], v[148:149]
-	v_pk_mul_f32 v[24:25], v[24:25], v[146:147]
+	v_pk_mul_f32 v[16:17], v[16:17], v[146:147]
+	v_pk_mul_f32 v[18:19], v[18:19], v[148:149]
+	v_pk_mul_f32 v[9:10], v[9:10], v[146:147]
 	v_pk_mul_f32 v[26:27], v[26:27], v[148:149]
-	v_pk_mul_f32 v[0:1], v[0:1], v[146:147]
-	v_pk_mul_f32 v[2:3], v[2:3], v[148:149]
-	v_pk_fma_f32 v[98:99], v[34:35], v[4:5], v[98:99] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[96:97], v[152:153], v[4:5], v[96:97] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[110:111], v[154:155], v[4:5], v[110:111] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[108:109], v[40:41], v[4:5], v[108:109] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[78:79], v[20:21], v[4:5], v[78:79] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[76:77], v[160:161], v[4:5], v[76:77] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[86:87], v[162:163], v[4:5], v[86:87] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[84:85], v[32:33], v[4:5], v[84:85] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[126:127], v[16:17], v[4:5], v[126:127] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[124:125], v[62:63], v[4:5], v[124:125] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[130:131], v[38:39], v[4:5], v[130:131] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[128:129], v[66:67], v[4:5], v[128:129] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[106:107], v[7:8], v[4:5], v[106:107] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[104:105], v[170:171], v[4:5], v[104:105] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[118:119], v[30:31], v[4:5], v[118:119] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[116:117], v[174:175], v[4:5], v[116:117] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[82:83], v[52:53], v[4:5], v[82:83] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[80:81], v[36:37], v[4:5], v[80:81] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[94:95], v[18:19], v[4:5], v[94:95] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[92:93], v[58:59], v[4:5], v[92:93] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[70:71], v[176:177], v[4:5], v[70:71] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[68:69], v[28:29], v[4:5], v[68:69] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[74:75], v[9:10], v[4:5], v[74:75] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[72:73], v[182:183], v[4:5], v[72:73] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[114:115], v[11:12], v[4:5], v[114:115] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[112:113], v[14:15], v[4:5], v[112:113] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[122:123], v[5:6], v[4:5], v[122:123] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[120:121], v[22:23], v[4:5], v[120:121] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[90:91], v[24:25], v[4:5], v[90:91] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[88:89], v[26:27], v[4:5], v[88:89] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[102:103], v[0:1], v[4:5], v[102:103] op_sel_hi:[1,0,1]
-	v_pk_fma_f32 v[100:101], v[2:3], v[4:5], v[100:101] op_sel_hi:[1,0,1]
+	v_pk_mul_f32 v[36:37], v[36:37], v[146:147]
+	v_pk_mul_f32 v[24:25], v[24:25], v[148:149]
+	v_pk_fma_f32 v[98:99], v[22:23], v[0:1], v[98:99] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[96:97], v[152:153], v[0:1], v[96:97] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[110:111], v[154:155], v[0:1], v[110:111] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[108:109], v[32:33], v[0:1], v[108:109] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[78:79], v[7:8], v[0:1], v[78:79] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[76:77], v[160:161], v[0:1], v[76:77] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[86:87], v[40:41], v[0:1], v[86:87] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[84:85], v[164:165], v[0:1], v[84:85] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[126:127], v[3:4], v[0:1], v[126:127] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[124:125], v[62:63], v[0:1], v[124:125] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[130:131], v[30:31], v[0:1], v[130:131] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[128:129], v[66:67], v[0:1], v[128:129] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[106:107], v[168:169], v[0:1], v[106:107] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[104:105], v[38:39], v[0:1], v[104:105] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[118:119], v[20:21], v[0:1], v[118:119] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[116:117], v[174:175], v[0:1], v[116:117] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[82:83], v[52:53], v[0:1], v[82:83] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[80:81], v[28:29], v[0:1], v[80:81] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[94:95], v[5:6], v[0:1], v[94:95] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[92:93], v[58:59], v[0:1], v[92:93] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[70:71], v[34:35], v[0:1], v[70:71] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[68:69], v[178:179], v[0:1], v[68:69] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[74:75], v[1:2], v[0:1], v[74:75] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[72:73], v[182:183], v[0:1], v[72:73] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[114:115], v[11:12], v[0:1], v[114:115] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[112:113], v[14:15], v[0:1], v[112:113] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[122:123], v[16:17], v[0:1], v[122:123] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[120:121], v[18:19], v[0:1], v[120:121] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[90:91], v[9:10], v[0:1], v[90:91] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[88:89], v[26:27], v[0:1], v[88:89] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[102:103], v[36:37], v[0:1], v[102:103] op_sel_hi:[1,0,1]
+	v_pk_fma_f32 v[100:101], v[24:25], v[0:1], v[100:101] op_sel_hi:[1,0,1]
 
 	;;#ASMEND
 	.loc	1 297 8                         ; gemm_a8w8_blockscale_persistent.py:297:8 @[ gemm_a8w8_blockscale_persistent.py:391:72 @[ gemm_a8w8_blockscale_persistent.py:396 ] ]
@@ -5256,7 +5262,7 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 	.set _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel.has_indirect_call, 0
 	.section	.AMDGPU.csdata,"",@progbits
 ; Kernel info:
-; codeLenInByte = 22064
+; codeLenInByte = 22092
 ; TotalNumSgprs: 46
 ; NumVgprs: 124
 ; BranchSpillInfo: (false, false, false, false)
@@ -6098,9 +6104,9 @@ _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn25
 .Linfo_string1:
 	.asciz	"gemm_a8w8_blockscale_persistent.py" ; string offset=7
 .Linfo_string2:
-	.asciz	"/xukang/code/pmd-triton-sessions/r009-matrix-store-latest/repo/boltops/gemm/gluon" ; string offset=42
+	.asciz	"/xukang/code/pmd-triton-sessions/r009-llvm-test-patch/repo/boltops/gemm/gluon" ; string offset=42
 .Linfo_string3:
-	.asciz	"_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel" ; string offset=124
+	.asciz	"_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel" ; string offset=120
 	.ident	"clang version 18.0.0 (/buildspace/das-build/staging-pmd-6.3.3/llvm-project/clang d18da61d4bca49003103ad25f881b799f8a373ec)"
 	.section	".note.GNU-stack","",@progbits
 	.addrsig
