@@ -345,12 +345,12 @@
   },
   "benchmark": {
     "script": "benchmark.py",
-    "sha256": "87ee240e710ffd0bc73fd9c90fb804c6cea2edb82816a7a98d15c54ec4d96e98",
+    "sha256": "82653f68ad07b6b4f659d374a6e16cc2ff97a769d5e11837b30bac60a109a5cc",
     "seed": 21,
     "repeats": 1,
     "command": "python docs/ops/gemm/tuning/r009/2die/tn/benchmark.py --record docs/ops/gemm/tuning/r009/2die/tn/record.json --output /tmp/r009-2die-tn-full",
     "measured_script_sha256": "efb30a723b65a58e0bafb85109fd6575335a496ed9b4edafef3513fb5b950e91",
-    "publication_changes": "Remove unused PERF modes and report exact per-TG tile counts; input generation, public dispatch, complete-system timing, and output validation preserve the measured protocol"
+    "publication_changes": "Optional single-TG PERF mode added; default full-system timing, input generation, public dispatch and validation preserve the measured protocol; per-TG tile counts are exact"
   },
   "comparison": {
     "48_TG_same_chip": {
@@ -404,6 +404,49 @@
           ".text": "9c3fad25e02413d4ee4de29bc57a48c62a55984ff79a7fe7cf387b127915200c"
         }
       }
+    }
+  },
+  "single_tg_perf": {
+    "path": "single_tg.perf",
+    "sha256": "bbe0c104a54afb8980158008c979f1f22d9655046ec54f49631afd408312be2d",
+    "die": 0,
+    "cu_id": 0,
+    "scope": "One TG using the measured 96-TG mapping on sbx2; 8 complete tiles, complete K and original N stride; duration is not full-grid performance",
+    "tiles": 8,
+    "tile_ids": [
+      0,
+      96,
+      192,
+      288,
+      384,
+      480,
+      576,
+      672
+    ],
+    "seed": 21,
+    "repeat": 2,
+    "selection": "lowest kernel duration among three independently validated profiling launches",
+    "samples_kernel_us": [
+      100.705605,
+      98.911085,
+      93.87651
+    ],
+    "environment_overrides": {
+      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+    },
+    "command": "python docs/ops/gemm/tuning/r009/2die/tn/benchmark.py --record docs/ops/gemm/tuning/r009/2die/tn/record.json --output /tmp/r009-2die-tn-single-tg --single-tg-perf",
+    "hsaco_sha256": "04b700e0ce36c6b3ddcc1b33f1ad7be68848707262b903e46486523f8823ce37",
+    "executable_text_sha256": "8005484e9a5003574f5e562ff92baaa6a968c5ffa93115025415cd3ca147bc63",
+    "rodata_sha256": "c18b1de204c4ecd4699aaca706275a852ef8e43218139e1c21c928dbbfefd408",
+    "equivalence": "Full/PERF .text/.rodata and launch-resource metadata match; PERF embedded HSACO SHA256 matches the captured kernel; whole HSACO hashes are recorded separately",
+    "validation": {
+      "samples": 3,
+      "elements_per_sample": 262144,
+      "max_abs": 0.0,
+      "mismatch": 0,
+      "nonfinite": 0,
+      "canary_ok": true
     }
   }
 }

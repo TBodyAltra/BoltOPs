@@ -315,7 +315,7 @@ One complete cold dispatch, GC455ps. E4M3FN inputs, BF16 output; B scale BF16 va
 |---|---|---|---|
 | sbx2 /96 TG ×10 tiles | 129.222 /997.12 | {'0': 48, '1': 48} | 1.8892× |
 
-One complete cold public-API dispatch; all31,457,280 outputs match, guards pass, and both dies execute. Time is complete-system gcSimCycles; per-die times are not summed. The96-TG dispatch uses all96 CU. No PERF capture. [Dual-die record](docs/ops/gemm/tuning/r010/2die/tn/record.json).
+One complete cold public-API dispatch; all31,457,280 outputs match, guards pass, and both dies execute. Time is complete-system gcSimCycles; per-die times are not summed. The96-TG dispatch uses all96 CU. Single-TG PERF covers10 tiles with the same .text/.rodata as the full96-TG kernel; all327,680 selected outputs and uncovered output guards passed in three captures. [Dual-die record](docs/ops/gemm/tuning/r010/2die/tn/record.json).
 
 ## License
 
