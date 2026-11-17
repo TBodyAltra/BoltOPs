@@ -310,10 +310,9 @@ One complete cold dispatch, GC455ps. E4M3FN inputs, BF16 output; B scale BF16 va
 
 | Chip / grid | Kernel (µs / TOPS) | TGs per die | Speedup vs single die |
 |---|---|---|---|
-| sbx2 /48 TG ×20 tiles | 248.107 /519.33 | {'0': 24, '1': 24} | 0.9840× |
 | sbx2 /96 TG ×10 tiles | 129.222 /997.12 | {'0': 48, '1': 48} | 1.8892× |
 
-One complete cold public-API dispatch per variant; all31,457,280 outputs match, guards pass, and both dies execute. Time is complete-system gcSimCycles; per-die times are not summed. The48-TG control retains the single-die binary .text/.rodata;96TG uses all96 CU. No PERF capture. [Dual-die record](docs/ops/gemm/tuning/r010/2die/tn/record.json) · [48-TG control](docs/ops/gemm/tuning/r010/2die/tn/control_48tg/record.json).
+One complete cold public-API dispatch; all31,457,280 outputs match, guards pass, and both dies execute. Time is complete-system gcSimCycles; per-die times are not summed. The96-TG dispatch uses all96 CU. No PERF capture. [Dual-die record](docs/ops/gemm/tuning/r010/2die/tn/record.json).
 
 ## License
 
