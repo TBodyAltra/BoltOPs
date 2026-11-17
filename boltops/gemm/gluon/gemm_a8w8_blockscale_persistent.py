@@ -410,9 +410,12 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     NUM_SMS: gl.constexpr,
     TILE_LIMIT: gl.constexpr,
 ):
-    gl.static_assert(NUM_SMS == 48 and TILE_LIMIT == 720, "this pipeline requires 48 TGs and 720 tiles")
+    gl.static_assert(NUM_SMS == 48, "this pipeline requires 48 TGs")
+    gl.static_assert(TILE_LIMIT == (M // 128) * (N // 256) and TILE_LIMIT % NUM_SMS == 0,
+                     "this pipeline requires complete, evenly distributed tiles")
     gl.static_assert((K // 128) % 4 == 0, "per-slot phases must wrap across tiles")
-    gl.static_assert((M, N, K) == (2560, 9216, 2048), "this persistent pipeline requires R009")
+    gl.static_assert(M == 2560 and (N == 9216 or N == 12288) and K == 2048,
+                     "this persistent pipeline requires R009 or R010")
     gl.static_assert((BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K) == (128, 256, 128),
                      "this pipeline requires tile (128,256,128)")
     gl.static_assert(M % 128 == 0 and N % 256 == 0 and K % 256 == 0 and K >= 256 and K <= 6144,
