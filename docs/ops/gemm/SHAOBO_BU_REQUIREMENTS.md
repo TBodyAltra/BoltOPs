@@ -353,8 +353,8 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r010/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r010/1die/tn/record.json">292.620 / 440.33 / 50.95%</a></td>
-      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/62a368fb3824d0895779000f03163e7771f13575/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r010/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r010/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r010/1die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r010/1die/tn/record.json">244.128 / 527.79 / 61.09%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/2f7e8ac5252ea97ce716fd7360203d52d35d47e8/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L396">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/2f7e8ac5252ea97ce716fd7360203d52d35d47e8/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r010/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r010/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r010/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r010/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
