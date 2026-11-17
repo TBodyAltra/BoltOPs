@@ -300,3 +300,16 @@ notices; see the source file headers and the module source notes in
 [gemm](boltops/gemm/triton/SOURCE.md), [MLA](boltops/mla/triton/SOURCE.md),
 [MQA logits](boltops/mqa_logits/triton/SOURCE.md), and
 [Step-4 DSA](boltops/step4_dsa/triton/SOURCE.md).
+
+## R002 LDS read prefetch experiment
+
+2026-11-17, node60 PMD HEAD_1703 / gfx946 / 48 CU, the recorded Triton MR565 and DTK Clang runtime. Original MNK/strides and K=2048; first TG only, three warm samples. These are partial-grid screening results, not full-R002 performance.
+
+| Configuration | Dispatch µs | Shader µs | VGPR | LDS KiB | Result |
+|---|---:|---:|---:|---:|---|
+| 2 slots, original consumer | 17.778 | 14.166 | 130 | 80 | Random / ones / random PASS |
+| 2 slots, register prefetch | 18.435 | 14.823 | 206 | 80 | Random / ones / random PASS |
+| 3 slots, original consumer | 16.587 | 12.975 | 130 | 120 | Random PASS |
+| 3 slots, register prefetch | 15.438 | 11.825 | 206 | 120 | Random PASS; profile additionally checked random / ones / random |
+
+All checked outputs and canaries passed, outside-grid output remained NaN, no SGPR/VGPR spill. Screening source, native assembly, stats and PERF are saved outside tuning under `/home/kxu/r002-ds-prefetch-20261117-results`; remote logs use `/xukang/code/pmd-triton-sessions/r002-ds-prefetch-20261117`. Complete-grid replay is pending.
