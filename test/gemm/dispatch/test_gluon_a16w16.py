@@ -356,9 +356,10 @@ def test_wide_tt_public_dispatch(monkeypatch):
     assert args[0] is a and args[1] is w and args[2] is out
     assert params["wasp_partition_warps"] == (2, 4)
     assert (params["BLOCK_SIZE_M"], params["BLOCK_SIZE_N"], params["BLOCK_SIZE_K"]) == (64, 256, 64)
-    assert (params["CHUNKS"], params["SLOTS"]) == (1, 2)
+    assert (params["CHUNKS"], params["SLOTS"]) == (1, 3)
 
 
+    assert params["PREFETCH"] is True
 
 @pytest.mark.parametrize("layout", ["TN", "TT"])
 def test_fixed_bf16_config_is_not_reused_for_fp16(layout):
