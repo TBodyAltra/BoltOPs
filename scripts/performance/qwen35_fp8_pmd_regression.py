@@ -140,15 +140,16 @@ def objects(node):
 def verify_model(record, measurement):
     model = {obj['path']: obj for obj in objects(load(measurement / 'm5out/config.json'))}
     expected = record['environment']
-    shader_paths = [p for p in model if re.fullmatch(r'system(?:\d+)?\.shaders', p)]
+    shader_paths = [p for p in model if re.fullmatch(r'system(?:\d+)?\.shaders\d*', p)]
     if len(shader_paths) != expected['dies']:
         raise ValueError('PMD DIE count differs from baseline')
-    if len([p for p in model if re.fullmatch(r'system(?:\d+)?\.shaders\.CUs\d+', p)]) != expected['cu_count']:
+    if len([p for p in model if re.fullmatch(r'system(?:\d+)?\.shaders\d*\.CUs\d+', p)]) != expected['cu_count']:
         raise ValueError('PMD CU count differs from baseline')
-    clock = model['system.shaders.clk_domain']['clock'][0]
+    clocks = [model[path + '.clk_domain']['clock'][0] for path in shader_paths]
     expected_clock = expected['clock_period_ps']['gc']
-    if clock != expected_clock:
-        raise ValueError(f'PMD GC clock differs: {clock} vs {expected_clock} ps')
+    if any(clock != expected_clock for clock in clocks):
+        raise ValueError(f'PMD GC clocks differ: {clocks} vs {expected_clock} ps')
+    clock = clocks[0]
     configuration = model['gpu_configuration']
     if configuration.get('ipc_conn') or configuration.get('skip_cal') or configuration.get('skip_kernel_exec'):
         raise ValueError('requires an independent core-only PMD with kernel execution enabled')
@@ -184,12 +185,13 @@ def verify_sample(record, sample, measurement, clock):
     frequency = positive(values['simFreq'], 'simFreq')
     if frequency != 1e12:
         raise ValueError('PMD tick resolution differs from recorded picosecond clocks')
-    counts = [v for k, v in values.items() if re.fullmatch(r'system\.shaders\.CUs\d+\.completedWGs', k)]
+    counts = [v for k, v in values.items() if re.fullmatch(r'system(?:\d+)?\.shaders\d*\.CUs\d+\.completedWGs', k)]
     expected_tgs = record['performance']['launched_TGs']
     if not counts or sum(counts) != expected_tgs or sample['completed_TGs'] != expected_tgs:
         raise ValueError('launched/completed TG count differs from complete baseline grid')
-    actual_clock = values.get('system.shaders.clk_domain.clock', clock)
-    if actual_clock != clock:
+    actual_clocks = [v for k, v in values.items()
+                     if re.fullmatch(r'system(?:\d+)?\.shaders\d*\.clk_domain\.clock', k)]
+    if any(actual_clock != clock for actual_clock in actual_clocks):
         raise ValueError('stats clock differs from model clock')
     us = cycles * clock / frequency * 1e6
     if not math.isclose(positive(sample['kernel_us'], 'kernel_us'), us, rel_tol=1e-10):
