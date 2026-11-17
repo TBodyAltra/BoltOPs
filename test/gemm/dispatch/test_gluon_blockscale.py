@@ -385,18 +385,23 @@ def test_chunked_scale_pipeline_rejects_partial_chunks():
         gemm_a8w8_blockscale(a, b, sa, sb, backend="gluon", config=config)
 
 
-def test_chunked_mmac_turn_encloses_complete_instruction_group():
-    shape = (2560, 2048, 4096)
+@pytest.mark.parametrize("shape,cu_count,layout", [
+    ((2560, 2048, 4096), 48, "TN"),
+    ((2560, 12288, 2048), 96, "TN"),
+    ((2560, 12288, 2048), 96, "TT"),
+])
+def test_mmac_turn_encloses_complete_instruction_group(shape, cu_count, layout):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     import re
     from boltops.utility.arch_info import get_device_info
 
     device = get_device_info()
-    if device.arch != "gfx946" or device.cu_count != 48:
-        pytest.skip("requires gfx946 with 48 CU")
+    if device.arch != "gfx946" or device.cu_count != cu_count:
+        pytest.skip(f"requires gfx946 with {cu_count} CU")
     config, _ = get_gemm_config(
         "GEMM-A8W8_BLOCKSCALE", *shape, profile=PROFILE,
+        layout="TT" if layout == "TT" else None,
         backend="gluon", arch=device.arch, cu_num=device.cu_count,
     )
     kernels = import_module(f"boltops.gemm.gluon.{MODULE}")
@@ -406,6 +411,10 @@ def test_chunked_mmac_turn_encloses_complete_instruction_group():
     m, n, k = shape
     a = torch.empty((m, k), dtype=torch.float8_e4m3fn, device="cuda")
     b = torch.empty((n, k), dtype=a.dtype, device=a.device)
+    if layout == "TT":
+        b = b.as_strided((n, k), (1, n))
+    if cu_count == 96:
+        config["B_K_CONTIGUOUS"] = layout == "TN"
     sa = torch.empty((m, k // 128), dtype=torch.float32, device=a.device)
     sb = torch.empty((n // 128, k // 128), dtype=torch.float32, device=a.device)
     out = torch.empty((m, n), dtype=torch.bfloat16, device=a.device)
@@ -434,3 +443,54 @@ def test_chunked_mmac_turn_encloses_complete_instruction_group():
             assert waiting is not None, "MMAC escaped its execution-barrier boundaries"
             mmacs += 1
     assert waiting is None and groups == 6
+
+
+@pytest.mark.parametrize("layout,m", [("TN", 2560), ("TT", 2560), ("TT", 128), ("sliced", 2560)])
+def test_r010_sbx2_layout_dispatch(monkeypatch, layout, m):
+    if not torch.cuda.is_available():
+        pytest.skip("requires GPU allocations")
+    from boltops.utility.arch_info import get_device_info
+
+    device = get_device_info()
+    if device.arch != "gfx946" or device.cu_count != 96:
+        pytest.skip("requires gfx946 with 96 CU")
+    kernels = import_module(f"boltops.gemm.gluon.{MODULE}")
+    triton = import_module("boltops.gemm.triton.gemm_a8w8_blockscale_fp8")
+    config, tuned = get_gemm_config(
+        "GEMM-A8W8_BLOCKSCALE", 2560, 12288, 2048, profile=PROFILE,
+        layout="TT" if layout == "TT" else None,
+        backend="gluon", arch=device.arch, cu_num=device.cu_count,
+    )
+    assert tuned
+    calls = []
+
+    class CaptureKernel:
+        def __init__(self, backend):
+            self.backend = backend
+
+        def __getitem__(self, grid):
+            def launch(*args, **kwargs):
+                calls.append((self.backend, grid(kwargs), kwargs))
+            return launch
+
+    monkeypatch.setattr(kernels, config["kernel"], CaptureKernel("gluon"))
+    monkeypatch.setattr(triton, "_w8a8_triton_block_scaled_mm", CaptureKernel("triton"))
+    a = torch.empty((m, 2048), dtype=torch.float8_e4m3fn, device="cuda")
+    if layout == "TT":
+        b = torch.empty((2048, 12288), dtype=a.dtype, device=a.device).T
+    elif layout == "sliced":
+        b = torch.empty((12288, 4096), dtype=a.dtype, device=a.device)[:, ::2]
+    else:
+        b = torch.empty((12288, 2048), dtype=a.dtype, device=a.device)
+    sa = torch.empty((m, 16), dtype=torch.float32, device=a.device)
+    sb = torch.empty((96, 16), dtype=torch.float32, device=a.device)
+    out = gemm_a8w8_blockscale(a, b, sa, sb)
+    assert out.shape == (m, 12288)
+    assert len(calls) == 1
+    backend, grid, options = calls[0]
+    if m == 2560 and layout != "sliced":
+        assert backend == "gluon" and grid == (96,)
+        assert options["B_K_CONTIGUOUS"] == (layout == "TN")
+        assert options["TILE_LIMIT"] == 960
+    else:
+        assert backend == "triton"

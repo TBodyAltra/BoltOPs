@@ -55,7 +55,9 @@ def _wait_all_lds_reads():
 
 
 @g.jit
-def _synchronize_mmac_turn(GROUP: gl.constexpr, WAIT: gl.constexpr):
+def _synchronize_mmac_turn(GROUP: gl.constexpr, WAIT: gl.constexpr, FENCE: gl.constexpr = False):
+    if FENCE:
+        sched_barrier(0)
     # These execution barriers hand off the MMAC turn only. A/B readiness
     # and LDS slot lifetime remain protected by the separate abarriers.
     # Keep pending scale reads in flight across the execution handoff.
@@ -70,6 +72,8 @@ def _synchronize_mmac_turn(GROUP: gl.constexpr, WAIT: gl.constexpr):
         else:
             gl.inline_asm_elementwise("s_ebarrier_arrive 8, 8", constraints="=s", args=[], dtype=gl.int32, is_pure=False, pack=1)
         set_priority(0)
+    if FENCE:
+        sched_barrier(0)
 
 
 @g.jit
@@ -93,6 +97,9 @@ def _produce_ab_and_scales(
     K: gl.constexpr,
     GROUP: gl.constexpr,
     REUSE=False,
+    N: gl.constexpr = 0,
+    B_K_CONTIGUOUS: gl.constexpr = True,
+    B_LOAD_WARPS: gl.constexpr = (1, 4),
 ):
     wave = get_wave_id()
     for i in range(K // 128):
@@ -112,7 +119,9 @@ def _produce_ab_and_scales(
             if i >= 2 or REUSE:
                 abarrier_try_wait(8 + slot * 4, ((i // 2) + 1) % 2)
             abarrier_seq(9 + slot * 4)
-            matrix_load(smB, B, (K, 256), (1, K), (i * 128, 0))
+            matrix_load(smB, B, (K, 256),
+                        (1, K) if B_K_CONTIGUOUS else (N, 1),
+                        (i * 128, 0), warps=B_LOAD_WARPS)
             abarrier_arrive(9 + slot * 4)
         else:
             if i >= 2 or REUSE:
@@ -198,9 +207,11 @@ def _consume_ab_and_accumulate(
     N: gl.constexpr,
     GROUP: gl.constexpr,
     F: gl.constexpr,
+    B_K_CONTIGUOUS: gl.constexpr = True,
+    FENCE_MMAC_TURN: gl.constexpr = False,
 ):
     wave = get_wave_id()
-    RF: gl.constexpr = MmacInterleave2Layout(F)
+    RF: gl.constexpr = MmacInterleave2Layout(F) if B_K_CONTIGUOUS else F
     acc = gl.full((64, 256), 0, gl.float32, RF)
     # TODO: replace with gl.full once LLVM keeps the zero VGPR tuple outside
     # the loop instead of rematerializing it and repacking registers per MMAC.
@@ -219,7 +230,7 @@ def _consume_ab_and_accumulate(
     _wait_a_tile_ready(0, GROUP)
     a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
     _wait_b_tile_ready(0)
-    b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
+    b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)) if B_K_CONTIGUOUS else gl.DotOperandLayout(1, F, 8))
     sched_barrier(0)
     sa, sb = _prefetch_scale_tile(smAS0, smAS1, smBS, 0, m, lane_m_byte, bs_group, GROUP, RF)
     _release_ab_lds_slots(0, GROUP)
@@ -227,9 +238,9 @@ def _consume_ab_and_accumulate(
         i = pair * 2
         j = i + 1
         sched_barrier(0)
-        _synchronize_mmac_turn(GROUP, True)
+        _synchronize_mmac_turn(GROUP, True, FENCE_MMAC_TURN)
         dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
-        _synchronize_mmac_turn(GROUP, False)
+        _synchronize_mmac_turn(GROUP, False, FENCE_MMAC_TURN)
         selected_bs = _select_b_scale_for_wave(sb, bs_group)
         _wait_a_tile_ready(j, GROUP)
         if j % 2 == 0:
@@ -238,9 +249,9 @@ def _consume_ab_and_accumulate(
             a = async_copy.load_shared_relaxed(smA1, gl.DotOperandLayout(0, F, 8))
         _wait_b_tile_ready(j)
         if j % 2 == 0:
-            b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
+            b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)) if B_K_CONTIGUOUS else gl.DotOperandLayout(1, F, 8))
         else:
-            b = async_copy.load_shared_relaxed(smB1, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
+            b = async_copy.load_shared_relaxed(smB1, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)) if B_K_CONTIGUOUS else gl.DotOperandLayout(1, F, 8))
         sched_barrier(0)
         next_sa, next_sb = _prefetch_scale_tile(
             smAS0, smAS1, smBS, j, m, lane_m_byte, bs_group, GROUP, RF
@@ -256,9 +267,9 @@ def _consume_ab_and_accumulate(
             i = pair * 2 + 1
             j = i + 1
             sched_barrier(0)
-            _synchronize_mmac_turn(GROUP, True)
+            _synchronize_mmac_turn(GROUP, True, FENCE_MMAC_TURN)
             dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
-            _synchronize_mmac_turn(GROUP, False)
+            _synchronize_mmac_turn(GROUP, False, FENCE_MMAC_TURN)
             selected_bs = _select_b_scale_for_wave(sb, bs_group)
             _wait_a_tile_ready(j, GROUP)
             if j % 2 == 0:
@@ -267,9 +278,9 @@ def _consume_ab_and_accumulate(
                 a = async_copy.load_shared_relaxed(smA1, gl.DotOperandLayout(0, F, 8))
             _wait_b_tile_ready(j)
             if j % 2 == 0:
-                b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
+                b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)) if B_K_CONTIGUOUS else gl.DotOperandLayout(1, F, 8))
             else:
-                b = async_copy.load_shared_relaxed(smB1, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)))
+                b = async_copy.load_shared_relaxed(smB1, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)) if B_K_CONTIGUOUS else gl.DotOperandLayout(1, F, 8))
             sched_barrier(0)
             next_sa, next_sb = _prefetch_scale_tile(
                 smAS0, smAS1, smBS, j, m, lane_m_byte, bs_group, GROUP, RF
@@ -281,25 +292,29 @@ def _consume_ab_and_accumulate(
             sa = next_sa
             sb = next_sb
             sched_barrier(0)
-    _synchronize_mmac_turn(GROUP, True)
+    _synchronize_mmac_turn(GROUP, True, FENCE_MMAC_TURN)
     dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
-    _synchronize_mmac_turn(GROUP, False)
+    _synchronize_mmac_turn(GROUP, False, FENCE_MMAC_TURN)
     selected_bs = _select_b_scale_for_wave(sb, bs_group)
     # Keep scale reads ahead of the final scale arithmetic.
     sched_barrier(0)
     acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
     packed = acc.to(gl.bfloat16)
-    matrix_store(
-        C,
-        packed,
-        (128, N),
-        (N, 1),
-        (GROUP * 64, 0),
-        tile=(32, 32),
-        interleave=1,
-        version=3,
-        order=(1, 0),
-    )
+    if B_K_CONTIGUOUS:
+        matrix_store(
+            C,
+            packed,
+            (128, N),
+            (N, 1),
+            (GROUP * 64, 0),
+            tile=(32, 32),
+            interleave=1,
+            version=3,
+            order=(1, 0),
+        )
+    else:
+        n = gl.arange(0, 256, layout=gl.SliceLayout(0, RF))
+        gl.store(C + (GROUP * 64 + m[:, None]) * N + n[None, :], packed)
 
 
 @g.jit
@@ -339,7 +354,9 @@ def _persistent_producer(A, B, AS, BS, smAS0, smAS1, smBS0, smBS1,
                          smA0, smA1, smB0, smB1,
                          K: gl.constexpr, N: gl.constexpr,
                          NUM_SMS: gl.constexpr, TILE_LIMIT: gl.constexpr,
-                         GROUP: gl.constexpr, PID):
+                         GROUP: gl.constexpr, PID,
+                         B_K_CONTIGUOUS: gl.constexpr = True,
+                         B_LOAD_WARPS: gl.constexpr = (1, 4)):
     _initialize_pipeline_barriers(get_wave_id())
     if GROUP == 1:
         _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, PID, 0, K)
@@ -361,10 +378,11 @@ def _persistent_producer(A, B, AS, BS, smAS0, smAS1, smBS0, smBS1,
                 if step >= 2:
                     abarrier_try_wait(14 + bank, ((step // 2) + 1) % 2)
                     _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, tile_id, bank, K)
-            _produce_ab_and_scales(A + tile_m * K, B + tile_n * K,
+            _produce_ab_and_scales(A + tile_m * K, B + (tile_n * K if B_K_CONTIGUOUS else tile_n),
                                   AS + tile_m * (K // 128), BS + (tile_n // 128) * (K // 128),
                                   smAS, smAS, smBS,
-                                  smA0, smA1, smB0, smB1, K, GROUP, step != 0)
+                                  smA0, smA1, smB0, smB1, K, GROUP, step != 0,
+                                  N, B_K_CONTIGUOUS, B_LOAD_WARPS)
 
 
 @g.jit
@@ -372,7 +390,8 @@ def _persistent_consumer(AS, BS, C, smAS0, smAS1, smBS0, smBS1,
                          smA0, smA1, smB0, smB1,
                          K: gl.constexpr, N: gl.constexpr,
                          NUM_SMS: gl.constexpr, TILE_LIMIT: gl.constexpr,
-                         GROUP: gl.constexpr, F: gl.constexpr, PID):
+                         GROUP: gl.constexpr, F: gl.constexpr, PID,
+                         B_K_CONTIGUOUS: gl.constexpr = True):
     _initialize_pipeline_barriers(get_wave_id())
     for step in range((TILE_LIMIT + NUM_SMS - 1) // NUM_SMS):
         tile_id = PID + step * NUM_SMS
@@ -390,7 +409,7 @@ def _persistent_consumer(AS, BS, C, smAS0, smAS1, smBS0, smBS1,
             _consume_ab_and_accumulate(AS + tile_m * (K // 128), BS + (tile_n // 128) * (K // 128),
                                        C + tile_m * N + tile_n,
                                        smAS, smAS, smBS,
-                                       smA0, smA1, smB0, smB1, K, N, GROUP, F)
+                                       smA0, smA1, smB0, smB1, K, N, GROUP, F, B_K_CONTIGUOUS, N == 12288 and NUM_SMS == 96)
             abarrier_arrive(14 + bank)
 
 
@@ -411,6 +430,8 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     BLOCK_SIZE_K: gl.constexpr,
     NUM_SMS: gl.constexpr,
     TILE_LIMIT: gl.constexpr,
+    B_K_CONTIGUOUS: gl.constexpr = True,
+    B_LOAD_WARPS: gl.constexpr = (1, 4),
 ):
     gl.static_assert(NUM_SMS == 48 or NUM_SMS == 96, "this pipeline requires 48 or 96 TGs")
     gl.static_assert(TILE_LIMIT == (M // 128) * (N // 256),
@@ -430,7 +451,9 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
                      "this pipeline requires FP32 scales")
     gl.static_assert(C.dtype.element_ty == gl.bfloat16, "this pipeline requires BF16 output")
     SA: gl.constexpr = MlsSharedLayout(0, (64, 128))
-    SB: gl.constexpr = MlsSharedLayout(1, (128, 64), alt=1, order=(0, 1))
+    SB: gl.constexpr = MlsSharedLayout(
+        1, (128, 64) if B_K_CONTIGUOUS else (64, 128), alt=1 if B_K_CONTIGUOUS else 0,
+        order=(0, 1) if B_K_CONTIGUOUS else (1, 0))
     F: gl.constexpr = gl.amd.AMDMFMALayout(
         version=4, instr_shape=[16, 16, 32], mmac_layout=MmacLayout.LTS,
         warps_per_cta=[1, 4], tiles_per_warp=[4, 4],
@@ -450,15 +473,15 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     gl.warp_specialize(
         [
             (_idle_default_partition, ()),
-            (_persistent_producer, (A, B, AS, BS, sas0, sas1, sbs0, sbs1, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, pid)),
-            (_persistent_producer, (A, B, AS, BS, sas0, sas1, sbs0, sbs1, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, pid)),
+            (_persistent_producer, (A, B, AS, BS, sas0, sas1, sbs0, sbs1, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, pid, B_K_CONTIGUOUS, B_LOAD_WARPS)),
+            (_persistent_producer, (A, B, AS, BS, sas0, sas1, sbs0, sbs1, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, pid, B_K_CONTIGUOUS, B_LOAD_WARPS)),
             (
                 _persistent_consumer,
-                (AS, BS, C, sas0, sas1, sbs0, sbs1, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, F, pid),
+                (AS, BS, C, sas0, sas1, sbs0, sbs1, a0, a0_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 0, F, pid, B_K_CONTIGUOUS),
             ),
             (
                 _persistent_consumer,
-                (AS, BS, C, sas0, sas1, sbs0, sbs1, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, F, pid),
+                (AS, BS, C, sas0, sas1, sbs0, sbs1, a1, a1_next, b, b_next, K, N, NUM_SMS, TILE_LIMIT, 1, F, pid, B_K_CONTIGUOUS),
             ),
         ],
         [4, 4, 4, 4],
