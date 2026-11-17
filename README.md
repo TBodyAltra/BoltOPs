@@ -277,6 +277,20 @@ optest --display                                            # HTML report from l
 2. Prefer public signatures aligned with vLLM / SGLang (or HIPC / CUDA C); wire ship-time backend selection in `boltops/<op>/__init__.py` and export.
 3. Re-export from `boltops/__init__.py` and add `docs/ops/`.
 
+## BF16 GEMM measurements on PMD
+
+2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 1 DIE / 48 CU.
+BF16 inputs/output, FP32 accumulation, complete K. [Environment, configs, assembly, raw measurements and PERF](docs/ops/gemm/tuning/bf16_tt_mls/README.md).
+
+| Case / layout | M × N × K | Full dispatch (µs) | Validation / timing |
+|---|---|---:|---|
+| R001 TN | 64 × 64 × 2048 | 5.324 | Random / ones / random; median of 9 warm samples |
+| R001 TT | 64 × 64 × 2048 | 5.744 | Random / ones / random; median of 9 warm samples |
+| R003 TT | 2560 × 64 × 2048 | 10.565 | Random / ones / random; median of 9 warm samples |
+| R004 TT | 6656 × 64 × 2048 | 25.327 | Random / ones / random; median of 9 warm samples |
+
+All full-grid outputs have zero mismatches/nonfinite values at abs0.001+rel0.01; output guards and complete TG counts passed. SGPR/VGPR spills are zero. Current dispatch/native checks: 55 passed, 4 persistent cases deselected; configuration checks: 32 passed. Two known persistent TT tail compilation failures were reproduced before the refactor and are not counted as passes. PERF uses the same HSACO as the measured full grid. These are PMD results; detailed sampling scopes and hashes are linked above.
+
 ## License
 
 BoltOPs original code is licensed under the [MIT License](LICENSE). Portions
