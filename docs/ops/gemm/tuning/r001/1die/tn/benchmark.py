@@ -26,16 +26,21 @@ def main():
     mode.add_argument('--single-tg-perf', action='store_true')
     mode.add_argument('--perf', action='store_true', help='capture the full output grid')
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--cache-dir', type=Path,
+                        help='reuse an existing measured compilation cache')
+    parser.add_argument('--expect-binary-sha256',
+                        help='reject a different compiled binary before dispatch')
     args = parser.parse_args()
     record_path = args.record.resolve()
     record = json.loads(record_path.read_text())
     environment = record['environment']
     case = dict(shape=record['shape'], dies=environment['dies'], layout=record['layout'],
                 seed=record['benchmark']['seed'], repeats=record['benchmark']['repeats'],
+                validation_count=record['benchmark'].get('validation_count', 3),
                 requirement=record['requirement'], config=record['config']['path'])
     if args.single_tg_perf or args.perf:
         case['repeats'] = 3
-    marker = 'BOLTOPS_R001_REPLAY_RECORD'
+    marker = 'BOLTOPS_BF16_TT_MLS_REPLAY_RECORD'
     if os.environ.get(marker) != str(record_path):
         replay_env = dict(os.environ)
         for key, value in environment['environment_variables'].items():
@@ -50,8 +55,9 @@ def main():
         os.execve(sys.executable, [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]], replay_env)
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
+    cache_dir = args.cache_dir.resolve() if args.cache_dir else output / 'cache'
     os.chdir(output)
-    os.environ['TRITON_CACHE_DIR'] = str(output / 'cache')
+    os.environ['TRITON_CACHE_DIR'] = str(cache_dir)
     os.environ['TRITON_HOME'] = str(output / 'triton-home')
     sys.path.insert(0, str(REPO))
     import torch
@@ -59,19 +65,22 @@ def main():
 
     torch.set_num_threads(1)
     assert case['dies'] == environment['dies'] == 1
-    assert case['layout'] == 'TN' and case['shape'] == [64, 64, 2048]
+    assert case['layout'] in ('TN', 'TT')
     m, n, k = case['shape']
     public = importlib.import_module('boltops.gemm.gemm_a16w16')
     kernels = importlib.import_module('boltops.gemm.gluon.gemm_a16w16')
     config_path = REPO / case['config']
-    config = json.loads(config_path.read_text())['profiles']['DTYPE=bfloat16-OUT=bfloat16']['M_EQ_64']
+    config = json.loads(config_path.read_text())['profiles']['DTYPE=bfloat16-OUT=bfloat16'][f'M_EQ_{m}']
     options = {key: tuple(value) if isinstance(value, list) else value
                for key, value in config.items()}
     symbol = options.pop('kernel')
+    options['B_K_CONTIGUOUS'] = case['layout'] == 'TN'
     fn = getattr(kernels, symbol)
     grid = triton.cdiv(m, options['BLOCK_SIZE_M']) * triton.cdiv(n, options['BLOCK_SIZE_N'])
     a = torch.empty((m, k), dtype=torch.bfloat16, device='cuda')
-    w = torch.empty((n, k), dtype=torch.bfloat16, device='cuda')
+    w = (torch.empty((n, k), dtype=torch.bfloat16, device='cuda')
+         if case['layout'] == 'TN'
+         else torch.empty((k, n), dtype=torch.bfloat16, device='cuda').T)
     storage = torch.full((256 + m*n + 256,), 123., dtype=torch.bfloat16, device='cuda')
     c = storage[256:256 + m*n].view(m, n)
     handle = fn.warmup(a, w, c, M=m, N=n, K=k, grid=(grid,), **options)
@@ -79,10 +88,14 @@ def main():
     assert handle.n_spills == 0
     md = json.loads(json.dumps(handle.metadata._asdict(), default=str))
     assert md['wasp_enabled'] and not md['wasp_wdra']
-    assert tuple(md['wasp_partition_warps']) == (1, 1)
-    assert md['num_warps'] == 2 and md['shared'] == 65536
+    assert tuple(md['wasp_partition_warps']) == tuple(options['wasp_partition_warps'])
+    assert md['num_warps'] == sum(options['wasp_partition_warps'])
+    assert md['shared'] == record['resources'].get('shared_bytes', record['resources'].get('LDS_bytes'))
     binary_sha256 = hashlib.sha256(handle.kernel).hexdigest()
+    if args.expect_binary_sha256:
+        assert binary_sha256 == args.expect_binary_sha256, 'compiled binary differs from the selected measurement'
     Path('kernel.hsaco').write_bytes(handle.kernel)
+    assert not re.search(r'\.sgpr_spill_count:\s*[1-9]', handle.asm['amdgcn'])
     (output / 'kernel.amdgcn').write_text('\n'.join(l.rstrip() for l in handle.asm['amdgcn'].splitlines()) + '\n')
     launched = []
 
@@ -139,10 +152,10 @@ def main():
         actual = c.cpu().float()
         if args.single_tg_perf:
             untouched = actual.clone()
-            untouched[:16, :16] = float('nan')
+            untouched[:options['BLOCK_SIZE_M'], :options['BLOCK_SIZE_N']] = float('nan')
             assert bool(torch.isnan(untouched).all()), 'writes outside selected tile'
-            actual = actual[:16, :16]
-            golden = golden[:16, :16]
+            actual = actual[:options['BLOCK_SIZE_M'], :options['BLOCK_SIZE_N']]
+            golden = golden[:options['BLOCK_SIZE_M'], :options['BLOCK_SIZE_N']]
         diff = (actual - golden).abs()
         bad = (~torch.isfinite(actual)) | (diff > .001 + .01*golden.abs())
         assert bool((storage[:256].cpu() == 123).all())
@@ -155,17 +168,20 @@ def main():
         return accuracy
 
     validation = []
-    for i in range(3):
+    for i in range(1 if (args.single_tg_perf or args.perf) else case['validation_count']):
         gen = torch.Generator().manual_seed(case['seed'] + 1000*i)
         ac = (torch.rand((m, k), generator=gen) - .5).bfloat16()
-        wc = (torch.rand((n, k), generator=gen) - .5).bfloat16()
+        bc = (torch.rand((k, n), generator=gen) - .5).bfloat16()
         if i == 1:
             ac.fill_(1)
-            wc.fill_(1)
+            bc.fill_(1)
         a.copy_(ac)
-        w.copy_(wc)
+        if case['layout'] == 'TN':
+            w.copy_(bc.T.contiguous())
+        else:
+            w.T.copy_(bc)
         c.fill_(float('nan'))
-        golden = (ac.float() @ wc.float().T).bfloat16().float()
+        golden = (ac.float() @ bc.float()).bfloat16().float()
         sample = launch()
         sample['accuracy'] = check(golden)
         validation.append(sample)
@@ -174,19 +190,24 @@ def main():
         sample = launch()
         sample['accuracy'] = check(golden)
         samples.append(sample)
-    warm = samples[1:]
-    assert warm, 'need at least two repeats'
+    warm = samples
+    assert warm, 'need timing repeats after validation'
     performance = dict(kernel_us=statistics.median(s['kernel_us'] for s in warm),
                        kernel_cycles=statistics.median(s['dispatch_cycles'] for s in warm),
                        shader_us=statistics.median(s['wave_interval_us'] for s in warm))
     performance['kernel_tops'] = 2*m*n*k/(performance['kernel_us']*1e6) if not args.single_tg_perf else None
-    result = dict(requirement=case['requirement'], status='PASS', single_tg=args.single_tg_perf,
+    native = lambda key: int(re.search(r'\.' + key + r':\s*(\d+)', handle.asm['amdgcn'])[1])
+    native_resources = dict(SGPR=native('sgpr_count'), VGPR=native('vgpr_count'),
+                            SGPR_spills=native('sgpr_spill_count'), VGPR_spills=native('vgpr_spill_count'),
+                            shared_bytes=md['shared'], waves_per_TG=md['num_warps'])
+    assert native_resources['SGPR_spills'] == native_resources['VGPR_spills'] == 0
+    result = dict(native_resources=native_resources, requirement=case['requirement'], status='PASS', single_tg=args.single_tg_perf,
                   performance=performance, validation=validation, samples=samples,
                   assembly_sha256=digest('kernel.amdgcn'), benchmark_sha256=digest(__file__),
                   binary_sha256=binary_sha256, metadata=md, VGPR=handle.n_regs, spills=handle.n_spills,
                   public_api_verified=not args.single_tg_perf)
     if args.single_tg_perf or args.perf:
-        best = min(samples[1:], key=lambda s: s['dispatch_cycles'])
+        best = samples[-1]
         import shutil
         if args.perf:
             best = samples[-1]

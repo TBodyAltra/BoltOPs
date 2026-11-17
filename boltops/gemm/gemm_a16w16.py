@@ -101,7 +101,7 @@ def gemm_a16w16(
             Auto selects recorded Gluon for matching same-precision BF16/FP16
             TN/TT inputs on gfx946 with a tuned CU-specific config and no explicit
             config; otherwise Triton. Explicit selection never retries another
-            backend. Gluon supports the fixed BF16 MNK=(64,64,2048) TN entry and
+            backend. Gluon supports fixed BF16 MNK=(64,64,2048) TN/TT entries and
             a 48-CU persistent FP16/BF16 TN/TT entry with automatic tail handling,
             K-contiguous x, matching input/output dtype, no bias or activation.
             FP16 can reuse the persistent BF16 launch geometry. TileLang is not
@@ -122,6 +122,8 @@ def gemm_a16w16(
         ValueError: Incompatible tensor shapes, devices, layouts or configuration.
         TypeError: Unsupported input, scale or output types.
         NotImplementedError: Requested backend or operation option is unavailable.
+        CompilationError: An explicit Gluon config violates the kernel
+            shape, layout, precision or tile assertions.
     """
     a, b, out_dtype = (x, w, x.dtype if dtype is None else dtype)
     user_config = config
@@ -358,7 +360,9 @@ def gemm_a16w16(
                     a.stride(1),
                     w_t.stride(0),
                     w_t.stride(1),
-                    0 if config["NUM_KSPLIT"] == 1 else y_pp.stride(0),
+                    # The kernel assumes every stride is positive, even when
+                    # the split dimension is unused.
+                    M * N if config["NUM_KSPLIT"] == 1 else y_pp.stride(0),
                     out.stride(0) if config["NUM_KSPLIT"] == 1 else y_pp.stride(1),
                     out.stride(1) if config["NUM_KSPLIT"] == 1 else y_pp.stride(2),
                     activation=activation_fn,
@@ -426,18 +430,11 @@ def gemm_a16w16(
             if not isinstance(selector, str) or not hasattr(kernels, selector):
                 raise ValueError("Gluon config requires a valid kernel selector")
             kernel = getattr(kernels, selector)
-            if selector == "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel":
-                # Physical weight strides, rather than a caller's config, own
-                # the B MLS descriptor and shared-memory order.
-                if a.dtype != out_dtype or device.cu_count != 48:
-                    raise ValueError(
-                        "persistent Gluon requires 48 CU and matching FP16 or BF16 input/output"
-                    )
-                config["B_K_CONTIGUOUS"] = gluon_layout == "TN"
-            elif gluon_layout != "TN":
-                raise NotImplementedError(
-                    "gemm_a16w16: no Gluon TT kernel for the requested selector"
-                )
+            # All Gluon dense entries share this layout argument. The physical
+            # weight strides own its value, including explicit config overrides.
+            # Config lookup selects an implementation; its JIT assertions own
+            # shape, precision and tile constraints.
+            config["B_K_CONTIGUOUS"] = gluon_layout == "TN"
             config = {
                 key: tuple(value) if isinstance(value, list) else value
                 for key, value in config.items()
