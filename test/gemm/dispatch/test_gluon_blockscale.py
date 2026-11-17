@@ -199,7 +199,8 @@ def test_gluon_kernel_and_tile_come_from_config(monkeypatch):
     assert seen["params"]["GROUP_N"] == seen["params"]["GROUP_K"] == 128
 
 
-def test_r009_persistent_grid_comes_from_record(monkeypatch):
+@pytest.mark.parametrize("n,tiles", [(9216, 720), (12288, 960)])
+def test_persistent_grid_comes_from_record(monkeypatch, n, tiles):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     from boltops.utility.arch_info import get_device_info
@@ -209,7 +210,7 @@ def test_r009_persistent_grid_comes_from_record(monkeypatch):
         pytest.skip("requires gfx946 with 48 CU")
     kernels = import_module(f"boltops.gemm.gluon.{MODULE}")
     config, tuned = get_gemm_config(
-        "GEMM-A8W8_BLOCKSCALE", 2560, 9216, 2048, profile=PROFILE,
+        "GEMM-A8W8_BLOCKSCALE", 2560, n, 2048, profile=PROFILE,
         backend="gluon", arch=device.arch, cu_num=device.cu_count,
     )
     assert tuned
@@ -223,15 +224,15 @@ def test_r009_persistent_grid_comes_from_record(monkeypatch):
 
     monkeypatch.setattr(kernels, config["kernel"], CaptureKernel())
     a = torch.empty((2560, 2048), dtype=torch.float8_e4m3fn, device="cuda")
-    b = torch.empty((9216, 2048), dtype=a.dtype, device=a.device)
+    b = torch.empty((n, 2048), dtype=a.dtype, device=a.device)
     sa = torch.empty((2560, 16), dtype=torch.float32, device=a.device)
-    sb = torch.empty((72, 16), dtype=torch.float32, device=a.device)
+    sb = torch.empty((n // 128, 16), dtype=torch.float32, device=a.device)
     out = gemm_a8w8_blockscale(a, b, sa, sb)
-    assert out.shape == (2560, 9216)
+    assert out.shape == (2560, n)
     assert len(calls) == 1
     grid, options = calls[0]
     assert grid == (48,)
-    assert options["NUM_SMS"] == 48 and options["TILE_LIMIT"] == 720
+    assert options["NUM_SMS"] == 48 and options["TILE_LIMIT"] == tiles
 
 
 def test_fp32_scale_64x64_config_is_shape_specific():

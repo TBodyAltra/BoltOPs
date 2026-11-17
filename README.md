@@ -294,6 +294,16 @@ All full-grid outputs have zero mismatches/nonfinite values at abs0.001+rel0.01;
 
 R002 uses three LDS slots and register prefetch to overlap the next operand reads with the current MMAC batch. R002 effective read+write bandwidth is 1.760 TB/s, including one logical read of A/B and one write of C; its formula and measured environment are in the record.
 
+## FP8 R010 GEMM measurement on PMD
+
+2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 1 DIE /48 CU, TN.
+
+| Case | M × N × K | Kernel (µs /TOPS) | Pipeline | Validation |
+|---|---|---|---|---|
+| R010 | 2560 ×12288 ×2048 | 244.128 /527.79 | 48 persistent TG ×20 tiles | All 31,457,280 outputs match; guards passed |
+
+One complete cold dispatch, GC455ps. E4M3FN inputs, BF16 output; B scale BF16 values are promoted to FP32 on CPU before upload, excluded from kernel timing. Latency is 16.57% below the historical 292.620 µs baseline; this includes the R009 pipeline and toolchain migration together. LDS114944 bytes, consumer VGPR235, no spills. Configuration/dispatch checks:34 passed. [Environment, raw statistics, assembly, benchmark and matched single-TG PERF](docs/ops/gemm/tuning/r010/1die/tn/record.json).
+
 ## License
 
 BoltOPs original code is licensed under the [MIT License](LICENSE). Portions

@@ -345,7 +345,7 @@ def test_p0_fp8_full_tiles_have_48_multiple_grids():
         assert m % bm == n % bn == 2048 % bk == 0
         assert (m // bm) * (n // bn) == expected_tgs
         assert expected_tgs % 48 == 0
-        if (m, n) == (2560, 9216):
+        if m == 2560:
             assert params["NUM_SMS"] == 48 and params["TILE_LIMIT"] == expected_tgs
             assert params["kernel"].endswith("_persistent_kernel")
         else:
