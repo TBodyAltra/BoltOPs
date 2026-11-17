@@ -312,3 +312,9 @@ notices; see the source file headers and the module source notes in
 [gemm](boltops/gemm/triton/SOURCE.md), [MLA](boltops/mla/triton/SOURCE.md),
 [MQA logits](boltops/mqa_logits/triton/SOURCE.md), and
 [Step-4 DSA](boltops/step4_dsa/triton/SOURCE.md).
+
+## R002 sbx2 verification
+
+2026-11-17, node60 / `kxu_pmd_8569_fp8_20261017`, the existing MR565 / DTK6.3.3 runtime, `GPU_CHIP=sbx2`: 2 DIE / 96 CU, GC period 455 ps. The preset configures 3.6 TB/s UMC bandwidth and its cross-DIE fabric parameters. Kernel and tile configuration match the 1-DIE R002 candidate.
+
+A full-K partial-grid check passed with two TGs, one on each DIE: 32,768 checked outputs, zero mismatches/nonfinite, canaries and untouched output checks passed; no spill. Complete 970-TG random validation and two warm dispatches are pending. Evidence is kept outside tuning under `/home/kxu/r002-sbx2-20261117-results` and `/xukang/code/pmd-triton-sessions/r002-sbx2-20261117`.
