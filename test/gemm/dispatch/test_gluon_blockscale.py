@@ -272,3 +272,164 @@ def test_native_gluon_fp32_scales_64x64(k):
     out = gemm_a8w8_blockscale(x.cuda(), w.cuda(), sa.cuda(), sb.cuda(),
                               backend="gluon", config=config)
     torch.testing.assert_close(out.cpu(), golden.bfloat16(), atol=0, rtol=0)
+
+
+@pytest.mark.parametrize("m,n,k,tgs", [(64, 12288, 2048, 96), (64, 9216, 2048, 144), (2560, 2048, 4096, 48)])
+def test_qwen_recorded_pipeline_grid(monkeypatch, m, n, k, tgs):
+    if not torch.cuda.is_available():
+        pytest.skip("requires GPU allocations")
+    from boltops.utility.arch_info import get_device_info
+
+    device = get_device_info()
+    if device.arch != "gfx946" or device.cu_count != 48:
+        pytest.skip("requires gfx946 with 48 CU")
+    config, tuned = get_gemm_config(
+        "GEMM-A8W8_BLOCKSCALE", m, n, k, profile=PROFILE,
+        backend="gluon", arch=device.arch, cu_num=device.cu_count,
+    )
+    assert tuned
+    calls = []
+
+    class CaptureKernel:
+        def __getitem__(self, grid):
+            def launch(*args, **kwargs):
+                calls.append((grid(kwargs), kwargs))
+            return launch
+
+    kernels = import_module(f"boltops.gemm.gluon.{MODULE}")
+    monkeypatch.setattr(kernels, config["kernel"], CaptureKernel())
+    a = torch.empty((m, k), dtype=torch.float8_e4m3fn, device="cuda")
+    b = torch.empty((n, k), dtype=a.dtype, device=a.device)
+    sa = torch.empty((m, k // 128), dtype=torch.float32, device=a.device)
+    sb = torch.empty((n // 128, k // 128), dtype=torch.float32, device=a.device)
+    out = gemm_a8w8_blockscale(a, b, sa, sb)
+    assert out.shape == (m, n)
+    assert len(calls) == 1
+    assert calls[0][0] == ((tgs,) if "NUM_SMS" in config else (1, tgs))
+    if "TILE_LIMIT" in config:
+        assert calls[0][1]["TILE_LIMIT"] == (m // config["BLOCK_SIZE_M"]) * (n // config["BLOCK_SIZE_N"])
+
+
+@pytest.mark.parametrize(
+    "record_shape,shape,tgs",
+    [
+        ((64, 12288, 2048), (64, 384, 512), 1),
+        ((64, 12288, 2048), (64, 256, 2048), 2),
+        ((64, 9216, 2048), (64, 192, 512), 3),
+        ((64, 9216, 2048), (128, 192, 2048), 6),
+        ((2560, 2048, 4096), (256, 768, 2048), 4),
+        ((2560, 2048, 4096), (384, 256, 4096), 1),
+        ((2560, 2048, 4096), (384, 256, 6144), 1),
+        ((2560, 2048, 4096), (256, 768, 4096), 4),
+    ],
+)
+def test_qwen_native_scale_pipelines(record_shape, shape, tgs):
+    if not torch.cuda.is_available():
+        pytest.skip("requires GPU")
+    from boltops.utility.arch_info import get_device_info
+
+    device = get_device_info()
+    if device.arch != "gfx946" or device.cu_count != 48:
+        pytest.skip("requires gfx946 with 48 CU")
+    config, _ = get_gemm_config(
+        "GEMM-A8W8_BLOCKSCALE", *record_shape, profile=PROFILE,
+        backend="gluon", arch=device.arch, cu_num=device.cu_count,
+    )
+    m, n, k = shape
+    if "NUM_SMS" in config:
+        config["NUM_SMS"] = tgs
+        config["TILE_LIMIT"] = (m // config["BLOCK_SIZE_M"]) * (n // config["BLOCK_SIZE_N"])
+    generator = torch.Generator().manual_seed(721)
+    a = (torch.randint(-4, 5, (m, k), generator=generator).float() / 4).to(torch.float8_e4m3fn)
+    b = (torch.randint(-4, 5, (n, k), generator=generator).float() / 4).to(torch.float8_e4m3fn)
+    sa = torch.randint(1, 5, (m, k // 128), generator=generator).float() / 8
+    sb = (torch.randint(1, 5, ((n + 127) // 128, k // 128), generator=generator).float() / 8).bfloat16().float()
+    golden = torch.zeros((m, n))
+    for group in range(k // 128):
+        part = slice(group * 128, (group + 1) * 128)
+        golden += (a[:, part].float() @ b[:, part].float().T) * (
+            sa[:, group, None] * sb[:, group].repeat_interleave(128)[:n][None, :]
+        )
+    storage = torch.full((m * n + 512,), -4096., dtype=torch.bfloat16, device="cuda")
+    output = storage[256:-256].view(m, n)
+    result = gemm_a8w8_blockscale(
+        a.cuda(), b.cuda(), sa.cuda(), sb.cuda(), out=output,
+        backend="gluon", config=config,
+    )
+    assert result is output
+    torch.testing.assert_close(result.cpu(), golden.bfloat16(), atol=0, rtol=0)
+    assert bool((storage[:256].cpu() == -4096).all())
+    assert bool((storage[-256:].cpu() == -4096).all())
+
+
+def test_chunked_scale_pipeline_rejects_partial_chunks():
+    if not torch.cuda.is_available():
+        pytest.skip("requires GPU allocations")
+    from boltops.utility.arch_info import get_device_info
+    from triton.compiler.errors import CompilationError
+
+    device = get_device_info()
+    if device.arch != "gfx946" or device.cu_count != 48:
+        pytest.skip("requires gfx946 with 48 CU")
+    config, _ = get_gemm_config(
+        "GEMM-A8W8_BLOCKSCALE", 2560, 2048, 4096, profile=PROFILE,
+        backend="gluon", arch=device.arch, cu_num=device.cu_count,
+    )
+    config.update(NUM_SMS=1, TILE_LIMIT=1)
+    a = torch.empty((128, 3072), dtype=torch.float8_e4m3fn, device="cuda")
+    b = torch.empty((256, 3072), dtype=a.dtype, device=a.device)
+    sa = torch.empty((128, 24), dtype=torch.float32, device=a.device)
+    sb = torch.empty((2, 24), dtype=torch.float32, device=a.device)
+    with pytest.raises(CompilationError, match="complete 16-group chunks"):
+        gemm_a8w8_blockscale(a, b, sa, sb, backend="gluon", config=config)
+
+
+def test_chunked_mmac_turn_encloses_complete_instruction_group():
+    shape = (2560, 2048, 4096)
+    if not torch.cuda.is_available():
+        pytest.skip("requires GPU allocations")
+    import re
+    from boltops.utility.arch_info import get_device_info
+
+    device = get_device_info()
+    if device.arch != "gfx946" or device.cu_count != 48:
+        pytest.skip("requires gfx946 with 48 CU")
+    config, _ = get_gemm_config(
+        "GEMM-A8W8_BLOCKSCALE", *shape, profile=PROFILE,
+        backend="gluon", arch=device.arch, cu_num=device.cu_count,
+    )
+    kernels = import_module(f"boltops.gemm.gluon.{MODULE}")
+    kernel = getattr(kernels, config.pop("kernel"))
+    config = {key: tuple(value) if isinstance(value, list) else value
+              for key, value in config.items()}
+    m, n, k = shape
+    a = torch.empty((m, k), dtype=torch.float8_e4m3fn, device="cuda")
+    b = torch.empty((n, k), dtype=a.dtype, device=a.device)
+    sa = torch.empty((m, k // 128), dtype=torch.float32, device=a.device)
+    sb = torch.empty((n // 128, k // 128), dtype=torch.float32, device=a.device)
+    out = torch.empty((m, n), dtype=torch.bfloat16, device=a.device)
+    compiled = kernel.warmup(
+        a, b, sa, sb, out, M=m, N=n, K=k, GROUP_N=128, GROUP_K=128,
+        grid=(config["NUM_SMS"],), **config,
+    )
+    waiting = None
+    mmacs = 0
+    groups = 0
+    for line in compiled.asm["amdgcn"].splitlines():
+        barrier = re.search(r"s_ebarrier_(sync|arrive)\s+([89]),\s*8", line)
+        if barrier:
+            kind, barrier_id = barrier.group(1), int(barrier.group(2))
+            if kind == "sync":
+                assert waiting is None, "MMAC turn contains a nested handoff"
+                waiting, mmacs = barrier_id, 0
+            elif waiting is not None:
+                assert barrier_id == 17 - waiting
+                assert mmacs == 64, "turn must enclose one complete BK128 MMAC group"
+                waiting = None
+                groups += 1
+            else:
+                assert barrier_id == 8, "only the initial turn may be seeded"
+        elif "v_mmac_" in line:
+            assert waiting is not None, "MMAC escaped its execution-barrier boundaries"
+            mmacs += 1
+    assert waiting is None and groups == 6

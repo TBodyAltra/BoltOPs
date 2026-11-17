@@ -3,7 +3,8 @@
 """Gluon block-scaled GEMM kernels, selected by recipe and tile name.
 
 The entries use E4M3FN inputs, FP32 A(1,128)/B(128,128) scales,
-BF16 output and tiles M/N/K=(128,256,128) or (64,64,128). Each owns its layouts,
+BF16 output and tiles M/N/K=(128,256,128), (64,64,128) or (64,128,128).
+Each entry owns its layouts,
 partition resources, pipeline and compile-time legality checks.
 """
 
@@ -33,6 +34,7 @@ from triton.experimental.gluon.language.amd.hcu import (
 
 
 from .gemm_a8w8_blockscale_persistent import (
+    _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_chunked_scale_kernel,
     _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel,
 )
 
@@ -508,3 +510,117 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_b
         (_produce_fp32_a_scale_tiles, (A, B, AS, a0, a1, b0, b1, scales, M, N, K, BN, P, C)),
         (_accumulate_fp32_block_scale_tiles, (BS, Out, a0, a1, b0, b1, scales, M, N, K, BN, P, C, WM)),
     ], [P, C], [PR, CR])
+
+
+# M64 pipeline with native FP32 scale transfers and eight consumer waves.
+@g.jit
+def _produce_fp32_scales_m64_tiles(A, B, AS, a0, a1, b0, b1, scales,
+              M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+              BN: gl.constexpr, P: gl.constexpr, C: gl.constexpr, PID,
+              NUM_SMS: gl.constexpr, TILE_LIMIT: gl.constexpr):
+    ebarrier_sync(14, P + C)
+    layout: gl.constexpr = gl.BlockedLayout([1], [64], [P], [0])
+    flat = gl.arange(0, 256, layout=layout)
+    abarrier_seq(4)
+    for chunk in gl.static_range((K // 128) * 64 // 256):
+        index = flat + chunk * 256
+        offsets = (index % 64) * (K // 128) + index // 64
+        async_copy.buffer_load_to_shared(scales.slice(chunk * 256, 256), AS, offsets)
+    abarrier_arrive(4)
+    for step in range(TILE_LIMIT // NUM_SMS):
+        tile_m = 0
+        tile_n = (PID + step * NUM_SMS) * BN
+        for i in range(K // 128):
+            slot = i % 2
+            if i >= 2 or step != 0:
+                abarrier_try_wait(2 + slot, ((i // 2) - 1) % 2)
+            if slot == 0:
+                aa = a0
+                bb = b0
+            else:
+                aa = a1
+                bb = b1
+            abarrier_seq(slot)
+            matrix_load(aa, A, (M, K), (K, 1), (tile_m, i * 128), warps=(1, P))
+            matrix_load(bb, B, (K, N), (1, K), (i * 128, tile_n), warps=(1, P))
+            abarrier_arrive(slot)
+
+
+@g.jit
+def _consume_fp32_scales_m64_tiles(BS, Out, a0, a1, b0, b1, scales,
+              M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+              BN: gl.constexpr, P: gl.constexpr, C: gl.constexpr, WM: gl.constexpr, PID,
+              NUM_SMS: gl.constexpr, TILE_LIMIT: gl.constexpr):
+    ebarrier_sync(14, P + C)
+    f: gl.constexpr = gl.amd.AMDMFMALayout(
+        version=4, instr_shape=[16, 16, 32], mmac_layout=MmacLayout.LTS,
+        warps_per_cta=[WM, C // WM],
+        tiles_per_warp=[64 // (16 * WM), BN // (16 * (C // WM))],
+    )
+    rf: gl.constexpr = MmacInterleave2Layout(f)
+    abarrier_try_wait(4, 0)
+    for step in range(TILE_LIMIT // NUM_SMS):
+        acc = gl.full((64, BN), 0, gl.float32, rf)
+        zero = gl.full((64, BN), 0, gl.float32, rf)
+        tile_m = 0
+        tile_n = (PID + step * NUM_SMS) * BN
+        cols = tile_n + gl.arange(0, BN, layout=gl.SliceLayout(0, rf))
+        scale_view = scales._reinterpret(
+            gl.float32, (triton.next_power_of_2(K // 128), 64), gl.SwizzledSharedLayout(1, 1, 1, [0]))
+        for i in range(K // 128):
+            slot = i % 2
+            abarrier_try_wait(slot, (i // 2) % 2)
+            if slot == 0:
+                aa = a0
+                bb = b0
+            else:
+                aa = a1
+                bb = b1
+            a = async_copy.load_shared_relaxed(aa, gl.DotOperandLayout(0, f, 8))
+            b = async_copy.load_shared_relaxed(
+                bb, MmacInterleave2Layout(gl.DotOperandLayout(1, f, 8)))
+            a_scale = scale_view.index(i).load(gl.SliceLayout(1, rf))
+            b_scale = gl.load(BS + (cols // 128) * (K // 128) + i).to(gl.float32)
+            wait_lgkmcnt(0)
+            abarrier_arrive(2 + slot)
+            dot = gl.amd.cdna4.mfma(a, b, zero)
+            acc = gl.fma(dot * a_scale[:, None], b_scale[None, :], acc)
+        rows = tile_m + gl.arange(0, 64, layout=gl.SliceLayout(1, rf))
+        gl.store(Out + rows[:, None] * N + cols[None, :], acc.to(gl.bfloat16))
+
+
+@g.jit
+def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bn128_bk128_kernel(A, B, AS, BS, Out,
+        M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+        GROUP_N: gl.constexpr, GROUP_K: gl.constexpr,
+        BLOCK_SIZE_M: gl.constexpr, BLOCK_SIZE_N: gl.constexpr,
+        BLOCK_SIZE_K: gl.constexpr, NUM_SMS: gl.constexpr, TILE_LIMIT: gl.constexpr):
+    gl.static_assert((BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K) == (64, 128, 128))
+    gl.static_assert(M == 64 and N % BLOCK_SIZE_N == 0 and K % 512 == 0)
+    gl.static_assert(TILE_LIMIT == N // BLOCK_SIZE_N and NUM_SMS > 0 and TILE_LIMIT % NUM_SMS == 0)
+    gl.static_assert(GROUP_N == 128 and GROUP_K == 128)
+    gl.static_assert(A.dtype.element_ty == gl.float8e4nv and B.dtype.element_ty == gl.float8e4nv)
+    gl.static_assert(AS.dtype.element_ty == gl.float32 and BS.dtype.element_ty == gl.float32)
+    gl.static_assert(Out.dtype.element_ty == gl.bfloat16)
+    BN: gl.constexpr = BLOCK_SIZE_N
+    P: gl.constexpr = 1
+    C: gl.constexpr = 8
+    WM: gl.constexpr = 4
+    al: gl.constexpr = MlsSharedLayout(0,(64,128))
+    bl: gl.constexpr = MlsSharedLayout(1,(128,64),alt=1,order=(0,1))
+    a0=gl.allocate_shared_memory(gl.float8e4nv,(64,128),al)
+    a1=gl.allocate_shared_memory(gl.float8e4nv,(64,128),al)
+    b0=gl.allocate_shared_memory(gl.float8e4nv,(128,BN),bl)
+    b1=gl.allocate_shared_memory(gl.float8e4nv,(128,BN),bl)
+    scales=gl.allocate_shared_memory(gl.float32,(64*triton.next_power_of_2(K//128),),gl.SwizzledSharedLayout(1,1,1,[0]))
+    abarrier_init(0,P)
+    abarrier_init(1,P)
+    abarrier_init(2,C)
+    abarrier_init(3,C)
+    abarrier_init(4,P)
+    pid=gl.program_id(0)
+    gl.warp_specialize([
+        (_idle_default_partition,()),
+        (_produce_fp32_scales_m64_tiles,(A,B,AS,a0,a1,b0,b1,scales,M,N,K,BN,P,C,pid,NUM_SMS,TILE_LIMIT)),
+        (_consume_fp32_scales_m64_tiles,(BS,Out,a0,a1,b0,b1,scales,M,N,K,BN,P,C,WM,pid,NUM_SMS,TILE_LIMIT)),
+    ],[P,C],[32,128])
