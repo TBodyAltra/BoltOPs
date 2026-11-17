@@ -304,6 +304,17 @@ R002 uses three LDS slots and register prefetch to overlap the next operand read
 
 One complete cold dispatch, GC455ps. E4M3FN inputs, BF16 output; B scale BF16 values are promoted to FP32 on CPU before upload, excluded from kernel timing. Latency is 16.57% below the historical 292.620 µs baseline; this includes the R009 pipeline and toolchain migration together. LDS114944 bytes, consumer VGPR235, no spills. Configuration/dispatch checks:34 passed. [Environment, raw statistics, assembly, benchmark and matched single-TG PERF](docs/ops/gemm/tuning/r010/1die/tn/record.json).
 
+## FP8 R010 on dual-die PMD sbx2
+
+2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 2 DIE ×48 CU, GC455ps, TN2560×12288×2048. Same Triton/Clang and input/scale convention as the single-die R010 measurement above.
+
+| Chip / grid | Kernel (µs / TOPS) | TGs per die | Speedup vs single die |
+|---|---|---|---|
+| sbx2 /48 TG ×20 tiles | 248.107 /519.33 | {'0': 24, '1': 24} | 0.9840× |
+| sbx2 /96 TG ×10 tiles | 129.222 /997.12 | {'0': 48, '1': 48} | 1.8892× |
+
+One complete cold public-API dispatch per variant; all31,457,280 outputs match, guards pass, and both dies execute. Time is complete-system gcSimCycles; per-die times are not summed. The48-TG control retains the single-die binary .text/.rodata;96TG uses all96 CU. No PERF capture. [Dual-die record](docs/ops/gemm/tuning/r010/2die/tn/record.json) · [48-TG control](docs/ops/gemm/tuning/r010/2die/tn/control_48tg/record.json).
+
 ## License
 
 BoltOPs original code is licensed under the [MIT License](LICENSE). Portions
