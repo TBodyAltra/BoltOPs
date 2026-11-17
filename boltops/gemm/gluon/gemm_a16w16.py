@@ -15,7 +15,7 @@ R020 uses a 256x256x64 persistent pipeline with bounded operand loads,
 masked tail stores and min(48, output tiles) active thread groups. FP16 and
 BF16 use the same schedule with FP32 accumulation.
 """
-from .gemm_bf16_tt_mls import gemm_bf16_tt_mls_kernel as _gemm_a16w16_bf16_tt_mls_kernel
+from .gemm_a16w16_tt import gemm_a16w16_tt_kernel as _gemm_a16w16_tt_kernel
 
 import triton
 from triton.experimental import gluon as g

@@ -101,7 +101,7 @@ def _mmac_consumer(C, aa, bb, F: gl.constexpr,
 
 
 @g.jit
-def gemm_bf16_tt_mls_kernel(
+def gemm_a16w16_tt_kernel(
     A, B, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
     BLOCK_SIZE_M: gl.constexpr, BLOCK_SIZE_N: gl.constexpr,
     BLOCK_SIZE_K: gl.constexpr, CHUNKS: gl.constexpr = 1,

@@ -15,6 +15,10 @@ MMAC 有效利用率 **0.73%**，按完整 dispatch 的有效 TOPS 除以 48 CU�
 复现（先加载记录的PMD环境，输出目录须不存在）：
 
 ```bash
-python docs/ops/gemm/tuning/bf16_tt_mls/benchmark.py --record docs/ops/gemm/tuning/r001/1die/tn/record.json --output /tmp/r001_tn-full
-python docs/ops/gemm/tuning/bf16_tt_mls/benchmark.py --record docs/ops/gemm/tuning/r001/1die/tn/record.json --output /tmp/r001_tn-single --single-tg-perf --cache-dir <full输出使用的cache目录> --expect-binary-sha256 111e840a364fb45413df87d8c78a87ae14e3effbda954b9be2fe8e0823d9b450
+python docs/ops/gemm/tuning/r001/1die/tn/benchmark.py --record docs/ops/gemm/tuning/r001/1die/tn/record.json --output /tmp/r001_tn-full
+python docs/ops/gemm/tuning/r001/1die/tn/benchmark.py --record docs/ops/gemm/tuning/r001/1die/tn/record.json --output /tmp/r001_tn-single --single-tg-perf --cache-dir <full输出使用的cache目录> --expect-binary-sha256 <full输出result.json中的binary_sha256>
 ```
+
+接口按 config 选择 kernel，并统一从实际 stride 推导 `B_K_CONTIGUOUS`；保留原有 FP16 persistent 配置回退。原始复测与回退恢复后的[验证命令](validation/fp16_fallback_validation.json)、[日志](validation/fp16_fallback_dispatch.log)随本记录保存。两个 persistent TT 尾块的既有编译失败见[重构前后诊断](validation/dispatch_refactor_validation.json)，未计为通过。
+
+TT kernel 命名调整后再次检查：59 项分发/原生检查、32 项配置检查通过，4 个 persistent 用例未执行；[验证记录](validation/kernel_naming_validation.json)。

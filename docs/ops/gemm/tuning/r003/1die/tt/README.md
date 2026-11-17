@@ -15,6 +15,8 @@ MMAC 有效利用率 **14.70%**，按完整 dispatch 的有效 TOPS 除以 48 CU
 复现（先加载记录的PMD环境，输出目录须不存在）：
 
 ```bash
-python docs/ops/gemm/tuning/bf16_tt_mls/benchmark.py --record docs/ops/gemm/tuning/r003/1die/tt/record.json --output /tmp/r003_tt-full
-python docs/ops/gemm/tuning/bf16_tt_mls/benchmark.py --record docs/ops/gemm/tuning/r003/1die/tt/record.json --output /tmp/r003_tt-single --single-tg-perf --cache-dir <full输出使用的cache目录> --expect-binary-sha256 0f3c41554de7ab3e57394bebac0000bfbaf5ae5df325c58395f355f7163f0d1d
+python docs/ops/gemm/tuning/r003/1die/tt/benchmark.py --record docs/ops/gemm/tuning/r003/1die/tt/record.json --output /tmp/r003_tt-full
+python docs/ops/gemm/tuning/r003/1die/tt/benchmark.py --record docs/ops/gemm/tuning/r003/1die/tt/record.json --output /tmp/r003_tt-single --single-tg-perf --cache-dir <full输出使用的cache目录> --expect-binary-sha256 <full输出result.json中的binary_sha256>
 ```
+
+当前入口为 `_gemm_a16w16_tt_kernel`，源码为 `boltops/gemm/gluon/gemm_a16w16_tt.py`。历史测量的源码 commit、原生符号和二进制哈希保留在记录中。

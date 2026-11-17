@@ -15,6 +15,6 @@ MMAC 有效利用率 **0.68%**，按完整 dispatch 的有效 TOPS 除以 48 CU�
 复现（先加载记录的PMD环境，输出目录须不存在）：
 
 ```bash
-python docs/ops/gemm/tuning/bf16_tt_mls/benchmark.py --record docs/ops/gemm/tuning/r001/1die/tt/record.json --output /tmp/r001_tt-full
-python docs/ops/gemm/tuning/bf16_tt_mls/benchmark.py --record docs/ops/gemm/tuning/r001/1die/tt/record.json --output /tmp/r001_tt-single --single-tg-perf --cache-dir <full输出使用的cache目录> --expect-binary-sha256 9ed9f9fac98546b7e98b37046ad59daf12ce917935471d012fbc83eddec4ade8
+python docs/ops/gemm/tuning/r001/1die/tt/benchmark.py --record docs/ops/gemm/tuning/r001/1die/tt/record.json --output /tmp/r001_tt-full
+python docs/ops/gemm/tuning/r001/1die/tt/benchmark.py --record docs/ops/gemm/tuning/r001/1die/tt/record.json --output /tmp/r001_tt-single --single-tg-perf --cache-dir <full输出使用的cache目录> --expect-binary-sha256 <full输出result.json中的binary_sha256>
 ```
