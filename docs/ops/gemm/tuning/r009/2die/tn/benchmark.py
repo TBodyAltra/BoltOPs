@@ -41,12 +41,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--record", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--single-tg-perf", action="store_true",
+                        help="capture three single-TG launches; keep the 96-TG kernel mapping")
     args = parser.parse_args()
     record_path = args.record.resolve()
     record = json.loads(record_path.read_text())
     case = dict(shape=record["shape"], dies=record["environment"]["dies"],
                 layout=record["layout"], seed=record["benchmark"].get("seed", 21),
                 repeats=record["benchmark"].get("repeats", 1))
+    if args.single_tg_perf:
+        case["repeats"] = 3
     if case["dies"] != 2 or case["layout"] != "TN":
         raise ValueError("this benchmark records 2-DIE TN only")
     m, n, k = case["shape"]
@@ -63,6 +67,11 @@ def main():
         # Full-size timing uses the complete system statistics.
         environment["GPU_DFLAGS"] = "['StatLog']"
         environment.pop("HSA_TOOLS_LIB", None)
+        if args.single_tg_perf:
+            environment.update(record.get("single_tg_perf", {}).get("environment_overrides", {
+                "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+                "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
+            }))
         environment[marker] = str(record_path)
         os.execve(sys.executable, [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]], environment)
     output = args.output.resolve()
@@ -117,7 +126,7 @@ def main():
               for key, value in config.items()}
     if config.get("NUM_SMS") != 96 or config.get("TILE_LIMIT") != 720:
         raise ValueError("this replay requires the recorded R009 persistent configuration")
-    grid = (config["NUM_SMS"],)
+    grid = (1,) if args.single_tg_perf else (config["NUM_SMS"],)
     tile_ids = [tile for pid in range(grid[0])
                 for tile in range(pid, config["TILE_LIMIT"], config["NUM_SMS"])]
     selected = torch.zeros((m, n), dtype=torch.bool)
@@ -150,7 +159,7 @@ def main():
 
     kernel.run = checked_run
     report = dict(
-        experiment="sbx2-96tg", dies=2, device_CUs=96,
+        experiment="sbx2-96tg", single_tg=args.single_tg_perf, dies=2, device_CUs=96,
         record=str(record_path), status="RUNNING", shape=[m, n, k], measured_grid=list(grid),
         tile_ids=tile_ids, tiles_per_TG=[len(range(pid, config["TILE_LIMIT"], config["NUM_SMS"])) for pid in range(grid[0])],
         operand_strides={name: list(tensor.stride())
@@ -166,7 +175,10 @@ def main():
         for repeat in range(case.get("repeats", 1)):
             before = set(Path("m5out/0").glob("*/stats.txt"))
             start = time.perf_counter()
-            gemm_a8w8_blockscale(*operands, out=result, backend="auto")
+            if args.single_tg_perf:
+                kernel[grid](*operands, result, M=m, N=n, K=k, GROUP_N=128, GROUP_K=128, **config)
+            else:
+                gemm_a8w8_blockscale(*operands, out=result, backend="auto")
             torch.cuda.synchronize()
             elapsed = time.perf_counter() - start
             if len(public_calls) != repeat + 1:
@@ -175,7 +187,8 @@ def main():
             if len(files) != 1:
                 raise RuntimeError("expected exactly one GEMM dispatch")
             perf = read_stats(files.pop())
-            perf["kernel_tops"] = 2 * m * n * k / (perf["kernel_us"] * 1e6)
+            if not args.single_tg_perf:
+                perf["kernel_tops"] = 2 * m * n * k / (perf["kernel_us"] * 1e6)
             host = storage.cpu().float()
             actual = host[1:-1][selected]
             error = (actual - reference).abs()
@@ -189,10 +202,10 @@ def main():
             )
             launches.append(dict(repeat=repeat, simulator_wall_seconds=elapsed, **perf, accuracy=accuracy,
                                  perf_files=[str(p) for p in Path(perf["stats_path"]).parent.glob("*_python*.perf")]))
-            if len([v for v in perf["completed_TGs_per_die"].values() if v>0]) != 2:
+            if not args.single_tg_perf and len([v for v in perf["completed_TGs_per_die"].values() if v>0]) != 2:
                 raise RuntimeError("dispatch did not execute on both dies")
             Path("result.json").write_text(json.dumps(report, indent=2, default=str))
-            if (perf["completed_TGs"] != math.prod(grid) or perf["active_CUs"] != 96
+            if (perf["completed_TGs"] != math.prod(grid) or perf["active_CUs"] != (1 if args.single_tg_perf else 96)
                     or accuracy["outside_tolerance"] or accuracy["nonfinite"]
                     or not accuracy["canary_ok"]):
                 raise RuntimeError("full grid, precision or boundary check failed")
