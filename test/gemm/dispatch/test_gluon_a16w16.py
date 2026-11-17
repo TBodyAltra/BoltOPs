@@ -3,6 +3,7 @@
 """Dense Gluon dispatch uses the public GEMM contract and precision profile."""
 from copy import deepcopy
 from importlib import import_module
+from types import SimpleNamespace
 
 import pytest
 import torch
@@ -14,6 +15,7 @@ PROFILE = "DTYPE=bfloat16-OUT=bfloat16"
 KERNEL = "_gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel"
 PERSISTENT = "2048x2048x4096"
 PERSISTENT_KERNEL = "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel"
+STREAMK_KERNEL = "_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel"
 
 
 def config_for(m=64, n=64, k=2048, profile=PROFILE, layout="TN", cu=48):
@@ -152,14 +154,124 @@ def test_public_gluon_native_correctness(backend):
     torch.testing.assert_close(result.cpu(), gold, atol=.001, rtol=.01)
 
 
-@pytest.mark.parametrize("layout", ["TN", "TT"])
-def test_persistent_config_carries_tile_sms_and_kernel(layout):
-    cfg, tuned = config_for(m=2048, n=2048, k=4096, layout=layout)
+@pytest.mark.parametrize("layout,profile", [
+    ("TN", PROFILE),
+    ("TT", "DTYPE=float16-OUT=float16"),
+])
+def test_persistent_config_carries_tile_sms_and_kernel(layout, profile):
+    cfg, tuned = config_for(m=2048, n=2048, k=4096, layout=layout, profile=profile)
     assert tuned and cfg["kernel"] == PERSISTENT_KERNEL
     assert (cfg["BLOCK_SIZE_M"], cfg["BLOCK_SIZE_N"], cfg["BLOCK_SIZE_K"]) == (256, 256, 64)
     assert cfg["NUM_SMS"] == 48
     assert cfg["wasp_partition_warps"] == [4, 4, 4]
     assert cfg["wasp_partition_regs"] == [16, 244, 244]
+
+
+@pytest.mark.parametrize("m,n,k,cu", [
+    pytest.param(2048, 2048, 4096, 48, id="R020-48cu"),
+    pytest.param(2048, 2048, 4096, 96, id="R020-96cu"),
+])
+def test_streamk_recorded_config_matches_shape_reuse_compiler(m, n, k, cu):
+    cfg, tuned = config_for(m=m, n=n, k=k, layout="TT", cu=cu)
+    assert tuned
+    assert cfg == dict(
+        BLOCK_SIZE_M=256, BLOCK_SIZE_N=128, BLOCK_SIZE_K=64, NUM_SMS=cu,
+        num_warps=2, num_stages=2, wasp_partition_warps=[2, 2, 4, 4],
+        wasp_wdra=False, use_async_copy=False, optimize_epilogue=False,
+        enable_v_mmac_cluster=1, hcu_use_gfx946_sched_model_v2=True,
+        amdgpu_enable_max_ilp_scheduling_strategy=False, kernel=STREAMK_KERNEL,
+    )
+    # The BF16 inline assembly must not replace the existing FP16 pipeline.
+    fp16_cfg, tuned = config_for(
+        m=m, n=n, k=k, layout="TT", profile="DTYPE=float16-OUT=float16",
+    )
+    assert tuned and fp16_cfg["kernel"] == PERSISTENT_KERNEL
+
+
+@pytest.mark.parametrize("cu", [48, 96])
+def test_streamk_schedule_covers_each_tile_and_k_interval_once(cu):
+    runtime = import_module("boltops.gemm.gluon.gemm_a16w16_streamk")
+    m, n, k = 2048, 2048, 4096
+    table, records, slots = runtime._make_schedule(m, n, k, cu)
+    tiles = ((m + 255) // 256) * (n // 128)
+    assert len(table) // records == cu
+    coverage, workload = {}, []
+    for start in range(0, len(table), records):
+        tasks = [item for item in table[start:start + records] if item[2]]
+        assert tasks and table[start + len(tasks)] == (0, 0, 0, 0)
+        workload.append(sum(item[2] for item in tasks))
+        for tile, offset, length, tag in tasks:
+            coverage.setdefault(tile, []).append((offset, offset + length, tag))
+    assert set(coverage) == set(range(tiles))
+    split_slots = []
+    for intervals in coverage.values():
+        intervals.sort()
+        assert intervals[0][0] == 0 and intervals[-1][1] == k
+        assert all(left[1] == right[0] for left, right in zip(intervals, intervals[1:]))
+        if len(intervals) == 1:
+            assert intervals[0][2] == 0
+        else:
+            assert len(intervals) == 2 and intervals[0][2] < 0
+            assert intervals[0][2] == -intervals[1][2]
+            split_slots.append(intervals[1][2])
+    assert sorted(split_slots) == list(range(1, slots + 1))
+    assert max(workload) - min(workload) <= 64
+
+
+def test_streamk_compiled_kernel_cache_is_device_specific(monkeypatch):
+    from triton.backends.compiler import GPUTarget
+
+    runtime = import_module("boltops.gemm.gluon.gemm_a16w16_streamk")
+    device = [0]
+    compiled = []
+
+    def compile_kernel(*args, **kwargs):
+        handle = SimpleNamespace(device_index=device[0], function=object())
+        compiled.append(handle)
+        return handle
+
+    monkeypatch.setattr(torch.cuda, "current_device", lambda: device[0])
+    monkeypatch.setattr(runtime, "GluonASTSource", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime.triton, "compile", compile_kernel)
+    args = (object(), 2048, 2048, 4096, 129, (), GPUTarget("hip", "gfx946", 64))
+    runtime._compile_kernel_for_device.cache_clear()
+    try:
+        first = runtime._compile_kernel(*args)
+        device[0] = 1
+        second = runtime._compile_kernel(*args)
+        assert first.device_index == 0 and second.device_index == 1
+        assert first.function is not second.function
+        for index, expected in ((0, first), (1, second)):
+            device[0] = index
+            assert runtime._compile_kernel(*args) is expected
+        assert compiled == [first, second]
+    finally:
+        runtime._compile_kernel_for_device.cache_clear()
+
+
+def test_streamk_native_sbx2_split_k():
+    if not torch.cuda.is_available():
+        pytest.skip("requires GPU allocations")
+    from boltops.utility.arch_info import get_device_info
+    device = get_device_info()
+    if device.arch != "gfx946" or device.cu_count != 96:
+        pytest.skip("requires gfx946 with 96 CU")
+    pytest.importorskip("triton.experimental.gluon.language.amd.hcu")
+    # Exercise R020's cross-die split/whole-tile schedule with a short K.
+    m = n = 2048
+    cfg, _ = config_for(m=m, n=n, k=4096, layout="TT", cu=96)
+    generator = torch.Generator().manual_seed(96)
+    a = (torch.rand((m, 128), generator=generator) - .5).bfloat16()
+    b = (torch.rand((128, n), generator=generator) - .5).bfloat16()
+    expected = (a.float() @ b.float()).bfloat16()
+    ai, bi = a.cuda(), b.cuda()
+    storage = torch.full((m * n + 128,), 123., dtype=torch.bfloat16).cuda()
+    out = storage[64:-64].view(m, n)
+    assert gemm_a16w16(ai, bi.T, out=out, config=cfg, backend="gluon") is out
+    host = storage.cpu()
+    torch.testing.assert_close(host[64:-64].view(m, n), expected, atol=.001, rtol=.01)
+    assert bool((host[:64] == 123).all() and (host[-64:] == 123).all())
+    assert torch.equal(ai.cpu(), a) and torch.equal(bi.cpu(), b)
 
 
 @pytest.mark.parametrize("kwargs", [
@@ -175,16 +287,16 @@ def test_persistent_config_is_shape_and_layout_specific(kwargs):
         config_for(**defaults)
 
 
-@pytest.mark.parametrize("layout", ["TN", "TT"])
-def test_persistent_dispatch_launches_one_tg_per_sm(monkeypatch, layout):
+@pytest.mark.parametrize("layout,dtype", [("TN", torch.bfloat16), ("TT", torch.float16)])
+def test_persistent_dispatch_launches_one_tg_per_sm(monkeypatch, layout, dtype):
     calls = install_captures(monkeypatch)
     module = import_module("boltops.gemm.gluon.gemm_a16w16")
     monkeypatch.setattr(module, PERSISTENT_KERNEL, Capture("persistent", calls))
-    a = torch.empty((2048, 4096), dtype=torch.bfloat16, device="cuda")
+    a = torch.empty((2048, 4096), dtype=dtype, device="cuda")
     w = torch.empty((2048, 4096), dtype=a.dtype, device=a.device)
     if layout == "TT":
         w = w.as_strided(w.shape, (1, 2048))
-    result = gemm_a16w16(a, w)
+    result = gemm_a16w16(a, w, dtype=dtype)
     assert result.shape == (2048, 2048)
     label, grid, args, params = calls[0]
     assert label == "persistent" and grid == (48,)
@@ -192,6 +304,68 @@ def test_persistent_dispatch_launches_one_tg_per_sm(monkeypatch, layout):
     assert (params["M"], params["N"], params["K"]) == (2048, 2048, 4096)
     assert params["NUM_SMS"] == 48 and "kernel" not in params
     assert params["B_K_CONTIGUOUS"] is (layout == "TN")
+
+
+@pytest.mark.parametrize("m,n,k,cu", [
+    pytest.param(2048, 2048, 4096, 48, id="R020-48cu"),
+    pytest.param(2048, 2048, 4096, 96, id="R020-96cu"),
+])
+@pytest.mark.parametrize("backend", ["auto", "gluon"])
+def test_streamk_dispatch_uses_dynamic_lds_launcher(monkeypatch, m, n, k, backend, cu):
+    install_captures(monkeypatch)
+    public = import_module("boltops.gemm.gemm_a16w16")
+    monkeypatch.setattr(public, "get_device_info", lambda device: SimpleNamespace(arch="gfx946", cu_count=cu))
+    kernels = import_module("boltops.gemm.gluon.gemm_a16w16")
+    runtime = import_module("boltops.gemm.gluon.gemm_a16w16_streamk")
+    calls = []
+
+    def launch(kernel, prepare_edges, a, b, out, *, cu_count, config):
+        calls.append((kernel, prepare_edges, a, b, out, cu_count, config))
+
+    monkeypatch.setattr(runtime, "_launch_gemm_a16w16_streamk", launch)
+    a = torch.empty((m, k), dtype=torch.bfloat16, device="cuda")
+    w = torch.empty((k, n), dtype=a.dtype, device=a.device).T
+    out = gemm_a16w16(a, w, backend=backend)
+    assert len(calls) == 1
+    kernel, edges, actual_a, actual_w, actual_out, cu_count, config = calls[0]
+    assert kernel is getattr(kernels, STREAMK_KERNEL)
+    assert edges is kernels._gemm_a16w16_bf16_tt_prepare_edges_kernel
+    assert actual_a is a and actual_w is w and actual_out is out
+    assert cu_count == cu and config["NUM_SMS"] == cu and "kernel" not in config
+    assert config["wasp_partition_warps"] == [2, 2, 4, 4]
+
+
+@pytest.mark.parametrize("m,n,k,cu", [
+    pytest.param(2048, 2048, 4096, 48, id="R020-48cu"),
+    pytest.param(2048, 2048, 4096, 96, id="R020-96cu"),
+])
+@pytest.mark.parametrize("unaligned", ["x", "w", "out"])
+@pytest.mark.parametrize("backend", [None, "auto", "gluon"])
+def test_streamk_unaligned_pointers_use_triton_only_in_auto(
+    monkeypatch, m, n, k, cu, unaligned, backend,
+):
+    calls = install_captures(monkeypatch)
+    public = import_module("boltops.gemm.gemm_a16w16")
+    monkeypatch.setattr(public, "get_device_info", lambda device: SimpleNamespace(arch="gfx946", cu_count=cu))
+
+    def matrix(rows, cols, name):
+        offset = int(unaligned == name)
+        return torch.empty(rows * cols + offset, dtype=torch.bfloat16,
+                           device="cuda")[offset:].view(rows, cols)
+
+    a, w, out = matrix(m, k, "x"), matrix(k, n, "w").T, matrix(m, n, "out")
+    assert a.stride() == (k, 1) and w.stride() == (1, n) and out.is_contiguous()
+    assert [t.data_ptr() % 16 for t in (a, w, out)] == [
+        2 * (name == unaligned) for name in ("x", "w", "out")
+    ]
+    if backend == "gluon":
+        with pytest.raises(ValueError, match="16-byte-aligned"):
+            gemm_a16w16(a, w, out=out, backend=backend)
+        assert not calls
+    else:
+        assert gemm_a16w16(a, w, out=out, backend=backend) is out
+        assert len(calls) == 1 and calls[0][0] == "triton"
+        assert calls[0][2][0] is a and calls[0][2][3] is out
 
 
 @pytest.mark.parametrize("layout", ["TN", "TT"])
@@ -218,7 +392,9 @@ def test_persistent_native_tt_tail_correctness(dtype):
     a_dev, b_dev = a.cuda(), b.cuda()
     storage = torch.full((m*n + 128,), 123., dtype=dtype, device=a_dev.device)
     out = storage[64:-64].view(m, n)
-    cfg, _ = config_for(m=2048, n=2048, k=4096, layout="TT")
+    # Select the general pipeline explicitly; the recorded BF16 TT shape now
+    # dispatches to Stream-K, whose alignment contract excludes this tail case.
+    cfg, _ = config_for(m=2048, n=2048, k=4096, layout="TN")
     result = gemm_a16w16(a_dev, b_dev.T, dtype=dtype, out=out,
                          config=cfg, backend="gluon")
     assert result is out

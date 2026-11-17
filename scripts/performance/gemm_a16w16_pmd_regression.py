@@ -193,8 +193,8 @@ def comparable(value):
 def verify_model(record, measurement):
     model = configuration(measurement)
     expected = record['environment']
-    shaders = [p for p in model if re.fullmatch(r'system(?:\d+)?\.shaders', p)]
-    cus = [p for p in model if re.fullmatch(r'system(?:\d+)?\.shaders\.CUs\d+', p)]
+    shaders = [p for p in model if re.fullmatch(r'system(?:\d+)?\.shaders(?:\d+)?', p)]
+    cus = [p for p in model if re.fullmatch(r'system(?:\d+)?\.shaders(?:\d+)?\.CUs\d+', p)]
     if len(shaders) != expected['dies'] or len(cus) != expected['cu_count']:
         raise ValueError('PMD DIE/CU count differs from baseline')
     sections = expected.get('runtime_configuration', {}).get('sections', {})
@@ -276,7 +276,7 @@ def verify_sample(record, sample, measurement, clock):
     cycles = positive(values['system.gcSimCycles'], 'gcSimCycles')
     if values['simFreq'] != 1e12:
         raise ValueError('PMD tick resolution differs from picosecond clocks')
-    counts = [v for k, v in values.items() if re.fullmatch(r'system(?:\d+)?\.shaders\.CUs\d+\.completedWGs', k)]
+    counts = [v for k, v in values.items() if re.fullmatch(r'system(?:\d+)?\.shaders(?:\d+)?\.CUs\d+\.completedWGs', k)]
     expected = record['performance']['launched_TGs']
     if (len(counts) != record['environment']['cu_count'] or any(v < 0 or not math.isfinite(v) or not v.is_integer() for v in counts)
             or sum(counts) != expected or sample['completed_TGs'] != expected):
@@ -318,8 +318,31 @@ def evaluate(case, case_output, max_regression_percent=1.0):
     model = verify_model(record, measurement)
     protocol = timing_protocol(record)
     repeats = record['benchmark']['repeats']
+    flag_reset_us = 0.0
     if protocol == 'cold':
         paths = sorted(measurement.glob('g/*/*/stats.txt')) + sorted(measurement.glob('m5out/*/*/stats.txt'))
+        setup = result.get('setup_dispatches', [])
+        if setup:
+            if (record['source']['symbol'] != '_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel'
+                    or len(setup) != 1 or setup[0].get('kind') != 'streamk_flag_reset'):
+                raise ValueError('unexpected setup dispatch before cold GEMM')
+            reset = setup[0]
+            path = (measurement / reset['stats_path']).resolve()
+            path.relative_to(measurement.resolve())
+            if path not in {p.resolve() for p in paths} or digest(path) != reset['stats_sha256']:
+                raise ValueError('flag-reset stats are missing or changed')
+            text = path.read_text()
+            counts = re.findall(r'^system(?:\d+)?\.shaders(?:\d+)?\.CUs\d+\.completedWGs\s+(\d+)', text, re.M)
+            mmops = re.findall(r'^system(?:\d+)?\.shaders(?:\d+)?\.CUs\d+\.numInstrTypeExecuted::MMOP\s+(\d+)', text, re.M)
+            cycles = re.findall(r'^system.gcSimCycles\s+([\deE.+-]+)', text, re.M)
+            if ('End Simulation Statistics' not in text or len(counts) != model['cu_count']
+                    or sum(map(int, counts)) != 1 or len(mmops) != model['cu_count']
+                    or any(map(int, mmops)) or len(cycles) != 1
+                    or reset['kernel_cycles'] != float(cycles[0])
+                    or not math.isclose(reset['kernel_us'], float(cycles[0]) * model['clock_period_ps'] / 1e6, rel_tol=1e-10)):
+                raise ValueError('invalid native flag reset before cold Stream-K GEMM')
+            flag_reset_us = reset['kernel_us']
+            paths = [p for p in paths if p.resolve() != path]
         if len(paths) != 1:
             raise ValueError('cold baseline requires exactly one complete dispatch')
         if 'samples' in result or 'launches' in result:
@@ -360,7 +383,7 @@ def evaluate(case, case_output, max_regression_percent=1.0):
     for sample in validation:
         verify_sample(record, sample, measurement, model['clock_period_ps'])
     times = [verify_sample(record, sample, measurement, model['clock_period_ps']) for sample in samples]
-    measured = statistics.median(times[index] for index in selected)
+    measured = statistics.median(times[index] for index in selected) + flag_reset_us
     performance = result['performance']
     if not math.isclose(positive(performance['kernel_us'], 'reported kernel_us'), measured, rel_tol=1e-10):
         raise ValueError('benchmark aggregation differs from recorded protocol')
@@ -406,6 +429,8 @@ def replay_record(case, output):
             node = next(n for n in ast.parse(source).body if isinstance(n, ast.FunctionDef) and n.name == item['symbol'])
             start = min([node.lineno] + [n.lineno for n in node.decorator_list])
             item['kernel_sha256'] = hashlib.sha256(''.join(source.splitlines(keepends=True)[start - 1:node.end_lineno]).encode()).hexdigest()
+    for item in record.get('source_dependencies', []):
+        item['sha256'] = digest(REPO / item['path'])
     runtime = output / 'runtime'
     for name in ('home', 'temp', 'cache', 'triton-home'):
         (runtime / name).mkdir(parents=True)

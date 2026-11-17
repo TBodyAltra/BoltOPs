@@ -1,0 +1,880 @@
+{
+  "requirement": "R020",
+  "record_key": {
+    "requirement": "R020",
+    "dies": 2,
+    "layout": "TT"
+  },
+  "shape": [
+    2048,
+    2048,
+    4096
+  ],
+  "full_grid_TGs": 96,
+  "status": "PASS",
+  "performance": {
+    "kernel_cycles": 149809.0,
+    "kernel_us": 68.163095,
+    "kernel_tops": 504.0812534700779,
+    "gemm_kernel_cycles": 139749.0,
+    "gemm_kernel_us": 63.585795,
+    "gemm_kernel_tops": 540.3681493327244,
+    "launched_TGs": 96,
+    "samples": 1,
+    "flag_reset_cycles": 10060.0,
+    "flag_reset_us": 4.5773,
+    "tops_formula": "2*M*N*K/(kernel_us*1e6)",
+    "aggregation": "one cold full-grid dispatch plus its native flag-reset dispatch; no minimum or median; no execution warmup",
+    "time_domain": "sum of system.gcSimCycles * gc_clock_period_ps / 1e6 over the native flag reset and complete GEMM dispatches",
+    "gc_clock_period_ps": 455,
+    "completed_TGs_per_die": [
+      48,
+      48
+    ],
+    "gpu_dispatch_total_us": 68.163095
+  },
+  "source": {
+    "path": "boltops/gemm/gluon/gemm_a16w16.py",
+    "sha256": "95c68a85f8495e8ced2947bc438357788a32dcf1ebbb7ff50e16248db9d5a0cd",
+    "measured_sha256": "711f312aaaa064083e5cf822119248f24141c82631d3fe9a32895faaf305b847",
+    "symbol": "_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel",
+    "line": 884,
+    "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py"
+  },
+  "source_dependencies": [
+    {
+      "path": "boltops/gemm/config.py",
+      "sha256": "ea70698a70378429dc66210c368d511a2b622c602dab66c9ddfb48f02d66ea8f"
+    },
+    {
+      "path": "boltops/utility/arch_info.py",
+      "sha256": "6823eb9d9790aaff81ee8f9f42860410a102c5a7355d751f7d91dc1eca1a3a3b"
+    },
+    {
+      "path": "boltops/gemm/gluon/gemm_a16w16_streamk.py",
+      "sha256": "f1e1d0a2a70e70f13cb4278db36ae3dba829b5a1c445f4649e033732de7e3e89",
+      "measured_sha256": "5f2cc8f76245cc7acced876f69771defd7119955f9769b59e23014a8e382951f"
+    }
+  ],
+  "streamk_schedule": {
+    "records_per_TG": 129,
+    "split_slots": 64,
+    "TGs": 96,
+    "schedule_sha256": "fe3c769d2c76731aa41b186ea5c2fcb5f6d38920502994105a271244aea4c969"
+  },
+  "config": {
+    "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=2048-K=4096-TT.json",
+    "sha256": "00584dbca9cd7c3ac9e785a9b9e318514be544b79a958162a224c58c5fbf4cac",
+    "bucket": "M_EQ_2048",
+    "profile": "DTYPE=bfloat16-OUT=bfloat16",
+    "resolved_launch": {
+      "BLOCK_SIZE_M": 256,
+      "BLOCK_SIZE_N": 128,
+      "BLOCK_SIZE_K": 64,
+      "num_warps": 2,
+      "num_stages": 2,
+      "NUM_SMS": 96,
+      "wasp_partition_warps": [
+        2,
+        2,
+        4,
+        4
+      ],
+      "wasp_wdra": false,
+      "use_async_copy": false,
+      "optimize_epilogue": false,
+      "enable_v_mmac_cluster": 1,
+      "hcu_use_gfx946_sched_model_v2": true,
+      "amdgpu_enable_max_ilp_scheduling_strategy": false
+    },
+    "tuned": true
+  },
+  "assembly": {
+    "path": "kernel.amdgcn",
+    "sha256": "2326050f5e9fc3476871616a193a69df0394fca180be3e8d257992c0602b2b47",
+    "raw_sha256": "2326050f5e9fc3476871616a193a69df0394fca180be3e8d257992c0602b2b47",
+    "normalization": "none; emitted by the measured compiler",
+    "hsaco_sha256": "0f47fd9ce14910b3a533afda9cfbfbb7a0e9eca9a68598a3cfd8e9dfa4a9e234",
+    "allocated_hsaco_sections_sha256": {
+      ".note": "9642fd6cc0600625a37d2797edf19e21ecb30178e867ae8a3defe383bca31a97",
+      ".dynsym": "e1c7e9be08510bbd4abfb7734701ed2f87313b74024f1cd5e1aa47dbd0e969ae",
+      ".gnu.hash": "7d97b58998db333a9ddae3b3a9d2bcadedbfff45b03a022a746ede47ed6de49d",
+      ".hash": "41ab9b9a82692eb57ce2f3a09ed5dbc1eb58fd0d7150ac7af3c170335bc6a9a3",
+      ".dynstr": "1a3130677b2486da2a89db1c2eb22cf83f5d671c9c44715cf30a1bc7d2299883",
+      ".rodata": "e5fcd3e266f60c7ad93741e47b5df0bdcfe611022235246e34d822d7388ee9a6",
+      ".text": "54ca09bcc3af5c2a1efcc9f75cb9c0db54095c9d22c770ef2ce8a84c53c441d1",
+      ".dynamic": "1db14f6aa8a95db6f29274a0a14d142fb77bd4f185404a1aa89c463cf70e05f3",
+      ".relro_padding": "5d3f7a19c345313a442152c7c811be5956b758a70e1e17296fa9a381d877eb80"
+    }
+  },
+  "environment": {
+    "type": "PMD",
+    "model": "CoreArch:HEAD_1763(lib_ini_opt)",
+    "arch": "gfx946",
+    "chip": "sbx2",
+    "dies": 2,
+    "cu_count": 96,
+    "cu_count_per_die": 48,
+    "torch_reported_cu_count": 96,
+    "host": "nmz27",
+    "torch": "2.6.0+d1e87ac",
+    "triton": {
+      "version": "3.6.0",
+      "branch": "install/release-3.6.x-20261114",
+      "commit": "6b111ee3efaf1275903deaf0957393ee2c79a48a"
+    },
+    "clang": {
+      "version": "clang version 22.0.0git (http://42.228.13.241:10068/dcu-aicc/llvm-project.git 264542e7e37f15dd13ab063d59522652268cf7d9)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /public/home/duyubo/clang/install-dtk-7.2.1/bin",
+      "commit": "264542e7e37f15dd13ab063d59522652268cf7d9"
+    },
+    "toolchain": {
+      "triton_build": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10",
+      "environment_script": "/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh",
+      "environment_script_sha256": "333ddb8593a5ab4e16d551fbe9810f3b6ed0e0b3c462c3e6900dcf018bca312e"
+    },
+    "clock_period_ps": {
+      "shader": 455,
+      "gc": 455
+    },
+    "frequency_ghz": {
+      "shader": 2.197802197802198,
+      "gc": 2.197802197802198
+    },
+    "environment_variables": {
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "GPU_ARGS": "['--abs-max-tick=10000000000']",
+      "GPU_CHIP": "sbx2",
+      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+      "GPU_OUT": "g",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
+      "LD_LIBRARY_PATH": "/opt/rocm/lib",
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PMD_PATH": "/opt/rocm/pmd",
+      "PYTHONPATH": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10:",
+      "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/streamk_sbx2_20261117_v1/R020-full/cache",
+      "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang"
+    },
+    "compiler_hashes": {
+      "libtriton": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3",
+      "clang": "4db337e558e6ded7d0369aad289015412278b7a886791065ef04f2da7a86d037"
+    },
+    "runtime_configuration": {
+      "path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/streamk_sbx2_20261117_v1/R020-full/g/config.ini",
+      "sha256": "d567cca59d30169d82874ef5369057d5af1b68bf9d34d7a2cce3db2542aa029a",
+      "sections": {
+        "gpu_configuration": {
+          "num_chip": "2",
+          "num_cu": "48",
+          "gpu_clock": "455",
+          "sys_clock": "1000",
+          "umc_clock": "2276",
+          "device_id": "26295",
+          "mem_size": "68719476736",
+          "ipc_conn": "false",
+          "skip_cal": "false",
+          "skip_kernel_exec": "false",
+          "soc_model": "false"
+        },
+        "system.shaders0.clk_domain": {
+          "clock": "455"
+        },
+        "system.shaders1.clk_domain": {
+          "clock": "455"
+        }
+      }
+    }
+  },
+  "benchmark": {
+    "script": "benchmark.py",
+    "seed": 20,
+    "repeats": 1,
+    "sha256": "dfaeedb6056220419e9bc845d6ac3d3bc81788db8d22a60938b8de37f39aaa5c",
+    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && taskset -c 0 /usr/bin/python -u docs/ops/gemm/tuning/R020/2die/tt/benchmark.py --output tmp/1117/streamk_sbx2_20261117_v1/R020-full",
+    "guard_elements_each_side": 65536,
+    "cache": "fresh per-output Triton cache, XDG cache, temporary files and private PMD history",
+    "measured_sha256": "421959c63f883c8de976b7b3288a21e556ec9fa637669377d45dd99315d7b49b"
+  },
+  "resources": {
+    "LDS_bytes": 98304,
+    "compiler_shared_bytes": 0,
+    "VGPR": 164,
+    "spill": 0,
+    "metadata": {
+      "AMDGCN_USE_BUFFER_OPS": "true",
+      "allow_flush_denorm": false,
+      "allow_flush_denorm_explicitly_set": false,
+      "allowed_dot_input_precisions": [
+        "ieee",
+        "tf32"
+      ],
+      "amdgpu_enable_max_ilp_scheduling_strategy": false,
+      "arch": "gfx946",
+      "assume_no_nans": false,
+      "backend_name": "hip",
+      "block_pingpong_async_global_prefetch": null,
+      "block_pingpong_async_local_prefetch": 1,
+      "buffer_cache_swizzle": false,
+      "cluster_dims": [
+        1,
+        1,
+        1
+      ],
+      "debug": false,
+      "default_dot_input_precision": "ieee",
+      "deprecated_fp8_dot_operand_dtypes": [],
+      "empty_arrive_after_mmac": false,
+      "enable_fp_fusion": true,
+      "enable_v_mmac_cluster": 1,
+      "extern_libs": [
+        [
+          "ocml",
+          "/opt/rocm/amdgcn/bitcode/ocml.bc"
+        ],
+        [
+          "ockl",
+          "/opt/rocm/amdgcn/bitcode/ockl.bc"
+        ],
+        [
+          "hip",
+          "/opt/rocm/amdgcn/bitcode/hip.bc"
+        ],
+        [
+          "opencl",
+          "/opt/rocm/amdgcn/bitcode/opencl.bc"
+        ]
+      ],
+      "hash": "47839098c0bff8cbbf303efdf8809211dfa6c8bab7fc6484da3a53bda83cfbca",
+      "hcu_use_gfx946_sched_model_v2": true,
+      "instrumentation_mode": "",
+      "kpack": 1,
+      "launch_cooperative_grid": false,
+      "matrix_instr_nonkdim": 0,
+      "max_memory_cluster_dwords": null,
+      "max_num_imprecise_acc_default": 0,
+      "misched_regpressure": true,
+      "mmac_layout_force": -1,
+      "name": "_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel",
+      "num_ctas": 1,
+      "num_stages": 2,
+      "num_warps": 12,
+      "optimize_epilogue": false,
+      "profile_scratch_align": 1,
+      "profile_scratch_size": 0,
+      "sanitize_overflow": true,
+      "sched_latency": "none",
+      "schedule_hint": "none",
+      "shared": 0,
+      "supported_fp8_dtypes": [
+        "fp8e4nv",
+        "fp8e5"
+      ],
+      "target": {
+        "backend": "hip",
+        "arch": "gfx946",
+        "warp_size": 64
+      },
+      "tensordesc_meta": [],
+      "triton_version": "3.6.0",
+      "use_async_copy": false,
+      "use_block_pingpong": false,
+      "use_nvshmem": false,
+      "use_rocshmem": false,
+      "utc_warmup": false,
+      "warp_size": 64,
+      "wasp_enabled": true,
+      "wasp_partition_regs": null,
+      "wasp_partition_warps": [
+        2,
+        2,
+        4,
+        4
+      ],
+      "wasp_wdra": false,
+      "waves_per_eu": 1
+    }
+  },
+  "dtype": {
+    "A": "BF16",
+    "W": "BF16",
+    "output": "BF16",
+    "scale": null,
+    "accumulator": "FP32"
+  },
+  "operand_strides": {
+    "A": [
+      4096,
+      1
+    ],
+    "W": [
+      1,
+      2048
+    ],
+    "logical_B": [
+      2048,
+      1
+    ],
+    "C": [
+      2048,
+      1
+    ]
+  },
+  "public_api": {
+    "path": "boltops/gemm/gemm_a16w16.py",
+    "sha256": "2eabed471559ba09f60ce32913ca850d2f1e717cb7d73c759a9cc0f70dbfaab6",
+    "backend": "auto",
+    "resolved_backend": "gluon",
+    "out": "preallocated",
+    "measured_sha256": "32f1a766a5e4d89c503be485669ed767846a68e4cd304f335eab5957853f6c63"
+  },
+  "layout": "TT",
+  "dispatch_note": "The 96-CU R020 Gluon profile selects the existing Stream-K device kernel through public auto. The original scheduler launches one TG per CU: 96 TGs for 128 output tiles. Reported kernel_cycles, kernel_us and kernel_tops include the native flag-reset dispatch and the cold GEMM; gemm_kernel_* and flag_reset_* retain their individual costs.",
+  "setup_dispatches": [
+    {
+      "kind": "streamk_flag_reset",
+      "stats_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/streamk_sbx2_20261117_v1/R020-full/g/0/0/stats.txt",
+      "stats_sha256": "c4e8740e2148b611501afb588cbbae9a0f2d1e93a9712d55d4b61cbb68690f68",
+      "kernel_cycles": 10060.0,
+      "kernel_us": 4.5773,
+      "MMOP": 0,
+      "perf_path": "flag_reset_single_tg.perf",
+      "perf_sha256": "0914d7815c09d3599991253e8d925d3de91d19cfaee9d0b911ae26222a3abe17",
+      "raw_perf_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/streamk_sbx2_20261117_v1/R020-full/g/0/0/3631641_python3.10.perf",
+      "capture_note": "Native PMD output from the flag reset preceding the archived cold R020 GEMM. The original reset already launches one TG on XCD0/CU0; copied byte for byte, with four complete waves and a nonempty XCD0 SQTT stream. XCD1 is idle.",
+      "grid": [
+        1
+      ],
+      "workgroup_size": [
+        256,
+        1,
+        1
+      ],
+      "completed_TGs_per_die": [
+        1,
+        0
+      ],
+      "wavefront_trace": {
+        "status": "PASS",
+        "die": 0,
+        "CU": 0,
+        "SE": 0,
+        "wavefronts": 4,
+        "wave_starts": 4,
+        "wave_ends": 4,
+        "instructions": 280,
+        "MMOP": 0,
+        "tt_end_cycles": 2124,
+        "cu_active_cycles": 2121.0,
+        "trace_bytes": 2782,
+        "trace_sha256": "83188d0002b6b030bc06021be2f93efec44ba79cb3668c62b478bfa4fa685d16",
+        "native_trace_sha256": "cfe7cc93bac3df35e6c69157d27d9787b1a6c8dcb7eac8272d771261507cf2ca",
+        "embedded_hsaco_sha256": "a07912d9f2fe0734a4f77692bbea03293d0e0d9b03cd5460a5aaf28e9198dcce"
+      }
+    }
+  ],
+  "single_tg_perf": {
+    "path": "single_tg.perf",
+    "sha256": "b1dd2d6626e66ce68961212c27163a94ca4b475133a2b2c970ca6076113f6077",
+    "scope": "Original Stream-K TG2 work, isolated as grid=(1,) by relocating its schedule row to TG0. Original MNK=2048,2048,4096, strides, RECORDS and device instructions are preserved. No peer waits; complete BF16 outputs and published FP32 partials/flags are validated. PMD rotates independent dispatches between dies.",
+    "original_TG": 2,
+    "original_tasks": [
+      [
+        32,
+        2688,
+        1408,
+        17
+      ],
+      [
+        48,
+        0,
+        4096,
+        0
+      ]
+    ],
+    "grid": [
+      1
+    ],
+    "tile": [
+      256,
+      128,
+      4096
+    ],
+    "selection": "Minimum system.gcSimCycles among timed repeats on die 0 with a complete nonempty XCD0 SQTT stream; repeat 0 excluded. Native PMD PERF copied byte for byte.",
+    "kernel_cycles": 116573.0,
+    "kernel_us": 53.040715,
+    "assembly_sha256": "2326050f5e9fc3476871616a193a69df0394fca180be3e8d257992c0602b2b47",
+    "hsaco_sha256": "d3fc5fa2872a2f1a9a3f6cb26e9d77ec62219a97538580dbe1fb0f08657914d9",
+    "allocated_hsaco_sections_sha256": {
+      ".note": "9642fd6cc0600625a37d2797edf19e21ecb30178e867ae8a3defe383bca31a97",
+      ".dynsym": "e1c7e9be08510bbd4abfb7734701ed2f87313b74024f1cd5e1aa47dbd0e969ae",
+      ".gnu.hash": "7d97b58998db333a9ddae3b3a9d2bcadedbfff45b03a022a746ede47ed6de49d",
+      ".hash": "41ab9b9a82692eb57ce2f3a09ed5dbc1eb58fd0d7150ac7af3c170335bc6a9a3",
+      ".dynstr": "1a3130677b2486da2a89db1c2eb22cf83f5d671c9c44715cf30a1bc7d2299883",
+      ".rodata": "e5fcd3e266f60c7ad93741e47b5df0bdcfe611022235246e34d822d7388ee9a6",
+      ".text": "54ca09bcc3af5c2a1efcc9f75cb9c0db54095c9d22c770ef2ce8a84c53c441d1",
+      ".dynamic": "1db14f6aa8a95db6f29274a0a14d142fb77bd4f185404a1aa89c463cf70e05f3",
+      ".relro_padding": "5d3f7a19c345313a442152c7c811be5956b758a70e1e17296fa9a381d877eb80"
+    },
+    "code_object_comparison": "All allocated ELF sections, including .text/.rodata/.note, are byte-identical to the full-grid kernel; ELF debug paths differ between output directories.",
+    "validation": [
+      {
+        "status": "PASS",
+        "dispatch_cycles": 126579.0,
+        "kernel_us": 57.593445,
+        "MMOP": 44032,
+        "completed_TGs": 1,
+        "completed_TGs_per_die": [
+          1,
+          0
+        ],
+        "stats_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/0/0/stats.txt",
+        "stats_sha256": "44b39dd3e0695defc77fce24ee0db7543907060f8032fba2d07a0dad920972ce",
+        "perf_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/0/0/3898085_python3.10.perf",
+        "perf_sha256": "e24431c25019a834f78a6680993dc95f075eaeb77beefdafa685963812093b4a",
+        "reported_gc_frequency_ghz": 2.197802,
+        "wavefront_trace": {
+          "status": "PASS",
+          "die": 0,
+          "CU": 0,
+          "SE": 0,
+          "wavefronts": 12,
+          "wave_starts": 12,
+          "wave_ends": 12,
+          "instructions": 85443,
+          "MMOP": 44032,
+          "tt_end_cycles": 118644,
+          "cu_active_cycles": 118640.0,
+          "trace_bytes": 684604,
+          "trace_sha256": "d370adcb9f56e2507d37d5c992e967b4f2eba8ef73edae8b3f78f5cd21d2b6c7",
+          "native_trace_sha256": "8fb026a2fafe53386f905732e2c5224639a4dd89071930ab0b6c9ec1fceae1b9",
+          "embedded_hsaco_sha256": "d3fc5fa2872a2f1a9a3f6cb26e9d77ec62219a97538580dbe1fb0f08657914d9"
+        },
+        "index": 0,
+        "phase": "correctness",
+        "seed": 20,
+        "input_kind": "uniform_random",
+        "accuracy": {
+          "status": "PASS",
+          "elements": 65536,
+          "atol": 0.001,
+          "rtol": 0.01,
+          "outside_tolerance": 0,
+          "nonfinite": 0,
+          "max_abs": 0.03125,
+          "canary_ok": true,
+          "inputs_byte_identical": true,
+          "unselected_output_nan": true
+        }
+      },
+      {
+        "status": "PASS",
+        "dispatch_cycles": 124894.0,
+        "kernel_us": 56.82677,
+        "MMOP": 44032,
+        "completed_TGs": 1,
+        "completed_TGs_per_die": [
+          0,
+          1
+        ],
+        "stats_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/0/1/stats.txt",
+        "stats_sha256": "4da4c8e2bba5b03439e6873ada549049741cc204470823178868a781653f8d9d",
+        "perf_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/0/1/3898085_python3.10.perf",
+        "perf_sha256": "2b5d96d47352c93a26cc8507c17f69306bac5c18ba6c696b0ea8ae46c71253e5",
+        "reported_gc_frequency_ghz": 2.197802,
+        "wavefront_trace": {
+          "status": "PASS",
+          "die": 1,
+          "CU": 0,
+          "SE": 0,
+          "wavefronts": 12,
+          "wave_starts": 12,
+          "wave_ends": 12,
+          "instructions": 85443,
+          "MMOP": 44032,
+          "tt_end_cycles": 116952,
+          "cu_active_cycles": 116951.0,
+          "trace_bytes": 683758,
+          "trace_sha256": "c6211928f69c8d02faeb3ad9a6824fcda8bebf842fd6a0bbfc7e68ae0d3aae9c",
+          "native_trace_sha256": "d00f07a7629411648293738f614978b7636a58136d359361051a2419f79fe2b9",
+          "embedded_hsaco_sha256": "d3fc5fa2872a2f1a9a3f6cb26e9d77ec62219a97538580dbe1fb0f08657914d9"
+        },
+        "index": 1,
+        "phase": "correctness",
+        "seed": 1020,
+        "input_kind": "ones",
+        "accuracy": {
+          "status": "PASS",
+          "elements": 65536,
+          "atol": 0.001,
+          "rtol": 0.01,
+          "outside_tolerance": 0,
+          "nonfinite": 0,
+          "max_abs": 0.0,
+          "canary_ok": true,
+          "inputs_byte_identical": true,
+          "unselected_output_nan": true
+        }
+      },
+      {
+        "status": "PASS",
+        "dispatch_cycles": 125020.0,
+        "kernel_us": 56.8841,
+        "MMOP": 44032,
+        "completed_TGs": 1,
+        "completed_TGs_per_die": [
+          1,
+          0
+        ],
+        "stats_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/0/2/stats.txt",
+        "stats_sha256": "1fb3805151ad5182fab2ecdccdd64205fb75e57c789a3e5607a262782f31d9e2",
+        "perf_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/0/2/3898085_python3.10.perf",
+        "perf_sha256": "50ee6876003ada48f9771aa5b00874b6cb3780608f35226637d021a4630169d1",
+        "reported_gc_frequency_ghz": 2.197802,
+        "wavefront_trace": {
+          "status": "PASS",
+          "die": 0,
+          "CU": 0,
+          "SE": 0,
+          "wavefronts": 12,
+          "wave_starts": 12,
+          "wave_ends": 12,
+          "instructions": 85443,
+          "MMOP": 44032,
+          "tt_end_cycles": 117080,
+          "cu_active_cycles": 117082.0,
+          "trace_bytes": 683822,
+          "trace_sha256": "1f1e9452406df8a83089febc20e49f4def850b73bad0ccf1eaa851585e394140",
+          "native_trace_sha256": "591444d7d56a4f7250f4ee47006fe4b9aa1629434f200e18177ac0dbb4982236",
+          "embedded_hsaco_sha256": "d3fc5fa2872a2f1a9a3f6cb26e9d77ec62219a97538580dbe1fb0f08657914d9"
+        },
+        "index": 2,
+        "phase": "correctness",
+        "seed": 2020,
+        "input_kind": "uniform_random",
+        "accuracy": {
+          "status": "PASS",
+          "elements": 65536,
+          "atol": 0.001,
+          "rtol": 0.01,
+          "outside_tolerance": 0,
+          "nonfinite": 0,
+          "max_abs": 0.03125,
+          "canary_ok": true,
+          "inputs_byte_identical": true,
+          "unselected_output_nan": true
+        }
+      }
+    ],
+    "samples": [
+      {
+        "status": "PASS",
+        "dispatch_cycles": 117102.0,
+        "kernel_us": 53.28141,
+        "MMOP": 44032,
+        "completed_TGs": 1,
+        "completed_TGs_per_die": [
+          0,
+          1
+        ],
+        "stats_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/0/3/stats.txt",
+        "stats_sha256": "9d21c36cf5c4335f09029482dec1ad5abd68efdf63cc39f438dc13b911ffaf6c",
+        "perf_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/0/3/3898085_python3.10.perf",
+        "perf_sha256": "e08ed297846f8fa404e5750c4c948e8abcdd44660d9c1d2189d5132553b0396f",
+        "reported_gc_frequency_ghz": 2.197802,
+        "wavefront_trace": {
+          "status": "PASS",
+          "die": 1,
+          "CU": 0,
+          "SE": 0,
+          "wavefronts": 12,
+          "wave_starts": 12,
+          "wave_ends": 12,
+          "instructions": 85443,
+          "MMOP": 44032,
+          "tt_end_cycles": 109168,
+          "cu_active_cycles": 109164.0,
+          "trace_bytes": 679866,
+          "trace_sha256": "57083cb32a63a54a80c795cf36244d9f08d939c7dcae931a9523899c4584c422",
+          "native_trace_sha256": "3fafc7fab682ba31d4ebdf6d4b7e6414c953a0dd6e85ad03225e22f527c58ff7",
+          "embedded_hsaco_sha256": "d3fc5fa2872a2f1a9a3f6cb26e9d77ec62219a97538580dbe1fb0f08657914d9"
+        },
+        "index": 0,
+        "phase": "warmup",
+        "seed": 20,
+        "input_kind": "normal_random",
+        "accuracy": {
+          "status": "PASS",
+          "elements": 65536,
+          "atol": 0.001,
+          "rtol": 0.01,
+          "outside_tolerance": 0,
+          "nonfinite": 0,
+          "max_abs": 0.0625,
+          "canary_ok": true,
+          "inputs_byte_identical": true,
+          "unselected_output_nan": true
+        }
+      },
+      {
+        "status": "PASS",
+        "dispatch_cycles": 116573.0,
+        "kernel_us": 53.040715,
+        "MMOP": 44032,
+        "completed_TGs": 1,
+        "completed_TGs_per_die": [
+          1,
+          0
+        ],
+        "stats_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/0/4/stats.txt",
+        "stats_sha256": "8a2db294ff03b0aad2942d2b7d6b6ad9a0f92340d89d725619bedb293448145b",
+        "perf_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/0/4/3898085_python3.10.perf",
+        "perf_sha256": "b1dd2d6626e66ce68961212c27163a94ca4b475133a2b2c970ca6076113f6077",
+        "reported_gc_frequency_ghz": 2.197802,
+        "wavefront_trace": {
+          "status": "PASS",
+          "die": 0,
+          "CU": 0,
+          "SE": 0,
+          "wavefronts": 12,
+          "wave_starts": 12,
+          "wave_ends": 12,
+          "instructions": 85443,
+          "MMOP": 44032,
+          "tt_end_cycles": 108636,
+          "cu_active_cycles": 108635.0,
+          "trace_bytes": 679600,
+          "trace_sha256": "1579bd16ee3f7f8ce9a39209ca90421554476760152c8b10022f6a78d6533361",
+          "native_trace_sha256": "8c733c09c59b9b079c851432b8b90538b40b87cd29c0c036be48d98c77c28044",
+          "embedded_hsaco_sha256": "d3fc5fa2872a2f1a9a3f6cb26e9d77ec62219a97538580dbe1fb0f08657914d9"
+        },
+        "index": 1,
+        "phase": "timed",
+        "seed": 20,
+        "input_kind": "normal_random",
+        "accuracy": {
+          "status": "PASS",
+          "elements": 65536,
+          "atol": 0.001,
+          "rtol": 0.01,
+          "outside_tolerance": 0,
+          "nonfinite": 0,
+          "max_abs": 0.0625,
+          "canary_ok": true,
+          "inputs_byte_identical": true,
+          "unselected_output_nan": true
+        }
+      },
+      {
+        "status": "PASS",
+        "dispatch_cycles": 117052.0,
+        "kernel_us": 53.25866,
+        "MMOP": 44032,
+        "completed_TGs": 1,
+        "completed_TGs_per_die": [
+          0,
+          1
+        ],
+        "stats_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/0/5/stats.txt",
+        "stats_sha256": "56ee30a65176a2aa27bb41cdda4b3f8b13fabe66e493bcff7814dbb2e0253a2d",
+        "perf_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/0/5/3898085_python3.10.perf",
+        "perf_sha256": "9daf7bb93a30451ea0a1a02051874da6b36382db4510714b155bc87bd91ffa17",
+        "reported_gc_frequency_ghz": 2.197802,
+        "wavefront_trace": {
+          "status": "PASS",
+          "die": 1,
+          "CU": 0,
+          "SE": 0,
+          "wavefronts": 12,
+          "wave_starts": 12,
+          "wave_ends": 12,
+          "instructions": 85443,
+          "MMOP": 44032,
+          "tt_end_cycles": 109112,
+          "cu_active_cycles": 109114.0,
+          "trace_bytes": 679838,
+          "trace_sha256": "ec1d9d6f2f38d9469993d7542f47a7bb2ea055179d0f21f387c219d8c7fde2cd",
+          "native_trace_sha256": "5fd35ec51438be73889da72fa67ca3dc26455d5165fa11c83ad0cf1cf9c60ce3",
+          "embedded_hsaco_sha256": "d3fc5fa2872a2f1a9a3f6cb26e9d77ec62219a97538580dbe1fb0f08657914d9"
+        },
+        "index": 2,
+        "phase": "timed",
+        "seed": 20,
+        "input_kind": "normal_random",
+        "accuracy": {
+          "status": "PASS",
+          "elements": 65536,
+          "atol": 0.001,
+          "rtol": 0.01,
+          "outside_tolerance": 0,
+          "nonfinite": 0,
+          "max_abs": 0.0625,
+          "canary_ok": true,
+          "inputs_byte_identical": true,
+          "unselected_output_nan": true
+        }
+      }
+    ],
+    "selected_index": 1,
+    "selected_accuracy": {
+      "status": "PASS",
+      "elements": 65536,
+      "atol": 0.001,
+      "rtol": 0.01,
+      "outside_tolerance": 0,
+      "nonfinite": 0,
+      "max_abs": 0.0625,
+      "canary_ok": true,
+      "inputs_byte_identical": true,
+      "unselected_output_nan": true
+    },
+    "benchmark_sha256": "ad5c963627889a7ccf48ccabfb9904eecbe66ab847919a33cc8e52e698dc42fb",
+    "environment_overrides": {
+      "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/cache"
+    },
+    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && taskset -c 17 /usr/bin/python -u /public/home/duyubo/bolt/new/github/BoltOPs/docs/ops/gemm/tuning/R020/2die/tt/benchmark.py --record /public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/baseline/acquisition.json --output /public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture --single-tg-perf",
+    "wavefront_trace": {
+      "status": "PASS",
+      "die": 0,
+      "CU": 0,
+      "SE": 0,
+      "wavefronts": 12,
+      "wave_starts": 12,
+      "wave_ends": 12,
+      "instructions": 85443,
+      "MMOP": 44032,
+      "tt_end_cycles": 108636,
+      "cu_active_cycles": 108635.0,
+      "trace_bytes": 679600,
+      "trace_sha256": "1579bd16ee3f7f8ce9a39209ca90421554476760152c8b10022f6a78d6533361",
+      "native_trace_sha256": "8c733c09c59b9b079c851432b8b90538b40b87cd29c0c036be48d98c77c28044",
+      "embedded_hsaco_sha256": "d3fc5fa2872a2f1a9a3f6cb26e9d77ec62219a97538580dbe1fb0f08657914d9"
+    },
+    "recapture": {
+      "timestamp_utc": "2026-11-17T11:56:41.933815+00:00",
+      "reason": "The previous selected repeat ran on XCD1 and its default XCD0 trace was empty. Recaptured on sbx2 and selected a timed XCD0 sample with 12 complete waves.",
+      "previous_perf_sha256": "bfd528d9db4560c25cdf367746064ebae448d8dbd8a07cde2aa2f45f51e0b2f8",
+      "previous_selected_index": 2,
+      "previous_raw_measurements": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/streamk_sbx2_20261117_v1/R020-single",
+      "binary_modification": "none; native PMD output",
+      "runtime_configuration": {
+        "path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture/g/config.ini",
+        "sha256": "d567cca59d30169d82874ef5369057d5af1b68bf9d34d7a2cce3db2542aa029a",
+        "num_chip": 2,
+        "num_cu_per_chip": 48,
+        "clock_period_ps": 455
+      },
+      "wavefront_validation": "Embedded SQTT equals raw TT; 12 matching wave starts/ends and 44032 MMOP tokens; TT end matches CU active cycles within 4 cycles; embedded HSACO matches the launch."
+    }
+  },
+  "validation": {
+    "status": "PASS",
+    "elements": 4194304,
+    "atol": 0.001,
+    "rtol": 0.01,
+    "outside_tolerance": 0,
+    "nonfinite": 0,
+    "max_abs": 0.25,
+    "canary_ok": true,
+    "inputs_byte_identical": true,
+    "unselected_output_nan": true
+  },
+  "samples": [
+    {
+      "status": "PASS",
+      "dispatch_cycles": 139749.0,
+      "kernel_us": 63.585795,
+      "MMOP": 4194304,
+      "completed_TGs": 96,
+      "completed_TGs_per_die": [
+        48,
+        48
+      ],
+      "stats_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/streamk_sbx2_20261117_v1/R020-full/g/0/1/stats.txt",
+      "stats_sha256": "cd20aa349b8b1d1900f2494ea8ac38c03a78f5a16a08187a2887dba283aef0c2",
+      "perf_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/streamk_sbx2_20261117_v1/R020-full/g/0/1/3631641_python3.10.perf",
+      "perf_sha256": "ecfd239afcbb28bc045e31996000a716ae7d58d7a5921a8d465a815f1864ab57",
+      "reported_gc_frequency_ghz": 2.197802,
+      "index": 0,
+      "phase": "cold",
+      "seed": 20,
+      "input_kind": "normal_random",
+      "accuracy": {
+        "status": "PASS",
+        "elements": 4194304,
+        "atol": 0.001,
+        "rtol": 0.01,
+        "outside_tolerance": 0,
+        "nonfinite": 0,
+        "max_abs": 0.25,
+        "canary_ok": true,
+        "inputs_byte_identical": true,
+        "unselected_output_nan": true
+      }
+    }
+  ],
+  "interface_validation": {
+    "exit_code": 0,
+    "summary": "PASS: public auto API selects the existing Stream-K device kernel; one cold full-grid GEMM, both dies active, full-output CPU FP32/BF16 reference, input bytes and canaries preserved. Native flag reset is recorded separately and included in the reported performance totals.",
+    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && taskset -c 0 /usr/bin/python -u docs/ops/gemm/tuning/R020/2die/tt/benchmark.py --output tmp/1117/streamk_sbx2_20261117_v1/R020-full",
+    "source_test": "docs/ops/gemm/tuning/R020/2die/tt/benchmark.py",
+    "test_sha256": "dfaeedb6056220419e9bc845d6ac3d3bc81788db8d22a60938b8de37f39aaa5c",
+    "single_tg_summary": "PASS: three independent correctness cases and all timing repeats; 12 complete waves and 44032 MMOP instructions per capture; selected XCD0/CU0/SE0 timed sample; embedded SQTT and HSACO match the native trace and launch. Single/full assembly and all allocated HSACO sections are byte-identical.",
+    "measured_test_sha256": "421959c63f883c8de976b7b3288a21e556ec9fa637669377d45dd99315d7b49b"
+  },
+  "raw_measurements": {
+    "full_grid": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/streamk_sbx2_20261117_v1/R020-full",
+    "single_tg": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_sbx2_wavefront_20261117_v1/capture",
+    "full_grid_result_sha256": "3c6c4cbd12dcd69753c6f8f850be6b96d7dfb47a4ea79702ed40415de4e4c56d",
+    "single_tg_result_sha256": "8f46d13d703eb1ced15b443fa7bf9ed31b6300f8afb2a571b9594d111d2fe0bc"
+  },
+  "replay_equivalence": {
+    "note": "Historical evidence for the host-scheduler rollback and original full-grid measurement. Its executable-AST comparison describes the runner before the subsequent wavefront capture fix. The single-TG PERF and benchmark were refreshed later; see single_tg_perf.recapture. The original full-grid raw measurements and hashes are retained.",
+    "evidence_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_only_20261117_v1/equivalence.json",
+    "evidence_sha256": "312c2f8e7709ffec4ff4909df20d00401160067c82125c7f98bb0c006fa3ddae",
+    "verification": {
+      "status": "PASS",
+      "shape": [
+        2048,
+        2048,
+        4096
+      ],
+      "cu_count": 96,
+      "grid": [
+        96,
+        1,
+        1
+      ],
+      "schedule_byte_for_byte_equal_to_saved_table": true,
+      "records_per_TG": 129,
+      "split_slots": 64,
+      "schedule_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/streamk_sbx2_20261117_v1/R020-full/schedule.json",
+      "schedule_sha256": "fe3c769d2c76731aa41b186ea5c2fcb5f6d38920502994105a271244aea4c969",
+      "short_K_128_and_full_K_4096_schedules_equal_for_48_and_96_CU": true,
+      "public_API_executable_AST_equal": true,
+      "compiler_AST_equal": true,
+      "launcher_AST_equal_after_resolving_grid_to_96": true,
+      "measured_snapshots": [
+        {
+          "path": "boltops/gemm/gemm_a16w16.py",
+          "snapshot_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_only_20261117_v1/before/boltops/gemm/gemm_a16w16.py",
+          "sha256": "32f1a766a5e4d89c503be485669ed767846a68e4cd304f335eab5957853f6c63"
+        },
+        {
+          "path": "boltops/gemm/gluon/gemm_a16w16_streamk.py",
+          "snapshot_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_only_20261117_v1/before/boltops/gemm/gluon/gemm_a16w16_streamk.py",
+          "sha256": "5f2cc8f76245cc7acced876f69771defd7119955f9769b59e23014a8e382951f"
+        },
+        {
+          "path": "docs/ops/gemm/tuning/R020/2die/tt/benchmark.py",
+          "snapshot_path": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/r020_only_20261117_v1/before/docs/ops/gemm/tuning/R020/2die/tt/benchmark.py",
+          "sha256": "421959c63f883c8de976b7b3288a21e556ec9fa637669377d45dd99315d7b49b"
+        }
+      ],
+      "benchmark_AST_equal_after_resolving_R020_shape_and_grid": true
+    },
+    "benchmark_sha256_at_equivalence": "f233f333b0778aeeb463bcaac8e7d617d0f95e9f973274308c5169dc0967d19f"
+  }
+}

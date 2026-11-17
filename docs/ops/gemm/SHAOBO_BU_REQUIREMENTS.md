@@ -686,10 +686,10 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/R020/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/R020/2die/tt/record.json">68.163 / 504.08</a><br>含 flag reset dispatch</td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py#L884">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=2048-K=4096-TT.json">config</a> / <a href="tuning/R020/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/R020/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/R020/2die/tt/record.json">记录</a></td>
+      <td><a href="tuning/R020/2die/tt/single_tg.perf">GEMM PERF</a><br><a href="tuning/R020/2die/tt/flag_reset_single_tg.perf">flag reset PERF</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
