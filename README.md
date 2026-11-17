@@ -286,11 +286,13 @@ BF16 inputs/output, FP32 accumulation, complete K. Environment, configs, assembl
 |---|---|---:|---:|---|
 | R001 TN | 64 × 64 × 2048 | 5.324 | 0.73% | Random / ones / random; median of 9 warm samples |
 | R001 TT | 64 × 64 × 2048 | 5.744 | 0.68% | Random / ones / random; median of 9 warm samples |
-| R002 TT | 64 × 248320 × 2048 | 601.688 | 25.04% | Full random output; median of 2 warm samples |
+| R002 TT | 64 × 248320 × 2048 | 596.044 | 25.27% | Full random output; median of 2 warm samples |
 | R003 TT | 2560 × 64 × 2048 | 10.565 | 14.70% | Random / ones / random; median of 9 warm samples |
 | R004 TT | 6656 × 64 × 2048 | 25.327 | 15.94% | Random / ones / random; median of 9 warm samples |
 
 All full-grid outputs have zero mismatches/nonfinite values at abs0.001+rel0.01; output guards and complete TG counts passed. SGPR/VGPR spills are zero. Current dispatch/native checks: 60 passed, 4 persistent cases deselected; configuration checks: 32 passed. Two known persistent TT tail compilation failures were reproduced before the refactor and are not counted as passes. PERF uses the same HSACO as the measured full grid. These are PMD results; detailed sampling scopes and hashes are linked above.
+
+R002 uses three LDS slots and register prefetch to overlap the next operand reads with the current MMAC batch. R002 effective read+write bandwidth is 1.760 TB/s, including one logical read of A/B and one write of C; its formula and measured environment are in the record.
 
 ## License
 
@@ -300,16 +302,3 @@ notices; see the source file headers and the module source notes in
 [gemm](boltops/gemm/triton/SOURCE.md), [MLA](boltops/mla/triton/SOURCE.md),
 [MQA logits](boltops/mqa_logits/triton/SOURCE.md), and
 [Step-4 DSA](boltops/step4_dsa/triton/SOURCE.md).
-
-## R002 LDS read prefetch experiment
-
-2026-11-17, node60 PMD HEAD_1703 / gfx946 / 48 CU, the recorded Triton MR565 and DTK Clang runtime. Original MNK/strides and K=2048; first TG only, three warm samples. These are partial-grid screening results, not full-R002 performance.
-
-| Configuration | Dispatch µs | Shader µs | VGPR | LDS KiB | Result |
-|---|---:|---:|---:|---:|---|
-| 2 slots, original consumer | 17.778 | 14.166 | 130 | 80 | Random / ones / random PASS |
-| 2 slots, register prefetch | 18.435 | 14.823 | 206 | 80 | Random / ones / random PASS |
-| 3 slots, original consumer | 16.587 | 12.975 | 130 | 120 | Random PASS |
-| 3 slots, register prefetch | 15.438 | 11.825 | 206 | 120 | Random PASS; profile additionally checked random / ones / random |
-
-All checked outputs and canaries passed, outside-grid output remained NaN, no SGPR/VGPR spill. Screening source, native assembly, stats and PERF are saved outside tuning under `/home/kxu/r002-ds-prefetch-20261117-results`; remote logs use `/xukang/code/pmd-triton-sessions/r002-ds-prefetch-20261117`. Complete-grid replay is pending.
