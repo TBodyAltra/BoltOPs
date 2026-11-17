@@ -332,9 +332,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r009/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r009/2die/tn/record.json">109.225 / 884.75 / 51.19%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/c776136183b8637b417a2e4a1bd8491e4751ac8b/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L398">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/c776136183b8637b417a2e4a1bd8491e4751ac8b/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r009/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r009/2die/tn/benchmark.py">测试代码</a> / <a href="tuning/r009/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -360,9 +360,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r010/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r010/2die/tn/record.json">129.222 / 997.12 / 57.70%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/61a6b33f923bec6e7bfb6aff3b0436d15ef1fdfd/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L396">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/61a6b33f923bec6e7bfb6aff3b0436d15ef1fdfd/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r010/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r010/2die/tn/benchmark.py">测试代码</a> / <a href="tuning/r010/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
