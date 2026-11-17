@@ -15,6 +15,8 @@ R020 uses a 256x256x64 persistent pipeline with bounded operand loads,
 masked tail stores and min(48, output tiles) active thread groups. FP16 and
 BF16 use the same schedule with FP32 accumulation.
 """
+from .gemm_bf16_tt_mls import gemm_bf16_tt_mls_kernel as _gemm_a16w16_bf16_tt_mls_kernel
+
 import triton
 from triton.experimental import gluon as g
 from triton.experimental.gluon import language as gl
@@ -124,7 +126,9 @@ def _gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel(
     BLOCK_SIZE_N: gl.constexpr = 16,
     BLOCK_SIZE_K: gl.constexpr = 128,
     LOOP_UNROLL_FACTOR: gl.constexpr = 4,
+    B_K_CONTIGUOUS: gl.constexpr = True,
 ):
+    gl.static_assert(B_K_CONTIGUOUS, "this pipeline requires TN weights")
     gl.static_assert(M == 64 and N == 64 and K == 2048,
                      "this pipeline requires MNK=(64,64,2048)")
     gl.static_assert(BLOCK_SIZE_M == 16 and BLOCK_SIZE_N == 16)
@@ -245,7 +249,9 @@ def _gemm_a16w16_bf16_tt_bm16_bn32_bk128_kernel(
     A, B, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
     BLOCK_SIZE_M: gl.constexpr=16, BLOCK_SIZE_N: gl.constexpr=32,
     BLOCK_SIZE_K: gl.constexpr=128,
+    B_K_CONTIGUOUS: gl.constexpr=False,
 ):
+    gl.static_assert(not B_K_CONTIGUOUS, "this pipeline requires TT weights")
     gl.static_assert(M == 64 and N == 64 and K == 2048)
     gl.static_assert(BLOCK_SIZE_M == 16 and BLOCK_SIZE_N == 32)
     gl.static_assert(BLOCK_SIZE_K == 128)

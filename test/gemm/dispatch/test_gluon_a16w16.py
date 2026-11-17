@@ -104,22 +104,28 @@ def test_auto_selects_only_recorded_contract(monkeypatch, case, expected):
         assert (params['M'], params['N'], params['K']) == (64, 64, 2048)
         assert params['wasp_partition_warps'] == (1, 1)
         assert params['wasp_wdra'] is False
+        assert params["B_K_CONTIGUOUS"] is (expected == "gluon")
 
 
-def test_explicit_gluon_selects_kernel_without_mutating_config(monkeypatch):
+@pytest.mark.parametrize("layout", ["TN", "TT"])
+def test_explicit_gluon_selects_kernel_without_mutating_config(monkeypatch, layout):
     calls = install_captures(monkeypatch)
     module = import_module("boltops.gemm.gluon.gemm_a16w16")
     monkeypatch.setattr(module, "kernel_from_config", Capture("custom", calls), raising=False)
     a = torch.empty((64, 2048), dtype=torch.bfloat16, device="cuda")
     w = torch.empty_like(a)
     out = torch.empty((64, 64), dtype=a.dtype, device=a.device)
-    cfg, _ = config_for()
+    if layout == "TT":
+        w = w.as_strided(w.shape, (1, 64))
+    cfg, _ = config_for(layout=layout)
     cfg['kernel'] = "kernel_from_config"
     cfg['BLOCK_SIZE_M'] = cfg['BLOCK_SIZE_N'] = 32
+    cfg["B_K_CONTIGUOUS"] = layout != "TN"
     before = deepcopy(cfg)
     result = gemm_a16w16(a, w, out=out, backend="gluon", config=cfg)
     assert result is out and cfg == before and calls[0][0] == "custom"
     assert "kernel" not in calls[0][3] and calls[0][1] == (4,)
+    assert calls[0][3]["B_K_CONTIGUOUS"] is (layout == "TN")
 
 
 @pytest.mark.parametrize("case", ["shape", "dtype", "layout", "output", "bias", "activation"])
@@ -156,8 +162,9 @@ def test_public_gluon_native_correctness(backend, layout):
 
 
 @pytest.mark.parametrize("layout", ["TN", "TT"])
-def test_persistent_config_carries_tile_sms_and_kernel(layout):
-    cfg, tuned = config_for(m=2048, n=2048, k=4096, layout=layout)
+@pytest.mark.parametrize("profile", [PROFILE, "DTYPE=float16-OUT=float16"])
+def test_persistent_config_carries_tile_sms_and_kernel(layout, profile):
+    cfg, tuned = config_for(m=2048, n=2048, k=4096, layout=layout, profile=profile)
     assert tuned and cfg["kernel"] == PERSISTENT_KERNEL
     assert (cfg["BLOCK_SIZE_M"], cfg["BLOCK_SIZE_N"], cfg["BLOCK_SIZE_K"]) == (256, 256, 64)
     assert cfg["NUM_SMS"] == 48
@@ -254,16 +261,104 @@ def test_fixed_tt_config_has_matching_layout_and_precision():
 
 
 @pytest.mark.parametrize("case", ["layout", "dtype", "output", "shape"])
-def test_explicit_fixed_tt_rejects_mismatched_contract(monkeypatch, case):
-    calls = install_captures(monkeypatch)
+@pytest.mark.parametrize("kernel_layout", ["TN", "TT"])
+def test_explicit_fixed_rejects_mismatched_contract(case, kernel_layout):
+    require_device()
+    from triton.compiler.errors import CompilationError
     dtype = torch.float16 if case == "dtype" else torch.bfloat16
     m = 63 if case == "shape" else 64
     a = torch.empty((m, 2048), dtype=dtype, device="cuda")
     w = torch.empty((64, 2048), dtype=dtype, device="cuda")
+    actual_layout = ("TN" if kernel_layout == "TT" else "TT") if case == "layout" else kernel_layout
+    if actual_layout == "TT":
+        w = w.as_strided(w.shape, (1, 64))
+    cfg, _ = config_for(layout=kernel_layout)
+    out_dtype = torch.float32 if case == "output" else dtype
+    with pytest.raises(CompilationError):
+        gemm_a16w16(a, w, dtype=out_dtype, config=cfg, backend="gluon")
+
+
+NARROW_TT_KERNEL = "_gemm_a16w16_bf16_tt_mls_kernel"
+
+
+@pytest.mark.parametrize("m", [2560, 6656])
+def test_narrow_tt_public_dispatch(monkeypatch, m):
+    calls = install_captures(monkeypatch)
+    module = import_module("boltops.gemm.gluon.gemm_a16w16")
+    monkeypatch.setattr(module, NARROW_TT_KERNEL, Capture("narrow_tt", calls))
+    a = torch.empty((m, 2048), dtype=torch.bfloat16, device="cuda")
+    w = torch.empty((2048, 64), dtype=a.dtype, device=a.device).T
+    out = torch.empty((m, 64), dtype=a.dtype, device=a.device)
+    assert gemm_a16w16(a, w, out=out) is out
+    label, grid, args, params = calls[0]
+    assert label == "narrow_tt" and grid == (m // 64,)
+    assert args[0] is a and args[1] is w and args[2] is out
+    assert params["wasp_partition_warps"] == (1, 4)
+    assert (params["CHUNKS"], params["SLOTS"]) == (2, 3)
+    assert params["B_K_CONTIGUOUS"] is False
+
+
+@pytest.mark.parametrize("case", ["tail", "layout", "dtype", "output"])
+def test_narrow_tt_explicit_contract_rejects_unsafe_inputs(case):
+    require_device()
+    from triton.compiler.errors import CompilationError
+    cfg, _ = config_for(m=2560, layout="TT")
+    dtype = torch.float16 if case == "dtype" else torch.bfloat16
+    a = torch.empty((2559 if case == "tail" else 2560, 2048), dtype=dtype, device="cuda")
+    w = torch.empty((64, 2048), dtype=dtype, device=a.device)
     if case != "layout":
         w = w.as_strided(w.shape, (1, 64))
-    cfg, _ = config_for(layout="TT")
-    out_dtype = torch.float32 if case == "output" else dtype
-    with pytest.raises(ValueError, match="fixed BF16 TT"):
-        gemm_a16w16(a, w, dtype=out_dtype, config=cfg, backend="gluon")
-    assert not calls
+    output = torch.float32 if case == "output" else dtype
+    with pytest.raises(CompilationError):
+        gemm_a16w16(a, w, dtype=output, backend="gluon", config=cfg)
+
+
+@pytest.mark.parametrize("layout", ["TN", "TT"])
+def test_triton_no_splitk_passes_positive_unused_stride(monkeypatch, layout):
+    calls = install_captures(monkeypatch)
+    a = torch.empty((64, 2048), dtype=torch.bfloat16, device="cuda")
+    w = torch.empty_like(a)
+    if layout == "TT":
+        w = w.as_strided(w.shape, (1, 64))
+    cfg = dict(BLOCK_SIZE_M=32, BLOCK_SIZE_N=64, BLOCK_SIZE_K=64,
+               GROUP_SIZE_M=1, NUM_KSPLIT=1, SPLITK_BLOCK_SIZE=2048,
+               num_warps=4, num_stages=2, cache_modifier=".cg")
+    result = gemm_a16w16(a, w, backend="triton", config=cfg)
+    assert len(calls) == 1 and calls[0][0] == "triton"
+    assert calls[0][2][11] == result.numel()
+
+
+def test_triton_no_splitk_native_correctness():
+    require_device()
+    gen = torch.Generator().manual_seed(59)
+    a = (torch.rand((64, 2048), generator=gen) - .5).bfloat16()
+    b = (torch.rand((2048, 64), generator=gen) - .5).bfloat16()
+    expected = (a.float() @ b.float()).bfloat16()
+    cfg = dict(BLOCK_SIZE_M=32, BLOCK_SIZE_N=64, BLOCK_SIZE_K=64,
+               GROUP_SIZE_M=1, NUM_KSPLIT=1, SPLITK_BLOCK_SIZE=2048,
+               num_warps=4, num_stages=2, cache_modifier=".cg")
+    result = gemm_a16w16(a.cuda(), b.cuda().T, backend="triton", config=cfg)
+    torch.testing.assert_close(result.cpu(), expected, atol=.001, rtol=.01)
+
+
+def test_wide_tt_public_dispatch(monkeypatch):
+    calls = install_captures(monkeypatch)
+    module = import_module("boltops.gemm.gluon.gemm_a16w16")
+    monkeypatch.setattr(module, NARROW_TT_KERNEL, Capture("wide_tt", calls))
+    a = torch.empty((64, 2048), dtype=torch.bfloat16, device="cuda")
+    w = torch.empty((2048, 248320), dtype=a.dtype, device=a.device).T
+    out = torch.empty((64, 248320), dtype=a.dtype, device=a.device)
+    assert gemm_a16w16(a, w, out=out) is out
+    assert len(calls) == 1
+    label, grid, args, params = calls[0]
+    assert label == "wide_tt" and grid == (970,)
+    assert args[0] is a and args[1] is w and args[2] is out
+    assert params["wasp_partition_warps"] == (2, 4)
+    assert (params["BLOCK_SIZE_M"], params["BLOCK_SIZE_N"], params["BLOCK_SIZE_K"]) == (64, 256, 64)
+    assert (params["CHUNKS"], params["SLOTS"]) == (1, 2)
+
+
+@pytest.mark.parametrize("layout", ["TN", "TT"])
+def test_fixed_bf16_config_is_not_reused_for_fp16(layout):
+    with pytest.raises(KeyError):
+        config_for(profile="DTYPE=float16-OUT=float16", layout=layout)
