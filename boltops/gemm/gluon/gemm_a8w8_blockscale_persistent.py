@@ -347,23 +347,24 @@ def _persistent_producer(A, B, AS, BS, smAS0, smAS1, smBS0, smBS1,
             _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, PID + NUM_SMS, 1, K)
     for step in range((TILE_LIMIT + NUM_SMS - 1) // NUM_SMS):
         tile_id = PID + step * NUM_SMS
-        bank = step % 2
-        if bank == 0:
-            smAS = smAS0
-            smBS = smBS0
-        else:
-            smAS = smAS1
-            smBS = smBS1
-        tile_m = (tile_id % 20) * 128
-        tile_n = (tile_id // 20) * 256
-        if GROUP == 1:
-            if step >= 2:
-                abarrier_try_wait(14 + bank, ((step // 2) + 1) % 2)
-                _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, tile_id, bank, K)
-        _produce_ab_and_scales(A + tile_m * K, B + tile_n * K,
-                              AS + tile_m * (K // 128), BS + (tile_n // 128) * (K // 128),
-                              smAS, smAS, smBS,
-                              smA0, smA1, smB0, smB1, K, GROUP, step != 0)
+        if TILE_LIMIT % NUM_SMS == 0 or tile_id < TILE_LIMIT:
+            bank = step % 2
+            if bank == 0:
+                smAS = smAS0
+                smBS = smBS0
+            else:
+                smAS = smAS1
+                smBS = smBS1
+            tile_m = (tile_id % 20) * 128
+            tile_n = (tile_id // 20) * 256
+            if GROUP == 1:
+                if step >= 2:
+                    abarrier_try_wait(14 + bank, ((step // 2) + 1) % 2)
+                    _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, tile_id, bank, K)
+            _produce_ab_and_scales(A + tile_m * K, B + tile_n * K,
+                                  AS + tile_m * (K // 128), BS + (tile_n // 128) * (K // 128),
+                                  smAS, smAS, smBS,
+                                  smA0, smA1, smB0, smB1, K, GROUP, step != 0)
 
 
 @g.jit
@@ -375,21 +376,22 @@ def _persistent_consumer(AS, BS, C, smAS0, smAS1, smBS0, smBS1,
     _initialize_pipeline_barriers(get_wave_id())
     for step in range((TILE_LIMIT + NUM_SMS - 1) // NUM_SMS):
         tile_id = PID + step * NUM_SMS
-        bank = step % 2
-        if bank == 0:
-            smAS = smAS0
-            smBS = smBS0
-        else:
-            smAS = smAS1
-            smBS = smBS1
-        tile_m = (tile_id % 20) * 128
-        tile_n = (tile_id // 20) * 256
-        abarrier_try_wait(4 + bank, (step // 2) % 2)
-        _consume_ab_and_accumulate(AS + tile_m * (K // 128), BS + (tile_n // 128) * (K // 128),
-                                   C + tile_m * N + tile_n,
-                                   smAS, smAS, smBS,
-                                   smA0, smA1, smB0, smB1, K, N, GROUP, F)
-        abarrier_arrive(14 + bank)
+        if TILE_LIMIT % NUM_SMS == 0 or tile_id < TILE_LIMIT:
+            bank = step % 2
+            if bank == 0:
+                smAS = smAS0
+                smBS = smBS0
+            else:
+                smAS = smAS1
+                smBS = smBS1
+            tile_m = (tile_id % 20) * 128
+            tile_n = (tile_id // 20) * 256
+            abarrier_try_wait(4 + bank, (step // 2) % 2)
+            _consume_ab_and_accumulate(AS + tile_m * (K // 128), BS + (tile_n // 128) * (K // 128),
+                                       C + tile_m * N + tile_n,
+                                       smAS, smAS, smBS,
+                                       smA0, smA1, smB0, smB1, K, N, GROUP, F)
+            abarrier_arrive(14 + bank)
 
 
 @g.jit
@@ -411,8 +413,8 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     TILE_LIMIT: gl.constexpr,
 ):
     gl.static_assert(NUM_SMS == 48 or NUM_SMS == 96, "this pipeline requires 48 or 96 TGs")
-    gl.static_assert(TILE_LIMIT == (M // 128) * (N // 256) and TILE_LIMIT % NUM_SMS == 0,
-                     "this pipeline requires complete, evenly distributed tiles")
+    gl.static_assert(TILE_LIMIT == (M // 128) * (N // 256),
+                     "this pipeline requires a complete tile grid")
     gl.static_assert((K // 128) % 4 == 0, "per-slot phases must wrap across tiles")
     gl.static_assert(M == 2560 and (N == 9216 or N == 12288) and K == 2048,
                      "this persistent pipeline requires R009 or R010")
