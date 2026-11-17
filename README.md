@@ -280,16 +280,19 @@ optest --display                                            # HTML report from l
 ## BF16 GEMM measurements on PMD
 
 2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 1 DIE / 48 CU.
-BF16 inputs/output, FP32 accumulation, complete K. Environment, configs, assembly, raw measurements and PERF: [R001 TN](docs/ops/gemm/tuning/r001/1die/tn/record.json), [R001 TT](docs/ops/gemm/tuning/r001/1die/tt/record.json), [R003 TT](docs/ops/gemm/tuning/r003/1die/tt/record.json), [R004 TT](docs/ops/gemm/tuning/r004/1die/tt/record.json).
+BF16 inputs/output, FP32 accumulation, complete K. Environment, configs, assembly, raw measurements and PERF: [R001 TN](docs/ops/gemm/tuning/r001/1die/tn/record.json), [R001 TT](docs/ops/gemm/tuning/r001/1die/tt/record.json), [R002 TT](docs/ops/gemm/tuning/r002/1die/tt/record.json), [R003 TT](docs/ops/gemm/tuning/r003/1die/tt/record.json), [R004 TT](docs/ops/gemm/tuning/r004/1die/tt/record.json).
 
 | Case / layout | M × N × K | Full dispatch (µs) | MMAC utilization | Validation / timing |
 |---|---|---:|---:|---|
 | R001 TN | 64 × 64 × 2048 | 5.324 | 0.73% | Random / ones / random; median of 9 warm samples |
 | R001 TT | 64 × 64 × 2048 | 5.744 | 0.68% | Random / ones / random; median of 9 warm samples |
+| R002 TT | 64 × 248320 × 2048 | 596.044 | 25.27% | Full random output; median of 2 warm samples |
 | R003 TT | 2560 × 64 × 2048 | 10.565 | 14.70% | Random / ones / random; median of 9 warm samples |
 | R004 TT | 6656 × 64 × 2048 | 25.327 | 15.94% | Random / ones / random; median of 9 warm samples |
 
-All full-grid outputs have zero mismatches/nonfinite values at abs0.001+rel0.01; output guards and complete TG counts passed. SGPR/VGPR spills are zero. Current dispatch/native checks: 59 passed, 4 persistent cases deselected; configuration checks: 32 passed. Two known persistent TT tail compilation failures were reproduced before the refactor and are not counted as passes. PERF uses the same HSACO as the measured full grid. These are PMD results; detailed sampling scopes and hashes are linked above.
+All full-grid outputs have zero mismatches/nonfinite values at abs0.001+rel0.01; output guards and complete TG counts passed. SGPR/VGPR spills are zero. Current dispatch/native checks: 60 passed, 4 persistent cases deselected; configuration checks: 32 passed. Two known persistent TT tail compilation failures were reproduced before the refactor and are not counted as passes. PERF uses the same HSACO as the measured full grid. These are PMD results; detailed sampling scopes and hashes are linked above.
+
+R002 uses three LDS slots and register prefetch to overlap the next operand reads with the current MMAC batch. R002 effective read+write bandwidth is 1.760 TB/s, including one logical read of A/B and one write of C; its formula and measured environment are in the record.
 
 ## FP8 R010 GEMM measurement on PMD
 
@@ -300,6 +303,16 @@ All full-grid outputs have zero mismatches/nonfinite values at abs0.001+rel0.01;
 | R010 | 2560 ×12288 ×2048 | 244.128 /527.79 | 48 persistent TG ×20 tiles | All 31,457,280 outputs match; guards passed |
 
 One complete cold dispatch, GC455ps. E4M3FN inputs, BF16 output; B scale BF16 values are promoted to FP32 on CPU before upload, excluded from kernel timing. Latency is 16.57% below the historical 292.620 µs baseline; this includes the R009 pipeline and toolchain migration together. LDS114944 bytes, consumer VGPR235, no spills. Configuration/dispatch checks:34 passed. [Environment, raw statistics, assembly, benchmark and matched single-TG PERF](docs/ops/gemm/tuning/r010/1die/tn/record.json).
+
+## FP8 R010 on dual-die PMD sbx2
+
+2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 2 DIE ×48 CU, GC455ps, TN2560×12288×2048. Same Triton/Clang and input/scale convention as the single-die R010 measurement above.
+
+| Chip / grid | Kernel (µs / TOPS) | TGs per die | Speedup vs single die |
+|---|---|---|---|
+| sbx2 /96 TG ×10 tiles | 129.222 /997.12 | {'0': 48, '1': 48} | 1.8892× |
+
+One complete cold public-API dispatch; all31,457,280 outputs match, guards pass, and both dies execute. Time is complete-system gcSimCycles; per-die times are not summed. The96-TG dispatch uses all96 CU. No PERF capture. [Dual-die record](docs/ops/gemm/tuning/r010/2die/tn/record.json).
 
 ## License
 
