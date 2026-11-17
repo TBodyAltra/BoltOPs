@@ -461,6 +461,20 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     )
 
 
+@g.jit
+def _synchronize_chunked_mmac_turn(GROUP: gl.constexpr, WAIT: gl.constexpr):
+    # Keep the expanded hardware MMAC group inside its execution-barrier turn.
+    # The handoff has no SSA dependency on the dot operands or result; fence
+    # scheduling explicitly without adding hardware memory waits.
+    sched_barrier(0)
+    if WAIT:
+        ebarrier_sync(8 + GROUP, 8)
+    else:
+        ebarrier_arrive(9 - GROUP, 8)
+        set_priority(0)
+    sched_barrier(0)
+
+
 # Two 16-group scale banks bound LDS use independently of the total K length.
 @g.jit
 def _produce_ab_scale_chunk_groups(
@@ -587,9 +601,9 @@ def _consume_ab_chunked_scales(
         i = pair * 2
         j = i + 1
         sched_barrier(0)
-        _synchronize_mmac_turn(GROUP, True)
+        _synchronize_chunked_mmac_turn(GROUP, True)
         dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
-        _synchronize_mmac_turn(GROUP, False)
+        _synchronize_chunked_mmac_turn(GROUP, False)
         selected_bs = _select_b_scale_for_wave(sb, bs_group)
         _release_fp32_scale_chunk(i, STEP, CHUNKS)
         _wait_a_tile_ready(j, GROUP)
@@ -617,9 +631,9 @@ def _consume_ab_chunked_scales(
             i = pair * 2 + 1
             j = i + 1
             sched_barrier(0)
-            _synchronize_mmac_turn(GROUP, True)
+            _synchronize_chunked_mmac_turn(GROUP, True)
             dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
-            _synchronize_mmac_turn(GROUP, False)
+            _synchronize_chunked_mmac_turn(GROUP, False)
             selected_bs = _select_b_scale_for_wave(sb, bs_group)
             _release_fp32_scale_chunk(i, STEP, CHUNKS)
             _wait_a_tile_ready(j, GROUP)
@@ -643,9 +657,9 @@ def _consume_ab_chunked_scales(
             sa = next_sa
             sb = next_sb
             sched_barrier(0)
-    _synchronize_mmac_turn(GROUP, True)
+    _synchronize_chunked_mmac_turn(GROUP, True)
     dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
-    _synchronize_mmac_turn(GROUP, False)
+    _synchronize_chunked_mmac_turn(GROUP, False)
     selected_bs = _select_b_scale_for_wave(sb, bs_group)
     _release_fp32_scale_chunk(K // 128 - 1, STEP, CHUNKS)
     # Keep scale reads ahead of the final scale arithmetic.
