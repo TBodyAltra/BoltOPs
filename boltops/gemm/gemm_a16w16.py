@@ -38,6 +38,25 @@ def _validate_bf16_mls_environment(config):
         raise ValueError("BF16 MLS requires active Triton buffer-ops and BCS knobs")
 
 
+def _get_gluon_config(m, n, k, *, layout, profile, arch, cu_num):
+    """Share same-precision persistent launch geometry between FP16 and BF16."""
+    try:
+        return get_gemm_config(
+            "GEMM-A16W16", m, n, k, backend="gluon", layout=layout,
+            profile=profile, arch=arch, cu_num=cu_num,
+        )
+    except (FileNotFoundError, KeyError):
+        if profile != "DTYPE=float16-OUT=float16":
+            raise
+        config, tuned = get_gemm_config(
+            "GEMM-A16W16", m, n, k, backend="gluon", layout=layout,
+            profile="DTYPE=bfloat16-OUT=bfloat16", arch=arch, cu_num=cu_num,
+        )
+        if config.get("kernel") != "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel":
+            raise KeyError("FP16 requires a persistent Gluon configuration")
+        return config, tuned
+
+
 def gemm_a16w16(
     x,
     w,
@@ -85,7 +104,7 @@ def gemm_a16w16(
             backend. Gluon supports fixed BF16 MNK=(64,64,2048) TN/TT entries and
             a 48-CU persistent FP16/BF16 TN/TT entry with automatic tail handling,
             K-contiguous x, matching input/output dtype, no bias or activation.
-            FP16/BF16 profiles explicitly select their launch geometry. TileLang is not
+            FP16 can reuse the persistent BF16 launch geometry. TileLang is not
             implemented for nonempty computation. After Gluon selection, exact experimental BF16
             TT profiles may select WASP/MLS on gfx946/48 CU without bias or activation.
             BF16 MLS requires complete M/N/K tiles, BF16 output, and the recorded
@@ -188,8 +207,8 @@ def gemm_a16w16(
             # Existing explicit Triton configs keep their established backend.
             if user_config is None and gluon_inputs_supported:
                 try:
-                    gluon_config, tuned = get_gemm_config(
-                        "GEMM-A16W16", m, n, k, backend="gluon", layout=gluon_layout,
+                    gluon_config, tuned = _get_gluon_config(
+                        m, n, k, layout=gluon_layout,
                         profile=gluon_profile, arch=device.arch, cu_num=device.cu_count,
                     )
                 except (FileNotFoundError, KeyError):
@@ -396,8 +415,8 @@ def gemm_a16w16(
                 config = gluon_config
             else:
                 try:
-                    config, _ = get_gemm_config(
-                        "GEMM-A16W16", m, n, k, backend="gluon", layout=gluon_layout,
+                    config, _ = _get_gluon_config(
+                        m, n, k, layout=gluon_layout,
                         profile=gluon_profile, arch=device.arch, cu_num=device.cu_count,
                     )
                 except (FileNotFoundError, KeyError):

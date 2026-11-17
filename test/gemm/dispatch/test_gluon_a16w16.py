@@ -162,9 +162,8 @@ def test_public_gluon_native_correctness(backend, layout):
 
 
 @pytest.mark.parametrize("layout", ["TN", "TT"])
-@pytest.mark.parametrize("profile", [PROFILE, "DTYPE=float16-OUT=float16"])
-def test_persistent_config_carries_tile_sms_and_kernel(layout, profile):
-    cfg, tuned = config_for(m=2048, n=2048, k=4096, layout=layout, profile=profile)
+def test_persistent_config_carries_tile_sms_and_kernel(layout):
+    cfg, tuned = config_for(m=2048, n=2048, k=4096, layout=layout)
     assert tuned and cfg["kernel"] == PERSISTENT_KERNEL
     assert (cfg["BLOCK_SIZE_M"], cfg["BLOCK_SIZE_N"], cfg["BLOCK_SIZE_K"]) == (256, 256, 64)
     assert cfg["NUM_SMS"] == 48
@@ -186,15 +185,17 @@ def test_persistent_config_is_shape_and_layout_specific(kwargs):
 
 
 @pytest.mark.parametrize("layout", ["TN", "TT"])
-def test_persistent_dispatch_launches_one_tg_per_sm(monkeypatch, layout):
+@pytest.mark.parametrize("dtype", [torch.bfloat16, torch.float16])
+@pytest.mark.parametrize("backend", ["auto", "gluon"])
+def test_persistent_dispatch_launches_one_tg_per_sm(monkeypatch, layout, dtype, backend):
     calls = install_captures(monkeypatch)
     module = import_module("boltops.gemm.gluon.gemm_a16w16")
     monkeypatch.setattr(module, PERSISTENT_KERNEL, Capture("persistent", calls))
-    a = torch.empty((2048, 4096), dtype=torch.bfloat16, device="cuda")
+    a = torch.empty((2048, 4096), dtype=dtype, device="cuda")
     w = torch.empty((2048, 4096), dtype=a.dtype, device=a.device)
     if layout == "TT":
         w = w.as_strided(w.shape, (1, 2048))
-    result = gemm_a16w16(a, w)
+    result = gemm_a16w16(a, w, dtype=dtype, backend=backend)
     assert result.shape == (2048, 2048)
     label, grid, args, params = calls[0]
     assert label == "persistent" and grid == (48,)
