@@ -314,6 +314,16 @@ One complete cold dispatch, GC455ps. E4M3FN inputs, BF16 output; B scale BF16 va
 
 One complete cold public-API dispatch; all31,457,280 outputs match, guards pass, and both dies execute. Time is complete-system gcSimCycles; per-die times are not summed. The96-TG dispatch uses all96 CU. Single-TG PERF covers10 tiles with the same .text/.rodata as the full96-TG kernel; all327,680 selected outputs and uncovered output guards passed in three captures. [Dual-die record](docs/ops/gemm/tuning/r010/2die/tn/record.json).
 
+## FP8 R011 on dual-die PMD sbx2
+
+2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 2 DIE ×48 CU, GC455ps, TN6656×2048×4096. Triton `release/3.6.x@f8cbbee18498`, Clang22 `dtk-llvm-7.2.1@264542e7e37f` with the recorded MMAC C no-sink guard.
+
+| Chip / grid | Kernel (µs / TOPS) | TGs per die | Speedup vs nonpersistent |
+|---|---|---|---|
+| sbx2 /96 TG, 4–5 tiles each | 128.180 /871.19 | 48 /48 | 1.1367× |
+
+One complete cold public-API dispatch; all 13,631,488 outputs match and guards pass on all 96 CU. Latency is 12.03% below the same-environment nonpersistent 145.708 µs baseline. Reuses the R010 continuous pipeline with two complete A-scale banks and consumer FP32 B-scale loads, fitting 131072 B LDS without spills. Single-TG PERF covers 5 tiles with the same .text/.rodata as the full 96-TG kernel; all 163,840 selected outputs and uncovered output guards passed in three captures. R009/R010 48-TG and 96-TG executable sections remain unchanged. [Dual-die record](docs/ops/gemm/tuning/r011/2die/tn/record.json).
+
 ## License
 
 BoltOPs original code is licensed under the [MIT License](LICENSE). Portions
