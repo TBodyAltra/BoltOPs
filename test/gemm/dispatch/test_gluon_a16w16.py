@@ -342,6 +342,24 @@ def test_triton_no_splitk_native_correctness():
     torch.testing.assert_close(result.cpu(), expected, atol=.001, rtol=.01)
 
 
+def test_wide_tt_public_dispatch(monkeypatch):
+    calls = install_captures(monkeypatch)
+    module = import_module("boltops.gemm.gluon.gemm_a16w16")
+    monkeypatch.setattr(module, NARROW_TT_KERNEL, Capture("wide_tt", calls))
+    a = torch.empty((64, 2048), dtype=torch.bfloat16, device="cuda")
+    w = torch.empty((2048, 248320), dtype=a.dtype, device=a.device).T
+    out = torch.empty((64, 248320), dtype=a.dtype, device=a.device)
+    assert gemm_a16w16(a, w, out=out) is out
+    assert len(calls) == 1
+    label, grid, args, params = calls[0]
+    assert label == "wide_tt" and grid == (970,)
+    assert args[0] is a and args[1] is w and args[2] is out
+    assert params["wasp_partition_warps"] == (2, 4)
+    assert (params["BLOCK_SIZE_M"], params["BLOCK_SIZE_N"], params["BLOCK_SIZE_K"]) == (64, 256, 64)
+    assert (params["CHUNKS"], params["SLOTS"]) == (1, 2)
+
+
+
 @pytest.mark.parametrize("layout", ["TN", "TT"])
 def test_fixed_bf16_config_is_not_reused_for_fp16(layout):
     with pytest.raises(KeyError):
