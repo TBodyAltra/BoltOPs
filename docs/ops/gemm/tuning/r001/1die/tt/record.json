@@ -140,7 +140,9 @@
     "kernel_us": 5.74392,
     "kernel_cycles": 12624.0,
     "shader_us": 2.13213,
-    "kernel_tops": 2.920865193108539
+    "kernel_tops": 2.920865193108539,
+    "effective_peak_tflops": 432.10549450549456,
+    "useful_mmac_util_percent": 0.6759611322348963
   },
   "benchmark": {
     "seed": 59,
@@ -563,5 +565,15 @@
       "sha256": "798bd119f27ed3fded346e6164402f5d4cfb091657594a8396ab084d5ca10010"
     },
     "binary_matches_full_grid": true
+  },
+  "mmac_utilization_basis": {
+    "scope": "effective GEMM work over complete kernel dispatch; all configured CUs",
+    "formula": "100 * kernel_tops / (393.216 * (cu_count / 48) * (gc_frequency_ghz / 2))",
+    "precision": "BF16",
+    "reference_peak_tops": 393.216,
+    "reference_cu_count": 48,
+    "reference_frequency_ghz": 2,
+    "gc_frequency_ghz": 2.197802197802198,
+    "cu_count": 48
   }
 }

@@ -145,7 +145,9 @@
     "kernel_us": 10.5651,
     "kernel_cycles": 23220.0,
     "shader_us": 6.953765,
-    "kernel_tops": 63.519383631011536
+    "kernel_tops": 63.519383631011536,
+    "effective_peak_tflops": 432.10549450549456,
+    "useful_mmac_util_percent": 14.699971289118572
   },
   "benchmark": {
     "seed": 59,
@@ -536,5 +538,15 @@
       "GPU_DFLAGS": "['StatLog','TT','Perf']",
       "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
     }
+  },
+  "mmac_utilization_basis": {
+    "scope": "effective GEMM work over complete kernel dispatch; all configured CUs",
+    "formula": "100 * kernel_tops / (393.216 * (cu_count / 48) * (gc_frequency_ghz / 2))",
+    "precision": "BF16",
+    "reference_peak_tops": 393.216,
+    "reference_cu_count": 48,
+    "reference_frequency_ghz": 2,
+    "gc_frequency_ghz": 2.197802197802198,
+    "cu_count": 48
   }
 }

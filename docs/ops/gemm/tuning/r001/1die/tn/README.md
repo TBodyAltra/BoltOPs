@@ -2,6 +2,8 @@
 
 2026-11-17，MNK=64×64×2048。BM16/BN16/BK128，每批4块、2槽位，LDS 64KiB，1P+1C。FP32累加、BF16输出，完整K，无Split-K或额外归约。
 
+MMAC 有效利用率 **0.73%**，按完整 dispatch 的有效 TOPS 除以 48 CU、GC 2.197802198 GHz 下 BF16 峰值 432.105495 TOPS 计算。
+
 公开接口 `gemm_a16w16(a, w, out=out, backend="auto")` 已观察并核对实际加载的编译handle。A stride=[2048, 1]，w[N,K] stride=[2048, 1]；物理权重布局推导统一的B_K_CONTIGUOUS。config负责实现选择，kernel的JIT断言负责形状/布局/精度约束。
 
 完整dispatch **5.324 µs / 3.15 TOPS**，shader窗口 **1.711 µs**。3组完整输入校验后，取9次warm中位数，范围5.309–5.516 µs；首次随机dispatch 7.651 µs。每次均回读全部输出，mismatch/nonfinite为0，输出guard及全部16个TG完成检查通过。容差abs0.001+rel0.01，SGPR/VGPR spill均为0。
