@@ -11,10 +11,13 @@ Kernel latency increases above 1% fail; exactly 1% passes. Published baselines
 are never updated. DIE/layout records remain separate. --evaluate checks saved
 full-grid measurements without launching kernels. --jobs permits independent
 core-only PMD instances. This script is independent of NMZ CI.
+The model suite includes its BF16 GEMMs as well as FP8 blockscale GEMMs.
+Experimental candidate records participate only when explicitly registered for regression.
 R005 reuses its archived benchmark's fixed-kernel timing and public-output check.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+import configparser
 from dataclasses import dataclass
 import hashlib
 import json
@@ -27,6 +30,11 @@ import statistics
 import subprocess
 import sys
 import threading
+
+if __package__:
+    from . import gemm_a16w16_pmd_regression as linear
+else:
+    import gemm_a16w16_pmd_regression as linear
 
 REPO = Path(__file__).resolve().parents[2]
 DOCUMENT = Path('docs/ops/gemm/SHAOBO_BU_REQUIREMENTS.md')
@@ -58,10 +66,19 @@ def positive(value, name):
     return value
 
 
-def normalize_record(record):
+def normalize_record(record, record_path=None):
     """Adapt the legacy R005 job/mean schema without changing its baseline."""
-    record = json.loads(json.dumps(record))
-    if 'mean_kernel_us' in record['performance']:
+    record = linear.normalize_record(record, record_path)
+    if record.get('benchmark', {}).get('interface') == 'public_job_json':
+        performance = record['performance']
+        performance['kernel_us'] = performance['mean_kernel_us']
+        performance['launched_TGs'] = math.prod(record['pipeline']['grid'])
+        if performance['completed_TGs'] != performance['launched_TGs']:
+            raise ValueError('public job did not complete its published grid')
+        benchmark = record['benchmark']
+        benchmark['warm_repeats'] = benchmark['job']['repeats']
+        benchmark['repeats'] = benchmark['warm_repeats'] + 1
+    elif 'mean_kernel_us' in record['performance']:
         performance = record['performance']
         if 'PMD' not in performance.get('metric', ''):
             raise ValueError('legacy record is not a PMD cycle baseline')
@@ -81,6 +98,11 @@ def normalize_record(record):
                                    repeats=warm_repeats + 1, job_config={'BN': record['tile'][1]})
         environment['environment_variables'].setdefault(
             'PYTHONPATH', str(Path(environment['variables']['TRITON_HOME']).parent / 'runtime'))
+    if 'launched_TGs' not in record['performance'] and 'grid' in record.get('pipeline', {}):
+        tgs = math.prod(record['pipeline']['grid'])
+        if record['performance'].get('completed_TGs') != tgs:
+            raise ValueError('completed TG count differs from the published pipeline grid')
+        record['performance']['launched_TGs'] = tgs
     return record
 
 
@@ -111,7 +133,14 @@ def discover_cases(repo=REPO):
     for link in sorted(links):
         path = (document.parent / link).resolve()
         path.relative_to(repo.resolve())
-        record = normalize_record(load(path))
+        record = load(path)
+        if record.get('regression', {}).get('role') == 'compiler_comparison':
+            continue
+        if (record.get('kernel_symbol') == 'candidate_kernel'
+                and record.get('implementation', '').startswith('experimental ')
+                and not record.get('regression', {}).get('operator') == linear.OPERATOR):
+            continue
+        record = normalize_record(record, path)
         positive(record['performance']['kernel_us'], 'baseline kernel_us')
         positive(record['performance']['launched_TGs'], 'baseline launched_TGs')
         if record['environment']['type'] != 'PMD':
@@ -126,81 +155,18 @@ def discover_cases(repo=REPO):
     return sorted(cases, key=lambda case: case.key)
 
 
-def objects(node):
-    if isinstance(node, dict):
-        if 'path' in node:
-            yield node
-        for value in node.values():
-            yield from objects(value)
-    elif isinstance(node, list):
-        for value in node:
-            yield from objects(value)
-
-
-def verify_model(record, measurement):
-    model = {obj['path']: obj for obj in objects(load(measurement / 'm5out/config.json'))}
-    expected = record['environment']
-    shader_paths = [p for p in model if re.fullmatch(r'system(?:\d+)?\.shaders\d*', p)]
-    if len(shader_paths) != expected['dies']:
-        raise ValueError('PMD DIE count differs from baseline')
-    if len([p for p in model if re.fullmatch(r'system(?:\d+)?\.shaders\d*\.CUs\d+', p)]) != expected['cu_count']:
-        raise ValueError('PMD CU count differs from baseline')
-    clocks = [model[path + '.clk_domain']['clock'][0] for path in shader_paths]
-    expected_clock = expected['clock_period_ps']['gc']
-    if any(clock != expected_clock for clock in clocks):
-        raise ValueError(f'PMD GC clocks differ: {clocks} vs {expected_clock} ps')
-    clock = clocks[0]
-    configuration = model['gpu_configuration']
-    if configuration.get('ipc_conn') or configuration.get('skip_cal') or configuration.get('skip_kernel_exec'):
-        raise ValueError('requires an independent core-only PMD with kernel execution enabled')
-    for key, value in expected.get('gpu_configuration', {}).items():
-        if configuration.get(key) != value:
-            raise ValueError(f'PMD configuration differs: {key}')
-    if configuration.get('device_id') != 0x66b7 or expected['arch'] != 'gfx946':
-        raise ValueError('PMD architecture differs from gfx946 baseline')
-    return {'clock_period_ps': clock, 'cu_count': expected['cu_count'], 'dies': len(shader_paths)}
-
-
-def verify_sample(record, sample, measurement, clock):
-    accuracy = sample['accuracy']
-    if 'max_abs' in accuracy and (not math.isfinite(accuracy['max_abs']) or accuracy['max_abs'] < 0):
-        raise ValueError('invalid numerical error summary')
-    m, n, _ = record['shape']
-    if accuracy['elements'] != m*n:
-        raise ValueError('precision check did not cover the complete MN output')
-    bad = accuracy.get('outside_tolerance', accuracy.get('mismatches', accuracy.get('mismatch')))
-    if bad != 0 or accuracy.get('nonfinite') != 0 or accuracy.get('canary_ok', True) is not True:
-        raise ValueError('precision, nonfinite or boundary check failed')
-    stats_path = (measurement / sample['stats_path']).resolve()
-    stats_path.relative_to(measurement.resolve())
-    values = {}
-    for line in stats_path.read_text().splitlines():
-        fields = line.split()
-        if len(fields) > 1:
-            try:
-                values[fields[0]] = float(fields[1])
-            except ValueError:
-                pass
-    cycles = positive(values['system.gcSimCycles'], 'gcSimCycles')
-    frequency = positive(values['simFreq'], 'simFreq')
-    if frequency != 1e12:
-        raise ValueError('PMD tick resolution differs from recorded picosecond clocks')
-    counts = [v for k, v in values.items() if re.fullmatch(r'system(?:\d+)?\.shaders\d*\.CUs\d+\.completedWGs', k)]
-    expected_tgs = record['performance']['launched_TGs']
-    if not counts or sum(counts) != expected_tgs or sample['completed_TGs'] != expected_tgs:
-        raise ValueError('launched/completed TG count differs from complete baseline grid')
-    actual_clocks = [v for k, v in values.items()
-                     if re.fullmatch(r'system(?:\d+)?\.shaders\d*\.clk_domain\.clock', k)]
-    if any(actual_clock != clock for actual_clock in actual_clocks):
-        raise ValueError('stats clock differs from model clock')
-    us = cycles * clock / frequency * 1e6
-    if not math.isclose(positive(sample['kernel_us'], 'kernel_us'), us, rel_tol=1e-10):
-        raise ValueError('reported time is not the complete PMD kernel time')
-    return us
+verify_model = linear.verify_model
+verify_sample = linear.verify_sample
 
 
 def evaluate(case, case_output, max_regression_percent=1.0):
     """Validate raw evidence before classifying performance; never update baselines."""
+    if linear.is_linear_record(case.record):
+        report = linear.evaluate(linear.Case(case.record_path, case.record), case_output,
+                                 max_regression_percent)
+        report['case'] = case.key
+        return report
+
     if not math.isfinite(max_regression_percent) or max_regression_percent < 0:
         raise ValueError('regression threshold must be finite and nonnegative')
     measurement = Path(case_output) / 'measurement'
@@ -211,7 +177,30 @@ def evaluate(case, case_output, max_regression_percent=1.0):
         raise ValueError('benchmark shape differs from recorded complete MNK')
     model = verify_model(case.record, measurement)
     repeats = case.record['benchmark']['repeats']
-    if 'measurements' in result:
+    if case.record['benchmark'].get('interface') == 'public_job_json':
+        if (result.get('job') != case.record['benchmark']['job']
+                or result.get('public_config') != case.record['config']['launch_options']):
+            raise ValueError('public job shape, seed, repeats or kernel differs from baseline')
+        samples = result['measurements']
+        if (len(samples) != repeats or not samples[0]['cold']
+                or any(s['cold'] for s in samples[1:])):
+            raise ValueError('public job warm sampling differs from baseline')
+        times = []
+        paths = []
+        for sample in samples:
+            if len(sample['stages']) != 1:
+                raise ValueError('public job must measure one complete dispatch')
+            stats = sample['stages'][0]
+            accuracy = dict(sample['accuracy'], canary_ok=sample['accuracy']['guards_ok'])
+            normalized = dict(accuracy=accuracy, kernel_us=sample['us'],
+                              stats_path=stats['path'], completed_TGs=stats['completed_TGs'])
+            paths.append((measurement / stats['path']).resolve())
+            times.append(verify_sample(case.record, normalized, measurement, model['clock_period_ps']))
+        if len(set(paths)) != repeats:
+            raise ValueError('public job reuses native stats across samples')
+        measured = statistics.mean(times[1:])
+        aggregation = 'mean excluding initial cold launch'
+    elif 'measurements' in result:
         if result['job']['shape'] != case.record['shape'] or math.prod(result['grid']) != case.record['performance']['launched_TGs']:
             raise ValueError('legacy benchmark used a partial shape/grid')
         samples = result['measurements']
@@ -264,22 +253,30 @@ def evaluate(case, case_output, max_regression_percent=1.0):
 def assess(case, output, threshold):
     try:
         return evaluate(case, output, threshold)
-    except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+    except (OSError, ValueError, KeyError, TypeError, IndexError, configparser.Error) as error:
         return dict(case=case.key, status='INVALID', error=str(error))
 
 
 def run_case(case, case_output, threshold=1.0):
-    output = Path(case_output)
+    if linear.is_linear_record(case.record):
+        report = linear.run_case(linear.Case(case.record_path, case.record), case_output, threshold)
+        report['case'] = case.key
+        save(Path(case_output) / 'regression.json', report)
+        return report
+    output = Path(case_output).resolve()
     output.mkdir(parents=True, exist_ok=False)
     record = json.loads(json.dumps(case.record))
+    linear.refresh_sources(record)
     record['environment']['environment_variables'].update(
         TRITON_CACHE_DIR=str(output / 'cache'), TRITON_HOME=str(output / 'triton-home'),
         BOLTOPS_GEMM_CONFIG_DIR=None)
     replay = output / 'replay-record.json'
     save(replay, record)
     script = case.record_path.parent / record['benchmark']['script']
+    if record['benchmark'].get('sha256', digest(script)) != digest(script):
+        raise ValueError('archived benchmark changed; retain its recorded measurement protocol')
     environment = dict(os.environ)
-    if record['benchmark'].get('interface') == 'job_json':
+    if record['benchmark'].get('interface') in ('job_json', 'public_job_json'):
         for key, value in record['environment']['environment_variables'].items():
             if value is None:
                 environment.pop(key, None)
@@ -294,14 +291,17 @@ def run_case(case, case_output, threshold=1.0):
                 raise ValueError('recorded Triton library does not match; R005 needs its wave-sharing fixes')
         measurement = output / 'measurement'
         measurement.mkdir()
-        job = dict(shape=record['shape'], config=record['benchmark']['job_config'],
-                   repeats=record['benchmark']['warm_repeats'], seed=record['benchmark']['seed'])
+        if record['benchmark']['interface'] == 'public_job_json':
+            job = record['benchmark']['job']
+        else:
+            job = dict(shape=record['shape'], config=record['benchmark']['job_config'],
+                       repeats=record['benchmark']['warm_repeats'], seed=record['benchmark']['seed'])
         save(output / 'job.json', job)
         command = [sys.executable, str(script), str(output / 'job.json')]
         working_directory = measurement
     else:
         command = [sys.executable, str(script), '--record', str(replay), '--output', str(output / 'measurement')]
-        if '--cu0-perf' in shlex.split(record['benchmark']['command']):
+        if '--cu0-perf' in shlex.split(record['benchmark'].get('command', '')):
             command.append('--cu0-perf')
         working_directory = output
     save(output / 'invocation.json', dict(command=command, benchmark_sha256=digest(script),
@@ -317,7 +317,7 @@ def run_case(case, case_output, threshold=1.0):
     return report
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--case', action='append', default=[], help='requirement or DIE/layout key; repeatable')
     parser.add_argument('--output', type=Path)
@@ -325,10 +325,13 @@ def main():
     parser.add_argument('--max-regression-percent', type=float, default=1.0)
     parser.add_argument('--evaluate', action='store_true', help='validate existing measurements; launch no kernels')
     parser.add_argument('--list', action='store_true')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.jobs < 1 or not math.isfinite(args.max_regression_percent) or args.max_regression_percent < 0:
         parser.error('jobs must be positive; regression threshold must be finite and nonnegative')
-    cases = discover_cases()
+    try:
+        cases = discover_cases()
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        parser.error(str(error))
     selectors = {s.lower() for s in args.case}
     known = {c.key.lower() for c in cases} | {c.record['requirement'].lower() for c in cases}
     if selectors - known:
@@ -340,7 +343,12 @@ def main():
     if args.output is None:
         parser.error('--output is required')
     output = args.output.resolve()
-    if not args.evaluate:
+    if args.evaluate:
+        if not output.is_dir():
+            parser.error('--evaluate requires an existing output directory')
+    else:
+        if output.exists():
+            parser.error('output directory must be new; existing measurements are never overwritten')
         output.mkdir(parents=True, exist_ok=False)
     state = dict(model=MODEL, max_regression_percent=args.max_regression_percent, status='RUNNING',
                  cases={c.key: dict(case=c.key, status='QUEUED') for c in cases})
@@ -358,9 +366,8 @@ def main():
             report = assess(case, folder, args.max_regression_percent) if args.evaluate else run_case(case, folder, args.max_regression_percent)
         except Exception as error:
             report = dict(case=case.key, status='ERROR', error=str(error))
-        if args.evaluate:
-            folder.mkdir(parents=True, exist_ok=True)
-            save(folder / 'regression.json', report)
+        folder.mkdir(parents=True, exist_ok=True)
+        save(folder / 'regression.json', report)
         update(case.key, report)
         print(json.dumps(report), flush=True)
         return report
