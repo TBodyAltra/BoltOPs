@@ -134,9 +134,9 @@ def _produce_ab_and_scales(
 
 
 @g.jit
-def _wait_ab_reads_and_raise_priority():
+def _wait_ab_reads_and_raise_priority(SCALE_READS: gl.constexpr = 9):
     set_priority(3)
-    wait_lgkmcnt(9)
+    wait_lgkmcnt(SCALE_READS)
 
 
 @g.jit
@@ -153,8 +153,8 @@ def _wait_b_tile_ready(i):
 
 
 @g.jit
-def _release_ab_lds_slots(i, GROUP: gl.constexpr):
-    _wait_ab_reads_and_raise_priority()
+def _release_ab_lds_slots(i, GROUP: gl.constexpr, SCALE_READS: gl.constexpr = 9):
+    _wait_ab_reads_and_raise_priority(SCALE_READS)
     if GROUP == 0:
         abarrier_arrive((i % 2) * 2)
     else:
@@ -173,22 +173,31 @@ def _prefetch_scale_tile(
     bs_group,
     GROUP: gl.constexpr,
     F: gl.constexpr,
+    BS,
+    K: gl.constexpr,
 ):
     # release/3.6.x exposes descriptor loads; the reference's raw LDS
     # slice pointer API is not present in this release branch.
     sa = smAS0.index(i).slice(GROUP * 64, 64).load(gl.SliceLayout(1, F))
-    bits = smBS.index(i)._reinterpret(gl.uint64, (1,), gl.SwizzledSharedLayout(1, 1, 1, [0]))
-    sb = bits.load(gl.BlockedLayout([1], [64], [4], [0])).reshape(())
+    if K == 4096:
+        sb = gl.load(BS + bs_group * (K // 128) + i)
+    else:
+        bits = smBS.index(i)._reinterpret(gl.uint64, (1,), gl.SwizzledSharedLayout(1, 1, 1, [0]))
+        sb = bits.load(gl.BlockedLayout([1], [64], [4], [0])).reshape(())
     return sa, sb
 
 
 @g.jit
-def _select_b_scale_for_wave(sb, bs_group):
-    lo = sb.to(gl.uint32)
-    hi = (sb >> 32).to(gl.uint32)
-    wait_lgkmcnt(0)
-    selected = gl.where(bs_group != 0, hi, lo)
-    return selected.to(gl.float32, bitcast=True)
+def _select_b_scale_for_wave(sb, bs_group, DIRECT_B_SCALE: gl.constexpr = False):
+    if DIRECT_B_SCALE:
+        wait_lgkmcnt(0)
+        return sb
+    else:
+        lo = sb.to(gl.uint32)
+        hi = (sb >> 32).to(gl.uint32)
+        wait_lgkmcnt(0)
+        selected = gl.where(bs_group != 0, hi, lo)
+        return selected.to(gl.float32, bitcast=True)
 
 
 @g.jit
@@ -232,8 +241,8 @@ def _consume_ab_and_accumulate(
     _wait_b_tile_ready(0)
     b = async_copy.load_shared_relaxed(smB0, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)) if B_K_CONTIGUOUS else gl.DotOperandLayout(1, F, 8))
     sched_barrier(0)
-    sa, sb = _prefetch_scale_tile(smAS0, smAS1, smBS, 0, m, lane_m_byte, bs_group, GROUP, RF)
-    _release_ab_lds_slots(0, GROUP)
+    sa, sb = _prefetch_scale_tile(smAS0, smAS1, smBS, 0, m, lane_m_byte, bs_group, GROUP, RF, BS, K)
+    _release_ab_lds_slots(0, GROUP, 8 if K == 4096 else 9)
     for pair in range(K // 256):
         i = pair * 2
         j = i + 1
@@ -241,7 +250,7 @@ def _consume_ab_and_accumulate(
         _synchronize_mmac_turn(GROUP, True, FENCE_MMAC_TURN)
         dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
         _synchronize_mmac_turn(GROUP, False, FENCE_MMAC_TURN)
-        selected_bs = _select_b_scale_for_wave(sb, bs_group)
+        selected_bs = _select_b_scale_for_wave(sb, bs_group, K == 4096)
         _wait_a_tile_ready(j, GROUP)
         if j % 2 == 0:
             a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
@@ -254,12 +263,12 @@ def _consume_ab_and_accumulate(
             b = async_copy.load_shared_relaxed(smB1, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)) if B_K_CONTIGUOUS else gl.DotOperandLayout(1, F, 8))
         sched_barrier(0)
         next_sa, next_sb = _prefetch_scale_tile(
-            smAS0, smAS1, smBS, j, m, lane_m_byte, bs_group, GROUP, RF
+            smAS0, smAS1, smBS, j, m, lane_m_byte, bs_group, GROUP, RF, BS, K
         )
         # Keep next-scale reads ahead of the current scale arithmetic.
         sched_barrier(0)
         acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
-        _release_ab_lds_slots(j, GROUP)
+        _release_ab_lds_slots(j, GROUP, 8 if K == 4096 else 9)
         sa = next_sa
         sb = next_sb
         sched_barrier(0)
@@ -270,7 +279,7 @@ def _consume_ab_and_accumulate(
             _synchronize_mmac_turn(GROUP, True, FENCE_MMAC_TURN)
             dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
             _synchronize_mmac_turn(GROUP, False, FENCE_MMAC_TURN)
-            selected_bs = _select_b_scale_for_wave(sb, bs_group)
+            selected_bs = _select_b_scale_for_wave(sb, bs_group, K == 4096)
             _wait_a_tile_ready(j, GROUP)
             if j % 2 == 0:
                 a = async_copy.load_shared_relaxed(smA0, gl.DotOperandLayout(0, F, 8))
@@ -283,19 +292,19 @@ def _consume_ab_and_accumulate(
                 b = async_copy.load_shared_relaxed(smB1, MmacInterleave2Layout(gl.DotOperandLayout(1, F, 8)) if B_K_CONTIGUOUS else gl.DotOperandLayout(1, F, 8))
             sched_barrier(0)
             next_sa, next_sb = _prefetch_scale_tile(
-                smAS0, smAS1, smBS, j, m, lane_m_byte, bs_group, GROUP, RF
+                smAS0, smAS1, smBS, j, m, lane_m_byte, bs_group, GROUP, RF, BS, K
             )
             # Keep next-scale reads ahead of the current scale arithmetic.
             sched_barrier(0)
             acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
-            _release_ab_lds_slots(j, GROUP)
+            _release_ab_lds_slots(j, GROUP, 8 if K == 4096 else 9)
             sa = next_sa
             sb = next_sb
             sched_barrier(0)
     _synchronize_mmac_turn(GROUP, True, FENCE_MMAC_TURN)
     dot = gl.amd.cdna4.mfma(a, b, zero_mmac)
     _synchronize_mmac_turn(GROUP, False, FENCE_MMAC_TURN)
-    selected_bs = _select_b_scale_for_wave(sb, bs_group)
+    selected_bs = _select_b_scale_for_wave(sb, bs_group, K == 4096)
     # Keep scale reads ahead of the final scale arithmetic.
     sched_barrier(0)
     acc = packed_scale_fma(dot, sa[:, None], selected_bs, acc)
@@ -321,29 +330,30 @@ def _consume_ab_and_accumulate(
 def _publish_scale_bank(AS, BS, smAS, smBS, BANK, K: gl.constexpr):
     SL: gl.constexpr = gl.BlockedLayout([1], [64], [4], [0])
     flatAS = smAS._reinterpret(gl.float32, ((K // 128) * 128,), gl.SwizzledSharedLayout(1, 1, 1, [0]))
-    flatBS = smBS._reinterpret(gl.float32, ((K // 128) * 2,), gl.SwizzledSharedLayout(1, 1, 1, [0]))
     flat = gl.arange(0, 512, layout=SL)
     abarrier_seq(4 + BANK)
     for chunk in gl.static_range((K // 128) * 128 // 512):
         index = flat + chunk * 512
         offsets = (index % 128) * (K // 128) + index // 128
         async_copy.buffer_load_to_shared(flatAS.slice(chunk * 512, 512), AS, offsets)
-    index_b = gl.arange(0, (K // 128) * 2, layout=SL)
-    offsets_b = (index_b % 2) * (K // 128) + index_b // 2
-    async_copy.buffer_load_to_shared(flatBS, BS, offsets_b)
+    if K != 4096:
+        flatBS = smBS._reinterpret(gl.float32, ((K // 128) * 2,), gl.SwizzledSharedLayout(1, 1, 1, [0]))
+        index_b = gl.arange(0, (K // 128) * 2, layout=SL)
+        offsets_b = (index_b % 2) * (K // 128) + index_b // 2
+        async_copy.buffer_load_to_shared(flatBS, BS, offsets_b)
     abarrier_arrive(4 + BANK)
 
 
 @g.jit
-def _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, TILE_ID, BANK, K: gl.constexpr):
+def _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, TILE_ID, BANK, K: gl.constexpr, M_TILES: gl.constexpr):
     if BANK == 0:
         smAS = smAS0
         smBS = smBS0
     else:
         smAS = smAS1
         smBS = smBS1
-    tile_m = (TILE_ID % 20) * 128
-    tile_n = (TILE_ID // 20) * 256
+    tile_m = (TILE_ID % M_TILES) * 128
+    tile_n = (TILE_ID // M_TILES) * 256
     _publish_scale_bank(AS + tile_m * (K // 128),
                         BS + (tile_n // 128) * (K // 128),
                         smAS, smBS, BANK, K)
@@ -357,11 +367,12 @@ def _persistent_producer(A, B, AS, BS, smAS0, smAS1, smBS0, smBS1,
                          GROUP: gl.constexpr, PID,
                          B_K_CONTIGUOUS: gl.constexpr = True,
                          B_LOAD_WARPS: gl.constexpr = (1, 4)):
+    M_TILES: gl.constexpr = TILE_LIMIT // (N // 256)
     _initialize_pipeline_barriers(get_wave_id())
     if GROUP == 1:
-        _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, PID, 0, K)
+        _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, PID, 0, K, M_TILES)
         if (TILE_LIMIT + NUM_SMS - 1) // NUM_SMS > 1:
-            _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, PID + NUM_SMS, 1, K)
+            _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, PID + NUM_SMS, 1, K, M_TILES)
     for step in range((TILE_LIMIT + NUM_SMS - 1) // NUM_SMS):
         tile_id = PID + step * NUM_SMS
         if TILE_LIMIT % NUM_SMS == 0 or tile_id < TILE_LIMIT:
@@ -372,12 +383,12 @@ def _persistent_producer(A, B, AS, BS, smAS0, smAS1, smBS0, smBS1,
             else:
                 smAS = smAS1
                 smBS = smBS1
-            tile_m = (tile_id % 20) * 128
-            tile_n = (tile_id // 20) * 256
+            tile_m = (tile_id % M_TILES) * 128
+            tile_n = (tile_id // M_TILES) * 256
             if GROUP == 1:
                 if step >= 2:
                     abarrier_try_wait(14 + bank, ((step // 2) + 1) % 2)
-                    _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, tile_id, bank, K)
+                    _publish_scales_for_tile(AS, BS, smAS0, smAS1, smBS0, smBS1, tile_id, bank, K, M_TILES)
             _produce_ab_and_scales(A + tile_m * K, B + (tile_n * K if B_K_CONTIGUOUS else tile_n),
                                   AS + tile_m * (K // 128), BS + (tile_n // 128) * (K // 128),
                                   smAS, smAS, smBS,
@@ -392,6 +403,7 @@ def _persistent_consumer(AS, BS, C, smAS0, smAS1, smBS0, smBS1,
                          NUM_SMS: gl.constexpr, TILE_LIMIT: gl.constexpr,
                          GROUP: gl.constexpr, F: gl.constexpr, PID,
                          B_K_CONTIGUOUS: gl.constexpr = True):
+    M_TILES: gl.constexpr = TILE_LIMIT // (N // 256)
     _initialize_pipeline_barriers(get_wave_id())
     for step in range((TILE_LIMIT + NUM_SMS - 1) // NUM_SMS):
         tile_id = PID + step * NUM_SMS
@@ -403,8 +415,8 @@ def _persistent_consumer(AS, BS, C, smAS0, smAS1, smBS0, smBS1,
             else:
                 smAS = smAS1
                 smBS = smBS1
-            tile_m = (tile_id % 20) * 128
-            tile_n = (tile_id // 20) * 256
+            tile_m = (tile_id % M_TILES) * 128
+            tile_n = (tile_id // M_TILES) * 256
             abarrier_try_wait(4 + bank, (step // 2) % 2)
             _consume_ab_and_accumulate(AS + tile_m * (K // 128), BS + (tile_n // 128) * (K // 128),
                                        C + tile_m * N + tile_n,
@@ -437,8 +449,9 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     gl.static_assert(TILE_LIMIT == (M // 128) * (N // 256),
                      "this pipeline requires a complete tile grid")
     gl.static_assert((K // 128) % 4 == 0, "per-slot phases must wrap across tiles")
-    gl.static_assert(M == 2560 and (N == 9216 or N == 12288) and K == 2048,
-                     "this persistent pipeline requires R009 or R010")
+    gl.static_assert((M == 2560 and (N == 9216 or N == 12288) and K == 2048)
+                     or (M == 6656 and N == 2048 and K == 4096 and NUM_SMS == 96),
+                     "this persistent pipeline requires R009/R010 or 96-TG R011")
     gl.static_assert((BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K) == (128, 256, 128),
                      "this pipeline requires tile (128,256,128)")
     gl.static_assert(M % 128 == 0 and N % 256 == 0 and K % 256 == 0 and K >= 256 and K <= 6144,
@@ -462,8 +475,13 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     scaleL: gl.constexpr = gl.SwizzledSharedLayout(1, 1, 1, [0])
     sas0 = gl.allocate_shared_memory(gl.float32, (K // 128, 128), scaleL)
     sas1 = gl.allocate_shared_memory(gl.float32, (K // 128, 128), scaleL)
-    sbs0 = gl.allocate_shared_memory(gl.float32, (K // 128, 2), scaleL)
-    sbs1 = gl.allocate_shared_memory(gl.float32, (K // 128, 2), scaleL)
+    if K == 4096:
+        # Two full A-scale banks fill 128 KiB with A/B; B scales load directly.
+        sbs0 = sas0
+        sbs1 = sas1
+    else:
+        sbs0 = gl.allocate_shared_memory(gl.float32, (K // 128, 2), scaleL)
+        sbs1 = gl.allocate_shared_memory(gl.float32, (K // 128, 2), scaleL)
     a0 = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), SA)
     a1 = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), SA)
     a0_next = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), SA)
