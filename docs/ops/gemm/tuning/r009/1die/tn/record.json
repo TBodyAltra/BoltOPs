@@ -19,19 +19,20 @@
       "build_llvm_commit": "02cd0a4ddec90de4c0691e40e50ad2d2c1d9d8a2"
     },
     "clang": {
-      "repository": "ssh://git@10.16.1.204:10022/dcu-aicc/llvm-project.git",
       "branch": "dtk-llvm-7.2.1",
-      "commit": "264542e7e37f15dd13ab063d59522652268cf7d9",
-      "sha256": "eff402e39734ccdca3e46fe1c607916bcb1fc84d4d17eca93a87dd0e7be27736",
-      "lld_sha256": "7c06119e7a312d64ebb89ed562044383fb8b8f3fb49e589fbfc85ea2bfdc90d9",
+      "commit": "c3cca66f09d8262d3b527b77b57515f8c8889543",
+      "sha256": "d4711da3b6bdd316cd6d7b24dc9ce0cbf84413d732cf71181b141da6128fbc29",
+      "lld_sha256": "a015911994a85bfb2c82a3943ad5667aa37590331d3eaa3365f84b2fc748a2a9",
       "local_patches": [
         {
-          "path": "test.patch",
-          "sha256": "668a57c02d5ed9577c61903fa84cc7894f8e28a79f2e481c0785767246dad590"
+          "path": "dsread2.patch",
+          "sha256": "29054a98506ebcf7794b344e2e92dd8567523db9173907189d7fa9142c71e4e5"
+        },
+        {
+          "path": "mmac-c-no-sink.patch",
+          "sha256": "4cdd471d821fcd800b3899051f392a6d6fee347b30520c12d1411916f84dfec0"
         }
-      ],
-      "ds_read2": "upstream in 264542e7e3",
-      "legacy_C_sink_guard": false
+      ]
     },
     "clock_period_ps": {
       "cache": 455,
@@ -55,8 +56,8 @@
       "HIP_VISIBLE_DEVICES": null,
       "ROCR_VISIBLE_DEVICES": null,
       "AMDGCN_USE_BUFFER_OPS": "1",
-      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/r009-llvm-test-patch/bin/clang-22",
-      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/r009-llvm-test-patch/bin/ld.lld",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/r009-c3-backend-guard/bin/clang-22",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-7.2.1/build-dsread2/bin/ld.lld",
       "TRITON_OFFLINE_BUILD": "1",
       "TRITON_BACKENDS_IN_TREE": "1",
       "TRITON_BUFFER_CACHE_SWIZZLE": null,
@@ -203,7 +204,7 @@
       "xcd_id_in_device": 0
     },
     "provenance": {
-      "measured_case": "r009-llvm-test-patch",
+      "measured_case": "r009-matrix-store-latest",
       "capture_source": "complete original regression replay; effective full-run environment and PMD statistics",
       "compiler_assembly_hook": false,
       "aslr": "default"
@@ -250,7 +251,10 @@
     "line": 396,
     "commit": "40c5ad2d3adb9348bead8a68cb58f03550891220",
     "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/40c5ad2d3adb9348bead8a68cb58f03550891220/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L396",
-    "measured_source_sha256": "28a911655c27edcb1b9a02d31e0e0c486393de09fda1b12bb160500694c8f017"
+    "measured_source_sha256": "1d7673091fbb5ee94e3d0b2873689ce3ec8cd25410438df34cb24ecf72e6f2af",
+    "executable_text_sha256": "53830fecb47b8854c8c0f9fe7d12eff527f4d5745d154599d94b12106683fd80",
+    "rodata_sha256": "c18b1de204c4ecd4699aaca706275a852ef8e43218139e1c21c928dbbfefd408",
+    "equivalence": "MR source retains newer unrelated kernels; compile-only validation confirms .text and .rodata byte-identical to the full measured kernel"
   },
   "config": {
     "path": "boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json",
@@ -260,23 +264,17 @@
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "7d38aae57290bc7aa482cecda14a0085190fe356338945e5ed3bcee39832bb1b",
-    "measured_hsaco_sha256": "994d203c0a42f972ffdf39aac83ba614ac03a76ed3966c96b78b4124fbda6f74",
+    "sha256": "0c58953cd5bc02ad29d3c5cacc92474a1564694ca2b89534f0aa6c555b81795c",
+    "measured_hsaco_sha256": "3dbfe32cb0f1a9d270f17ff182ec9facf3575237a7ac727c12c9daaa34d39771",
     "normalization": "trailing whitespace removed only"
   },
   "performance": {
-    "kernel_us": 189.01428,
-    "kernel_cycles": 415416.0,
-    "kernel_tops": 511.2670014138614,
+    "kernel_us": 183.86368000000002,
+    "kernel_cycles": 404096.0,
+    "kernel_tops": 525.5891982581877,
     "tops_formula": "2*M*N*K/(kernel_us*1e6)",
     "launched_TGs": 48,
-    "aggregation": "one complete dispatch",
-    "regression": {
-      "status": "REGRESSION",
-      "baseline_kernel_us": 183.86368,
-      "threshold_percent": 1.0,
-      "change_percent": 2.801314539119426
-    }
+    "aggregation": "one complete dispatch"
   },
   "validation": {
     "max_abs": 0.0,
@@ -331,37 +329,30 @@
     }
   },
   "comparison": {
-    "previous_record_kernel_us": 183.86368,
-    "latency_change_percent": 2.801314539119426,
-    "scope": "complete MNK, same Triton, PMD clock, source, shape and seed21; new LLVM264542 plus test.patch replaces previous c3 plus diagnostic guard"
+    "previous_published_kernel_us": 197.72753,
+    "latency_reduction_percent": 7.011593175720132,
+    "prior_backend_guard_kernel_us": 196.305655,
+    "latency_reduction_vs_backend_guard_percent": 6.338062446545423,
+    "scope": "complete MNK, same 1-DIE/48-CU PMD clocks and seed21; whole Triton update plus BF16 matrix-store adaptation, not isolated matrix-store attribution"
   },
   "evidence": {
     "stats": {
       "path": "stats.txt.gz",
-      "sha256": "e5d3bfedc7248661f18944c3f3df356be498b8acaeb2aa098f89e27b213864ba"
+      "sha256": "77abb7a3ca53055145041e8ce60eda1cfd34bae9737869a215f879241b7aa0ce"
     },
     "assembly_instruction_counts": {
       "v_perm_b32": 0,
       "v_cvt_pk_bf16_f32": 64,
       "matrix_store": 8,
       "v_mmac": 384
-    }
+    },
+    "source_equivalence": true
   },
   "single_tg_perf": {
-    "equivalence": "Full/perf .text and .rodata SHA256 and launch resource metadata match; complete HSACO differs in other sections",
-    "executable_text_sha256": "6ff80d82b598d5cab6667849a3d9f390525f06ce7b256cd790398dfbde3939c3",
-    "path": "single_tg.perf",
-    "sha256": "a9e5bc675b778f1fd9fe853654f3e4ec7207fb299dec928452520a555b85f01f",
-    "scope": "one TG, 15 persistent tiles, complete K and original N stride",
-    "tiles": 15,
-    "repeat": 1,
-    "selection": "lowest duration among three single-TG launches",
-    "seed": 21,
-    "hsaco_sha256": "63ef447ec73fd61cb84675a0f227f4d8169eb380c9ad11191f8d6eba08adfad1",
+    "capture_status": "not_captured_for_this_binary",
     "environment_overrides": {
       "GPU_DFLAGS": "['StatLog','TT0','Perf']",
       "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
-    },
-    "command": "python docs/ops/gemm/tuning/r009/1die/tn/benchmark.py --record docs/ops/gemm/tuning/r009/1die/tn/record.json --output /tmp/r009-single-tg --single-tg-perf"
+    }
   }
 }
