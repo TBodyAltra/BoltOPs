@@ -155,7 +155,8 @@ class GemmRegressionTest(unittest.TestCase):
                 path = self.evidence(case, [baseline * factor] * count)
                 result = json.loads(path.read_text())
                 result.update(job=case.record['benchmark']['job'],
-                              public_config=case.record['config']['launch_options'])
+                              public_config=case.record['config']['launch_options'],
+                              public_kernel=case.record['config']['launch_options']['kernel'])
                 result['measurements'] = [dict(cold=i == 0, us=sample['kernel_us'],
                     accuracy=dict(sample['accuracy'], guards_ok=True),
                     stages=[dict(path=sample['stats_path'], completed_TGs=sample['completed_TGs'])])
@@ -163,7 +164,7 @@ class GemmRegressionTest(unittest.TestCase):
                 path.write_text(json.dumps(result))
                 self.assertEqual(fp8.evaluate(case, self.root)['status'],
                                  'PASS' if factor == 1 else 'REGRESSION')
-                for mutation in ('seed', 'cold', 'config', 'stats'):
+                for mutation in ('seed', 'cold', 'config', 'kernel', 'stats'):
                     bad = deepcopy(result)
                     if mutation == 'seed':
                         bad['job']['seed'] += 1
@@ -171,6 +172,8 @@ class GemmRegressionTest(unittest.TestCase):
                         bad['measurements'][1]['cold'] = True
                     elif mutation == 'config':
                         bad['public_config']['BLOCK_SIZE_N'] *= 2
+                    elif mutation == 'kernel':
+                        bad['public_kernel'] = 'unexpected_kernel'
                     else:
                         bad['measurements'][1]['stages'] = bad['measurements'][0]['stages']
                     path.write_text(json.dumps(bad))

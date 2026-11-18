@@ -179,7 +179,8 @@ def evaluate(case, case_output, max_regression_percent=1.0):
     repeats = case.record['benchmark']['repeats']
     if case.record['benchmark'].get('interface') == 'public_job_json':
         if (result.get('job') != case.record['benchmark']['job']
-                or result.get('public_config') != case.record['config']['launch_options']):
+                or result.get('public_config') != case.record['config']['launch_options']
+                or result.get('public_kernel') != case.record['config']['launch_options']['kernel']):
             raise ValueError('public job shape, seed, repeats or kernel differs from baseline')
         samples = result['measurements']
         if (len(samples) != repeats or not samples[0]['cold']
