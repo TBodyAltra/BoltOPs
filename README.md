@@ -362,6 +362,12 @@ benchmark, assembly, full-grid PERF and compressed representative statistics.
 Replay with `benchmark.py --repo <checkout> --record record.json --output <new-directory> --rounds 4`
 after loading the recorded PMD environment.
 
+## FP8 R008 GEMM on dual-die PMD sbx2
+
+2026-11-18 · gfx946, 2 dies × 48 CU, GC period 455 ps · TN 2560×2048×4096. The 96-TG chunked-scale dispatch covers 160 tiles and measures **55.154645 µs / 778.71 TOPS**, with 5,242,880 exact outputs, intact guards and no spills. Both dies complete 48 TGs. Toolchain: Triton `f8cbbee1`, user-provided Clang22 `ce5d14e1` binary. One cold public-API launch; JIT and readback excluded. Historical single-die records are unchanged.
+
+[Dual-die record](docs/ops/gemm/tuning/r008/2die/tn/record.json) · [Replay](docs/ops/gemm/tuning/r008/2die/tn/benchmark.py) · [single-TG PERF](docs/ops/gemm/tuning/r008/2die/tn/single_tg.perf).
+
 ## License
 
 BoltOPs original code is licensed under the [MIT License](LICENSE). Portions

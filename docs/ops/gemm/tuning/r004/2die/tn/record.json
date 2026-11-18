@@ -1,0 +1,507 @@
+{
+  "requirement": "R004",
+  "date": "2026-11-18",
+  "status": "PMD_PASS",
+  "shape": [
+    6656,
+    64,
+    2048
+  ],
+  "layout": "TN",
+  "precision": {
+    "A": "BF16",
+    "B": "BF16",
+    "C": "BF16",
+    "accumulator": "FP32"
+  },
+  "environment": {
+    "type": "PMD",
+    "model": "CoreArch:HEAD_1703",
+    "arch": "gfx946",
+    "dies": 2,
+    "cu_count": 96,
+    "host": "node60",
+    "container": "kxu_pmd_8569_fp8_20261017",
+    "triton": {
+      "branch": "release/3.6.x",
+      "base_commit": "6b111ee3efaf1275903deaf0957393ee2c79a48a",
+      "runtime": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "additional_changes": "MR !565: packed matrix-store conversion and ROCDL support; these kernels use buffer stores",
+      "source_commit": "f8cbbee1849806f96337e85685e1ba031b63f096"
+    },
+    "clang": {
+      "branch": "dtk-llvm-6.3.3",
+      "commit": "3599a58d7aebe66dc1cec4f830f82cb96e505666"
+    },
+    "clock_period_ps": {
+      "shader": 455,
+      "gc": 455
+    },
+    "frequency_ghz": {
+      "shader": 2.197802197802198,
+      "gc": 2.197802197802198
+    },
+    "environment_variables": {
+      "GPU_CHIP": "sbx2",
+      "GPU_GFLAGS": null,
+      "GPU_DFLAGS": "['StatLog']",
+      "GPU_ARGS": "['--abs-max-tick=100000000000']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "HSA_TOOLS_LIB": null,
+      "HIP_VISIBLE_DEVICES": null,
+      "ROCR_VISIBLE_DEVICES": null,
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_HCU_MATRIX_STORE_INSN": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
+      "HCU_PIPELINE_ENV_REV": null,
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm"
+    },
+    "compiler_hashes": {
+      "libtriton": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+      "clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+    },
+    "container_image": {
+      "name": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "image_id": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "repo_digests": [
+        "10.65.42.71:9092/perf-model-env@sha256:dc5a9d4be8aeffbcc5a950f0ffdf85921c9dd0159c55d26a4adcac3c205f6bd2"
+      ]
+    },
+    "llvm_triton": {
+      "branch": "hygon/triton-3.6.x",
+      "commit": "02cd0a4ddec90de4c0691e40e50ad2d2c1d9d8a2",
+      "additional_changes": "MR !21 packed-conversion ROCDL ops"
+    }
+  },
+  "source_commit": "2ef6411e7c7f729d879e1a739c1d57082362d38d",
+  "implementation": "experimental direct Gluon MLS ring; public defaults unchanged",
+  "best": "m128n64k64_ch1s3p1c4f1",
+  "kernel_symbol": "candidate_kernel",
+  "config": {
+    "BLOCK_SIZE_M": 128,
+    "BLOCK_SIZE_N": 64,
+    "BLOCK_SIZE_K": 64,
+    "CHUNKS": 1,
+    "SLOTS": 3,
+    "PW": 1,
+    "CW": 4,
+    "LTS": true,
+    "num_warps": 1,
+    "num_stages": 2,
+    "wasp_partition_warps": [
+      1,
+      4
+    ],
+    "wasp_wdra": false,
+    "mmac_layout_force": 2,
+    "enable_v_mmac_cluster": 2,
+    "hcu_use_gfx946_sched_model_v2": true,
+    "PREFETCH": true,
+    "WN": 1,
+    "WAIT": 0
+  },
+  "resources": {
+    "SGPR": 51,
+    "VGPR": 130,
+    "SGPR_spills": 0,
+    "VGPR_spills": 0,
+    "LDS": 73728,
+    "waves": 5
+  },
+  "performance": {
+    "kernel_us": 14.20874,
+    "kernel_tops": 122.79980237515782,
+    "bandwidth_TB_s": 1.997157242654873,
+    "mmac_util_percent": 14.20947013364075
+  },
+  "latency_reduction_percent": 19.409533149242556,
+  "baseline": {
+    "implementation": "same ring geometry as production TT; actual TN weight layout",
+    "config": {
+      "BLOCK_SIZE_M": 64,
+      "BLOCK_SIZE_N": 64,
+      "BLOCK_SIZE_K": 64,
+      "CHUNKS": 2,
+      "SLOTS": 3,
+      "PW": 1,
+      "CW": 4,
+      "LTS": true,
+      "num_warps": 1,
+      "num_stages": 2,
+      "wasp_partition_warps": [
+        1,
+        4
+      ],
+      "wasp_wdra": false,
+      "mmac_layout_force": 2,
+      "enable_v_mmac_cluster": 2,
+      "hcu_use_gfx946_sched_model_v2": true,
+      "PREFETCH": false,
+      "WN": 1,
+      "WAIT": 0
+    },
+    "performance": {
+      "kernel_us": 17.630795,
+      "kernel_tops": 98.96493402594722,
+      "bandwidth_TB_s": 1.6095183455992768,
+      "mmac_util_percent": 11.451478317720024
+    },
+    "resources": {
+      "SGPR": 62,
+      "VGPR": 98,
+      "SGPR_spills": 0,
+      "VGPR_spills": 0,
+      "LDS": 98304,
+      "waves": 5
+    }
+  },
+  "benchmark": {
+    "scope": "complete MNK/grid; shared A/B/C buffers; nine consecutive dispatches per config, median including first sample",
+    "seed": 59,
+    "repeats": 9,
+    "input_strides": {
+      "A": [
+        2048,
+        1
+      ],
+      "B": [
+        1,
+        2048
+      ]
+    },
+    "tolerance": {
+      "atol": 0.001,
+      "rtol": 0.01
+    },
+    "best_samples_us": [
+      20.827625,
+      14.307475,
+      14.144585,
+      14.17416,
+      14.216475,
+      14.14686,
+      14.20874,
+      14.242865,
+      14.161875
+    ],
+    "baseline_samples_us": [
+      17.352335,
+      17.71315,
+      17.662645,
+      17.64399,
+      17.621695,
+      17.58029,
+      17.561635,
+      17.67857,
+      17.630795
+    ],
+    "multi_input_validation": [
+      {
+        "pattern": "random",
+        "seed": 1059,
+        "accuracy": {
+          "elements": 425984,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "max_abs": 0.0625
+        }
+      },
+      {
+        "pattern": "ones",
+        "seed": 2059,
+        "accuracy": {
+          "elements": 425984,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "max_abs": 0.0
+        }
+      },
+      {
+        "pattern": "random",
+        "seed": 3059,
+        "accuracy": {
+          "elements": 425984,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "max_abs": 0.03125
+        }
+      }
+    ],
+    "timing_accuracy": {
+      "elements": 425984,
+      "mismatches": 0,
+      "nonfinite": 0
+    },
+    "guards": {
+      "elements_per_side": 256,
+      "value": 123,
+      "passed": true
+    }
+  },
+  "dispatch": {
+    "completed_TGs": 52,
+    "active_CUs": 52,
+    "per_die": {
+      "system.shaders1": {
+        "TGs": 26,
+        "active_CUs": 26
+      },
+      "system.shaders0": {
+        "TGs": 26,
+        "active_CUs": 26
+      }
+    }
+  },
+  "binary_sha256": "5ac5cbe844ace3aec8093a26a678ae96003fe860d50902e64a72b5f3a19beace",
+  "assembly_sha256": "8cb5ac76924ee87ecc1e9f7eb7984fd532056f58d4df9209226550a4493e3d63",
+  "interleaved_comparison": {
+    "scope": "same-process paired buffers; three inputs validated, reversed order every other round; nine timings per config",
+    "best": "m64n64k64_ch2s2p1c4f0",
+    "config": {
+      "BLOCK_SIZE_M": 64,
+      "BLOCK_SIZE_N": 64,
+      "BLOCK_SIZE_K": 64,
+      "CHUNKS": 2,
+      "SLOTS": 2,
+      "PW": 1,
+      "CW": 4,
+      "LTS": true,
+      "num_warps": 1,
+      "num_stages": 2,
+      "wasp_partition_warps": [
+        1,
+        4
+      ],
+      "wasp_wdra": false,
+      "mmac_layout_force": 2,
+      "enable_v_mmac_cluster": 2,
+      "hcu_use_gfx946_sched_model_v2": true,
+      "PREFETCH": false,
+      "WN": 1,
+      "WAIT": 0
+    },
+    "resources": {
+      "SGPR": 47,
+      "VGPR": 98,
+      "SGPR_spills": 0,
+      "VGPR_spills": 0,
+      "LDS": 65536,
+      "waves": 5
+    },
+    "performance": {
+      "kernel_us": 14.9058,
+      "kernel_tops": 117.05714983429269,
+      "bandwidth_TB_s": 1.9037614888164338,
+      "mmac_util_percent": 13.544973544973542
+    },
+    "latency_reduction_percent": 14.415591201212186,
+    "baseline_performance": {
+      "kernel_us": 17.41649,
+      "kernel_tops": 100.18266964239064,
+      "bandwidth_TB_s": 1.629323015142546,
+      "mmac_util_percent": 11.592385530417818
+    },
+    "best_samples_us": [
+      14.888055,
+      14.9058,
+      15.393105,
+      14.715155,
+      15.44361,
+      14.71925,
+      15.394015,
+      14.73199,
+      15.416765
+    ],
+    "baseline_samples_us": [
+      17.41649,
+      16.42914,
+      17.53479,
+      16.63207,
+      17.608955,
+      16.376360000000002,
+      17.689035,
+      16.305835,
+      17.693585
+    ],
+    "accuracy": {
+      "elements": 425984,
+      "mismatches": 0,
+      "nonfinite": 0
+    }
+  },
+  "scan": {
+    "candidate_count": 16,
+    "passed": 14,
+    "rejected": {
+      "m64n64k64_ch2s2p1c2f1": {
+        "status": "ERROR",
+        "error": "AssertionError: {'elements': 425984, 'mismatches': 96, 'nonfinite': 0, 'max_abs': 14.0625}"
+      },
+      "m64n32k128_ch1s2p1c2f1": {
+        "status": "ERROR",
+        "error": "RuntimeError: PassManager::run failed"
+      }
+    },
+    "additional_sequential_failures": {
+      "m64n64k64_ch1s2p1c2f1": "AssertionError: {'elements': 425984, 'mismatches': 2048, 'nonfinite': 2016, 'max_abs': nan}"
+    }
+  },
+  "provenance": {
+    "measured_source_hashes": {
+      "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime/triton/_C/libtriton.so": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+      "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738",
+      "/xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/kernel.py": "fc51f6b28942b5c142c4aaa23b8b99b770766bf7ce22093510b187c899b0292d",
+      "/xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/worker.py": "fb453b738575bd4fcc755bd7163e7171001665e83d7f857c647548aa0a82547a",
+      "/xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/screen_batch.py": "f2bde342c068ff0e6d3ab6181314278e27d47d78d662ecf3de216bbcbc445ade",
+      "/xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/confirm_worker.py": "dc4353cd7b64ac73d41fc810492e3c0c1e66a5bc4a518828a822c56c44848cb9",
+      "/xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/standalone_worker.py": "98c260a6b3812103c144b057af5dfc74cd48edd1919e3c123cf5f3bcba15f3de",
+      "/xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/controller.py": "353df145f9438f64836f25b1dec3dabf0d1ac332ac538fedf724c4e96fa734ac",
+      "/xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/repo/boltops/gemm/gluon/gemm_a16w16_tt.py": "72a1b9f53d7fa82721b2473ed5a0ddd4d5302da643c8d7fbd9436bb53d173e77",
+      "/xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/repo/boltops/gemm/gemm_a16w16.py": "6d649f6c7015c14356c01f942a05cf7d962b5035e561199b28706ebd34c7a5d6"
+    },
+    "replay_note": "Consecutive full-grid replay retains the measured computation/validation functions with consolidated record input; --single-tg-perf was executed for three validated captures, preserving original MNK/strides and matching the complete measured HSACO. The published script removes blank-line trailing whitespace only; its complete Python AST matches the executed PERF capture script.",
+    "kernel_sha256": "fc51f6b28942b5c142c4aaa23b8b99b770766bf7ce22093510b187c899b0292d",
+    "benchmark_sha256": "9934b97d7cb231b5747802e92033ce87b1073e0d54c65b578b7525ffc6531f9e",
+    "raw_evidence": "/home/kxu/r004-sbx2-tn-tt-20261118-results/evidence.tar.gz",
+    "raw_evidence_sha256": "9101cedeaed6ff7439d50c30d78096abee992cae42b56ee4821c02a6983a5756",
+    "remote_root": "/xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118"
+  },
+  "public_auto_reference": {
+    "scope": "one screening warm dispatch; independent buffers, not paired median",
+    "kernel_us": 75.99956,
+    "completed_TGs": 26,
+    "active_CUs": 26,
+    "VGPR": 256,
+    "VGPR_spills": 5
+  },
+  "single_tg_perf": {
+    "path": "single_tg.perf",
+    "sha256": "c071bbe471b6d438e63bd4cd6d1a5928deb79f16d8957d78f3d7549876b8c4ab",
+    "scope": "single TG on CU0 of the scheduled die; original complete MNK/strides and full K; first output tile only; separate from full-grid timing",
+    "shape": [
+      6656,
+      64,
+      2048
+    ],
+    "grid": [
+      1
+    ],
+    "output_tile": [
+      128,
+      64
+    ],
+    "configured_CUs": 96,
+    "active_CUs": 1,
+    "completed_TGs": 1,
+    "selected_repeat": 2,
+    "selection": "minimum cycles of repeats 1 and 2; repeat 0 excluded",
+    "kernel_cycles": 22651.0,
+    "kernel_us": 10.306205,
+    "per_die_TGs": {
+      "0": 1,
+      "1": 0
+    },
+    "validation": {
+      "elements": 8192,
+      "max_abs": 0.0,
+      "mismatches": 0,
+      "nonfinite": 0,
+      "guards_ok": true,
+      "untouched_elements": 417792,
+      "untouched_ok": true
+    },
+    "full_and_single_hsaco_equal": true,
+    "full_and_single_text_rodata_equal": true,
+    "sections_sha256": {
+      ".rodata": "514fd7a72c733e561fe7068a32ab2854fd79f7599762586a18e0d744d46138eb",
+      ".text": "62300a7820f4c836bb02679271e8fa23e5a899cd069f7560541bb0a805f0ba94"
+    },
+    "hsaco_sha256": "5ac5cbe844ace3aec8093a26a678ae96003fe860d50902e64a72b5f3a19beace",
+    "embedded_hsaco_verified": true,
+    "trace_payload_bytes": 4999,
+    "environment_overrides": {
+      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+    },
+    "kernel_source_sha256": "fc51f6b28942b5c142c4aaa23b8b99b770766bf7ce22093510b187c899b0292d",
+    "benchmark_sha256": "7c6805075bda1e4009d78f23df74b6900de1c7afcdc0a15134d7597df03fe9d4",
+    "captures": [
+      {
+        "repeat": 0,
+        "kernel_cycles": 48400.0,
+        "kernel_us": 22.022,
+        "per_die_TGs": {
+          "0": 1,
+          "1": 0
+        },
+        "accuracy": {
+          "elements": 8192,
+          "max_abs": 0.0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "guards_ok": true,
+          "untouched_elements": 417792,
+          "untouched_ok": true
+        },
+        "perf_sha256": "b2013dfffe547a0eda50b7ff7f3eca76e121ac027f00a8978afb33909a3a0bd0",
+        "embedded_hsaco_verified": true
+      },
+      {
+        "repeat": 1,
+        "kernel_cycles": 43269.0,
+        "kernel_us": 19.687395,
+        "per_die_TGs": {
+          "0": 0,
+          "1": 1
+        },
+        "accuracy": {
+          "elements": 8192,
+          "max_abs": 0.0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "guards_ok": true,
+          "untouched_elements": 417792,
+          "untouched_ok": true
+        },
+        "perf_sha256": "3045595c241e90d0f34d0493ce2dc0976ecef6346a72e1406228ac7ac8d3c9c5",
+        "embedded_hsaco_verified": true
+      },
+      {
+        "repeat": 2,
+        "kernel_cycles": 22651.0,
+        "kernel_us": 10.306205,
+        "per_die_TGs": {
+          "0": 1,
+          "1": 0
+        },
+        "accuracy": {
+          "elements": 8192,
+          "max_abs": 0.0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "guards_ok": true,
+          "untouched_elements": 417792,
+          "untouched_ok": true
+        },
+        "perf_sha256": "c071bbe471b6d438e63bd4cd6d1a5928deb79f16d8957d78f3d7549876b8c4ab",
+        "embedded_hsaco_verified": true
+      }
+    ],
+    "command": "source /xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/env.sh; python3 /xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/r004_perf_benchmark.py TN /xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/repo --single-tg-perf",
+    "capture_evidence": {
+      "path": "/home/kxu/r004-sbx2-tn-tt-20261118-results/perf-evidence.tar.gz",
+      "sha256": "6b18efad99f98aa789450604e5f670c193cff89f5a85231851c2bc89a855d190"
+    },
+    "published_benchmark_sha256": "9934b97d7cb231b5747802e92033ce87b1073e0d54c65b578b7525ffc6531f9e"
+  }
+}
