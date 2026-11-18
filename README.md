@@ -332,30 +332,31 @@ One complete cold public-API dispatch; all 13,631,488 outputs match and guards p
 
 2026-11-18 · node60 · gfx946 / 96 CU · M/N/K=2560/64/2048 · BF16 A/W/C,
 FP32 accumulation. A[M,K] and W[N,K] are K-contiguous; no transpose, repack,
-Split-K or workspace is used. The exact TN profile enables the Gluon ring through
+Split-K or workspace is used. The shared TN/TT MLS ring accepts configurable tiles, waves and slots.
+The exact TN profile enables it through
 `backend=auto`: block32×64×64, 2P+8C (10 waves/TG), CHUNKS=2, SLOTS=4,
 80 TGs (40 per die), 96 KiB LDS, 38 VGPRs and zero spills.
 
 | Public route | Full median (µs) | Range (µs) | Effective read+write (TB/s) |
 |---|---:|---:|---:|
-| Existing generic Triton default | 75.704 | 75.675–75.742 | 0.146 |
-| Tuned Gluon via auto | 8.657 | 8.614–8.662 | 1.279 |
+| Existing generic Triton default | 75.734 | 75.712–75.766 | 0.146 |
+| Tuned Gluon via auto | 8.657 | 8.652–8.698 | 1.279 |
 
-The matched speedup is 8.74× against the existing 256×256×64,
+The matched speedup is 8.75× against the existing 256×256×64,
 10-TG generic fallback, which has five VGPR spills; this is not a comparison
 against a separately tuned Triton implementation. Bandwidth counts A/W each read
 once plus one BF16 C write. These are complete GPU gcSimCycles durations, with
 identical buffers and four counterbalanced timing rounds. All outputs and guards
 pass random59 / ones / random2059. Configuration/dispatch/alignment checks:
-**40 passed**. Unaligned A/W/C pointers retain Triton under auto; explicit Gluon
-rejects them. The renamed module was recompiled/replayed on current `gemm`;
-its .rodata is unchanged, while scalar scheduling/register allocation and one
-s_nop differ. Publication assembly/PERF match the freshly measured HSACO.
+**61 passed** (74 skipped; one unrelated Stream-K native test deselected). Unaligned A/W/C pointers retain Triton under auto; explicit Gluon
+rejects them. Five additional tile/layout cases cover both TN and TT, including
+prefetch and the existing wide TT tile. The existing TT ring is reused for both layouts through compile-time operand
+strides and MLS layouts. Assembly/PERF match the freshly measured shared kernel.
 
 [Record](docs/ops/gemm/tuning/r003/2die/tn/record.json),
 [measurements](docs/ops/gemm/tuning/r003/2die/tn/measurement.json),
 [profile](boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json),
-[kernel](boltops/gemm/gluon/gemm_a16w16_tn_r003.py).
+[kernel](boltops/gemm/gluon/gemm_a16w16_mls_ring.py).
 The evidence directory follows the R010 layout: final record, measurements,
 benchmark, assembly, full-grid PERF and compressed representative statistics.
 Replay with `benchmark.py --repo <checkout> --record record.json --output <new-directory> --rounds 4`

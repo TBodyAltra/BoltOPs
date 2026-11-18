@@ -104,10 +104,10 @@
       }
     },
     "date": "2026-11-17",
-    "source_state": "publication replay on latest gemm with R003-specific module/selector and alignment dispatch guards"
+    "source_state": "Shared configurable TN/TT MLS ring, before commit; exact measured source hashes below"
   },
   "actual_environment": {
-    "pid": 813992,
+    "pid": 820593,
     "environment_variables": {
       "GPU_CHIP": "sbx2",
       "GPU_GFLAGS": null,
@@ -134,54 +134,54 @@
       "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm"
     }
   },
-  "source_base_commit": "091c2e590f37925de7f4425cd7c5212b2519012e",
+  "source_base_commit": "118131962474cf238df529b8d0689bfb0db1af52",
   "source_hashes": {
-    "boltops/gemm/gemm_a16w16.py": "d0aa0a67db145905180c32b281f5111d4258ec60283417df784fd3f3b57e4ed2",
-    "boltops/gemm/gluon/gemm_a16w16.py": "4bcc3f7d3879a9eb29ded038315cc91554c2ac053dbfa50b7078e64dd29e9ec6",
-    "boltops/gemm/gluon/gemm_a16w16_tn_r003.py": "93e4dbc361143f85e3ab9e6543730fea4528364abce17ba94707b99fa5a72d0f",
-    "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json": "16a7f4e402c3d1eed78f90279e30e094e1a1685ea36968e1a0d33e3828a0f495",
-    "test/gemm/dispatch/test_gluon_r003_tn.py": "2c61e8a533ff60a4c34e653d4868586abcdba89ebd94c372bab46f9216093735",
-    "docs/ops/gemm/tuning/r003/2die/tn/benchmark.py": "1fca7b5bf6c39f7000eb8fff904824ed9ff189a2f4fa9efde37851b0c07f9329"
+    "boltops/gemm/gemm_a16w16.py": "25d3c1c914557f34f381113848febd15cdb32eacad41d87d858fe8d4a498c806",
+    "boltops/gemm/gluon/gemm_a16w16.py": "4dc48fffc6356e6fdc5d3d6106c6f374c435e47b4489e1f9c78bf2ea933f8e67",
+    "boltops/gemm/gluon/gemm_a16w16_mls_ring.py": "03e7ffd7fa326f6d96cb696937fe5d23b00067e36c74f38a46c92efd51a0fce6",
+    "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json": "28dff0dd4902355276efdcf7ff245f95b725511c6d74a95a6a2c46e99bb70f27",
+    "test/gemm/dispatch/test_gluon_mls_ring.py": "e8d4a4982e7c9be574bd1acc5e83c675bb279df75a466384adf86afba8ee72e2",
+    "docs/ops/gemm/tuning/r003/2die/tn/benchmark.py": "91551f61ffe784d002247d6292ab02a46e47e6cad7e036710f9c0c6ce9e19b7e"
   },
   "validation_tolerance": {
     "absolute": 0.001,
     "relative": 0.01
   },
-  "validation_summary": "40 configuration/dispatch/alignment checks passed; full outputs and guards pass random59 / ones / random2059; four counterbalanced timing rounds per route",
+  "validation_summary": "61 passed, 74 skipped, 1 deselected: configuration/dispatch/alignment checks and five complete-tile TN/TT numerical cases (including TT prefetch and 64x256 tile); full public outputs and guards pass random59 / ones / random2059; four counterbalanced timing rounds per route",
   "comparison": {
     "baseline": "default_triton",
     "candidate": "tuned_auto",
-    "speedup": 8.744777021522612,
-    "time_reduction_percent": 88.56460264751401
+    "speedup": 8.748272146742702,
+    "time_reduction_percent": 88.56917133776713
   },
   "baseline_note": "The unchanged generic Triton fallback uses 256 VGPRs and five VGPR spills; the tuned TN kernel is spill-free. Speedup is against that existing public default, not against a separately tuned Triton kernel.",
   "effective_bandwidth_basis": "A/W each read once plus one BF16 C write",
   "process_exit_code": 0,
   "test_exit_code": 0,
-  "completed_utc": "2026-11-18T06:06:46.904415+00:00",
+  "completed_utc": "2026-11-18T08:00:00.768002+00:00",
   "benchmark": "benchmark.py",
   "measurement": "measurement.json",
   "kernel": "kernel.amdgcn",
   "perf": "full_grid.perf",
   "stats": "stats.txt.gz",
-  "dispatch_tests": "test/gemm/dispatch/test_gluon_r003_tn.py",
+  "dispatch_tests": "test/gemm/dispatch/test_gluon_mls_ring.py",
   "replay": "source the recorded PMD environment; python3 benchmark.py --repo <checkout> --record record.json --output <new-directory> --rounds 4",
-  "measurement_note": "Current published kernel recompiled and measured on source_base_commit; full-grid timings and selected-CU trace. Historical autotune candidates are omitted.",
+  "measurement_note": "Shared TN/TT kernel freshly recompiled and measured; full-grid timings and selected-CU trace. Historical autotune candidates are omitted.",
   "artifacts": {
     "benchmark.py": {
-      "sha256": "1fca7b5bf6c39f7000eb8fff904824ed9ff189a2f4fa9efde37851b0c07f9329"
+      "sha256": "91551f61ffe784d002247d6292ab02a46e47e6cad7e036710f9c0c6ce9e19b7e"
     },
     "measurement.json": {
-      "sha256": "e5372e12b5d556d90d9905cb316b34414b3982e2e6030e6126b3d00520614943"
+      "sha256": "c45306ae1a98c04323f3a251656925ce192c2d5a7d2d47cb73ad02e5993f31d6"
     },
     "kernel.amdgcn": {
-      "sha256": "2d0e5d3fb0105d00797183167f4b3b559e630d8a698a2b63bf7e9809e6fe6f5a"
+      "sha256": "64a53cb8fe962c1da28f73a7d0040b7a9cb43bcee688ab1a89cdcb975f6bd395"
     },
     "full_grid.perf": {
-      "sha256": "4d1161ee8ab003302fd18b8945335c858970238b16845674487d8b1fadb6de95"
+      "sha256": "5e4572859dd41ff9b26df7b050cdfe01a94fb6992827703d5a38f7c5d6d6730b"
     },
     "stats.txt.gz": {
-      "sha256": "88bc6b8222ca399ed2c7b76fa2298d2a1abd5142ed0036da9206a1e354f50b1b"
+      "sha256": "fdcb335f0eb6b93b215e6f462b6e177ad914c4e1aa1e9947e4cf482cf6cecf36"
     }
   }
 }

@@ -1,29 +1,20 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
-"""Gluon dense BF16/FP16 GEMM kernels, selected by tile name.
+"""Gluon dense BF16/FP16 GEMM implementations.
 
-All entries share one public contract: x[M,K] and w[N,K], with the logical
-transpose of w handled inside the kernel and no operand copy. Fixed BF16 TN
-and TT entries cover R001; the persistent entry also supports both layouts.
+Inputs use x[M,K] and public w[N,K]. Kernels interpret the logical transpose
+of w directly, supporting K-contiguous TN and N-contiguous TT weight storage.
 
-R001 is a fixed 64x64x2048 WASP pipeline: one Producer and one Consumer
-wave per TG, two 32-KiB LDS slots, 16 output TGs and 4 BK128 chunks per slot.
-
-The TT entry uses 16x32 output tiles, eight TGs, and three 24-KiB slots.
-
-R003 uses a complete-tile BF16 TN ring with CU-specific block/wave profiles.
-
-The persistent 256x256x64 pipeline bounds active thread groups by the device
-CU count and output tile count. Its two 128-column panels and packed epilogue
-use native HCU MLS operations, with bounded loads and masked tail stores.
-
-The BF16 TT 256x128x64 Stream-K pipeline uses two Producer partitions and two
-Consumer partitions, a 96-KiB LDS ring, and one persistent TG per device CU.
-It integrates the R020/V5 gluon_shape_reuse pipeline.
-The host launcher supplies the task table, split-tile scratch and padded edges.
+The complete-tile BF16 MLS ring has configurable tile sizes, wave partitions,
+LDS slots and K chunks. Fixed-tile entries use producer/consumer pipelines.
+The persistent pipeline assigns a bounded number of TGs to the device CUs
+and handles edge tiles with masked loads and stores. The Stream-K pipeline
+uses task tables and scratch storage for split-tile reductions.
 """
-from .gemm_a16w16_tt import gemm_a16w16_tt_kernel as _gemm_a16w16_tt_kernel
-from .gemm_a16w16_tn_r003 import gemm_a16w16_tn_kernel as _gemm_a16w16_bf16_tn_r003_kernel
+from .gemm_a16w16_mls_ring import (
+    gemm_a16w16_mls_ring_kernel as _gemm_a16w16_bf16_mls_ring_kernel,
+    gemm_a16w16_mls_ring_kernel as _gemm_a16w16_tt_kernel,
+)
 
 import triton
 from triton.experimental import gluon as g
@@ -166,7 +157,7 @@ def _gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel(
           gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB),
           gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB))
     # HCU removes the empty default: exactly one Producer + one Consumer.
-    # Register requests are hints; WDRA is disabled by the recorded config.
+    # Register requests are hints; the launcher controls WDRA.
     gl.warp_specialize([
         (_idle_partition, ()),
         (_mls_producer, (A, B, a0, b0, a1, b1)),

@@ -58,9 +58,9 @@ def run(name):
  return dict(kernel_us=cycles*.000455,shader_us=(max(ends)-min(starts))/1e6,completed_TGs_per_die=per_die,active_CUs_per_die=active_per_die,completed_TGs=tg,stats_path=str(path),perf_path=str(perf[0]),accuracy=accuracy)
 
 def make(bm,bn,pw,cw,bk=64,chunks=2,slots=3,mode='defer'):
- return dict(cfg,BLOCK_SIZE_M=bm,BLOCK_SIZE_N=bn,BLOCK_SIZE_K=bk,CHUNKS=chunks,SLOTS=slots,PW=pw,CW=cw,wasp_partition_warps=[pw,cw],LTS=False,EARLY_RELEASE=mode=='early',DEFER_RELEASE=mode=='defer',READ_AHEAD=mode=='ahead',GROUP_BATCHES=mode=='group')
+ return dict(cfg,BLOCK_SIZE_M=bm,BLOCK_SIZE_N=bn,BLOCK_SIZE_K=bk,CHUNKS=chunks,SLOTS=slots,PW=pw,CW=cw,wasp_partition_warps=[pw,cw],LTS=False,DEFER_RELEASE=mode=='defer')
 def ident(c):
- mode='early' if c['EARLY_RELEASE'] else 'ahead' if c['READ_AHEAD'] else 'defer' if c['DEFER_RELEASE'] else 'group' if c['GROUP_BATCHES'] else 'original'
+ mode='defer' if c['DEFER_RELEASE'] else 'original'
  return f"m{c['BLOCK_SIZE_M']}n{c['BLOCK_SIZE_N']}k{c['BLOCK_SIZE_K']}_p{c['PW']}c{c['CW']}_ch{c['CHUNKS']}s{c['SLOTS']}_{mode}"
 def compile_config(config):
  name=ident(config)

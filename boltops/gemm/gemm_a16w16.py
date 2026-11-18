@@ -11,7 +11,7 @@ from .config import get_gemm_config, validate_backend
 
 _BF16_MLS_PROFILE = "DTYPE=bfloat16-OUT=bfloat16-WASP-MLS-EXPERIMENTAL"
 _BF16_TT_STREAMK_KERNEL = "_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel"
-_BF16_TN_R003_KERNEL = "_gemm_a16w16_bf16_tn_r003_kernel"
+_BF16_MLS_RING_KERNEL = "_gemm_a16w16_bf16_mls_ring_kernel"
 _BF16_MLS_REQUIRED_ENV = {
     "AMDGCN_USE_BUFFER_OPS": "1",
     "TRITON_BUFFER_CACHE_SWIZZLE": "1",
@@ -107,7 +107,7 @@ def gemm_a16w16(
             a persistent FP16/BF16 TN/TT entry with one active TG per device CU
             (bounded by the output tile count), automatic tail handling,
             K-contiguous x, matching input/output dtype, no bias or activation.
-            R003 BF16 TN has a complete-tile MLS entry requiring 16-byte-aligned
+            The complete-tile BF16 MLS ring has an entry requiring 16-byte-aligned
             input/output pointers; auto uses Triton for unaligned pointers.
             BF16 TT also has a 256x128x64 Stream-K entry with one TG per CU,
             requiring M % 4 = N % 128 = K % 16 = 0, 16-byte-aligned tensor
@@ -224,7 +224,7 @@ def gemm_a16w16(
                 else:
                     if tuned and (
                         gluon_config.get("kernel") not in (
-                            _BF16_TT_STREAMK_KERNEL, _BF16_TN_R003_KERNEL
+                            _BF16_TT_STREAMK_KERNEL, _BF16_MLS_RING_KERNEL
                         )
                         or all(t.data_ptr() % 16 == 0 for t in (a, b, out))
                     ):
@@ -443,10 +443,10 @@ def gemm_a16w16(
             if not isinstance(selector, str) or not hasattr(kernels, selector):
                 raise ValueError("Gluon config requires a valid kernel selector")
             kernel = getattr(kernels, selector)
-            if selector == _BF16_TN_R003_KERNEL and any(
+            if selector == _BF16_MLS_RING_KERNEL and any(
                 tensor.data_ptr() % 16 for tensor in (a, b, out)
             ):
-                raise ValueError("R003 TN MLS requires 16-byte-aligned input/output pointers")
+                raise ValueError("BF16 MLS ring requires 16-byte-aligned input/output pointers")
             if selector == _BF16_TT_STREAMK_KERNEL:
                 from .gluon.gemm_a16w16_streamk import _launch_gemm_a16w16_streamk
 
