@@ -297,11 +297,6 @@ R002 on `sbx2` uses 2 DIE / 96 CU: 310.224 µs, 209.83 TOPS, 3.382 TB/s effectiv
 
 R002 uses three LDS slots and register prefetch to overlap the next operand reads with the current MMAC batch. R002 single-DIE effective read+write bandwidth is 1.760 TB/s, including one logical read of A/B and one write of C; its formula and measured environment are in the record.
 
-## Narrow FP8 blockscale tiles on dual-die PMD
-
-The FP32 scale pipeline supports 32- and 64-column output tiles through shared producer/consumer code. On gfx946 SBX2 (2 DIE × 48 CU, GC455ps), TN 64×2048×4096 with a 64×32×128 tile uses 64 TG and two consumer waves: **14.565 µs / 73.72 TOPS**, averaged over three warm public-API dispatches. This reduces latency by 12.30% against the same-toolchain 64×64 Gluon baseline. Full output and canary checks pass; six targeted regression checks pass. Matching assembly, CU0 PERF, raw statistics and replay script are in the [measurement record](docs/ops/gemm/tuning/r005/2die/tn/record.json).
-
-
 ## FP8 R010 GEMM measurement on PMD
 
 2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 1 DIE /48 CU, TN.
@@ -311,6 +306,11 @@ The FP32 scale pipeline supports 32- and 64-column output tiles through shared p
 | R010 | 2560 ×12288 ×2048 | 244.128 /527.79 | 48 persistent TG ×20 tiles | All 31,457,280 outputs match; guards passed |
 
 One complete cold dispatch, GC455ps. E4M3FN inputs, BF16 output; B scale BF16 values are promoted to FP32 on CPU before upload, excluded from kernel timing. Latency is 16.57% below the historical 292.620 µs baseline; this includes the R009 pipeline and toolchain migration together. LDS114944 bytes, consumer VGPR235, no spills. Configuration/dispatch checks:34 passed. [Environment, raw statistics, assembly, benchmark and matched single-TG PERF](docs/ops/gemm/tuning/r010/1die/tn/record.json).
+
+## Narrow FP8 blockscale tiles on dual-die PMD
+
+The FP32 scale pipeline supports 32- and 64-column output tiles through shared producer/consumer code. On gfx946 SBX2 (2 DIE × 48 CU, GC455ps), TN 64×2048×4096 with a 64×32×128 tile uses 64 TG and two consumer waves: **14.565 µs / 73.72 TOPS**, averaged over three warm public-API dispatches. This reduces latency by 12.30% against the same-toolchain 64×64 Gluon baseline. Full output and canary checks pass; six targeted regression checks pass. Matching assembly, CU0 PERF, raw statistics and replay script are in the [measurement record](docs/ops/gemm/tuning/r005/2die/tn/record.json).
+
 
 ## FP8 R010 on dual-die PMD sbx2
 
