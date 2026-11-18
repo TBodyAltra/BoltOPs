@@ -277,6 +277,57 @@ optest --display                                            # HTML report from l
 2. Prefer public signatures aligned with vLLM / SGLang (or HIPC / CUDA C); wire ship-time backend selection in `boltops/<op>/__init__.py` and export.
 3. Re-export from `boltops/__init__.py` and add `docs/ops/`.
 
+## BF16 GEMM measurements on PMD
+
+2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946; 1 DIE / 48 CU unless the row specifies 2 DIE / 96 CU.
+BF16 inputs/output, FP32 accumulation, complete K. Environment, configs, assembly, raw measurements and PERF: [R001 TN](docs/ops/gemm/tuning/r001/1die/tn/record.json), [R001 TT](docs/ops/gemm/tuning/r001/1die/tt/record.json), [R002 TT](docs/ops/gemm/tuning/r002/1die/tt/record.json), [R002 TT (2 DIE / 96 CU)](docs/ops/gemm/tuning/r002/2die/tt/record.json), [R003 TT](docs/ops/gemm/tuning/r003/1die/tt/record.json), [R004 TT](docs/ops/gemm/tuning/r004/1die/tt/record.json).
+
+| Case / layout | M × N × K | Full dispatch (µs) | MMAC utilization | Validation / timing |
+|---|---|---:|---:|---|
+| R001 TN | 64 × 64 × 2048 | 5.324 | 0.73% | Random / ones / random; median of 9 warm samples |
+| R001 TT | 64 × 64 × 2048 | 5.744 | 0.68% | Random / ones / random; median of 9 warm samples |
+| R002 TT | 64 × 248320 × 2048 | 596.044 | 25.27% | Full random output; median of 2 warm samples |
+| R002 TT (2 DIE / 96 CU) | 64 × 248320 × 2048 | 310.224 | 24.28% | Full random output; median of 2 warm samples |
+| R003 TT | 2560 × 64 × 2048 | 10.565 | 14.70% | Random / ones / random; median of 9 warm samples |
+| R004 TT | 6656 × 64 × 2048 | 25.327 | 15.94% | Random / ones / random; median of 9 warm samples |
+
+All full-grid outputs have zero mismatches/nonfinite values at abs0.001+rel0.01; output guards and complete TG counts passed. SGPR/VGPR spills are zero. Current dispatch/native checks on sb/48 CU: 61 passed, 4 persistent cases deselected; configuration checks: 32 passed. Two known persistent TT tail compilation failures were reproduced before the refactor and are not counted as passes. PERF uses the same HSACO as the measured full grid. These are PMD results; detailed sampling scopes and hashes are linked above.
+
+R002 on `sbx2` uses 2 DIE / 96 CU: 310.224 µs, 209.83 TOPS, 3.382 TB/s effective read+write bandwidth, 1.921× the single-DIE performance. Each DIE completes 485 TGs on 48 active CUs. The same kernel and tile configuration are used; the sbx2 preset also configures its memory and cross-DIE fabric.
+
+R002 uses three LDS slots and register prefetch to overlap the next operand reads with the current MMAC batch. R002 single-DIE effective read+write bandwidth is 1.760 TB/s, including one logical read of A/B and one write of C; its formula and measured environment are in the record.
+
+## FP8 R010 GEMM measurement on PMD
+
+2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 1 DIE /48 CU, TN.
+
+| Case | M × N × K | Kernel (µs /TOPS) | Pipeline | Validation |
+|---|---|---|---|---|
+| R010 | 2560 ×12288 ×2048 | 244.128 /527.79 | 48 persistent TG ×20 tiles | All 31,457,280 outputs match; guards passed |
+
+One complete cold dispatch, GC455ps. E4M3FN inputs, BF16 output; B scale BF16 values are promoted to FP32 on CPU before upload, excluded from kernel timing. Latency is 16.57% below the historical 292.620 µs baseline; this includes the R009 pipeline and toolchain migration together. LDS114944 bytes, consumer VGPR235, no spills. Configuration/dispatch checks:34 passed. [Environment, raw statistics, assembly, benchmark and matched single-TG PERF](docs/ops/gemm/tuning/r010/1die/tn/record.json).
+
+## FP8 R010 on dual-die PMD sbx2
+
+2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 2 DIE × 48 CU, GC 455 ps, M/N/K = 2560/12288/2048. Same Triton/Clang and scale convention as the single-die measurement above.
+
+| Layout / grid | Kernel (µs / TOPS) | TGs per die | Validation |
+|---|---|---|---|
+| TN / 96 TG × 10 tiles | 123.456 / 1043.69 | 48 / 48 | All 31,457,280 outputs exact; guards passed |
+| TT / 96 TG × 10 tiles | 133.084 / 968.18 | 48 / 48 | All 31,457,280 outputs exact; guards passed |
+
+TN fences each MMAC turn as `sync → 64 MMAC → arrive`, reducing full-dispatch latency by 4.46% from 129.222 µs. Native TT uses N-contiguous weights, alt=0 shared layout, plain MFMA accumulation and BF16 vector stores, with no timed transpose/repack. Each result is one complete cold public-API dispatch; time is complete-system gcSimCycles. Both layouts include matching single-TG PERF for 10 tiles, separately timed and validated in three captures. Configuration/dispatch and assembly regression checks: 6 passed, 1 skipped (48-CU-only case). [TN record](docs/ops/gemm/tuning/r010/2die/tn/record.json) · [TT record](docs/ops/gemm/tuning/r010/2die/tt/record.json) · [MMAC trace analysis](docs/ops/gemm/tuning/r010/2die/README.md).
+
+## FP8 R011 on dual-die PMD sbx2
+
+2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 2 DIE ×48 CU, GC455ps, TN6656×2048×4096. Triton `release/3.6.x@f8cbbee18498`, Clang22 `dtk-llvm-7.2.1@264542e7e37f` with the recorded MMAC C no-sink guard.
+
+| Chip / grid | Kernel (µs / TOPS) | TGs per die | Speedup vs nonpersistent |
+|---|---|---|---|
+| sbx2 /96 TG, 4–5 tiles each | 128.180 /871.19 | 48 /48 | 1.1367× |
+
+One complete cold public-API dispatch; all 13,631,488 outputs match and guards pass on all 96 CU. Latency is 12.03% below the same-environment nonpersistent 145.708 µs baseline. Reuses the R010 continuous pipeline with two complete A-scale banks and consumer FP32 B-scale loads, fitting 131072 B LDS without spills. Single-TG PERF covers 5 tiles with the same .text/.rodata as the full 96-TG kernel; all 163,840 selected outputs and uncovered output guards passed in three captures. R009/R010 48-TG and 96-TG executable sections remain unchanged. [Dual-die record](docs/ops/gemm/tuning/r011/2die/tn/record.json).
+
 ## License
 
 BoltOPs original code is licensed under the [MIT License](LICENSE). Portions

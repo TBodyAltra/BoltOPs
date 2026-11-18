@@ -345,12 +345,13 @@ def test_p0_fp8_full_tiles_have_48_multiple_grids():
         assert m % bm == n % bn == 2048 % bk == 0
         assert (m // bm) * (n // bn) == expected_tgs
         assert expected_tgs % 48 == 0
-        if (m, n) == (2560, 9216):
+        if m == 2560:
             assert params["NUM_SMS"] == 48 and params["TILE_LIMIT"] == expected_tgs
             assert params["kernel"].endswith("_persistent_kernel")
         else:
             assert "NUM_SMS" not in params and "TILE_LIMIT" not in params
-    for m, n in [(64, 9216), (128, 9216), (640, 12288)]:
+    # M=64 now has an explicit R006 config; probe untuned shapes here.
+    for m, n in [(96, 9216), (128, 9216), (640, 12288)]:
         _, tuned = config.get_gemm_config("GEMM-A8W8_BLOCKSCALE", m, n, 2048, **kwargs)
         assert not tuned
     kwargs["profile"] = profile.replace("BS=float32", "BS=bfloat16")

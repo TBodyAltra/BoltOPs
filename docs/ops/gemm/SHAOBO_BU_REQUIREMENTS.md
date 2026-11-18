@@ -25,6 +25,13 @@
 
 ## 12 月 BU 性能测试（P0）
 
+性能口径（三个 Qwen 表通用）：Kernel 一栏依次为耗时（μs）、算力（TOPS）和 MMAC 利用率（%）。
+MMAC 利用率 = `Kernel TOPS / MMAC 峰值 TOPS × 100%`；Kernel TOPS 使用记录中的未舍入值，按有效 GEMM 运算量 `2×M×N×K` 计算，不包含 padding 的额外运算。
+以 gfx946、48 CU、2 GHz 为基准，BF16 MMAC 峰值为 **393.216 T**，FP8 为 **786.432 T**；实际峰值 = `基准峰值 × (CU 数 / 48) × (GC 频率 GHz / 2)`，因此 96 CU 同频时峰值翻倍。
+CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC 周期 455 ps（约 2.197802198 GHz）时，BF16 / FP8 峰值分别约为 **432.105495 / 864.210989 T**。
+按条目的实际 MMAC 输入精度选择峰值：FP8 模型中的 BF16 条目以及 MXFP4 模型表中已测的 BF16 条目均使用 BF16 峰值；未测项保持 `—`。
+这里展示的是整个 kernel 的有效运算量相对理论峰值的利用率，不是 PERF 中 MMAC 指令的忙碌周期占比。
+
 <a name="model-q35-fp8"></a>
 
 ### Qwen3.5-35B-A3B FP8
@@ -60,21 +67,21 @@
     </tr>
     <tr>
       <th>测试环境</th>
-      <th>Kernel（μs / TOPS）</th>
+      <th>Kernel（μs / TOPS / MMAC 利用率）</th>
       <th>产物</th>
-      <th>单 TG PERF</th>
+      <th>PERF</th>
       <th>测试环境</th>
-      <th>Kernel（μs / TOPS）</th>
+      <th>Kernel（μs / TOPS / MMAC 利用率）</th>
       <th>产物</th>
-      <th>单 TG PERF</th>
+      <th>PERF</th>
       <th>测试环境</th>
-      <th>Kernel（μs / TOPS）</th>
+      <th>Kernel（μs / TOPS / MMAC 利用率）</th>
       <th>产物</th>
-      <th>单 TG PERF</th>
+      <th>PERF</th>
       <th>测试环境</th>
-      <th>Kernel（μs / TOPS）</th>
+      <th>Kernel（μs / TOPS / MMAC 利用率）</th>
       <th>产物</th>
-      <th>单 TG PERF</th>
+      <th>PERF</th>
     </tr>
   </thead>
   <tbody>
@@ -89,14 +96,14 @@
       <td>—</td>
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r001/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r001/1die/tt/record.json">5.744 / 2.92 / 0.68%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json">config</a> / <a href="tuning/r001/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r001/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r001/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r001/1die/tt/full_grid.perf">完整 grid PERF</a> / <a href="tuning/r001/1die/tt/single_tg.perf">PERF</a></td>
       <td><a href="tuning/r001/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r001/1die/tn/record.json">5.412 / 3.10</a></td>
-      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/11ceefd85ad1c9da713f0deb3e4f7bddd2c9d001/boltops/gemm/gluon/gemm_a16w16.py#L116">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/edf5352abafd4f9e84444bd6e1f4a9eaea690b80/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json">config</a> / <a href="tuning/r001/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r001/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r001/1die/tn/record.json">记录</a></td>
-      <td><a href="tuning/r001/1die/tn/full_grid.perf">全 grid PERF</a> / <a href="tuning/r001/1die/tn/single_tg.perf">单 TG PERF</a></td>
+      <td><a href="tuning/r001/1die/tn/record.json">5.324 / 3.15 / 0.73%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json">config</a> / <a href="tuning/r001/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r001/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r001/1die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r001/1die/tn/full_grid.perf">完整 grid PERF</a> / <a href="tuning/r001/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -117,18 +124,18 @@
       <td>—</td>
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
+      <td><a href="tuning/r002/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r002/1die/tt/record.json">596.044 / 109.21 / 25.27%<br>读写带宽：1.760 TB/s</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_tt.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=248320-K=2048-TT.json">config</a> / <a href="tuning/r002/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r002/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r002/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r002/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r002/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r002/2die/tt/record.json">310.224 / 209.83 / 24.28%<br>读写带宽：3.382 TB/s</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_tt.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=248320-K=2048-TT.json">config</a> / <a href="tuning/r002/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r002/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r002/2die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r002/2die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -145,10 +152,10 @@
       <td>—</td>
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r003/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r003/1die/tt/record.json">10.565 / 63.52 / 14.70%</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_tt.py">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json">config</a> / <a href="tuning/r003/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r003/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r003/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r003/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -173,10 +180,10 @@
       <td>—</td>
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r004/1die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r004/1die/tt/record.json">25.327 / 68.89 / 15.94%</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_tt.py">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json">config</a> / <a href="tuning/r004/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r004/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r004/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r004/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -206,7 +213,7 @@
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r005/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r005/1die/tn/record.json">15.709 / 68.35</a></td>
+      <td><a href="tuning/r005/1die/tn/record.json">15.709 / 68.35 / 7.91%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/904b796c7c1b199ebdd0c14b1f50f019b5b4c610/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L476">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/904b796c7c1b199ebdd0c14b1f50f019b5b4c610/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json">config</a> / <a href="tuning/r005/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r005/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r005/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r005/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -233,10 +240,10 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r006/1die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r006/1die/tn/record.json">18.880 / 127.96 / 14.81%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L478">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r006/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r006/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r006/1die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r006/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -261,10 +268,10 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r007/1die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r007/1die/tn/record.json">23.584 / 136.59 / 15.80%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L593">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r007/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r007/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r007/1die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r007/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -289,10 +296,10 @@
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r008/1die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r008/1die/tn/record.json">97.909 / 438.67 / 50.76%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/1119a5fa81722505a846c11760709770c2129ae6/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L768">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/1119a5fa81722505a846c11760709770c2129ae6/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json">config</a> / <a href="tuning/r008/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r008/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r008/1die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r008/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
@@ -318,17 +325,17 @@
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r009/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r009/1die/tn/record.json">197.728 / 488.74</a></td>
-      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/be845a86e988ba2fac6efe07b73b497dbcd949e2/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L396">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/be845a86e988ba2fac6efe07b73b497dbcd949e2/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r009/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r009/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r009/1die/tn/record.json">记录</a></td>
-      <td><a href="tuning/r009/1die/tn/single_tg.perf">PERF</a></td>
+      <td><a href="tuning/r009/1die/tn/record.json">183.864 / 525.59 / 60.82%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/40c5ad2d3adb9348bead8a68cb58f03550891220/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L396">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/40c5ad2d3adb9348bead8a68cb58f03550891220/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r009/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r009/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r009/1die/tn/record.json">记录</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r009/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r009/2die/tn/record.json">109.225 / 884.75 / 51.19%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/c776136183b8637b417a2e4a1bd8491e4751ac8b/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L398">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/c776136183b8637b417a2e4a1bd8491e4751ac8b/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r009/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r009/2die/tn/benchmark.py">测试代码</a> / <a href="tuning/r009/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r009/2die/tn/single_tg.perf">PERF</a></td>
     </tr>
     <tr>
       <td><a href="#r010">R010</a><a name="r010"></a></td>
@@ -346,17 +353,17 @@
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r010/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r010/1die/tn/record.json">292.620 / 440.33</a></td>
-      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/62a368fb3824d0895779000f03163e7771f13575/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r010/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r010/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r010/1die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r010/1die/tn/record.json">244.128 / 527.79 / 61.09%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/2f7e8ac5252ea97ce716fd7360203d52d35d47e8/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L396">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/2f7e8ac5252ea97ce716fd7360203d52d35d47e8/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r010/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r010/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r010/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r010/1die/tn/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r010/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r010/2die/tt/record.json">133.084 / 968.18 / 56.02%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/b7ba56db19981fe183e270dea1a8a989d5191dc5/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L417">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/b7ba56db19981fe183e270dea1a8a989d5191dc5/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048-TT.json">config</a> / <a href="tuning/r010/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r010/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r010/2die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r010/2die/tt/single_tg.perf">PERF</a></td>
+      <td><a href="tuning/r010/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r010/2die/tn/record.json">123.456 / 1043.69 / 60.38%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/b7ba56db19981fe183e270dea1a8a989d5191dc5/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L417">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/b7ba56db19981fe183e270dea1a8a989d5191dc5/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r010/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r010/2die/tn/benchmark.py">测试代码</a> / <a href="tuning/r010/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r010/2die/tn/single_tg.perf">PERF</a></td>
     </tr>
     <tr>
       <td><a href="#r011">R011</a><a name="r011"></a></td>
@@ -374,17 +381,17 @@
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r011/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r011/1die/tn/record.json">250.435 / 445.90</a></td>
+      <td><a href="tuning/r011/1die/tn/record.json">250.435 / 445.90 / 51.60%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/64dbaea9fad7a4f510cb02d6eba78bfed8865b5c/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/bb60e65d027f85d2f6aa2e6e85ef4576e68ee31b/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json">config</a> / <a href="tuning/r011/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r011/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r011/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r011/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r011/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r011/2die/tn/record.json">128.180 / 871.19 / 50.40%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/ac9904f8bff732566a8f10df539db15c02090a06/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L410">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/ac9904f8bff732566a8f10df539db15c02090a06/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json">config</a> / <a href="tuning/r011/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r011/2die/tn/benchmark.py">测试代码</a> / <a href="tuning/r011/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r011/2die/tn/single_tg.perf">PERF</a></td>
     </tr>
     <tr>
       <td><a href="#r012">R012</a><a name="r012"></a></td>
@@ -402,7 +409,7 @@
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r012/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r012/1die/tn/record.json">599.711 / 418.96</a></td>
+      <td><a href="tuning/r012/1die/tn/record.json">599.711 / 418.96 / 48.48%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/f615d17e64032102cab49a82c7fd717e63f46e0b/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r012/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r012/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r012/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r012/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -430,7 +437,7 @@
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r013/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r013/1die/tn/record.json">777.029 / 431.14</a></td>
+      <td><a href="tuning/r013/1die/tn/record.json">777.029 / 431.14 / 49.89%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/6c4f4b537a7e99915a2b110c271cdd2b65e31ba8/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r013/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r013/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r013/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r013/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -481,21 +488,21 @@
     </tr>
     <tr>
       <th>测试环境</th>
-      <th>Kernel（μs / TOPS）</th>
+      <th>Kernel（μs / TOPS / MMAC 利用率）</th>
       <th>产物</th>
-      <th>单 TG PERF</th>
+      <th>PERF</th>
       <th>测试环境</th>
-      <th>Kernel（μs / TOPS）</th>
+      <th>Kernel（μs / TOPS / MMAC 利用率）</th>
       <th>产物</th>
-      <th>单 TG PERF</th>
+      <th>PERF</th>
       <th>测试环境</th>
-      <th>Kernel（μs / TOPS）</th>
+      <th>Kernel（μs / TOPS / MMAC 利用率）</th>
       <th>产物</th>
-      <th>单 TG PERF</th>
+      <th>PERF</th>
       <th>测试环境</th>
-      <th>Kernel（μs / TOPS）</th>
+      <th>Kernel（μs / TOPS / MMAC 利用率）</th>
       <th>产物</th>
-      <th>单 TG PERF</th>
+      <th>PERF</th>
     </tr>
   </thead>
   <tbody>
@@ -687,8 +694,8 @@
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/R020/2die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/R020/2die/tt/record.json">68.163 / 504.08</a><br>含 flag reset dispatch</td>
-      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py#L884">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=2048-K=4096-TT.json">config</a> / <a href="tuning/R020/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/R020/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/R020/2die/tt/record.json">记录</a></td>
+      <td><a href="tuning/R020/2die/tt/record.json">68.163 / 504.08 / 58.33%</a><br>含 flag reset dispatch</td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py#L1008">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=2048-K=4096-TT.json">config</a> / <a href="tuning/R020/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/R020/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/R020/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/R020/2die/tt/single_tg.perf">GEMM PERF</a><br><a href="tuning/R020/2die/tt/flag_reset_single_tg.perf">flag reset PERF</a></td>
       <td>—</td>
       <td>—</td>
@@ -707,7 +714,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r021/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r021/1die/tt/record.json">207.615 / 372.37</a></td>
+      <td><a href="tuning/r021/1die/tt/record.json">207.615 / 372.37 / 86.18%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=9216-K=2048-TT.json">config</a> / <a href="tuning/r021/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r021/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r021/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r021/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -735,7 +742,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r022/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r022/1die/tt/record.json">294.792 / 349.67</a></td>
+      <td><a href="tuning/r022/1die/tt/record.json">294.792 / 349.67 / 80.92%</a></td>
       <td><a href="../../../boltops/gemm/triton/gemm_a16w16_wasp.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/triton/gemm_a16w16/GEMM-A16W16-N=12288-K=2048-TT.json">config</a> / <a href="tuning/r022/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r022/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r022/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r022/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -791,7 +798,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r024/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r024/1die/tt/record.json">319.620 / 349.38</a></td>
+      <td><a href="tuning/r024/1die/tt/record.json">319.620 / 349.38 / 80.86%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=2048-K=4096-TT.json">config</a> / <a href="tuning/r024/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r024/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r024/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r024/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -819,7 +826,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r025/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r025/1die/tt/record.json">669.176 / 375.47</a></td>
+      <td><a href="tuning/r025/1die/tt/record.json">669.176 / 375.47 / 86.89%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=9216-K=2048-TT.json">config</a> / <a href="tuning/r025/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r025/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r025/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r025/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -847,7 +854,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r026/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r026/1die/tt/record.json">879.944 / 380.71</a></td>
+      <td><a href="tuning/r026/1die/tt/record.json">879.944 / 380.71 / 88.11%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=12288-K=2048-TT.json">config</a> / <a href="tuning/r026/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r026/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r026/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r026/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -901,21 +908,21 @@
     </tr>
     <tr>
       <th>测试环境</th>
-      <th>Kernel（μs / TOPS）</th>
+      <th>Kernel（μs / TOPS / MMAC 利用率）</th>
       <th>产物</th>
-      <th>单 TG PERF</th>
+      <th>PERF</th>
       <th>测试环境</th>
-      <th>Kernel（μs / TOPS）</th>
+      <th>Kernel（μs / TOPS / MMAC 利用率）</th>
       <th>产物</th>
-      <th>单 TG PERF</th>
+      <th>PERF</th>
       <th>测试环境</th>
-      <th>Kernel（μs / TOPS）</th>
+      <th>Kernel（μs / TOPS / MMAC 利用率）</th>
       <th>产物</th>
-      <th>单 TG PERF</th>
+      <th>PERF</th>
       <th>测试环境</th>
-      <th>Kernel（μs / TOPS）</th>
+      <th>Kernel（μs / TOPS / MMAC 利用率）</th>
       <th>产物</th>
-      <th>单 TG PERF</th>
+      <th>PERF</th>
     </tr>
   </thead>
   <tbody>
@@ -987,7 +994,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r029/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r029/1die/tt/record.json">70.362 / 366.25</a></td>
+      <td><a href="tuning/r029/1die/tt/record.json">70.362 / 366.25 / 84.76%</a></td>
       <td><a href="../../../boltops/gemm/triton/gemm_a16w16_wasp.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/triton/gemm_a16w16/GEMM-A16W16-N=6144-K=4096-TT.json">config</a> / <a href="tuning/r029/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r029/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r029/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r029/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -1015,7 +1022,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r030/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r030/1die/tt/record.json">273.756 / 376.54</a></td>
+      <td><a href="tuning/r030/1die/tt/record.json">273.756 / 376.54 / 87.14%</a></td>
       <td><a href="../../../boltops/gemm/triton/gemm_a16w16_wasp.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/triton/gemm_a16w16/GEMM-A16W16-N=24576-K=4096-TT.json">config</a> / <a href="tuning/r030/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r030/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r030/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r030/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -1043,7 +1050,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r031/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r031/1die/tt/record.json">1642.058 / 388.09</a></td>
+      <td><a href="tuning/r031/1die/tt/record.json">1642.058 / 388.09 / 89.81%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=151936-K=4096-TT.json">config</a> / <a href="tuning/r031/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r031/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r031/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r031/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -1099,7 +1106,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r033/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r033/1die/tt/record.json">743.715 / 346.50</a></td>
+      <td><a href="tuning/r033/1die/tt/record.json">743.715 / 346.50 / 80.19%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=12288-TT.json">config</a> / <a href="tuning/r033/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r033/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r033/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r033/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -1127,7 +1134,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r034/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r034/1die/tt/record.json">320.933 / 401.48</a></td>
+      <td><a href="tuning/r034/1die/tt/record.json">320.933 / 401.48 / 92.91%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=6144-K=4096-TT.json">config</a> / <a href="tuning/r034/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r034/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r034/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r034/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -1155,7 +1162,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r035/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r035/1die/tt/record.json">1285.907 / 400.80</a></td>
+      <td><a href="tuning/r035/1die/tt/record.json">1285.907 / 400.80 / 92.76%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=24576-K=4096-TT.json">config</a> / <a href="tuning/r035/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r035/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r035/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r035/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -1183,7 +1190,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r036/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r036/1die/tt/record.json">586.809 / 365.65</a></td>
+      <td><a href="tuning/r036/1die/tt/record.json">586.809 / 365.65 / 84.62%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=4608-TT.json">config</a> / <a href="tuning/r036/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r036/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r036/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r036/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -1211,7 +1218,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r037/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r037/1die/tt/record.json">666.053 / 362.41</a></td>
+      <td><a href="tuning/r037/1die/tt/record.json">666.053 / 362.41 / 83.87%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=4608-K=4608-TT.json">config</a> / <a href="tuning/r037/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r037/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r037/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r037/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -1239,7 +1246,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r038/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r038/1die/tt/record.json">568.590 / 392.79</a></td>
+      <td><a href="tuning/r038/1die/tt/record.json">568.590 / 392.79 / 90.90%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=4096-TT.json">config</a> / <a href="tuning/r038/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r038/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r038/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r038/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -1267,7 +1274,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r039/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r039/1die/tt/record.json">1661.390 / 403.29</a></td>
+      <td><a href="tuning/r039/1die/tt/record.json">1661.390 / 403.29 / 93.33%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=12288-TT.json">config</a> / <a href="tuning/r039/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r039/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r039/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r039/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -1295,7 +1302,7 @@
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r040/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r040/1die/tt/record.json">819.749 / 408.67</a></td>
+      <td><a href="tuning/r040/1die/tt/record.json">819.749 / 408.67 / 94.58%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=6144-K=4096-TT.json">config</a> / <a href="tuning/r040/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r040/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r040/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r040/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>

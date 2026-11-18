@@ -1,0 +1,452 @@
+{
+  "requirement": "R009",
+  "shape": [
+    2560,
+    9216,
+    2048
+  ],
+  "layout": "TN",
+  "environment": {
+    "type": "PMD",
+    "model": "CoreArch1703",
+    "arch": "gfx946",
+    "dies": 2,
+    "cu_count": 96,
+    "triton": {
+      "branch": "release/3.6.x",
+      "commit": "f8cbbee1849806f96337e85685e1ba031b63f096",
+      "libtriton_sha256": "6cbab0d6f24186d876868340bb215ec62e2529353a7f70b5b4582a94a6ca0b11",
+      "build_llvm_commit": "02cd0a4ddec90de4c0691e40e50ad2d2c1d9d8a2"
+    },
+    "clang": {
+      "repository": "ssh://git@10.16.1.204:10022/dcu-aicc/llvm-project.git",
+      "branch": "dtk-llvm-7.2.1",
+      "commit": "264542e7e37f15dd13ab063d59522652268cf7d9",
+      "sha256": "e9b384d42aea5caac01aaf25cfcd1d187e13559aa016ee8df7c237c1fbd0c565",
+      "lld_sha256": "fd737133caeaf686ec816e3a3e2db386fd6713fc892b4884b8731deb571dc6e1",
+      "local_patches": [
+        {
+          "path": "mmac-c-no-sink.patch",
+          "sha256": "4cdd471d821fcd800b3899051f392a6d6fee347b30520c12d1411916f84dfec0"
+        }
+      ],
+      "ds_read2": "upstream in 264542e7e3",
+      "test_patch_applied": false
+    },
+    "clock_period_ps": {
+      "cache": 455,
+      "system": 1000,
+      "umc": 2276,
+      "gc": 455
+    },
+    "frequency_ghz": {
+      "cache": 2.197802197802198,
+      "system": 1.0,
+      "umc": 0.43936731107205623,
+      "gc": 2.197802197802198
+    },
+    "environment_variables": {
+      "GPU_CHIP": "sbx2",
+      "GPU_GFLAGS": null,
+      "GPU_DFLAGS": "['StatLog']",
+      "GPU_ARGS": "['--abs-max-tick=10000000000']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "HSA_TOOLS_LIB": null,
+      "HIP_VISIBLE_DEVICES": null,
+      "ROCR_VISIBLE_DEVICES": null,
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/r009-264542-patch-comparison/bin/clang-22",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/r009-264542-patch-comparison/bin/ld.lld",
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_HCU_MATRIX_STORE_INSN": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
+      "HCU_PIPELINE_ENV_REV": null,
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/r009-matrix-store-latest/runtime",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm",
+      "TRITON_CACHE_DIR": "/tmp/r009-2die-tn/cache",
+      "TRITON_HOME": "/tmp/r009-2die-tn/triton-home",
+      "BOLTOPS_GEMM_CONFIG_DIR": null
+    },
+    "pmd_revision": null,
+    "gpu_configuration": {
+      "type": "Configuration",
+      "cxx_class": "Configuration",
+      "name": "gpu_configuration",
+      "path": "gpu_configuration",
+      "HarvestMode": 0,
+      "NumTccPipProcReturnBuf": 1,
+      "NumTccPipeSendWriteBack": 1,
+      "SbcXcdCsSelBit": -1,
+      "TCCHashRandom": false,
+      "TCPForceMiss": false,
+      "TcaArbGoNum": 2,
+      "TcaHashOutNum": 5,
+      "TcaHoleArbAge": false,
+      "TcaHoleFifoFlopFifoNum": 4,
+      "TcaHoleFifoNum": 4,
+      "TcaHoleFifoSize": 136,
+      "TcaNumPerDie": 2,
+      "TcaRdWrDataBusReuse": false,
+      "TccArbRecvRdReqFifoDepth": 4,
+      "TccArbRecvWrReqFifoDepth": 8,
+      "TccNotExeNcAtoWithLru": true,
+      "TccPackSrtn": true,
+      "TccSendReqToEaFifoDepth": 1,
+      "TccSubBankNum": 3,
+      "TccTagWrThroughFifoDepth": 24,
+      "TccVirtualfifoMinNum": 2,
+      "as_tcp": false,
+      "co_issue_version": 2,
+      "device_id": 26295,
+      "dp4x_status": false,
+      "dpm": 4,
+      "ds_encoding_version": 3,
+      "dual_issue_en": false,
+      "early_ta_done_en": true,
+      "early_vgpr_free_en": false,
+      "ecc_off": false,
+      "eco_info": 0,
+      "encoding_version": 3,
+      "eventq_index": 0,
+      "flat_addr_with_dp4x": true,
+      "flat_lds_pingpong": true,
+      "gpu_clock": 455,
+      "gpu_sys_id": 0,
+      "hack_utcl1": false,
+      "has_m1": true,
+      "hybrid_pte": true,
+      "ibuf_size": 24,
+      "ipc_conn": false,
+      "ipc_shm": "None",
+      "kfd_ioctl_minor_version": 9,
+      "lds_OA2Sche_credit": false,
+      "lds_addr_dis_autoalign": false,
+      "lds_b64_dwx2": false,
+      "lds_bank_num": 64,
+      "lds_bypass": false,
+      "lds_cmdfifo_depth": 16,
+      "lds_input_num": 4,
+      "lds_min_alloc": 512,
+      "lds_no_bkc": false,
+      "lds_out_dwx2": true,
+      "lds_output_num": 2,
+      "lds_outputbuffer_depth": 16,
+      "lds_schePipe_depth": 5,
+      "lds_size": 131072,
+      "lds_spFifo_depth": 4,
+      "lds_spbuffer_depth": 64,
+      "lds_spf_cycle": 4,
+      "lsooo": false,
+      "mem_size": 68719476736,
+      "mls_encoding_version": 3,
+      "mmop_clause": false,
+      "mmop_co_trans_full_rate": false,
+      "mmop_f16_i8_f8": 8,
+      "mmop_f32": 32,
+      "mmop_f64": 256,
+      "mmop_hi_prio_en": false,
+      "mmop_i4": 16,
+      "mmop_x8f32": 64,
+      "mmu_base_paddr": 0,
+      "mmu_page_size": 2097152,
+      "mmu_partition_mode": false,
+      "mvf_bypass": false,
+      "no_bwc": true,
+      "no_ebwc": true,
+      "num_chip": 2,
+      "num_cu": 48,
+      "num_gpu": 1,
+      "num_se": 4,
+      "num_tcc": 32,
+      "page_size": 12,
+      "parallel": false,
+      "scale_min_alloc": 256,
+      "scale_size": 8192,
+      "simds_per_cu": 4,
+      "skip_cal": false,
+      "skip_kernel_exec": false,
+      "soc_model": false,
+      "soc_script": "configs/gpuShm.py",
+      "sp_num": 2,
+      "sp_to_gm_addr_bus_width": 64,
+      "sp_to_gm_data_bus_width": 64,
+      "split_vgpr_group": false,
+      "sqtacmd_version": 1,
+      "sreg_file_size": 800,
+      "stride_cache_swizzle": true,
+      "suspend_time_en": false,
+      "sys_clock": 1000,
+      "ta_addr_fifo_size": 48,
+      "ta_channels_per_phase": 4,
+      "ta_cmd_fifo_size": 48,
+      "ta_data_fifo_size": 128,
+      "ta_dwords_per_phase": 16,
+      "tatd_bps_credit": 256,
+      "tatd_cmd_credit": 128,
+      "tatd_cycle_credit": 512,
+      "tcp_rand_latfifo": false,
+      "transx": 2,
+      "tt_time_delta": false,
+      "ttrace_version": 3,
+      "umc_clock": 2276,
+      "use_ds_m0": false,
+      "use_ds_m1": false,
+      "use_mmu": false,
+      "utcl1_bigk": true,
+      "utcl2": "simple",
+      "vgpr_min_alloc": 4,
+      "vreg_file_size": 512,
+      "wf_size": 64,
+      "work_with_cu_tester": false,
+      "wrap_offset_version": 3,
+      "xcd_id_in_device": 0
+    },
+    "provenance": {
+      "measured_case": "r009-sbx2/96tg",
+      "capture_source": "complete-system PMD statistics and runtime topology; publication kernel executable equivalence verified"
+    },
+    "container_image": {
+      "image_id": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "repo_tags": [
+        "10.65.42.71:9092/perf-model-env:8569"
+      ],
+      "repo_digests": [
+        "10.65.42.71:9092/perf-model-env@sha256:dc5a9d4be8aeffbcc5a950f0ffdf85921c9dd0159c55d26a4adcac3c205f6bd2"
+      ],
+      "image_created": "2026-10-12T20:20:10.804529356Z",
+      "architecture": "amd64",
+      "os": "linux",
+      "container_name": "kxu_pmd_8569_fp8_20261017",
+      "container_id": "740cf5c897145f09f404fca1a14b936deaba587f32bb7549ad25664d52aa41b5",
+      "version": "8569",
+      "capture_source": "docker inspect measured container and its immutable Image ID during the full run"
+    },
+    "die_topology": [
+      {
+        "die": 0,
+        "shader_path": "system.shaders0",
+        "cu_count": 48
+      },
+      {
+        "die": 1,
+        "shader_path": "system.shaders1",
+        "cu_count": 48
+      }
+    ]
+  },
+  "operand_strides": {
+    "x": [
+      2048,
+      1
+    ],
+    "w": [
+      2048,
+      1
+    ],
+    "x_scale": [
+      16,
+      1
+    ],
+    "w_scale": [
+      16,
+      1
+    ]
+  },
+  "source": {
+    "path": "boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py",
+    "symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel",
+    "line": 398,
+    "commit": "c776136183b8637b417a2e4a1bd8491e4751ac8b",
+    "sha256": "1b792ca51b9c2179b885eeefd886839d0479b269328317b4f516764d4ade0fa2",
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/c776136183b8637b417a2e4a1bd8491e4751ac8b/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L398",
+    "measured_source_sha256": "64d5c5fff66318c70442d7a6bb43a4bf7205d214523241524403dac2019e5e50",
+    "executable_text_sha256": "8005484e9a5003574f5e562ff92baaa6a968c5ffa93115025415cd3ca147bc63",
+    "rodata_sha256": "c18b1de204c4ecd4699aaca706275a852ef8e43218139e1c21c928dbbfefd408",
+    "equivalence": "Publication source supports both 48 and 96 TGs; its 96-TG .text/.rodata and launch resources match the full measured prototype"
+  },
+  "config": {
+    "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json",
+    "commit": "c776136183b8637b417a2e4a1bd8491e4751ac8b",
+    "sha256": "b677b479bd0f00bae7363a5886d07fa19ad8d13ff3f839bc056fe85969a4168e",
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/c776136183b8637b417a2e4a1bd8491e4751ac8b/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json",
+    "equivalence": "Exact effective R009 M_EQ_2560 parameters match the measured private 96-CU config"
+  },
+  "assembly": {
+    "path": "kernel.amdgcn",
+    "sha256": "5ccd48d0abbb980f09afecc01ac5eab23dec392ad2ad31fe1b9ad606e4c39264",
+    "measured_hsaco_sha256": "3247ec280b1e3713c0c6e17c5648b43e033ef50559a18e7d2e54c0bab307ef63",
+    "normalization": "trailing whitespace removed only"
+  },
+  "performance": {
+    "kernel_us": 109.22502499999999,
+    "kernel_cycles": 240055.0,
+    "kernel_tops": 884.7492976998633,
+    "tops_formula": "2*M*N*K/(kernel_us*1e6)",
+    "mmac_peak_tops": 1728.4219780219782,
+    "mmac_utilization_percent": 51.1882693549395,
+    "launched_TGs": 96,
+    "aggregation": "one complete dispatch"
+  },
+  "validation": {
+    "max_abs": 0.0,
+    "mismatch": 0,
+    "outside_tolerance": 0,
+    "nonfinite": 0,
+    "elements": 23592960,
+    "canary_ok": true,
+    "active_CUs": 96,
+    "completed_TGs": 96,
+    "completed_TGs_per_die": {
+      "0": 48,
+      "1": 48
+    }
+  },
+  "pipeline": {
+    "grid": [
+      96
+    ],
+    "tiles_per_TG": {
+      "8": 48,
+      "7": 48
+    },
+    "mapping": "x-major",
+    "loop": "fixed-trip continuous loop in each WASP partition",
+    "barrier_initialization": "once per TG",
+    "scale_banks": 2,
+    "scale_bank_ready_barriers": [
+      4,
+      5
+    ],
+    "scale_bank_free_barriers": [
+      14,
+      15
+    ],
+    "scale_prefetch": "two initial complete-K banks, then reuse each released bank",
+    "per_K_scale_ACK": false,
+    "MMAC_handoff": "execution-only ebarrier; A/B readiness and LDS slot release use separate abarriers",
+    "wasp": true,
+    "wdra": true,
+    "shared": 114944,
+    "partition_vgpr": [
+      1,
+      8,
+      234,
+      234
+    ],
+    "spill": 0,
+    "mean_tiles_per_TG": 7.5,
+    "tail_predicate": "TILE_LIMIT % NUM_SMS == 0 or tile_id < TILE_LIMIT; uniform across all WASP partitions"
+  },
+  "benchmark": {
+    "script": "benchmark.py",
+    "sha256": "82653f68ad07b6b4f659d374a6e16cc2ff97a769d5e11837b30bac60a109a5cc",
+    "seed": 21,
+    "repeats": 1,
+    "command": "python docs/ops/gemm/tuning/r009/2die/tn/benchmark.py --record docs/ops/gemm/tuning/r009/2die/tn/record.json --output /tmp/r009-2die-tn-full",
+    "measured_script_sha256": "efb30a723b65a58e0bafb85109fd6575335a496ed9b4edafef3513fb5b950e91",
+    "publication_changes": "Optional single-TG PERF mode added; default full-system timing, input generation, public dispatch and validation preserve the measured protocol; per-TG tile counts are exact"
+  },
+  "comparison": {
+    "48_TG_same_chip": {
+      "kernel_us": 185.549455,
+      "kernel_tops": 520.8140555303706,
+      "launched_TGs": 48,
+      "active_CUs": 48,
+      "completed_TGs_per_die": {
+        "0": 24,
+        "1": 24
+      },
+      "validation": {
+        "max_abs": 0.0,
+        "mismatch": 0,
+        "outside_tolerance": 0,
+        "nonfinite": 0,
+        "elements": 23592960,
+        "canary_ok": true
+      },
+      "scope": "Same sbx2 model and original 48-TG HSACO; only 48 of 96 CUs used"
+    },
+    "speedup_vs_48_TG": 1.6987815292328843,
+    "scope": "One complete first dispatch per variant; model/code/grid differ as recorded, not a repeated-sample statistical estimate"
+  },
+  "evidence": {
+    "stats": {
+      "path": "stats.txt.gz",
+      "sha256": "c48ebe60a20f2702d649d99ea51754d89c2245ab97e19d0f3799b200dc0b8b68"
+    },
+    "model_config": {
+      "path": "pmd-config.json.gz",
+      "sha256": "f1dc40fe9cf15af175c2b5db5701f23862bfc57d7ce8bf78221eeba2ac6a837a"
+    },
+    "publication_checks": {
+      "96TG_matches_measured": {
+        ".rodata": "c18b1de204c4ecd4699aaca706275a852ef8e43218139e1c21c928dbbfefd408",
+        ".text": "8005484e9a5003574f5e562ff92baaa6a968c5ffa93115025415cd3ca147bc63"
+      },
+      "R009_48TG_unchanged": {
+        ".rodata": "c18b1de204c4ecd4699aaca706275a852ef8e43218139e1c21c928dbbfefd408",
+        ".text": "53830fecb47b8854c8c0f9fe7d12eff527f4d5745d154599d94b12106683fd80"
+      },
+      "R010_48TG_unchanged": {
+        "equal": true,
+        "control": {
+          ".rodata": "c18b1de204c4ecd4699aaca706275a852ef8e43218139e1c21c928dbbfefd408",
+          ".text": "9c3fad25e02413d4ee4de29bc57a48c62a55984ff79a7fe7cf387b127915200c"
+        },
+        "candidate": {
+          ".rodata": "c18b1de204c4ecd4699aaca706275a852ef8e43218139e1c21c928dbbfefd408",
+          ".text": "9c3fad25e02413d4ee4de29bc57a48c62a55984ff79a7fe7cf387b127915200c"
+        }
+      }
+    }
+  },
+  "single_tg_perf": {
+    "path": "single_tg.perf",
+    "sha256": "bbe0c104a54afb8980158008c979f1f22d9655046ec54f49631afd408312be2d",
+    "die": 0,
+    "cu_id": 0,
+    "scope": "One TG using the measured 96-TG mapping on sbx2; 8 complete tiles, complete K and original N stride; duration is not full-grid performance",
+    "tiles": 8,
+    "tile_ids": [
+      0,
+      96,
+      192,
+      288,
+      384,
+      480,
+      576,
+      672
+    ],
+    "seed": 21,
+    "repeat": 2,
+    "selection": "lowest kernel duration among three independently validated profiling launches",
+    "samples_kernel_us": [
+      100.705605,
+      98.911085,
+      93.87651
+    ],
+    "environment_overrides": {
+      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+    },
+    "command": "python docs/ops/gemm/tuning/r009/2die/tn/benchmark.py --record docs/ops/gemm/tuning/r009/2die/tn/record.json --output /tmp/r009-2die-tn-single-tg --single-tg-perf",
+    "hsaco_sha256": "04b700e0ce36c6b3ddcc1b33f1ad7be68848707262b903e46486523f8823ce37",
+    "executable_text_sha256": "8005484e9a5003574f5e562ff92baaa6a968c5ffa93115025415cd3ca147bc63",
+    "rodata_sha256": "c18b1de204c4ecd4699aaca706275a852ef8e43218139e1c21c928dbbfefd408",
+    "equivalence": "Full/PERF .text/.rodata and launch-resource metadata match; PERF embedded HSACO SHA256 matches the captured kernel; whole HSACO hashes are recorded separately",
+    "validation": {
+      "samples": 3,
+      "elements_per_sample": 262144,
+      "max_abs": 0.0,
+      "mismatch": 0,
+      "nonfinite": 0,
+      "canary_ok": true
+    }
+  }
+}

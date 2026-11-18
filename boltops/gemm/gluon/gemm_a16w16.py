@@ -1,13 +1,15 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
-"""Gluon dense BF16/FP16 TN/TT GEMM kernels, selected by tile name.
+"""Gluon dense BF16/FP16 GEMM kernels, selected by tile name.
 
-The entries share one public contract: x[M,K] and w[N,K], with the logical
-transpose of w handled inside the kernel and no operand copy. R001 requires
-K-contiguous x/w (TN). The persistent entry also accepts N-contiguous w (TT).
+All entries share one public contract: x[M,K] and w[N,K], with the logical
+transpose of w handled inside the kernel and no operand copy. Fixed BF16 TN
+and TT entries cover R001; the persistent entry also supports both layouts.
 
 R001 is a fixed 64x64x2048 WASP pipeline: one Producer and one Consumer
 wave per TG, two 32-KiB LDS slots, 16 output TGs and 4 BK128 chunks per slot.
+
+The TT entry uses 16x32 output tiles, eight TGs, and three 24-KiB slots.
 
 The persistent 256x256x64 pipeline bounds active thread groups by the device
 CU count and output tile count. Its two 128-column panels and packed epilogue
@@ -18,6 +20,8 @@ Consumer partitions, a 96-KiB LDS ring, and one persistent TG per device CU.
 It integrates the R020/V5 gluon_shape_reuse pipeline.
 The host launcher supplies the task table, split-tile scratch and padded edges.
 """
+from .gemm_a16w16_tt import gemm_a16w16_tt_kernel as _gemm_a16w16_tt_kernel
+
 import triton
 from triton.experimental import gluon as g
 from triton.experimental.gluon import language as gl
@@ -127,7 +131,9 @@ def _gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel(
     BLOCK_SIZE_N: gl.constexpr = 16,
     BLOCK_SIZE_K: gl.constexpr = 128,
     LOOP_UNROLL_FACTOR: gl.constexpr = 4,
+    B_K_CONTIGUOUS: gl.constexpr = True,
 ):
+    gl.static_assert(B_K_CONTIGUOUS, "this pipeline requires TN weights")
     gl.static_assert(M == 64 and N == 64 and K == 2048,
                      "this pipeline requires MNK=(64,64,2048)")
     gl.static_assert(BLOCK_SIZE_M == 16 and BLOCK_SIZE_N == 16)
@@ -163,6 +169,124 @@ def _gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel(
         (_mls_producer, (A, B, a0, b0, a1, b1)),
         (_mmac_consumer, (C, a0, b0, a1, b1, F)),
     ], [1, 1], [32, 160])
+
+
+# Fixed BF16 TT pipeline: 16x32 per TG, three 24-KiB LDS slots.
+# Public weights remain W[N,K]; N-contiguous W is logical B[K,N] contiguous.
+@g.jit
+def _load_tt_mls_batch(A, B, sa, sb, om, on, START: gl.constexpr,
+                    BK: gl.constexpr, CHUNKS: gl.constexpr):
+    for i in gl.static_range(CHUNKS):
+        matrix_load(sa[i], A, (64, 2048), (2048, 1),
+                    (om, (START + i) * BK), warps=(1, 1))
+        matrix_load(sb[i], B, (2048, 64), (64, 1),
+                    ((START + i) * BK, on), warps=(1, 1))
+
+@g.jit
+def _tt_mls_producer(A, B, a0, b0, a1, b1, a2, b2, BK: gl.constexpr, CHUNKS: gl.constexpr):
+    # Three EMPTY/READY pairs. Each is owned by one Producer/Consumer wave.
+    for bid in gl.static_range(6):
+        abarrier_init(bid, 1)
+    abarrier_arrive(0)
+    abarrier_arrive(2)
+    abarrier_arrive(4)
+    ebarrier_sync(0, 2)
+    pid = gl.program_id(0)
+    om, on = (pid // 2) * 16, (pid % 2) * 32
+    for batch in gl.static_range(2048 // (BK * CHUNKS)):
+        if batch % 3 == 0:
+            sa, sb = a0, b0
+        elif batch % 3 == 1:
+            sa, sb = a1, b1
+        elif batch % 3 == 2:
+            sa, sb = a2, b2
+        abarrier_try_wait((batch % 3) * 2, (batch // 3) % 2)
+        abarrier_seq((batch % 3) * 2 + 1)
+        _load_tt_mls_batch(A, B, sa, sb, om, on, batch * CHUNKS, BK, CHUNKS)
+        abarrier_arrive((batch % 3) * 2 + 1)
+    ebarrier_sync(15, 2)
+
+@g.jit
+def _consume_tt_batch(ca, cb, acc, F: gl.constexpr, CHUNKS: gl.constexpr,
+                   BK: gl.constexpr, RELEASE: gl.constexpr):
+    xs = ()
+    ys = ()
+    for i in gl.static_range(CHUNKS):
+        x, y = _read_mmac_operands(ca[i], cb[i], F)
+        xs += (x,)
+        ys += (y,)
+    sched_barrier(0)
+    # Each BK32 pair emits one A and two B DS instructions.
+    for i in gl.static_range(CHUNKS):
+        if i == CHUNKS - 1:
+            # The first chunk uses backend operand-dependency waits. Before
+            # releasing the slot, all remaining DS reads must have completed.
+            wait_lgkmcnt(0)
+            abarrier_arrive(RELEASE)
+        sched_barrier(0)
+        acc = gl.amd.cdna4.mfma(xs[i], ys[i], acc)
+        sched_barrier(0)
+    return acc
+
+@g.jit
+def _tt_mmac_consumer(C, a0, b0, a1, b1, a2, b2, F: gl.constexpr,
+                   BK: gl.constexpr, CHUNKS: gl.constexpr):
+    ebarrier_sync(0, 2)
+    pid = gl.program_id(0)
+    om, on = (pid // 2) * 16, (pid % 2) * 32
+    acc = gl.full((16, 32), 0, gl.float32, F)
+    for batch in gl.static_range(2048 // (BK * CHUNKS)):
+        if batch % 3 == 0:
+            ca, cb = a0, b0
+        elif batch % 3 == 1:
+            ca, cb = a1, b1
+        elif batch % 3 == 2:
+            ca, cb = a2, b2
+        abarrier_try_wait((batch % 3) * 2 + 1, (batch // 3) % 2)
+        acc = _consume_tt_batch(ca, cb, acc, F, CHUNKS, BK, (batch % 3) * 2)
+    m = om + gl.arange(0, 16, layout=gl.SliceLayout(1, F))
+    n = on + gl.arange(0, 32, layout=gl.SliceLayout(0, F))
+    gl.amd.cdna3.buffer_store(acc.to(gl.bfloat16), C, m[:, None] * 64 + n[None, :])
+    ebarrier_sync(15, 2)
+
+@g.jit
+def _gemm_a16w16_bf16_tt_bm16_bn32_bk128_kernel(
+    A, B, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+    BLOCK_SIZE_M: gl.constexpr=16, BLOCK_SIZE_N: gl.constexpr=32,
+    BLOCK_SIZE_K: gl.constexpr=128,
+    B_K_CONTIGUOUS: gl.constexpr=False,
+):
+    gl.static_assert(not B_K_CONTIGUOUS, "this pipeline requires TT weights")
+    gl.static_assert(M == 64 and N == 64 and K == 2048)
+    gl.static_assert(BLOCK_SIZE_M == 16 and BLOCK_SIZE_N == 32)
+    gl.static_assert(BLOCK_SIZE_K == 128)
+    gl.static_assert(A.dtype.element_ty == gl.bfloat16)
+    gl.static_assert(B.dtype.element_ty == gl.bfloat16)
+    gl.static_assert(C.dtype.element_ty == gl.bfloat16)
+    BK: gl.constexpr = BLOCK_SIZE_K
+    CHUNKS: gl.constexpr = 2
+    gl.static_assert(2048 % (BK * CHUNKS) == 0)
+    F: gl.constexpr = gl.amd.AMDMFMALayout(
+        version=4, instr_shape=[16, 16, 16],
+        mmac_layout=MmacLayout.LTS,
+        warps_per_cta=[1, 1], tiles_per_warp=[1, 2])
+    SA: gl.constexpr = MlsSharedLayout(0, (16, 32), bits=16, order=(1, 0))
+    SB: gl.constexpr = MlsSharedLayout(1, (16, 32), bits=16, order=(1, 0))
+    a0, b0, a1, b1 = (), (), (), ()
+    for i in gl.static_range(CHUNKS):
+        a0 += (gl.allocate_shared_memory(gl.bfloat16, (16, BK), SA),)
+        b0 += (gl.allocate_shared_memory(gl.bfloat16, (BK, 32), SB),)
+        a1 += (gl.allocate_shared_memory(gl.bfloat16, (16, BK), SA),)
+        b1 += (gl.allocate_shared_memory(gl.bfloat16, (BK, 32), SB),)
+    a2, b2 = (), ()
+    for i in gl.static_range(CHUNKS):
+        a2 += (gl.allocate_shared_memory(gl.bfloat16, (16, BK), SA),)
+        b2 += (gl.allocate_shared_memory(gl.bfloat16, (BK, 32), SB),)
+    gl.warp_specialize([
+        (_idle_partition, ()),
+        (_tt_mls_producer, (A, B, a0, b0, a1, b1, a2, b2, BK, CHUNKS)),
+        (_tt_mmac_consumer, (C, a0, b0, a1, b1, a2, b2, F, BK, CHUNKS)),
+    ], [1, 1], [32, 240])
 
 
 # Each LDS buffer has an empty/full barrier pair; both consumers release it.

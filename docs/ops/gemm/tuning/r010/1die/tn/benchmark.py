@@ -7,6 +7,7 @@ import hashlib
 import importlib
 import json
 import os
+import math
 from pathlib import Path
 import re
 import sys
@@ -45,7 +46,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--record", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--single-tg-perf", action="store_true", help="capture three single-TG launches instead of full-grid timing")
+    capture = parser.add_mutually_exclusive_group()
+    capture.add_argument("--cu0-perf", action="store_true", help="capture CU0 during the complete 48-TG dispatch")
+    capture.add_argument("--single-tg-perf", action="store_true", help="capture three single-TG launches instead of full-grid timing")
     args = parser.parse_args()
     record_path = args.record.resolve()
     record = json.loads(record_path.read_text())
@@ -67,7 +70,10 @@ def main():
                 environment.pop(key, None)
             else:
                 environment[key] = value
-        if args.single_tg_perf:
+        # Default full-size runs collect timing only; explicit captures trace CU0.
+        environment["GPU_DFLAGS"] = "['StatLog']"
+        environment.pop("HSA_TOOLS_LIB", None)
+        if args.single_tg_perf or args.cu0_perf:
             environment.update(record["single_tg_perf"]["environment_overrides"])
         environment[marker] = str(record_path)
         os.execve(sys.executable, [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]], environment)
@@ -89,7 +95,7 @@ def main():
     if device.arch != "gfx946" or device.cu_count != 48:
         raise ValueError("the recorded configuration requires gfx946 / 48 CU")
     torch.set_num_threads(1)
-    measured_m, measured_n = (128, 256) if args.single_tg_perf else (m, n)
+    measured_m, measured_n = m, n
     generator = torch.Generator().manual_seed(case.get("seed", 21))
     a = (torch.randn((measured_m, k), generator=generator) * .5).to(torch.float8_e4m3fn)
     b = (torch.randn((measured_n, k), generator=generator) * .5).to(torch.float8_e4m3fn)
@@ -104,7 +110,8 @@ def main():
     golden = golden.bfloat16().float()
     operands = [value.cuda() for value in (a, b, sa, sb)]
     sentinel = -4096.
-    storage = torch.full((measured_m + 2, n), sentinel, device="cuda", dtype=torch.bfloat16)
+    storage_cpu = torch.full((m + 2, n), sentinel, dtype=torch.bfloat16)
+    storage = storage_cpu.cuda()
     result = storage[1:-1]
     torch.cuda.synchronize()
 
@@ -120,7 +127,17 @@ def main():
     kernel = getattr(module, config.pop("kernel"))
     config = {key: tuple(value) if isinstance(value, list) else value
               for key, value in config.items()}
-    grid = (1, 1) if args.single_tg_perf else (m // 128, n // 256)
+    if config.get("NUM_SMS") != 48 or config.get("TILE_LIMIT") != (m // 128) * (n // 256):
+        raise ValueError("this replay requires the recorded persistent configuration")
+    grid = (1,) if args.single_tg_perf else (config["NUM_SMS"],)
+    tile_ids = [tile for pid in range(grid[0])
+                for tile in range(pid, config["TILE_LIMIT"], config["NUM_SMS"])]
+    selected = torch.zeros((m, n), dtype=torch.bool)
+    for tile in tile_ids:
+        tile_m, tile_n = tile % (m // 128), tile // (m // 128)
+        selected[tile_m * 128:(tile_m + 1) * 128,
+                 tile_n * 256:(tile_n + 1) * 256] = True
+    reference = golden[selected]
     handle = kernel.warmup(
         *operands, result, M=m, N=n, K=k, GROUP_N=128, GROUP_K=128,
         grid=grid, **config,
@@ -146,9 +163,10 @@ def main():
     kernel.run = checked_run
     report = dict(
         record=str(record_path), status="RUNNING", shape=[m, n, k], measured_grid=list(grid),
+        tile_ids=tile_ids, tiles_per_TG=len(tile_ids) // grid[0],
         operand_strides={name: list(tensor.stride())
                          for name, tensor in zip(("x", "w", "x_scale", "w_scale"), operands)},
-        kernel_sha256=digest, source_sha256=hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest(),
+        kernel_sha256=digest, source_sha256=hashlib.sha256(Path(sys.modules[kernel.fn.__module__].__file__).read_bytes()).hexdigest(),
         benchmark_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         triton=triton.__version__, metadata=handle.metadata._asdict(), launches=launches,
         timing=dict(simulation_wall="host wall through synchronize, includes PMD simulation",
@@ -174,18 +192,19 @@ def main():
             if not args.single_tg_perf:
                 perf["kernel_tops"] = 2 * m * n * k / (perf["kernel_us"] * 1e6)
             host = storage.cpu().float()
-            actual = host[1:-1, :measured_n]
-            error = (actual - golden).abs()
+            actual = host[1:-1][selected]
+            error = (actual - reference).abs()
             accuracy = dict(
                 max_abs=float(error.max()),
-                mismatch=int((actual != golden).sum()),
-                outside_tolerance=int((error > .001 + .01 * golden.abs()).sum()),
-                nonfinite=int((~actual.isfinite()).sum()), elements=measured_m * measured_n,
+                mismatch=int((actual != reference).sum()),
+                outside_tolerance=int((error > .001 + .01 * reference.abs()).sum()),
+                nonfinite=int((~actual.isfinite()).sum()), elements=actual.numel(),
                 canary_ok=bool((host[0] == sentinel).all() and (host[-1] == sentinel).all()
-                               and (host[1:-1, measured_n:] == sentinel).all()),
+                               and (host[1:-1][~selected] == sentinel).all()),
             )
-            launches.append(dict(simulator_wall_seconds=elapsed, **perf, accuracy=accuracy))
-            if (perf["completed_TGs"] != grid[0] * grid[1] or perf["active_CUs"] != (1 if args.single_tg_perf else 48)
+            launches.append(dict(repeat=repeat, simulator_wall_seconds=elapsed, **perf, accuracy=accuracy,
+                                 perf_files=[str(p) for p in Path(perf["stats_path"]).parent.glob("*_python*.perf")]))
+            if (perf["completed_TGs"] != math.prod(grid) or perf["active_CUs"] != (1 if args.single_tg_perf else 48)
                     or accuracy["outside_tolerance"] or accuracy["nonfinite"]
                     or not accuracy["canary_ok"]):
                 raise RuntimeError("full grid, precision or boundary check failed")
