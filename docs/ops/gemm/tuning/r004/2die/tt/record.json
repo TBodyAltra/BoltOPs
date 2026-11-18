@@ -365,17 +365,131 @@
       "/xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/repo/boltops/gemm/gluon/gemm_a16w16_tt.py": "72a1b9f53d7fa82721b2473ed5a0ddd4d5302da643c8d7fbd9436bb53d173e77",
       "/xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/repo/boltops/gemm/gemm_a16w16.py": "6d649f6c7015c14356c01f942a05cf7d962b5035e561199b28706ebd34c7a5d6"
     },
-    "replay_note": "benchmark.py reuses the measured consecutive worker, with input/config loading consolidated into record.json and an optional repo path; no new PMD timing was run for this packaging change",
+    "replay_note": "Consecutive full-grid replay retains the measured computation/validation functions with consolidated record input; --single-tg-perf was executed for three validated captures, preserving original MNK/strides and matching the complete measured HSACO. The published script removes blank-line trailing whitespace only; its complete Python AST matches the executed PERF capture script.",
     "kernel_sha256": "fc51f6b28942b5c142c4aaa23b8b99b770766bf7ce22093510b187c899b0292d",
-    "benchmark_sha256": "1dde2f326399ba92f6ba1fd513b62b6535906e5b1265e68c487a410769ede5de",
+    "benchmark_sha256": "9934b97d7cb231b5747802e92033ce87b1073e0d54c65b578b7525ffc6531f9e",
     "raw_evidence": "/home/kxu/r004-sbx2-tn-tt-20261118-results/evidence.tar.gz",
     "raw_evidence_sha256": "9101cedeaed6ff7439d50c30d78096abee992cae42b56ee4821c02a6983a5756",
     "remote_root": "/xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118"
   },
-  "raw_stats": {
-    "path": "stats.txt.gz",
-    "scope": "median continuous dispatch for the selected kernel",
-    "sha256": "2b4882eea9df9e9be9259091d7c42cd37bc43c5123bbc91ff76d5174e6fd8245",
-    "kernel_us": 14.62552
+  "single_tg_perf": {
+    "path": "single_tg.perf",
+    "sha256": "ae829872688d6424cfdc91975cb5e3f9503c38e81ac4c04cebabcc11bb68777b",
+    "scope": "single TG on CU0 of the scheduled die; original complete MNK/strides and full K; first output tile only; separate from full-grid timing",
+    "shape": [
+      6656,
+      64,
+      2048
+    ],
+    "grid": [
+      1
+    ],
+    "output_tile": [
+      128,
+      64
+    ],
+    "configured_CUs": 96,
+    "active_CUs": 1,
+    "completed_TGs": 1,
+    "selected_repeat": 2,
+    "selection": "minimum cycles of repeats 1 and 2; repeat 0 excluded",
+    "kernel_cycles": 22735.0,
+    "kernel_us": 10.344425,
+    "per_die_TGs": {
+      "0": 1,
+      "1": 0
+    },
+    "validation": {
+      "elements": 8192,
+      "max_abs": 0.0,
+      "mismatches": 0,
+      "nonfinite": 0,
+      "guards_ok": true,
+      "untouched_elements": 417792,
+      "untouched_ok": true
+    },
+    "full_and_single_hsaco_equal": true,
+    "full_and_single_text_rodata_equal": true,
+    "sections_sha256": {
+      ".rodata": "514fd7a72c733e561fe7068a32ab2854fd79f7599762586a18e0d744d46138eb",
+      ".text": "435e4f31f3d0ad6e8480ec3a93ac5dc09c91f606664f3835b380d8072b4e1fba"
+    },
+    "hsaco_sha256": "19305aeb11ac4718008e67f925f1487de00b9e80afd3044dbfa811c4aedf2b70",
+    "embedded_hsaco_verified": true,
+    "trace_payload_bytes": 4855,
+    "environment_overrides": {
+      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+    },
+    "kernel_source_sha256": "fc51f6b28942b5c142c4aaa23b8b99b770766bf7ce22093510b187c899b0292d",
+    "benchmark_sha256": "7c6805075bda1e4009d78f23df74b6900de1c7afcdc0a15134d7597df03fe9d4",
+    "captures": [
+      {
+        "repeat": 0,
+        "kernel_cycles": 46704.0,
+        "kernel_us": 21.25032,
+        "per_die_TGs": {
+          "0": 1,
+          "1": 0
+        },
+        "accuracy": {
+          "elements": 8192,
+          "max_abs": 0.0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "guards_ok": true,
+          "untouched_elements": 417792,
+          "untouched_ok": true
+        },
+        "perf_sha256": "dd79a8f3cf5bce26346b98379bc3ec485508f8fc3b24d2bd9c90373f3d1eb2e1",
+        "embedded_hsaco_verified": true
+      },
+      {
+        "repeat": 1,
+        "kernel_cycles": 45297.0,
+        "kernel_us": 20.610135,
+        "per_die_TGs": {
+          "0": 0,
+          "1": 1
+        },
+        "accuracy": {
+          "elements": 8192,
+          "max_abs": 0.0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "guards_ok": true,
+          "untouched_elements": 417792,
+          "untouched_ok": true
+        },
+        "perf_sha256": "60ef180ede47cc7cb67fc0978609f2ac035e70991a3694b87764443a181cb81d",
+        "embedded_hsaco_verified": true
+      },
+      {
+        "repeat": 2,
+        "kernel_cycles": 22735.0,
+        "kernel_us": 10.344425,
+        "per_die_TGs": {
+          "0": 1,
+          "1": 0
+        },
+        "accuracy": {
+          "elements": 8192,
+          "max_abs": 0.0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "guards_ok": true,
+          "untouched_elements": 417792,
+          "untouched_ok": true
+        },
+        "perf_sha256": "ae829872688d6424cfdc91975cb5e3f9503c38e81ac4c04cebabcc11bb68777b",
+        "embedded_hsaco_verified": true
+      }
+    ],
+    "command": "source /xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/env.sh; python3 /xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/r004_perf_benchmark.py TT /xukang/code/pmd-triton-sessions/r004-sbx2-tn-tt-20261118/repo --single-tg-perf",
+    "capture_evidence": {
+      "path": "/home/kxu/r004-sbx2-tn-tt-20261118-results/perf-evidence.tar.gz",
+      "sha256": "6b18efad99f98aa789450604e5f670c193cff89f5a85231851c2bc89a855d190"
+    },
+    "published_benchmark_sha256": "9934b97d7cb231b5747802e92033ce87b1073e0d54c65b578b7525ffc6531f9e"
   }
 }

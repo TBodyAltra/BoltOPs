@@ -1,13 +1,172 @@
 from pathlib import Path
 import os,sys,json,re,statistics,hashlib,traceback,time,configparser,importlib
+def _perf_sections(data):
+    import struct
+    assert data[:4] == b'\x7fELF'
+    offset = struct.unpack_from('<Q', data, 40)[0]
+    size, count, index = struct.unpack_from('<HHH', data, 58)
+    headers = [struct.unpack_from('<IIQQQQIIQQ', data, offset + i * size) for i in range(count)]
+    table = headers[index]
+    names = data[table[4]:table[4] + table[5]]
+    result = {}
+    for header in headers:
+        name = names[header[0]:].split(b'\0', 1)[0].decode()
+        if name in ('.text', '.rodata'):
+            result[name] = hashlib.sha256(data[header[4]:header[4] + header[5]]).hexdigest()
+    assert '.text' in result
+    return result
+
+
+def _perf_embedded_hsaco(data):
+    import struct
+    import zlib
+    assert data[1:8] == b'HYGPERF'
+    position = 24
+    while position + 24 <= len(data):
+        kind, offset, size = struct.unpack_from('<QQQ', data, position)
+        assert size > 0
+        if kind == 8:
+            compressed_size = struct.unpack_from('<Q', data, position + 48)[0]
+            return zlib.decompress(data[position + size:position + size + compressed_size])
+        position += size
+    raise RuntimeError('PERF contains no embedded HSACO')
+
+
+def capture_single_tg_perf(root, layout, record, repository):
+    """Three validated CU0 captures, original MNK/strides and recorded HSACO."""
+    output = root / (layout + '-single-tg-perf')
+    output.mkdir(exist_ok=False)
+    os.chdir(output)
+    sys.path[:0] = [str(root), str(repository)]
+    os.environ['TRITON_CACHE_DIR'] = str(root / ('cache_' + layout))
+    os.environ['TRITON_HOME'] = str(output / 'triton-home')
+    report = dict(status='RUNNING', layout=layout, shape=record['shape'], grid=[1],
+                  scope='single TG on CU0 of the scheduled die; original complete MNK/strides and full K; first output tile only; separate from full-grid timing',
+                  seed=59, launches=[], started=time.time(),
+                  environment_overrides=dict(GPU_DFLAGS="['StatLog','TT0','Perf']", HSA_TOOLS_LIB='/opt/rocm/lib/xprofiler/libperf_gen_helper.so'),
+                  benchmark_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                  kernel_source_sha256=hashlib.sha256((root / 'kernel.py').read_bytes()).hexdigest())
+    def save():
+        (output / 'perf_measurement.json').write_text(json.dumps(report, indent=2, default=str) + '\n')
+    save()
+    try:
+        import torch
+        from kernel import candidate_kernel
+        torch.set_num_threads(1)
+        assert os.environ['GPU_CHIP'] == 'sbx2'
+        assert torch.cuda.get_device_properties(0).multi_processor_count == 96
+        m, n, k = record['shape']
+        cfg = {key: tuple(value) if isinstance(value, list) else value for key, value in record['config'].items() if key != 'kernel'}
+        cfg['B_K_CONTIGUOUS'] = layout == 'TN'
+        bm, bn = cfg['BLOCK_SIZE_M'], cfg['BLOCK_SIZE_N']
+        generator = torch.Generator().manual_seed(59)
+        ac = (torch.rand((m, k), generator=generator) - .5).bfloat16()
+        bc = (torch.rand((k, n), generator=generator) - .5).bfloat16()
+        a = ac.cuda()
+        b = bc.T.contiguous().cuda().T if layout == 'TN' else bc.cuda()
+        template = torch.full((256 + m * n + 256,), 123., dtype=torch.bfloat16)
+        template[256:-256].fill_(float('nan'))
+        storage = torch.empty(template.shape, dtype=torch.bfloat16, device='cuda')
+        c = storage[256:-256].view(m, n)
+        selected = torch.zeros((m, n), dtype=torch.bool)
+        selected[:bm, :bn] = True
+        reference = (ac[:bm].float() @ bc[:, :bn].float()).bfloat16().float()
+        handle = candidate_kernel.warmup(a, b, c, M=m, N=n, K=k, grid=(1,), **cfg)
+        handle._init_handles()
+        binary = handle.kernel
+        digest = hashlib.sha256(binary).hexdigest()
+        whole_binary_equal = digest == record['binary_sha256']
+        expected_sections = record.get('single_tg_perf', {}).get('sections_sha256')
+        assert whole_binary_equal or (expected_sections and _perf_sections(binary) == expected_sections), ('PERF executable differs from measured full-grid kernel', digest, record['binary_sha256'])
+        assembly = handle.asm['amdgcn']
+        if whole_binary_equal:
+            assert hashlib.sha256(assembly.encode()).hexdigest() == record['assembly_sha256']
+        resources = {name: int(re.search(r'\.' + name + r':\s*(\d+)', assembly)[1]) for name in ['sgpr_count', 'vgpr_count', 'sgpr_spill_count', 'vgpr_spill_count']}
+        assert resources['sgpr_spill_count'] == resources['vgpr_spill_count'] == 0
+        assert handle.metadata.shared <= 131072
+        (output / 'kernel.hsaco').write_bytes(binary)
+        (output / 'kernel.amdgcn').write_text(assembly)
+        report.update(config=record['config'], resources=resources, shared_bytes=handle.metadata.shared,
+                      binary_sha256=digest, full_grid_binary_sha256=record['binary_sha256'],
+                      full_and_single_hsaco_equal=whole_binary_equal, full_and_single_text_rodata_equal=True,
+                      sections_sha256=_perf_sections(binary), output_tile=[bm, bn],
+                      input_strides=dict(A=list(a.stride()), B=list(b.stride()), C=list(c.stride())))
+        save()
+        for repeat in range(3):
+            storage.copy_(template)
+            torch.cuda.synchronize()
+            before = set(Path('m5out/0').glob('*/stats.txt'))
+            start = time.time()
+            launched = candidate_kernel[(1,)](a, b, c, M=m, N=n, K=k, **cfg)
+            assert launched is handle
+            torch.cuda.synchronize()
+            elapsed = time.time() - start
+            paths = set(Path('m5out/0').glob('*/stats.txt')) - before
+            assert len(paths) == 1, paths
+            path = paths.pop()
+            stats = path.read_text()
+            counts = {key: int(value) for key, value in re.findall(r'^(system.shaders\d+[.]CUs\d+[.]completedWGs)\s+(\d+)', stats, re.M)}
+            assert len(counts) == 96 and sum(counts.values()) == 1
+            active = [key for key, count in counts.items() if count]
+            assert len(active) == 1 and re.fullmatch(r'system[.]shaders[01][.]CUs0+[.]completedWGs', active[0]), active
+            ini = configparser.RawConfigParser(strict=False)
+            ini.read('m5out/config.ini')
+            assert ini.getint('gpu_configuration', 'num_chip') == 2
+            assert ini.getint('gpu_configuration', 'gpu_clock') == 455
+            for die in ['0', '1']:
+                assert ini.getint('system.shaders' + die + '.clk_domain', 'clock') == 455
+            host = storage.cpu()
+            guards = bool((host[:256] == 123).all() and (host[-256:] == 123).all())
+            actual = host[256:-256].view(m, n).float()
+            untouched = bool(torch.isnan(actual[~selected]).all())
+            tile = actual[:bm, :bn]
+            error = (tile - reference).abs()
+            bad = (~tile.isfinite()) | (error > .001 + .01 * reference.abs())
+            accuracy = dict(elements=tile.numel(), max_abs=float(error.max()), mismatches=int(bad.sum()),
+                            nonfinite=int((~tile.isfinite()).sum()), guards_ok=guards,
+                            untouched_elements=int((~selected).sum()), untouched_ok=untouched)
+            assert not accuracy['mismatches'] and not accuracy['nonfinite'] and guards and untouched, accuracy
+            perfs = sorted(path.parent.glob('*_python*.perf'))
+            assert len(perfs) == 1, perfs
+            embedded = _perf_embedded_hsaco(perfs[0].read_bytes())
+            assert embedded == binary, 'PERF embedded HSACO differs from full-grid HSACO'
+            cycles = float(re.search(r'^system.gcSimCycles\s+([\d.eE+-]+)', stats, re.M)[1])
+            sample = dict(repeat=repeat, kernel_cycles=cycles, kernel_us=cycles * .000455,
+                          completed_TGs=1, active_CUs=1, per_die_TGs={die: int(('system.shaders' + die + '.') in active[0]) for die in ['0', '1']},
+                          stats_path=str(path), perf_path=str(perfs[0]),
+                          perf_sha256=hashlib.sha256(perfs[0].read_bytes()).hexdigest(),
+                          embedded_hsaco_verified=True, accuracy=accuracy, simulator_wall_seconds=elapsed)
+            report['launches'].append(sample)
+            save()
+            print(json.dumps(sample), flush=True)
+        selected_sample = min(report['launches'][1:], key=lambda sample: sample['kernel_cycles'])
+        import shutil
+        shutil.copyfile(output / selected_sample['perf_path'], output / 'single_tg.perf')
+        report.update(status='PASS', selected_repeat=selected_sample['repeat'],
+                      selection='minimum cycles of repeats 1 and 2; repeat 0 excluded',
+                      selected=selected_sample, finished=time.time())
+        save()
+    except BaseException:
+        report.update(status='ERROR', error=traceback.format_exc(), finished=time.time())
+        save()
+        raise
+
+
 R=Path(__file__).resolve().parent;layout=sys.argv[1];record=json.loads((R/layout.lower()/'record.json').read_text())
 if 'R004_TUNE' not in os.environ:
  env=dict(os.environ)
  for k,v in record['environment']['environment_variables'].items():
   if v is None:env.pop(k,None)
   else:env[k]=v
+
+ if '--single-tg-perf' in sys.argv:
+  env['GPU_DFLAGS']="['StatLog','TT0','Perf']";env['HSA_TOOLS_LIB']='/opt/rocm/lib/xprofiler/libperf_gen_helper.so'
  env['R004_TUNE']='1';os.execve(sys.executable,[sys.executable,*sys.argv],env)
-repo=Path(sys.argv[2]).resolve() if len(sys.argv)>2 else next((p for p in R.parents if (p/'boltops/gemm/config.py').exists()),R/'repo');out=R/(layout+'-standalone');out.mkdir(exist_ok=False);os.chdir(out);sys.path[:0]=[str(R),str(repo)];os.environ['TRITON_CACHE_DIR']=str(R/('cache_'+layout));os.environ['TRITON_HOME']=str(out/'triton-home')
+repo=Path(sys.argv[2]).resolve() if len(sys.argv)>2 and sys.argv[2]!='--single-tg-perf' else next((p for p in R.parents if (p/'boltops/gemm/config.py').exists()),R/'repo')
+if '--single-tg-perf' in sys.argv:
+ capture_single_tg_perf(R,layout,record,repo)
+ raise SystemExit(0)
+out=R/(layout+'-standalone');out.mkdir(exist_ok=False);os.chdir(out);sys.path[:0]=[str(R),str(repo)];os.environ['TRITON_CACHE_DIR']=str(R/('cache_'+layout));os.environ['TRITON_HOME']=str(out/'triton-home')
 result=dict(status='RUNNING',stage='initialize',shape=[6656,64,2048],layout=layout,environment=record['environment'],variants={},started=time.time(),scope='complete MNK/grid, no split K; identical A/B/C addresses throughout each layout; contiguous block of9 dispatches per config, median; first sample may be cold after config switch')
 def save():
  p=out/'progress.tmp';p.write_text(json.dumps(result,indent=2,default=str)+'\n');p.replace(out/'progress.json')
