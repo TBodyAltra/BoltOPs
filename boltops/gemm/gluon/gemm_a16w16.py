@@ -11,6 +11,8 @@ wave per TG, two 32-KiB LDS slots, 16 output TGs and 4 BK128 chunks per slot.
 
 The TT entry uses 16x32 output tiles, eight TGs, and three 24-KiB slots.
 
+R003 uses a complete-tile BF16 TN ring with CU-specific block/wave profiles.
+
 The persistent 256x256x64 pipeline bounds active thread groups by the device
 CU count and output tile count. Its two 128-column panels and packed epilogue
 use native HCU MLS operations, with bounded loads and masked tail stores.
@@ -21,6 +23,7 @@ It integrates the R020/V5 gluon_shape_reuse pipeline.
 The host launcher supplies the task table, split-tile scratch and padded edges.
 """
 from .gemm_a16w16_tt import gemm_a16w16_tt_kernel as _gemm_a16w16_tt_kernel
+from .gemm_a16w16_tn_r003 import gemm_a16w16_tn_kernel as _gemm_a16w16_bf16_tn_r003_kernel
 
 import triton
 from triton.experimental import gluon as g

@@ -1,0 +1,552 @@
+{
+  "requirement": "R003",
+  "record_key": "R003_1DIE_TT",
+  "date": "2026-11-17",
+  "shape": [
+    2560,
+    64,
+    2048
+  ],
+  "layout": "TT",
+  "status": "PMD_PASS",
+  "precision": {
+    "A": "BF16",
+    "B": "BF16",
+    "accumulator": "FP32",
+    "C": "BF16"
+  },
+  "environment": {
+    "type": "PMD",
+    "model": "CoreArch:HEAD_1703",
+    "arch": "gfx946",
+    "dies": 2,
+    "cu_count": 96,
+    "host": "node60",
+    "container": "kxu_pmd_8569_fp8_20261017",
+    "triton": {
+      "branch": "release/3.6.x",
+      "base_commit": "6b111ee3efaf1275903deaf0957393ee2c79a48a",
+      "runtime": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "additional_changes": "MR !565: packed matrix-store conversion and ROCDL support; these kernels use buffer stores",
+      "source_commit": "f8cbbee1849806f96337e85685e1ba031b63f096"
+    },
+    "clang": {
+      "branch": "dtk-llvm-6.3.3",
+      "commit": "3599a58d7aebe66dc1cec4f830f82cb96e505666"
+    },
+    "clock_period_ps": {
+      "shader": 455,
+      "gc": 455
+    },
+    "frequency_ghz": {
+      "shader": 2.197802197802198,
+      "gc": 2.197802197802198
+    },
+    "environment_variables": {
+      "GPU_CHIP": "sbx2",
+      "GPU_GFLAGS": null,
+      "GPU_DFLAGS": "['StatLog']",
+      "GPU_ARGS": "['--abs-max-tick=100000000000']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "HSA_TOOLS_LIB": null,
+      "HIP_VISIBLE_DEVICES": null,
+      "ROCR_VISIBLE_DEVICES": null,
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_HCU_MATRIX_STORE_INSN": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
+      "HCU_PIPELINE_ENV_REV": null,
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm"
+    },
+    "compiler_hashes": {
+      "libtriton": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+      "clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+    },
+    "container_image": {
+      "name": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "image_id": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "repo_digests": [
+        "10.65.42.71:9092/perf-model-env@sha256:dc5a9d4be8aeffbcc5a950f0ffdf85921c9dd0159c55d26a4adcac3c205f6bd2"
+      ]
+    },
+    "llvm_triton": {
+      "branch": "hygon/triton-3.6.x",
+      "commit": "02cd0a4ddec90de4c0691e40e50ad2d2c1d9d8a2",
+      "additional_changes": "MR !21 packed-conversion ROCDL ops"
+    },
+    "source_checkout_commit": "0a079d11a0174e289ff65fbb38323c1b5f35e187",
+    "verified_runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "binaries": {
+        "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime/triton/_C/libtriton.so": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+        "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+      },
+      "environment": {
+        "PYTHONPATH": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+        "GPU_CHIP": "sbx2",
+        "GPU_DFLAGS": "['StatLog']",
+        "GPU_ARGS": "['--abs-max-tick=1000000000']",
+        "HSA_TOOLS_LIB": null,
+        "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+        "AMDGCN_USE_BUFFER_OPS": "1"
+      }
+    },
+    "date": "2026-11-17"
+  },
+  "config": {
+    "path": "boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json",
+    "profile": "DTYPE=bfloat16-OUT=bfloat16",
+    "M_key": "M_EQ_2560",
+    "selected": {
+      "BLOCK_SIZE_M": 64,
+      "BLOCK_SIZE_N": 64,
+      "BLOCK_SIZE_K": 64,
+      "CHUNKS": 2,
+      "SLOTS": 3,
+      "PW": 1,
+      "CW": 4,
+      "LTS": true,
+      "num_warps": 1,
+      "num_stages": 2,
+      "wasp_partition_warps": [
+        1,
+        4
+      ],
+      "wasp_wdra": false,
+      "mmac_layout_force": 2,
+      "enable_v_mmac_cluster": 2,
+      "hcu_use_gfx946_sched_model_v2": true,
+      "kernel": "_gemm_a16w16_bf16_tt_mls_kernel"
+    },
+    "commit": "0a079d11a0174e289ff65fbb38323c1b5f35e187",
+    "sha256": "7df01a167256b57c06e9e92a5af705c8de80c05b8e6f1724c2ef035e5d450232"
+  },
+  "resources": {
+    "SGPR": 66,
+    "VGPR": 98,
+    "SGPR_spills": 0,
+    "VGPR_spills": 0,
+    "shared_bytes": 98304,
+    "waves_per_TG": 5,
+    "completed_TGs": 40,
+    "active_CUs": 40
+  },
+  "performance": {
+    "kernel_us": 10.5651,
+    "kernel_cycles": 23220.0,
+    "shader_us": 6.953765,
+    "kernel_tops": 63.519383631011536,
+    "effective_peak_tflops": 432.10549450549456,
+    "useful_mmac_util_percent": 14.699971289118572
+  },
+  "benchmark": {
+    "seed": 59,
+    "validation_count": 3,
+    "repeats": 9,
+    "aggregation": "median of all timing dispatches after full validation",
+    "scope": "actual public gemm_a16w16 backend=auto; complete MNK/grid",
+    "first_random_dispatch_us": 15.267525,
+    "source_path": "docs/ops/gemm/tuning/bf16_tt_mls/benchmark.py",
+    "source_commit": "0a079d11a0174e289ff65fbb38323c1b5f35e187",
+    "source_sha256": "49cd50e02a2086e4995f76570ece872a87b053fe11911a6a7af3492ba073b9c7"
+  },
+  "validation": [
+    {
+      "dispatch_cycles": 33555.0,
+      "kernel_us": 15.267525,
+      "wave_interval_us": 11.655735,
+      "completed_TGs": 40,
+      "stats_path": "m5out/0/2/stats.txt",
+      "active_CUs": 40,
+      "accuracy": {
+        "elements": 163840,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0625
+      }
+    },
+    {
+      "dispatch_cycles": 23612.0,
+      "kernel_us": 10.74346,
+      "wave_interval_us": 7.131215,
+      "completed_TGs": 40,
+      "stats_path": "m5out/0/4/stats.txt",
+      "active_CUs": 40,
+      "accuracy": {
+        "elements": 163840,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0
+      }
+    },
+    {
+      "dispatch_cycles": 23624.0,
+      "kernel_us": 10.74892,
+      "wave_interval_us": 7.13622,
+      "completed_TGs": 40,
+      "stats_path": "m5out/0/6/stats.txt",
+      "active_CUs": 40,
+      "accuracy": {
+        "elements": 163840,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.03125
+      }
+    }
+  ],
+  "samples": [
+    {
+      "dispatch_cycles": 23220.0,
+      "kernel_us": 10.5651,
+      "wave_interval_us": 6.953765,
+      "completed_TGs": 40,
+      "stats_path": "m5out/0/7/stats.txt",
+      "active_CUs": 40,
+      "accuracy": {
+        "elements": 163840,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.03125
+      }
+    },
+    {
+      "dispatch_cycles": 23633.0,
+      "kernel_us": 10.753015,
+      "wave_interval_us": 7.140315,
+      "completed_TGs": 40,
+      "stats_path": "m5out/0/8/stats.txt",
+      "active_CUs": 40,
+      "accuracy": {
+        "elements": 163840,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.03125
+      }
+    },
+    {
+      "dispatch_cycles": 23211.0,
+      "kernel_us": 10.561005,
+      "wave_interval_us": 6.94785,
+      "completed_TGs": 40,
+      "stats_path": "m5out/0/9/stats.txt",
+      "active_CUs": 40,
+      "accuracy": {
+        "elements": 163840,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.03125
+      }
+    },
+    {
+      "dispatch_cycles": 23594.0,
+      "kernel_us": 10.73527,
+      "wave_interval_us": 7.12348,
+      "completed_TGs": 40,
+      "stats_path": "m5out/0/10/stats.txt",
+      "active_CUs": 40,
+      "accuracy": {
+        "elements": 163840,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.03125
+      }
+    },
+    {
+      "dispatch_cycles": 23183.0,
+      "kernel_us": 10.548265,
+      "wave_interval_us": 6.93693,
+      "completed_TGs": 40,
+      "stats_path": "m5out/0/11/stats.txt",
+      "active_CUs": 40,
+      "accuracy": {
+        "elements": 163840,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.03125
+      }
+    },
+    {
+      "dispatch_cycles": 23633.0,
+      "kernel_us": 10.753015,
+      "wave_interval_us": 7.140315,
+      "completed_TGs": 40,
+      "stats_path": "m5out/0/12/stats.txt",
+      "active_CUs": 40,
+      "accuracy": {
+        "elements": 163840,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.03125
+      }
+    },
+    {
+      "dispatch_cycles": 23177.0,
+      "kernel_us": 10.545535,
+      "wave_interval_us": 6.93238,
+      "completed_TGs": 40,
+      "stats_path": "m5out/0/13/stats.txt",
+      "active_CUs": 40,
+      "accuracy": {
+        "elements": 163840,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.03125
+      }
+    },
+    {
+      "dispatch_cycles": 23633.0,
+      "kernel_us": 10.753015,
+      "wave_interval_us": 7.141225,
+      "completed_TGs": 40,
+      "stats_path": "m5out/0/14/stats.txt",
+      "active_CUs": 40,
+      "accuracy": {
+        "elements": 163840,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.03125
+      }
+    },
+    {
+      "dispatch_cycles": 23199.0,
+      "kernel_us": 10.555545,
+      "wave_interval_us": 6.94421,
+      "completed_TGs": 40,
+      "stats_path": "m5out/0/15/stats.txt",
+      "active_CUs": 40,
+      "accuracy": {
+        "elements": 163840,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.03125
+      }
+    }
+  ],
+  "native_metadata": {
+    "AMDGCN_USE_BUFFER_OPS": "true",
+    "allow_flush_denorm": false,
+    "allow_flush_denorm_explicitly_set": false,
+    "allowed_dot_input_precisions": [
+      "ieee",
+      "tf32"
+    ],
+    "amdgpu_enable_max_ilp_scheduling_strategy": false,
+    "arch": "gfx946",
+    "assume_no_nans": false,
+    "backend_name": "hip",
+    "block_pingpong_async_global_prefetch": null,
+    "block_pingpong_async_local_prefetch": 1,
+    "buffer_cache_swizzle": false,
+    "cluster_dims": [
+      1,
+      1,
+      1
+    ],
+    "debug": false,
+    "default_dot_input_precision": "ieee",
+    "deprecated_fp8_dot_operand_dtypes": [],
+    "empty_arrive_after_mmac": false,
+    "enable_fp_fusion": true,
+    "enable_v_mmac_cluster": 2,
+    "extern_libs": [
+      [
+        "ocml",
+        "/opt/rocm/amdgcn/bitcode/ocml.bc"
+      ],
+      [
+        "ockl",
+        "/opt/rocm/amdgcn/bitcode/ockl.bc"
+      ],
+      [
+        "hip",
+        "/opt/rocm/amdgcn/bitcode/hip.bc"
+      ],
+      [
+        "opencl",
+        "/opt/rocm/amdgcn/bitcode/opencl.bc"
+      ]
+    ],
+    "hash": "5ec4fffb604a796617ce022bc74aa750fdacf7dcea3e40079e62564056e5b946",
+    "hcu_use_gfx946_sched_model_v2": true,
+    "instrumentation_mode": "",
+    "kpack": 1,
+    "launch_cooperative_grid": false,
+    "matrix_instr_nonkdim": 0,
+    "max_memory_cluster_dwords": null,
+    "max_num_imprecise_acc_default": 0,
+    "misched_regpressure": true,
+    "mmac_layout_force": 2,
+    "name": "gemm_bf16_tt_mls_kernel",
+    "num_ctas": 1,
+    "num_stages": 2,
+    "num_warps": 5,
+    "optimize_epilogue": false,
+    "profile_scratch_align": 1,
+    "profile_scratch_size": 0,
+    "sanitize_overflow": true,
+    "sched_latency": "none",
+    "schedule_hint": "none",
+    "shared": 98304,
+    "supported_fp8_dtypes": [
+      "fp8e4nv",
+      "fp8e5"
+    ],
+    "target": "GPUTarget(backend='hip', arch='gfx946', warp_size=64)",
+    "tensordesc_meta": [],
+    "triton_version": "3.6.0",
+    "use_async_copy": false,
+    "use_block_pingpong": false,
+    "use_nvshmem": false,
+    "use_rocshmem": false,
+    "utc_warmup": false,
+    "warp_size": 64,
+    "wasp_enabled": true,
+    "wasp_partition_regs": null,
+    "wasp_partition_warps": [
+      1,
+      4
+    ],
+    "wasp_wdra": false,
+    "waves_per_eu": 1
+  },
+  "binary": {
+    "sha256": "0f3c41554de7ab3e57394bebac0000bfbaf5ae5df325c58395f355f7163f0d1d",
+    "assembly_sha256": "1a60bfbbaea315838b9f36ca9816f175f70e76cc0c8917c5400adc3cbab63f66"
+  },
+  "sources": [
+    {
+      "path": "boltops/gemm/gemm_a16w16.py",
+      "commit": "0a079d11a0174e289ff65fbb38323c1b5f35e187",
+      "sha256": "355fb36f7a696454608b60b375e675c4ecc9a5169c54f6447ef1a2ea2c8968c9",
+      "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/gemm_a16w16.py"
+    },
+    {
+      "path": "boltops/gemm/gluon/gemm_a16w16.py",
+      "commit": "0a079d11a0174e289ff65fbb38323c1b5f35e187",
+      "sha256": "61f70fd5596386294175ba84f3bc19cd48eca2c7101f44dfd5292a10b0da6a18",
+      "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/gluon/gemm_a16w16.py"
+    },
+    {
+      "path": "boltops/gemm/gluon/gemm_bf16_tt_mls.py",
+      "commit": "0a079d11a0174e289ff65fbb38323c1b5f35e187",
+      "sha256": "1fc535c402830cc05098d0502df4efeeec08ebcf085b5271940892dd6839bb29",
+      "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/gluon/gemm_bf16_tt_mls.py"
+    },
+    {
+      "path": "docs/ops/gemm/tuning/bf16_tt_mls/benchmark.py",
+      "commit": "0a079d11a0174e289ff65fbb38323c1b5f35e187",
+      "sha256": "49cd50e02a2086e4995f76570ece872a87b053fe11911a6a7af3492ba073b9c7",
+      "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/docs/ops/gemm/tuning/bf16_tt_mls/benchmark.py"
+    }
+  ],
+  "public_api": {
+    "name": "gemm_a16w16",
+    "backend": "auto",
+    "verified": true,
+    "layout_argument": "B_K_CONTIGUOUS derived from actual strides"
+  },
+  "commands": [
+    {
+      "phase": "full",
+      "command": "source /xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/env.sh; exec python3 /xukang/code/pmd-triton-sessions/bf16-mr-retest-20261117/repo/docs/ops/gemm/tuning/bf16_tt_mls/benchmark.py --record /xukang/code/pmd-triton-sessions/bf16-mr-retest-20261117/inputs/r003_tt.json --output /xukang/code/pmd-triton-sessions/bf16-mr-retest-20261117/runs/r003_tt/full --cache-dir /xukang/code/pmd-triton-sessions/bf16-mr-retest-20261117/runs/r003_tt/cache",
+      "exit_code": 0
+    },
+    {
+      "phase": "single",
+      "command": "source /xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/env.sh; exec python3 /xukang/code/pmd-triton-sessions/bf16-mr-retest-20261117/repo/docs/ops/gemm/tuning/bf16_tt_mls/benchmark.py --record /xukang/code/pmd-triton-sessions/bf16-mr-retest-20261117/inputs/r003_tt.json --output /xukang/code/pmd-triton-sessions/bf16-mr-retest-20261117/runs/r003_tt/single --cache-dir /xukang/code/pmd-triton-sessions/bf16-mr-retest-20261117/runs/r003_tt/cache --single-tg-perf --expect-binary-sha256 0f3c41554de7ab3e57394bebac0000bfbaf5ae5df325c58395f355f7163f0d1d",
+      "exit_code": 0
+    }
+  ],
+  "operand_strides": {
+    "A": [
+      2048,
+      1
+    ],
+    "W": [
+      1,
+      64
+    ],
+    "C": [
+      64,
+      1
+    ]
+  },
+  "interface_validation": {
+    "dispatch_summary": "55 passed, 4 deselected",
+    "config_summary": "32 passed",
+    "known_exclusions": "persistent full-grid and tail native cases; two TT tail failures reproduced on the pre-refactor source",
+    "dispatch_log_sha256": "89cf5d938bbcf773a44c7b05da2db1c3b50b701ababb1c7ace8428baff2de95a",
+    "config_log_sha256": "1f47229b57c67f301be6b19a41cd44d06c01edb91ce9a2dfc5a0e6b7c0f9d556",
+    "dispatch_raw_log_sha256": "5ce76f119927bc9f7c171b944be9391b2993250d48a68ff9c756a3c48b23e79b",
+    "log_format": "ANSI escapes removed and trailing whitespace stripped in retest_dispatch.log"
+  },
+  "previous_measurement": {
+    "date": "2026-11-16",
+    "performance": {
+      "kernel_us": 10.72071,
+      "kernel_cycles": 23562.0,
+      "shader_us": 7.10892,
+      "kernel_tops": 62.597406328498764
+    },
+    "binary_sha256": "5b2aa2eeed87b15a52179a8571839ac0ad95664d4a77f2c399e96d3ef79615b2",
+    "note": "previous source/protocol; not mixed into current samples"
+  },
+  "single_tg_perf": {
+    "status": "PASS",
+    "scope": "direct selected kernel; first output tile, original descriptors/strides and complete K; not full-grid performance",
+    "dispatch_TGs": 1,
+    "output_tile": [
+      64,
+      64
+    ],
+    "binary_matches_full_grid": true,
+    "binary_sha256": "0f3c41554de7ab3e57394bebac0000bfbaf5ae5df325c58395f355f7163f0d1d",
+    "sha256": "2043cef4ba81bbdf120dc60a1a840732c8025e777868b29e8e65ff03e7266935",
+    "sample": {
+      "dispatch_cycles": 18491.0,
+      "kernel_us": 8.413405,
+      "wave_interval_us": 4.801615,
+      "completed_TGs": 1,
+      "stats_path": "m5out/0/5/stats.txt",
+      "active_CUs": 1,
+      "perf_path": "m5out/0/5/763086_python3.10.perf",
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0
+      },
+      "sha256": "2043cef4ba81bbdf120dc60a1a840732c8025e777868b29e8e65ff03e7266935"
+    },
+    "environment_overrides": {
+      "GPU_DFLAGS": "['StatLog','TT','Perf']",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+    }
+  },
+  "perf": {
+    "environment_overrides": {
+      "GPU_DFLAGS": "['StatLog','TT','Perf']",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+    }
+  },
+  "mmac_utilization_basis": {
+    "scope": "effective GEMM work over complete kernel dispatch; all configured CUs",
+    "formula": "100 * kernel_tops / (393.216 * (cu_count / 48) * (gc_frequency_ghz / 2))",
+    "precision": "BF16",
+    "reference_peak_tops": 393.216,
+    "reference_cu_count": 48,
+    "reference_frequency_ghz": 2,
+    "gc_frequency_ghz": 2.197802197802198,
+    "cu_count": 48
+  }
+}

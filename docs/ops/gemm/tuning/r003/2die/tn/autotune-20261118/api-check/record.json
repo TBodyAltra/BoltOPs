@@ -1,0 +1,923 @@
+{
+  "status": "PASS",
+  "shape": [
+    2560,
+    64,
+    2048
+  ],
+  "input_addresses": {
+    "A": 140575890210816,
+    "B": 140575906988032,
+    "C": 140575909085696
+  },
+  "scope": "R003 sbx2 TN: A[M,K], W[N,K] both K contiguous; no transpose/copy; shared aligned buffers; full grid",
+  "environment": {
+    "type": "PMD",
+    "model": "CoreArch:HEAD_1703",
+    "arch": "gfx946",
+    "dies": 2,
+    "cu_count": 96,
+    "host": "node60",
+    "container": "kxu_pmd_8569_fp8_20261017",
+    "triton": {
+      "branch": "release/3.6.x",
+      "base_commit": "6b111ee3efaf1275903deaf0957393ee2c79a48a",
+      "runtime": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "additional_changes": "MR !565: packed matrix-store conversion and ROCDL support; these kernels use buffer stores",
+      "source_commit": "f8cbbee1849806f96337e85685e1ba031b63f096"
+    },
+    "clang": {
+      "branch": "dtk-llvm-6.3.3",
+      "commit": "3599a58d7aebe66dc1cec4f830f82cb96e505666"
+    },
+    "clock_period_ps": {
+      "shader": 455,
+      "gc": 455
+    },
+    "frequency_ghz": {
+      "shader": 2.197802197802198,
+      "gc": 2.197802197802198
+    },
+    "environment_variables": {
+      "GPU_CHIP": "sbx2",
+      "GPU_GFLAGS": null,
+      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+      "GPU_ARGS": "['--abs-max-tick=100000000000']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
+      "HIP_VISIBLE_DEVICES": null,
+      "ROCR_VISIBLE_DEVICES": null,
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_HCU_MATRIX_STORE_INSN": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
+      "HCU_PIPELINE_ENV_REV": null,
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm"
+    },
+    "compiler_hashes": {
+      "libtriton": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+      "clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+    },
+    "container_image": {
+      "name": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "image_id": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "repo_digests": [
+        "10.65.42.71:9092/perf-model-env@sha256:dc5a9d4be8aeffbcc5a950f0ffdf85921c9dd0159c55d26a4adcac3c205f6bd2"
+      ]
+    },
+    "llvm_triton": {
+      "branch": "hygon/triton-3.6.x",
+      "commit": "02cd0a4ddec90de4c0691e40e50ad2d2c1d9d8a2",
+      "additional_changes": "MR !21 packed-conversion ROCDL ops"
+    },
+    "source_checkout_commit": null,
+    "verified_runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "binaries": {
+        "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime/triton/_C/libtriton.so": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+        "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+      },
+      "environment": {
+        "PYTHONPATH": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+        "GPU_CHIP": "sbx2",
+        "GPU_DFLAGS": "['StatLog']",
+        "GPU_ARGS": "['--abs-max-tick=1000000000']",
+        "HSA_TOOLS_LIB": null,
+        "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+        "AMDGCN_USE_BUFFER_OPS": "1"
+      }
+    },
+    "date": "2026-11-17",
+    "source_state": "private checkout with tested 96-CU TN profile; fresh public auto validation"
+  },
+  "rounds": 4,
+  "phase": "complete",
+  "events": [
+    {
+      "phase": "setup",
+      "name": "m32n64k64_p2c8_ch2s4_defer",
+      "status": "compiled"
+    }
+  ],
+  "variants": {
+    "default_triton": {
+      "config": {
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 64,
+        "GROUP_SIZE_M": 4,
+        "num_warps": 8,
+        "num_stages": 2,
+        "waves_per_eu": 2,
+        "matrix_instr_nonkdim": 16,
+        "cache_modifier": null,
+        "NUM_KSPLIT": 1,
+        "kpack": 1,
+        "SPLITK_BLOCK_SIZE": 2048
+      },
+      "grid": 10,
+      "resources": {
+        "VGPR": 256,
+        "SGPR": 62,
+        "VGPR_spills": 5,
+        "SGPR_spills": 0,
+        "shared_bytes": 65536,
+        "waves_per_TG": 8
+      },
+      "binary_sha256": "a19c23a06b1c5605e0a9f4b7c513d0dece896a7f28206efda09dbe81fca3794e",
+      "validation": [
+        {
+          "kernel_us": 75.738845,
+          "shader_us": 72.127055,
+          "completed_TGs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "completed_TGs": 10,
+          "stats_path": "m5out/0/6/stats.txt",
+          "perf_path": "m5out/0/6/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "seed": 59
+        },
+        {
+          "kernel_us": 75.72565,
+          "shader_us": 72.11295,
+          "completed_TGs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "completed_TGs": 10,
+          "stats_path": "m5out/0/10/stats.txt",
+          "perf_path": "m5out/0/10/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.0
+          },
+          "seed": -1
+        },
+        {
+          "kernel_us": 75.74476,
+          "shader_us": 72.13297,
+          "completed_TGs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "completed_TGs": 10,
+          "stats_path": "m5out/0/14/stats.txt",
+          "perf_path": "m5out/0/14/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "seed": 2059
+        }
+      ],
+      "samples": [
+        {
+          "kernel_us": 75.732475,
+          "shader_us": 72.119775,
+          "completed_TGs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "completed_TGs": 10,
+          "stats_path": "m5out/0/18/stats.txt",
+          "perf_path": "m5out/0/18/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "round": 0
+        },
+        {
+          "kernel_us": 75.716095,
+          "shader_us": 72.103395,
+          "completed_TGs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "completed_TGs": 10,
+          "stats_path": "m5out/0/24/stats.txt",
+          "perf_path": "m5out/0/24/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "round": 1
+        },
+        {
+          "kernel_us": 75.757955,
+          "shader_us": 72.145255,
+          "completed_TGs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "completed_TGs": 10,
+          "stats_path": "m5out/0/26/stats.txt",
+          "perf_path": "m5out/0/26/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "round": 2
+        },
+        {
+          "kernel_us": 75.73293,
+          "shader_us": 72.12023,
+          "completed_TGs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "completed_TGs": 10,
+          "stats_path": "m5out/0/32/stats.txt",
+          "perf_path": "m5out/0/32/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "round": 3
+        }
+      ],
+      "screening": [],
+      "warmup": [
+        {
+          "kernel_us": 80.48495,
+          "shader_us": 76.87225,
+          "completed_TGs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "completed_TGs": 10,
+          "stats_path": "m5out/0/2/stats.txt",
+          "perf_path": "m5out/0/2/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          }
+        }
+      ],
+      "backend": "forced triton control",
+      "performance": {
+        "kernel_us": 75.73270249999999,
+        "shader_us": 72.1200025,
+        "min_kernel_us": 75.716095,
+        "max_kernel_us": 75.757955,
+        "effective_read_TBps": 0.14191892861607575,
+        "effective_read_write_TBps": 0.14624572522022442,
+        "kernel_TOPS": 8.861279445296436
+      },
+      "selected_perf": {
+        "path": "/xukang/code/pmd-triton-sessions/r003-sbx2-tn-tune-20261118/api-check/default_triton/representative_full_grid.perf",
+        "sha256": "bafb78d683da57c252da60fe2d984a2be7b82f062c53973b40c94cb00844d175",
+        "sample": {
+          "kernel_us": 75.732475,
+          "shader_us": 72.119775,
+          "completed_TGs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 5,
+            "system.shaders1": 5
+          },
+          "completed_TGs": 10,
+          "stats_path": "m5out/0/18/stats.txt",
+          "perf_path": "m5out/0/18/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "round": 0
+        }
+      },
+      "native_metadata": {
+        "hash": "5df32c7bbb40c064cfd67fd1a47d96fc11f65200a1bc06cae9912b51fc3cb000",
+        "target": {
+          "backend": "hip",
+          "arch": "gfx946",
+          "warp_size": 64
+        },
+        "num_warps": 8,
+        "waves_per_eu": 2,
+        "num_stages": 2,
+        "num_ctas": 1,
+        "extern_libs": [
+          [
+            "ocml",
+            "/opt/rocm/amdgcn/bitcode/ocml.bc"
+          ],
+          [
+            "ockl",
+            "/opt/rocm/amdgcn/bitcode/ockl.bc"
+          ],
+          [
+            "hip",
+            "/opt/rocm/amdgcn/bitcode/hip.bc"
+          ],
+          [
+            "opencl",
+            "/opt/rocm/amdgcn/bitcode/opencl.bc"
+          ]
+        ],
+        "debug": false,
+        "sanitize_overflow": true,
+        "arch": "gfx946",
+        "supported_fp8_dtypes": [
+          "fp8e4nv",
+          "fp8e5"
+        ],
+        "deprecated_fp8_dot_operand_dtypes": [],
+        "default_dot_input_precision": "ieee",
+        "allowed_dot_input_precisions": [
+          "ieee",
+          "tf32"
+        ],
+        "enable_fp_fusion": true,
+        "launch_cooperative_grid": false,
+        "matrix_instr_nonkdim": 16,
+        "kpack": 1,
+        "allow_flush_denorm": false,
+        "allow_flush_denorm_explicitly_set": false,
+        "max_num_imprecise_acc_default": 0,
+        "backend_name": "hip",
+        "instrumentation_mode": "",
+        "optimize_epilogue": false,
+        "mmac_layout_force": -1,
+        "schedule_hint": "none",
+        "sched_latency": "none",
+        "misched_regpressure": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": false,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "max_memory_cluster_dwords": null,
+        "buffer_cache_swizzle": false,
+        "use_block_pingpong": false,
+        "utc_warmup": false,
+        "use_async_copy": false,
+        "block_pingpong_async_global_prefetch": null,
+        "block_pingpong_async_local_prefetch": 1,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_wdra": false,
+        "wasp_partition_regs": null,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "assume_no_nans": false,
+        "warp_size": 64,
+        "AMDGCN_USE_BUFFER_OPS": "true",
+        "triton_version": "3.6.0",
+        "wasp_enabled": false,
+        "uses_bank_conflict_aware_lds_placement": false,
+        "tensordesc_meta": [],
+        "use_nvshmem": false,
+        "use_rocshmem": false,
+        "shared": 65536,
+        "profile_scratch_size": 0,
+        "profile_scratch_align": 1,
+        "name": "_gemm_a16_w16_kernel_BLOCK_SIZE_M_256_BLOCK_SIZE_N_256_BLOCK_SIZE_K_64_GROUP_SIZE_M_4_NUM_KSPLIT_1_SPLITK_BLOCK_SIZE_2048_EVEN_K_1_EVEN_MN_0_cache_modifier_NONE_activation_NONE_use_activation_0_ADD_BIAS_0_SKIP_REDUCE_0"
+      },
+      "artifacts": {
+        "perf": "default_triton.perf",
+        "assembly": "default_triton.amdgcn",
+        "sample_kernel_us": 75.732475
+      }
+    },
+    "tuned_auto": {
+      "config": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 64,
+        "CHUNKS": 2,
+        "SLOTS": 4,
+        "PW": 2,
+        "CW": 8,
+        "LTS": false,
+        "num_warps": 1,
+        "num_stages": 2,
+        "wasp_partition_warps": [
+          2,
+          8
+        ],
+        "wasp_wdra": false,
+        "mmac_layout_force": 2,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "kernel": "_gemm_a16w16_tn_kernel",
+        "EARLY_RELEASE": false,
+        "DEFER_RELEASE": true,
+        "READ_AHEAD": false,
+        "GROUP_BATCHES": false
+      },
+      "grid": 80,
+      "resources": {
+        "VGPR": 38,
+        "SGPR": 62,
+        "VGPR_spills": 0,
+        "SGPR_spills": 0,
+        "shared_bytes": 98304,
+        "waves_per_TG": 10
+      },
+      "binary_sha256": "8b6ded6e67cba7f51de89211d15b8d12c7e92eb36926ddf47ce8426a129bd596",
+      "validation": [
+        {
+          "kernel_us": 8.69778,
+          "shader_us": 5.08599,
+          "completed_TGs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "completed_TGs": 80,
+          "stats_path": "m5out/0/8/stats.txt",
+          "perf_path": "m5out/0/8/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "seed": 59
+        },
+        {
+          "kernel_us": 8.65865,
+          "shader_us": 5.04595,
+          "completed_TGs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "completed_TGs": 80,
+          "stats_path": "m5out/0/12/stats.txt",
+          "perf_path": "m5out/0/12/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.0
+          },
+          "seed": -1
+        },
+        {
+          "kernel_us": 8.660925,
+          "shader_us": 5.049135,
+          "completed_TGs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "completed_TGs": 80,
+          "stats_path": "m5out/0/16/stats.txt",
+          "perf_path": "m5out/0/16/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "seed": 2059
+        }
+      ],
+      "samples": [
+        {
+          "kernel_us": 8.678215,
+          "shader_us": 5.065515,
+          "completed_TGs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "completed_TGs": 80,
+          "stats_path": "m5out/0/20/stats.txt",
+          "perf_path": "m5out/0/20/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "round": 0
+        },
+        {
+          "kernel_us": 8.639995,
+          "shader_us": 5.028205,
+          "completed_TGs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "completed_TGs": 80,
+          "stats_path": "m5out/0/22/stats.txt",
+          "perf_path": "m5out/0/22/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "round": 1
+        },
+        {
+          "kernel_us": 8.61224,
+          "shader_us": 4.99954,
+          "completed_TGs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "completed_TGs": 80,
+          "stats_path": "m5out/0/28/stats.txt",
+          "perf_path": "m5out/0/28/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "round": 2
+        },
+        {
+          "kernel_us": 8.676395,
+          "shader_us": 5.064605,
+          "completed_TGs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "completed_TGs": 80,
+          "stats_path": "m5out/0/30/stats.txt",
+          "perf_path": "m5out/0/30/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "round": 3
+        }
+      ],
+      "screening": [],
+      "warmup": [
+        {
+          "kernel_us": 13.19318,
+          "shader_us": 9.58048,
+          "completed_TGs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "completed_TGs": 80,
+          "stats_path": "m5out/0/4/stats.txt",
+          "perf_path": "m5out/0/4/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          }
+        }
+      ],
+      "backend": "auto->gluon tuned TN",
+      "performance": {
+        "kernel_us": 8.658195,
+        "shader_us": 5.046405,
+        "min_kernel_us": 8.61224,
+        "max_kernel_us": 8.678215,
+        "effective_read_TBps": 1.241356194911295,
+        "effective_read_write_TBps": 1.2792024203659078,
+        "kernel_TOPS": 77.50906973104672
+      },
+      "selected_perf": {
+        "path": "/xukang/code/pmd-triton-sessions/r003-sbx2-tn-tune-20261118/api-check/tuned_auto/representative_full_grid.perf",
+        "sha256": "b74e732596e6fea3236b7fe1bfbd31ae51390503a038b141c8cd6a2cbc156ec4",
+        "sample": {
+          "kernel_us": 8.639995,
+          "shader_us": 5.028205,
+          "completed_TGs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 40,
+            "system.shaders1": 40
+          },
+          "completed_TGs": 80,
+          "stats_path": "m5out/0/22/stats.txt",
+          "perf_path": "m5out/0/22/810662_python3.10.perf",
+          "accuracy": {
+            "elements": 163840,
+            "mismatches": 0,
+            "nonfinite": 0,
+            "max_abs": 0.03125
+          },
+          "round": 1
+        }
+      },
+      "native_metadata": {
+        "hash": "0e162b9f4571d5094991292863c0ae9bbf32005b92a1964f4159ea7977fa07a4",
+        "target": {
+          "backend": "hip",
+          "arch": "gfx946",
+          "warp_size": 64
+        },
+        "num_warps": 10,
+        "waves_per_eu": 1,
+        "num_stages": 2,
+        "num_ctas": 1,
+        "extern_libs": [
+          [
+            "ocml",
+            "/opt/rocm/amdgcn/bitcode/ocml.bc"
+          ],
+          [
+            "ockl",
+            "/opt/rocm/amdgcn/bitcode/ockl.bc"
+          ],
+          [
+            "hip",
+            "/opt/rocm/amdgcn/bitcode/hip.bc"
+          ],
+          [
+            "opencl",
+            "/opt/rocm/amdgcn/bitcode/opencl.bc"
+          ]
+        ],
+        "debug": false,
+        "sanitize_overflow": true,
+        "arch": "gfx946",
+        "supported_fp8_dtypes": [
+          "fp8e4nv",
+          "fp8e5"
+        ],
+        "deprecated_fp8_dot_operand_dtypes": [],
+        "default_dot_input_precision": "ieee",
+        "allowed_dot_input_precisions": [
+          "ieee",
+          "tf32"
+        ],
+        "enable_fp_fusion": true,
+        "launch_cooperative_grid": false,
+        "matrix_instr_nonkdim": 0,
+        "kpack": 1,
+        "allow_flush_denorm": false,
+        "allow_flush_denorm_explicitly_set": false,
+        "max_num_imprecise_acc_default": 0,
+        "backend_name": "hip",
+        "instrumentation_mode": "",
+        "optimize_epilogue": false,
+        "mmac_layout_force": 2,
+        "schedule_hint": "none",
+        "sched_latency": "none",
+        "misched_regpressure": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": false,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "max_memory_cluster_dwords": null,
+        "buffer_cache_swizzle": false,
+        "use_block_pingpong": false,
+        "utc_warmup": false,
+        "use_async_copy": false,
+        "block_pingpong_async_global_prefetch": null,
+        "block_pingpong_async_local_prefetch": 1,
+        "wasp_partition_warps": [
+          2,
+          8
+        ],
+        "wasp_wdra": false,
+        "wasp_partition_regs": null,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 2,
+        "assume_no_nans": false,
+        "warp_size": 64,
+        "AMDGCN_USE_BUFFER_OPS": "true",
+        "triton_version": "3.6.0",
+        "wasp_enabled": true,
+        "tensordesc_meta": [],
+        "use_nvshmem": false,
+        "use_rocshmem": false,
+        "shared": 98304,
+        "profile_scratch_size": 0,
+        "profile_scratch_align": 1,
+        "name": "gemm_a16w16_tn_kernel"
+      },
+      "artifacts": {
+        "perf": "tuned_auto.perf",
+        "assembly": "tuned_auto.amdgcn",
+        "sample_kernel_us": 8.639995
+      }
+    }
+  },
+  "finalists": [
+    "default_triton",
+    "tuned_auto"
+  ],
+  "ranking": [
+    "tuned_auto",
+    "default_triton"
+  ],
+  "profile_config": {
+    "BLOCK_SIZE_M": 32,
+    "BLOCK_SIZE_N": 64,
+    "BLOCK_SIZE_K": 64,
+    "CHUNKS": 2,
+    "SLOTS": 4,
+    "PW": 2,
+    "CW": 8,
+    "LTS": false,
+    "num_warps": 1,
+    "num_stages": 2,
+    "wasp_partition_warps": [
+      2,
+      8
+    ],
+    "wasp_wdra": false,
+    "mmac_layout_force": 2,
+    "enable_v_mmac_cluster": 2,
+    "hcu_use_gfx946_sched_model_v2": true,
+    "kernel": "_gemm_a16w16_tn_kernel",
+    "EARLY_RELEASE": false,
+    "DEFER_RELEASE": true,
+    "READ_AHEAD": false,
+    "GROUP_BATCHES": false
+  },
+  "route_checks": {
+    "TT": "no Gluon profile, unchanged fallback",
+    "other_M": "no Gluon profile, unchanged fallback",
+    "other_K": "no Gluon profile, unchanged fallback",
+    "FP16": "no Gluon profile, unchanged fallback"
+  },
+  "date": "2026-11-18",
+  "requirement": "R003",
+  "record_key": "R003_2DIE_TN_AUTOTUNE",
+  "layout": "TN",
+  "chip": "sbx2",
+  "configured_DIEs": 2,
+  "configured_CUs": 96,
+  "configured_HBM_TBps": 3.6,
+  "precision": {
+    "A": "BF16",
+    "W": "BF16",
+    "accumulator": "FP32",
+    "C": "BF16"
+  },
+  "input_contract": "A[M,K] and W[N,K] both K-contiguous, C=A@W.T; no transpose/copy dispatch",
+  "source_sha256": "93e4dbc361143f85e3ab9e6543730fea4528364abce17ba94707b99fa5a72d0f",
+  "script_sha256": "b1ba9fcd1aac530c1783bf0fefcb2cc4014fce4a9a5164685b5fad11550f3057",
+  "input_template_sha256": "6a150b598dcb9c4a04d088b9fc25a56e16b9407dce1560e7e9aa9345bf4895e8",
+  "launch": {
+    "supervisor_pid": 810661,
+    "command": "source /xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/env.sh; python3 /xukang/code/pmd-triton-sessions/r003-sbx2-tn-tune-20261118/api_check.py --repo /xukang/code/pmd-triton-sessions/r003-sbx2-tn-tune-20261118/repo --record /xukang/code/pmd-triton-sessions/r003-sbx2-tn-tune-20261118/input.json --output /xukang/code/pmd-triton-sessions/r003-sbx2-tn-tune-20261118/api-check --rounds 4",
+    "started_utc": "2026-11-18T04:36:15.684760+00:00"
+  },
+  "actual_environment": {
+    "pid": 810662,
+    "environment_variables": {
+      "GPU_CHIP": "sbx2",
+      "GPU_GFLAGS": null,
+      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+      "GPU_ARGS": "['--abs-max-tick=100000000000']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
+      "HIP_VISIBLE_DEVICES": null,
+      "ROCR_VISIBLE_DEVICES": null,
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_HCU_MATRIX_STORE_INSN": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
+      "HCU_PIPELINE_ENV_REV": null,
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm"
+    }
+  },
+  "process_exit_code": 0,
+  "completed_utc": "2026-11-18T05:31:40.681814+00:00",
+  "production_defaults_changed": true,
+  "effective_bandwidth_basis": "A and W each read once; C written once",
+  "search": "one checked warmup + one checked screening sample per config; top two geometry scores seed pipeline refinement; top three plus public auto default get three validation patterns and four Latin-order timing rounds",
+  "copied_sources": {
+    "boltops/gemm/gemm_a16w16.py": "6d649f6c7015c14356c01f942a05cf7d962b5035e561199b28706ebd34c7a5d6",
+    "boltops/gemm/gluon/gemm_a16w16.py": "24ce039514248b2ec7c2dc1272134d5db0d5b0187ec1e766fa1591e499b5ee4d",
+    "boltops/gemm/gluon/gemm_a16w16_tn.py": "93e4dbc361143f85e3ab9e6543730fea4528364abce17ba94707b99fa5a72d0f",
+    "boltops/gemm/configs/gfx946/triton/gemm_a16w16/DEFAULT.json": "5c67bc8c518af7a0f850d44ff14dc806d7647cbb8ecc7019a2ab8d467a85c5ab"
+  },
+  "best": "tuned_auto",
+  "best_gluon": "tuned_auto",
+  "comparison": {
+    "baseline": "default_triton",
+    "candidate": "tuned_auto",
+    "speedup": 8.746938882757895,
+    "time_reduction_percent": 88.56742897825414,
+    "scope": "fresh process, forced legacy Triton versus public auto->Gluon using installed private profile"
+  },
+  "profile_hashes": {
+    "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/DEFAULT.json": "4d56ef481f7be65a8eea5f46d8ee2846c3a001fdf40488ab33d2eb2f6a8326ad",
+    "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json": "72b46d1528696436016437b1e008690ccee058113f48da36affc86293dde4a29"
+  },
+  "public_auto_profile_verified": true,
+  "installed_files": {
+    "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/DEFAULT.json": "4d56ef481f7be65a8eea5f46d8ee2846c3a001fdf40488ab33d2eb2f6a8326ad",
+    "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json": "72b46d1528696436016437b1e008690ccee058113f48da36affc86293dde4a29",
+    "boltops/gemm/gluon/gemm_a16w16.py": "24ce039514248b2ec7c2dc1272134d5db0d5b0187ec1e766fa1591e499b5ee4d",
+    "boltops/gemm/gluon/gemm_a16w16_tn.py": "93e4dbc361143f85e3ab9e6543730fea4528364abce17ba94707b99fa5a72d0f"
+  },
+  "exports": [
+    "/mnt/c/Users/xukang/Downloads/R003_sbx2_TN_api_legacy_triton_control_full.perf",
+    "/mnt/c/Users/xukang/Downloads/R003_sbx2_TN_api_auto_tuned_full.perf"
+  ],
+  "script": "../api_check.py"
+}

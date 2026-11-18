@@ -164,10 +164,10 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r003/2die/tn/autotune-20261118/publication/record.json">flags / env</a></td>
+      <td><a href="tuning/r003/2die/tn/autotune-20261118/publication/record.json">8.657 / 77.52 / 8.97%</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_tn_r003.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json">config</a> / <a href="tuning/r003/2die/tn/autotune-20261118/publication/tuned_auto.amdgcn">汇编</a><br><a href="tuning/r003/2die/tn/autotune-20261118/benchmark_public.py">测试代码</a> / <a href="tuning/r003/2die/tn/autotune-20261118/publication/record.json">记录</a></td>
+      <td><a href="tuning/r003/2die/tn/autotune-20261118/publication/tuned_auto.perf">完整 grid PERF</a></td>
     </tr>
     <tr>
       <td><a href="#r004">R004</a><a name="r004"></a></td>

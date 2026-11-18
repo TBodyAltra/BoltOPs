@@ -328,6 +328,38 @@ TN fences each MMAC turn as `sync → 64 MMAC → arrive`, reducing full-dispatc
 
 One complete cold public-API dispatch; all 13,631,488 outputs match and guards pass on all 96 CU. Latency is 12.03% below the same-environment nonpersistent 145.708 µs baseline. Reuses the R010 continuous pipeline with two complete A-scale banks and consumer FP32 B-scale loads, fitting 131072 B LDS without spills. Single-TG PERF covers 5 tiles with the same .text/.rodata as the full 96-TG kernel; all 163,840 selected outputs and uncovered output guards passed in three captures. R009/R010 48-TG and 96-TG executable sections remain unchanged. [Dual-die record](docs/ops/gemm/tuning/r011/2die/tn/record.json).
 
+## R003 BF16 TN on dual-die PMD sbx2
+
+2026-11-18 · node60 · gfx946 / 96 CU · M/N/K=2560/64/2048 · BF16 A/W/C,
+FP32 accumulation. A[M,K] and W[N,K] are K-contiguous; no transpose, repack,
+Split-K or workspace is used. The exact TN profile enables the Gluon ring through
+`backend=auto`: block32×64×64, 2P+8C (10 waves/TG), CHUNKS=2, SLOTS=4,
+80 TGs (40 per die), 96 KiB LDS, 38 VGPRs and zero spills.
+
+| Public route | Full median (µs) | Range (µs) | Effective read+write (TB/s) |
+|---|---:|---:|---:|
+| Existing generic Triton default | 75.704 | 75.675–75.742 | 0.146 |
+| Tuned Gluon via auto | 8.657 | 8.614–8.662 | 1.279 |
+
+The matched speedup is 8.74× against the existing 256×256×64,
+10-TG generic fallback, which has five VGPR spills; this is not a comparison
+against a separately tuned Triton implementation. Bandwidth counts A/W each read
+once plus one BF16 C write. These are complete GPU gcSimCycles durations, with
+identical buffers and four counterbalanced timing rounds. All outputs and guards
+pass random59 / ones / random2059. Configuration/dispatch/alignment checks:
+**40 passed**. Unaligned A/W/C pointers retain Triton under auto; explicit Gluon
+rejects them. The renamed module was recompiled/replayed on current `gemm`;
+its .rodata is unchanged, while scalar scheduling/register allocation and one
+s_nop differ. Publication assembly/PERF match the freshly measured HSACO.
+
+[Current replay/record](docs/ops/gemm/tuning/r003/2die/tn/autotune-20261118/publication/record.json),
+[profile](boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json),
+[kernel](boltops/gemm/gluon/gemm_a16w16_tn_r003.py),
+[37-config scan](docs/ops/gemm/tuning/r003/2die/tn/autotune-20261118/screening.csv).
+The earlier search and API records remain immutable measurement snapshots with
+the original selector; use `benchmark_public.py` and `replay_input.json` in the
+same evidence folder to replay the published profile.
+
 ## License
 
 BoltOPs original code is licensed under the [MIT License](LICENSE). Portions

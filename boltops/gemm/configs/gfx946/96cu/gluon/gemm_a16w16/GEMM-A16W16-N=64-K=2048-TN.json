@@ -1,0 +1,31 @@
+{
+  "profiles": {
+    "DTYPE=bfloat16-OUT=bfloat16": {
+      "M_EQ_2560": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 64,
+        "CHUNKS": 2,
+        "SLOTS": 4,
+        "PW": 2,
+        "CW": 8,
+        "LTS": false,
+        "num_warps": 1,
+        "num_stages": 2,
+        "wasp_partition_warps": [
+          2,
+          8
+        ],
+        "wasp_wdra": false,
+        "mmac_layout_force": 2,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "kernel": "_gemm_a16w16_bf16_tn_r003_kernel",
+        "EARLY_RELEASE": false,
+        "DEFER_RELEASE": true,
+        "READ_AHEAD": false,
+        "GROUP_BATCHES": false
+      }
+    }
+  }
+}
