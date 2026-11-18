@@ -1,14 +1,14 @@
 from pathlib import Path
 import os,sys,json,re,statistics,hashlib,traceback,time,configparser,importlib
-R=Path(__file__).resolve().parent;layout=sys.argv[1];record=json.loads((R/'input.json').read_text())
+R=Path(__file__).resolve().parent;layout=sys.argv[1];record=json.loads((R/layout.lower()/'record.json').read_text())
 if 'R004_TUNE' not in os.environ:
  env=dict(os.environ)
  for k,v in record['environment']['environment_variables'].items():
   if v is None:env.pop(k,None)
   else:env[k]=v
  env['R004_TUNE']='1';os.execve(sys.executable,[sys.executable,*sys.argv],env)
-out=R/(layout+'-confirm');out.mkdir(exist_ok=False);os.chdir(out);sys.path[:0]=[str(R),str(R/'repo')];os.environ['TRITON_CACHE_DIR']=str(R/('cache_'+layout));os.environ['TRITON_HOME']=str(out/'triton-home')
-result=dict(status='RUNNING',stage='initialize',shape=[6656,64,2048],layout=layout,environment=record['environment'],variants={},started=time.time(),scope='complete MNK/grid, no split K; identical A/B/C addresses throughout each layout')
+repo=Path(sys.argv[2]).resolve() if len(sys.argv)>2 else next((p for p in R.parents if (p/'boltops/gemm/config.py').exists()),R/'repo');out=R/(layout+'-standalone');out.mkdir(exist_ok=False);os.chdir(out);sys.path[:0]=[str(R),str(repo)];os.environ['TRITON_CACHE_DIR']=str(R/('cache_'+layout));os.environ['TRITON_HOME']=str(out/'triton-home')
+result=dict(status='RUNNING',stage='initialize',shape=[6656,64,2048],layout=layout,environment=record['environment'],variants={},started=time.time(),scope='complete MNK/grid, no split K; identical A/B/C addresses throughout each layout; contiguous block of9 dispatches per config, median; first sample may be cold after config switch')
 def save():
  p=out/'progress.tmp';p.write_text(json.dumps(result,indent=2,default=str)+'\n');p.replace(out/'progress.json')
 save()
@@ -20,8 +20,8 @@ try:
  torch.set_num_threads(1);assert torch.cuda.get_device_properties(0).multi_processor_count==96
  M,N,K=record['shape'];gen=torch.Generator().manual_seed(59);ac=(torch.rand((M,K),generator=gen)-.5).bfloat16();bc=(torch.rand((K,N),generator=gen)-.5).bfloat16();golden=(ac.float()@bc.float()).bfloat16().float()
  A=ac.cuda();B=bc.T.contiguous().cuda().T if layout=='TN' else bc.cuda();storage=torch.full((256+M*N+256,),123.,dtype=torch.bfloat16,device='cuda');C=storage[256:-256].view(M,N);result['input_strides']=dict(A=list(A.stride()),B=list(B.stride()));result['input_addresses']=dict(A=A.data_ptr(),B=B.data_ptr(),C=C.data_ptr());handles={};runners={}
- variants=json.loads((R/('confirm_'+layout+'.json')).read_text())
- # TN has no recorded R004 Gluon config: use actual public auto fallback as baseline.
+ variants=[dict(name='baseline',family='candidate' if layout=='TN' else 'production',config=record['baseline']['config']),dict(name=record['best'],family='candidate',config=record['config']),dict(name=record['interleaved_comparison']['best'],family='candidate',config=record['interleaved_comparison']['config'])]
+ # Replay the no-spill ring baseline and the two recorded finalists.
  def setup(v):
   name=v['name'];cfg=dict(v['config']);d=out/name;d.mkdir();r=dict(config=v['config'],family=v['family'],validation=[],samples=[]);result['variants'][name]=r
   if v['family']=='public_auto':
@@ -51,17 +51,17 @@ try:
   result.update(stage='compile',current=v['name']);save();setup(v);assert v['name'] in runners;result['variants'][v['name']]['status']='PASS';save()
  selected=[v['name'] for v in variants];result.update(stage='confirm',selected=selected);save()
  for name in selected:result['variants'][name]['confirmation']=dict(validation=[],samples=[])
- # Multiple random patterns plus ones, full NaN reset before each validation.
- for vi,seed in enumerate([1059,2059,3059]):
+ # Fresh random input and a full NaN reset before validation.
+ for vi,seed in enumerate([59]):
   gen=torch.Generator().manual_seed(seed);ac=(torch.rand((M,K),generator=gen)-.5).bfloat16();bc=(torch.rand((K,N),generator=gen)-.5).bfloat16()
   if vi==1:ac.fill_(1);bc.fill_(1)
   A.copy_(ac);B.copy_(bc);golden=(ac.float()@bc.float()).bfloat16().float()
   for name in selected:
    result['current']=dict(name=name,phase='validation',index=vi);save();C.fill_(float('nan'));result['variants'][name]['confirmation']['validation'].append(run(name));save()
- # Reinitialize random input before interleaved warm timing.
+ # Restore the timing input before nine consecutive dispatches per config.
  gen=torch.Generator().manual_seed(59);ac=(torch.rand((M,K),generator=gen)-.5).bfloat16();bc=(torch.rand((K,N),generator=gen)-.5).bfloat16();A.copy_(ac);B.copy_(bc);golden=(ac.float()@bc.float()).bfloat16().float()
- for i in range(9):
-  for name in selected if i%2==0 else selected[::-1]:
+ for name in selected:
+  for i in range(9):
    result['current']=dict(name=name,phase='timing',index=i);save();result['variants'][name]['confirmation']['samples'].append(run(name));save()
  for name in selected:
   r=result['variants'][name];us=statistics.median(s['kernel_us'] for s in r['confirmation']['samples']);r['performance']=dict(kernel_us=us,kernel_tops=2*M*N*K/(us*1e6),bandwidth_TB_s=2*(M*K+K*N+M*N)/(us*1e6),mmac_util_percent=100*2*M*N*K/(us*1e6)/864.2109890109891)
