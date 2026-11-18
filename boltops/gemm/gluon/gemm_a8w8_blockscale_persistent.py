@@ -828,7 +828,7 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     NUM_SMS: gl.constexpr,
     TILE_LIMIT: gl.constexpr,
 ):
-    gl.static_assert(NUM_SMS > 0 and NUM_SMS <= 48 and NUM_SMS <= TILE_LIMIT)
+    gl.static_assert(NUM_SMS > 0 and NUM_SMS <= 96 and NUM_SMS <= TILE_LIMIT)
     gl.static_assert(TILE_LIMIT == (M // 128) * (N // 256))
     gl.static_assert(K >= 2048 and K <= 6144 and K % 2048 == 0,
                      "chunked-scale pipeline requires K=2048,4096,6144 (complete 16-group chunks)")
