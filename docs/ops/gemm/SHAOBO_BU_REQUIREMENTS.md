@@ -188,13 +188,13 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      <td><a href="tuning/r004/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r004/2die/tt/record.json">14.626 / 119.30 / 13.80%<br>读写带宽：1.940 TB/s</a><br>9次连续warm中位数（实验kernel，未接入默认）</td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/5f49ead605c5de848c4647bd274ffa140a8ca47e/docs/ops/gemm/tuning/r004/2die/kernel.py#L138">源码</a> / <a href="tuning/r004/2die/tt/record.json">config</a> / <a href="tuning/r004/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r004/2die/benchmark.py">测试代码</a> / <a href="tuning/r004/2die/tt/record.json">记录</a> / <a href="tuning/r004/2die/tt/stats.txt.gz">原始统计</a></td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r004/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r004/2die/tn/record.json">14.209 / 122.80 / 14.21%<br>读写带宽：1.997 TB/s</a><br>9次连续warm中位数（实验kernel，未接入默认）</td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/5f49ead605c5de848c4647bd274ffa140a8ca47e/docs/ops/gemm/tuning/r004/2die/kernel.py#L138">源码</a> / <a href="tuning/r004/2die/tn/record.json">config</a> / <a href="tuning/r004/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r004/2die/benchmark.py">测试代码</a> / <a href="tuning/r004/2die/tn/record.json">记录</a> / <a href="tuning/r004/2die/tn/stats.txt.gz">原始统计</a></td>
       <td>—</td>
     </tr>
     <tr>
