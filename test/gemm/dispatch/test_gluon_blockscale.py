@@ -387,6 +387,7 @@ def test_chunked_scale_pipeline_rejects_partial_chunks():
 
 @pytest.mark.parametrize("shape,cu_count,layout", [
     ((2560, 2048, 4096), 48, "TN"),
+    ((2560, 2048, 4096), 96, "TN"),
     ((2560, 12288, 2048), 96, "TN"),
     ((2560, 12288, 2048), 96, "TT"),
 ])
@@ -413,7 +414,7 @@ def test_mmac_turn_encloses_complete_instruction_group(shape, cu_count, layout):
     b = torch.empty((n, k), dtype=a.dtype, device=a.device)
     if layout == "TT":
         b = b.as_strided((n, k), (1, n))
-    if cu_count == 96:
+    if kernel.fn.__name__.endswith("_persistent_kernel"):
         config["B_K_CONTIGUOUS"] = layout == "TN"
     sa = torch.empty((m, k // 128), dtype=torch.float32, device=a.device)
     sb = torch.empty((n // 128, k // 128), dtype=torch.float32, device=a.device)
@@ -445,8 +446,9 @@ def test_mmac_turn_encloses_complete_instruction_group(shape, cu_count, layout):
     assert waiting is None and groups == 6
 
 
+@pytest.mark.parametrize("n,k,tiles", [(12288, 2048, 960), (2048, 4096, 160)])
 @pytest.mark.parametrize("layout,m", [("TN", 2560), ("TT", 2560), ("TT", 128), ("sliced", 2560)])
-def test_r010_sbx2_layout_dispatch(monkeypatch, layout, m):
+def test_sbx2_layout_dispatch(monkeypatch, layout, m, n, k, tiles):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     from boltops.utility.arch_info import get_device_info
@@ -457,8 +459,8 @@ def test_r010_sbx2_layout_dispatch(monkeypatch, layout, m):
     kernels = import_module(f"boltops.gemm.gluon.{MODULE}")
     triton = import_module("boltops.gemm.triton.gemm_a8w8_blockscale_fp8")
     config, tuned = get_gemm_config(
-        "GEMM-A8W8_BLOCKSCALE", 2560, 12288, 2048, profile=PROFILE,
-        layout="TT" if layout == "TT" else None,
+        "GEMM-A8W8_BLOCKSCALE", 2560, n, k, profile=PROFILE,
+        layout="TT" if layout == "TT" and n == 12288 else None,
         backend="gluon", arch=device.arch, cu_num=device.cu_count,
     )
     assert tuned
@@ -475,22 +477,23 @@ def test_r010_sbx2_layout_dispatch(monkeypatch, layout, m):
 
     monkeypatch.setattr(kernels, config["kernel"], CaptureKernel("gluon"))
     monkeypatch.setattr(triton, "_w8a8_triton_block_scaled_mm", CaptureKernel("triton"))
-    a = torch.empty((m, 2048), dtype=torch.float8_e4m3fn, device="cuda")
+    a = torch.empty((m, k), dtype=torch.float8_e4m3fn, device="cuda")
     if layout == "TT":
-        b = torch.empty((2048, 12288), dtype=a.dtype, device=a.device).T
+        b = torch.empty((k, n), dtype=a.dtype, device=a.device).T
     elif layout == "sliced":
-        b = torch.empty((12288, 4096), dtype=a.dtype, device=a.device)[:, ::2]
+        b = torch.empty((n, k * 2), dtype=a.dtype, device=a.device)[:, ::2]
     else:
-        b = torch.empty((12288, 2048), dtype=a.dtype, device=a.device)
-    sa = torch.empty((m, 16), dtype=torch.float32, device=a.device)
-    sb = torch.empty((96, 16), dtype=torch.float32, device=a.device)
+        b = torch.empty((n, k), dtype=a.dtype, device=a.device)
+    sa = torch.empty((m, k // 128), dtype=torch.float32, device=a.device)
+    sb = torch.empty((n // 128, k // 128), dtype=torch.float32, device=a.device)
     out = gemm_a8w8_blockscale(a, b, sa, sb)
-    assert out.shape == (m, 12288)
+    assert out.shape == (m, n)
     assert len(calls) == 1
     backend, grid, options = calls[0]
-    if m == 2560 and layout != "sliced":
+    if m == 2560 and (layout == "TN" or (layout == "TT" and n == 12288)):
         assert backend == "gluon" and grid == (96,)
-        assert options["B_K_CONTIGUOUS"] == (layout == "TN")
-        assert options["TILE_LIMIT"] == 960
+        if n == 12288:
+            assert options["B_K_CONTIGUOUS"] == (layout == "TN")
+        assert options["TILE_LIMIT"] == tiles
     else:
         assert backend == "triton"
