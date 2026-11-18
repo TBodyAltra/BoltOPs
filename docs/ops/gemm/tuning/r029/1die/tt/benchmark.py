@@ -38,7 +38,9 @@ def kernel_digest(path, symbol):
 def replay_options(record):
     config = record['config']
     data = json.loads((REPO / config['path']).read_text())
-    options = deepcopy(data['profiles'][config['profile']][config['bucket']])
+    profile = config.get('profile', 'DTYPE=bfloat16-OUT=bfloat16-WASP-MLS-EXPERIMENTAL')
+    bucket = config.get('bucket', f"M_EQ_{record['shape'][0]}")
+    options = deepcopy(data['profiles'][profile][bucket])
     for key in ('wasp', 'wdra', 'use_mls'):
         assert options.pop(key) is True, key
     options['USE_MATRIX_STORE'] = options.pop('use_matrix_store')
@@ -70,7 +72,9 @@ def main():
         item = record[artifact]
         assert digest(record_path.parent / item['path']) == item['sha256'], artifact
     assert digest(REPO / record['config']['path']) == record['config']['sha256']
-    assert kernel_digest(REPO / record['source']['path'], record['source']['symbol']) == record['source']['kernel_sha256']
+    assert digest(REPO / record['source']['path']) == record['source']['sha256']
+    if 'kernel_sha256' in record['source']:
+        assert kernel_digest(REPO / record['source']['path'], record['source']['symbol']) == record['source']['kernel_sha256']
     options = replay_options(record)
     m, n, k = record['shape']
     bm, bn, bk = [options[f'BLOCK_SIZE_{d}'] for d in 'MNK']
@@ -78,8 +82,18 @@ def main():
     assert m % bm == n % bn == k % bk == 0
     single = args.single_tg_perf
     repeats = 3 if single else record['benchmark']['repeats']
-    mode = record['benchmark']['timing_mode']
-    original_triton = Path(record['environment']['triton']['path']).parent.parent
+    mode = record['benchmark'].get('timing_mode')
+    if mode is None:
+        aggregation = record['performance']['aggregation']
+        if aggregation.startswith('first timed repeat'):
+            mode = 'existing_first_timed'
+        elif aggregation.startswith('median of repeats'):
+            mode = 'legacy_median'
+        else:
+            raise ValueError('Unrecognized recorded timing aggregation')
+    triton_path = record['environment']['triton'].get('path')
+    original_triton = (Path(triton_path).parent.parent if triton_path else
+                       Path(record['environment']['environment_variables']['PYTHONPATH']))
     triton_build = args.triton_build.resolve() if args.triton_build else original_triton
     plan = dict(requirement=record['requirement'], shape=[m,n,k],
         kernel=record['source']['path'], symbol=record['source']['symbol'],
@@ -245,7 +259,7 @@ def main():
         performance = {key: statistics.median(s[key] for s in used) for key in ('kernel_cycles','kernel_us')}
         performance.update(kernel_tops=2*m*n*k/(performance['kernel_us']*1e6),
             effective_mmac_util_percent=100*2*m*n*k/(performance['kernel_cycles']*48*4096),
-            selected_indexes=[s['index'] for s in used], selection=record['performance']['selection'])
+            selected_indexes=[s['index'] for s in used], selection=record['performance'].get('selection', record['performance']['aggregation']))
     result = dict(requirement=record['requirement'], status='PASS', performance=performance,
         validation=validation, samples=samples, single_tg=single,
         correctness_dispatches=len(validation), total_dispatches=len(validation)+len(samples),

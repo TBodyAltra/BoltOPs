@@ -10,6 +10,7 @@ from .config import get_gemm_config, validate_backend
 
 
 _BF16_MLS_PROFILE = "DTYPE=bfloat16-OUT=bfloat16-WASP-MLS-EXPERIMENTAL"
+_BF16_TT_STREAMK_KERNEL = "_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel"
 _BF16_MLS_REQUIRED_ENV = {
     "AMDGCN_USE_BUFFER_OPS": "1",
     "TRITON_BUFFER_CACHE_SWIZZLE": "1",
@@ -102,9 +103,13 @@ def gemm_a16w16(
             TN/TT inputs on gfx946 with a tuned CU-specific config and no explicit
             config; otherwise Triton. Explicit selection never retries another
             backend. Gluon supports fixed BF16 MNK=(64,64,2048) TN/TT entries and
-            a 48-CU persistent FP16/BF16 TN/TT entry with automatic tail handling,
+            a persistent FP16/BF16 TN/TT entry with one active TG per device CU
+            (bounded by the output tile count), automatic tail handling,
             K-contiguous x, matching input/output dtype, no bias or activation.
-            FP16 can reuse the persistent BF16 launch geometry. TileLang is not
+            BF16 TT also has a 256x128x64 Stream-K entry with one TG per CU,
+            requiring M % 4 = N % 128 = K % 16 = 0, 16-byte-aligned tensor
+            pointers and at least one tile per CU. Auto uses Triton for unaligned pointers.
+            FP16 can reuse the 256x256 persistent BF16 launch geometry. TileLang is not
             implemented for nonempty computation. After Gluon selection, exact experimental BF16
             TT profiles may select WASP/MLS on gfx946/48 CU without bias or activation.
             BF16 MLS requires complete M/N/K tiles, BF16 output, and the recorded
@@ -214,7 +219,10 @@ def gemm_a16w16(
                 except (FileNotFoundError, KeyError):
                     pass
                 else:
-                    if tuned:
+                    if tuned and (
+                        gluon_config.get("kernel") != _BF16_TT_STREAMK_KERNEL
+                        or all(t.data_ptr() % 16 == 0 for t in (a, b, out))
+                    ):
                         backend = "gluon"
         if backend == "triton":
             if user_config is not None:
@@ -430,6 +438,22 @@ def gemm_a16w16(
             if not isinstance(selector, str) or not hasattr(kernels, selector):
                 raise ValueError("Gluon config requires a valid kernel selector")
             kernel = getattr(kernels, selector)
+            if selector == _BF16_TT_STREAMK_KERNEL:
+                from .gluon.gemm_a16w16_streamk import _launch_gemm_a16w16_streamk
+
+                _launch_gemm_a16w16_streamk(
+                    kernel, kernels._gemm_a16w16_bf16_tt_prepare_edges_kernel,
+                    a, b, out, cu_count=device.cu_count, config=config,
+                )
+                return out
+            if selector == "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel":
+                # Derive the MLS layout from physical weight strides.
+                if a.dtype != out_dtype:
+                    raise ValueError(
+                        "persistent Gluon requires matching FP16 or BF16 input/output"
+                    )
+                # Use the input device's CU count for both grid and persistent stride.
+                config["NUM_SMS"] = device.cu_count
             # All Gluon dense entries share this layout argument. The physical
             # weight strides own its value, including explicit config overrides.
             # Config lookup selects an implementation; its JIT assertions own
@@ -439,11 +463,14 @@ def gemm_a16w16(
                 key: tuple(value) if isinstance(value, list) else value
                 for key, value in config.items()
             }
-            # Match the kernel's active persistent stride, including tiny grids.
             grid = (
-                lambda meta: (min(meta["NUM_SMS"],
-                                  triton.cdiv(m, meta["BLOCK_SIZE_M"])
-                                  * triton.cdiv(n, meta["BLOCK_SIZE_N"])),)
+                lambda meta: (
+                    min(
+                        meta["NUM_SMS"],
+                        triton.cdiv(m, meta["BLOCK_SIZE_M"])
+                        * triton.cdiv(n, meta["BLOCK_SIZE_N"]),
+                    ),
+                )
                 if "NUM_SMS" in meta
                 else (
                     triton.cdiv(m, meta["BLOCK_SIZE_M"])
