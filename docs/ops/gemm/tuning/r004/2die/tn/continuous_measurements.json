@@ -1,0 +1,1234 @@
+{
+  "status": "COMPLETE",
+  "stage": "complete",
+  "shape": [
+    6656,
+    64,
+    2048
+  ],
+  "layout": "TN",
+  "environment": {
+    "type": "PMD",
+    "model": "CoreArch:HEAD_1703",
+    "arch": "gfx946",
+    "dies": 2,
+    "cu_count": 96,
+    "host": "node60",
+    "container": "kxu_pmd_8569_fp8_20261017",
+    "triton": {
+      "branch": "release/3.6.x",
+      "base_commit": "6b111ee3efaf1275903deaf0957393ee2c79a48a",
+      "runtime": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "additional_changes": "MR !565: packed matrix-store conversion and ROCDL support; these kernels use buffer stores",
+      "source_commit": "f8cbbee1849806f96337e85685e1ba031b63f096"
+    },
+    "clang": {
+      "branch": "dtk-llvm-6.3.3",
+      "commit": "3599a58d7aebe66dc1cec4f830f82cb96e505666"
+    },
+    "clock_period_ps": {
+      "shader": 455,
+      "gc": 455
+    },
+    "frequency_ghz": {
+      "shader": 2.197802197802198,
+      "gc": 2.197802197802198
+    },
+    "environment_variables": {
+      "GPU_CHIP": "sbx2",
+      "GPU_GFLAGS": null,
+      "GPU_DFLAGS": "['StatLog']",
+      "GPU_ARGS": "['--abs-max-tick=100000000000']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "HSA_TOOLS_LIB": null,
+      "HIP_VISIBLE_DEVICES": null,
+      "ROCR_VISIBLE_DEVICES": null,
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_HCU_MATRIX_STORE_INSN": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
+      "HCU_PIPELINE_ENV_REV": null,
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm"
+    },
+    "compiler_hashes": {
+      "libtriton": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+      "clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+    },
+    "container_image": {
+      "name": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "image_id": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "repo_digests": [
+        "10.65.42.71:9092/perf-model-env@sha256:dc5a9d4be8aeffbcc5a950f0ffdf85921c9dd0159c55d26a4adcac3c205f6bd2"
+      ]
+    },
+    "llvm_triton": {
+      "branch": "hygon/triton-3.6.x",
+      "commit": "02cd0a4ddec90de4c0691e40e50ad2d2c1d9d8a2",
+      "additional_changes": "MR !21 packed-conversion ROCDL ops"
+    },
+    "source_checkout_commit": "0a079d11a0174e289ff65fbb38323c1b5f35e187",
+    "verified_runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "binaries": {
+        "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime/triton/_C/libtriton.so": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+        "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+      },
+      "environment": {
+        "PYTHONPATH": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+        "GPU_CHIP": "sb",
+        "GPU_DFLAGS": "['StatLog']",
+        "GPU_ARGS": "['--abs-max-tick=1000000000']",
+        "HSA_TOOLS_LIB": null,
+        "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+        "AMDGCN_USE_BUFFER_OPS": "1"
+      }
+    },
+    "date": "2026-11-17"
+  },
+  "variants": {
+    "baseline": {
+      "config": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 64,
+        "CHUNKS": 2,
+        "SLOTS": 3,
+        "PW": 1,
+        "CW": 4,
+        "LTS": true,
+        "num_warps": 1,
+        "num_stages": 2,
+        "wasp_partition_warps": [
+          1,
+          4
+        ],
+        "wasp_wdra": false,
+        "mmac_layout_force": 2,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "PREFETCH": false,
+        "WN": 1,
+        "WAIT": 0
+      },
+      "family": "candidate",
+      "validation": [],
+      "samples": [],
+      "grid": 104,
+      "resources": {
+        "SGPR": 62,
+        "VGPR": 98,
+        "SGPR_spills": 0,
+        "VGPR_spills": 0,
+        "LDS": 98304,
+        "waves": 5
+      },
+      "binary_sha256": "d6d9bcc4bf7ef14d9dbd839a6931a3175eb3b38c61bf9aab4622ef67c75568ac",
+      "metadata": {
+        "AMDGCN_USE_BUFFER_OPS": "true",
+        "allow_flush_denorm": false,
+        "allow_flush_denorm_explicitly_set": false,
+        "allowed_dot_input_precisions": [
+          "ieee",
+          "tf32"
+        ],
+        "amdgpu_enable_max_ilp_scheduling_strategy": false,
+        "arch": "gfx946",
+        "assume_no_nans": false,
+        "backend_name": "hip",
+        "block_pingpong_async_global_prefetch": null,
+        "block_pingpong_async_local_prefetch": 1,
+        "buffer_cache_swizzle": false,
+        "cluster_dims": [
+          1,
+          1,
+          1
+        ],
+        "debug": false,
+        "default_dot_input_precision": "ieee",
+        "deprecated_fp8_dot_operand_dtypes": [],
+        "empty_arrive_after_mmac": false,
+        "enable_fp_fusion": true,
+        "enable_v_mmac_cluster": 2,
+        "extern_libs": [
+          [
+            "ocml",
+            "/opt/rocm/amdgcn/bitcode/ocml.bc"
+          ],
+          [
+            "ockl",
+            "/opt/rocm/amdgcn/bitcode/ockl.bc"
+          ],
+          [
+            "hip",
+            "/opt/rocm/amdgcn/bitcode/hip.bc"
+          ],
+          [
+            "opencl",
+            "/opt/rocm/amdgcn/bitcode/opencl.bc"
+          ]
+        ],
+        "hash": "9c726dc16fa612c6ff09c8c20b47a2b82de7f6a0058c0111f1372b2e01473e3f",
+        "hcu_use_gfx946_sched_model_v2": true,
+        "instrumentation_mode": "",
+        "kpack": 1,
+        "launch_cooperative_grid": false,
+        "matrix_instr_nonkdim": 0,
+        "max_memory_cluster_dwords": null,
+        "max_num_imprecise_acc_default": 0,
+        "misched_regpressure": true,
+        "mmac_layout_force": 2,
+        "name": "candidate_kernel",
+        "num_ctas": 1,
+        "num_stages": 2,
+        "num_warps": 5,
+        "optimize_epilogue": false,
+        "profile_scratch_align": 1,
+        "profile_scratch_size": 0,
+        "sanitize_overflow": true,
+        "sched_latency": "none",
+        "schedule_hint": "none",
+        "shared": 98304,
+        "supported_fp8_dtypes": [
+          "fp8e4nv",
+          "fp8e5"
+        ],
+        "target": "GPUTarget(backend='hip', arch='gfx946', warp_size=64)",
+        "tensordesc_meta": [],
+        "triton_version": "3.6.0",
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "use_nvshmem": false,
+        "use_rocshmem": false,
+        "utc_warmup": false,
+        "warp_size": 64,
+        "wasp_enabled": true,
+        "wasp_partition_regs": null,
+        "wasp_partition_warps": [
+          1,
+          4
+        ],
+        "wasp_wdra": false,
+        "waves_per_eu": 1
+      },
+      "status": "PASS",
+      "confirmation": {
+        "validation": [
+          {
+            "kernel_us": 22.89378,
+            "shader_us": 19.28108,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/3/stats.txt"
+          }
+        ],
+        "samples": [
+          {
+            "kernel_us": 17.352335,
+            "shader_us": 13.74009,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/9/stats.txt"
+          },
+          {
+            "kernel_us": 17.71315,
+            "shader_us": 13.954395,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/10/stats.txt"
+          },
+          {
+            "kernel_us": 17.662645,
+            "shader_us": 13.919815,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/11/stats.txt"
+          },
+          {
+            "kernel_us": 17.64399,
+            "shader_us": 13.9594,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/12/stats.txt"
+          },
+          {
+            "kernel_us": 17.621695,
+            "shader_us": 13.87295,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/13/stats.txt"
+          },
+          {
+            "kernel_us": 17.58029,
+            "shader_us": 13.82199,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/14/stats.txt"
+          },
+          {
+            "kernel_us": 17.561635,
+            "shader_us": 13.85202,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/15/stats.txt"
+          },
+          {
+            "kernel_us": 17.67857,
+            "shader_us": 13.91572,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/16/stats.txt"
+          },
+          {
+            "kernel_us": 17.630795,
+            "shader_us": 13.90753,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/17/stats.txt"
+          }
+        ]
+      },
+      "performance": {
+        "kernel_us": 17.630795,
+        "kernel_tops": 98.96493402594722,
+        "bandwidth_TB_s": 1.6095183455992768,
+        "mmac_util_percent": 11.451478317720024
+      }
+    },
+    "m128n64k64_ch1s3p1c4f1": {
+      "config": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 64,
+        "CHUNKS": 1,
+        "SLOTS": 3,
+        "PW": 1,
+        "CW": 4,
+        "LTS": true,
+        "num_warps": 1,
+        "num_stages": 2,
+        "wasp_partition_warps": [
+          1,
+          4
+        ],
+        "wasp_wdra": false,
+        "mmac_layout_force": 2,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "PREFETCH": true,
+        "WN": 1,
+        "WAIT": 0
+      },
+      "family": "candidate",
+      "validation": [],
+      "samples": [],
+      "grid": 52,
+      "resources": {
+        "SGPR": 51,
+        "VGPR": 130,
+        "SGPR_spills": 0,
+        "VGPR_spills": 0,
+        "LDS": 73728,
+        "waves": 5
+      },
+      "binary_sha256": "5ac5cbe844ace3aec8093a26a678ae96003fe860d50902e64a72b5f3a19beace",
+      "metadata": {
+        "AMDGCN_USE_BUFFER_OPS": "true",
+        "allow_flush_denorm": false,
+        "allow_flush_denorm_explicitly_set": false,
+        "allowed_dot_input_precisions": [
+          "ieee",
+          "tf32"
+        ],
+        "amdgpu_enable_max_ilp_scheduling_strategy": false,
+        "arch": "gfx946",
+        "assume_no_nans": false,
+        "backend_name": "hip",
+        "block_pingpong_async_global_prefetch": null,
+        "block_pingpong_async_local_prefetch": 1,
+        "buffer_cache_swizzle": false,
+        "cluster_dims": [
+          1,
+          1,
+          1
+        ],
+        "debug": false,
+        "default_dot_input_precision": "ieee",
+        "deprecated_fp8_dot_operand_dtypes": [],
+        "empty_arrive_after_mmac": false,
+        "enable_fp_fusion": true,
+        "enable_v_mmac_cluster": 2,
+        "extern_libs": [
+          [
+            "ocml",
+            "/opt/rocm/amdgcn/bitcode/ocml.bc"
+          ],
+          [
+            "ockl",
+            "/opt/rocm/amdgcn/bitcode/ockl.bc"
+          ],
+          [
+            "hip",
+            "/opt/rocm/amdgcn/bitcode/hip.bc"
+          ],
+          [
+            "opencl",
+            "/opt/rocm/amdgcn/bitcode/opencl.bc"
+          ]
+        ],
+        "hash": "dae9ec1ca3a3745367be2194733a5253400646f2fd33c1221228561b3c24bce8",
+        "hcu_use_gfx946_sched_model_v2": true,
+        "instrumentation_mode": "",
+        "kpack": 1,
+        "launch_cooperative_grid": false,
+        "matrix_instr_nonkdim": 0,
+        "max_memory_cluster_dwords": null,
+        "max_num_imprecise_acc_default": 0,
+        "misched_regpressure": true,
+        "mmac_layout_force": 2,
+        "name": "candidate_kernel",
+        "num_ctas": 1,
+        "num_stages": 2,
+        "num_warps": 5,
+        "optimize_epilogue": false,
+        "profile_scratch_align": 1,
+        "profile_scratch_size": 0,
+        "sanitize_overflow": true,
+        "sched_latency": "none",
+        "schedule_hint": "none",
+        "shared": 73728,
+        "supported_fp8_dtypes": [
+          "fp8e4nv",
+          "fp8e5"
+        ],
+        "target": "GPUTarget(backend='hip', arch='gfx946', warp_size=64)",
+        "tensordesc_meta": [],
+        "triton_version": "3.6.0",
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "use_nvshmem": false,
+        "use_rocshmem": false,
+        "utc_warmup": false,
+        "warp_size": 64,
+        "wasp_enabled": true,
+        "wasp_partition_regs": null,
+        "wasp_partition_warps": [
+          1,
+          4
+        ],
+        "wasp_wdra": false,
+        "waves_per_eu": 1
+      },
+      "status": "PASS",
+      "confirmation": {
+        "validation": [
+          {
+            "kernel_us": 22.288175,
+            "shader_us": 18.67593,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 26,
+                "active_CUs": 26
+              },
+              "system.shaders0": {
+                "TGs": 26,
+                "active_CUs": 26
+              }
+            },
+            "active_CUs": 52,
+            "completed_TGs": 52,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/5/stats.txt"
+          }
+        ],
+        "samples": [
+          {
+            "kernel_us": 20.827625,
+            "shader_us": 17.073875,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 26,
+                "active_CUs": 26
+              },
+              "system.shaders0": {
+                "TGs": 26,
+                "active_CUs": 26
+              }
+            },
+            "active_CUs": 52,
+            "completed_TGs": 52,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/18/stats.txt"
+          },
+          {
+            "kernel_us": 14.307475,
+            "shader_us": 10.69614,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 26,
+                "active_CUs": 26
+              },
+              "system.shaders0": {
+                "TGs": 26,
+                "active_CUs": 26
+              }
+            },
+            "active_CUs": 52,
+            "completed_TGs": 52,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/19/stats.txt"
+          },
+          {
+            "kernel_us": 14.144585,
+            "shader_us": 10.532795,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 26,
+                "active_CUs": 26
+              },
+              "system.shaders0": {
+                "TGs": 26,
+                "active_CUs": 26
+              }
+            },
+            "active_CUs": 52,
+            "completed_TGs": 52,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/20/stats.txt"
+          },
+          {
+            "kernel_us": 14.17416,
+            "shader_us": 10.561915,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 26,
+                "active_CUs": 26
+              },
+              "system.shaders0": {
+                "TGs": 26,
+                "active_CUs": 26
+              }
+            },
+            "active_CUs": 52,
+            "completed_TGs": 52,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/21/stats.txt"
+          },
+          {
+            "kernel_us": 14.216475,
+            "shader_us": 10.604685,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 26,
+                "active_CUs": 26
+              },
+              "system.shaders0": {
+                "TGs": 26,
+                "active_CUs": 26
+              }
+            },
+            "active_CUs": 52,
+            "completed_TGs": 52,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/22/stats.txt"
+          },
+          {
+            "kernel_us": 14.14686,
+            "shader_us": 10.535525,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 26,
+                "active_CUs": 26
+              },
+              "system.shaders0": {
+                "TGs": 26,
+                "active_CUs": 26
+              }
+            },
+            "active_CUs": 52,
+            "completed_TGs": 52,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/23/stats.txt"
+          },
+          {
+            "kernel_us": 14.20874,
+            "shader_us": 10.59695,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 26,
+                "active_CUs": 26
+              },
+              "system.shaders0": {
+                "TGs": 26,
+                "active_CUs": 26
+              }
+            },
+            "active_CUs": 52,
+            "completed_TGs": 52,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/24/stats.txt"
+          },
+          {
+            "kernel_us": 14.242865,
+            "shader_us": 10.63062,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 26,
+                "active_CUs": 26
+              },
+              "system.shaders0": {
+                "TGs": 26,
+                "active_CUs": 26
+              }
+            },
+            "active_CUs": 52,
+            "completed_TGs": 52,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/25/stats.txt"
+          },
+          {
+            "kernel_us": 14.161875,
+            "shader_us": 10.550085,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 26,
+                "active_CUs": 26
+              },
+              "system.shaders0": {
+                "TGs": 26,
+                "active_CUs": 26
+              }
+            },
+            "active_CUs": 52,
+            "completed_TGs": 52,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/26/stats.txt"
+          }
+        ]
+      },
+      "performance": {
+        "kernel_us": 14.20874,
+        "kernel_tops": 122.79980237515782,
+        "bandwidth_TB_s": 1.997157242654873,
+        "mmac_util_percent": 14.20947013364075
+      }
+    },
+    "m64n64k64_ch2s2p1c4f0": {
+      "config": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 64,
+        "CHUNKS": 2,
+        "SLOTS": 2,
+        "PW": 1,
+        "CW": 4,
+        "LTS": true,
+        "num_warps": 1,
+        "num_stages": 2,
+        "wasp_partition_warps": [
+          1,
+          4
+        ],
+        "wasp_wdra": false,
+        "mmac_layout_force": 2,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "PREFETCH": false,
+        "WN": 1,
+        "WAIT": 0
+      },
+      "family": "candidate",
+      "validation": [],
+      "samples": [],
+      "grid": 104,
+      "resources": {
+        "SGPR": 47,
+        "VGPR": 98,
+        "SGPR_spills": 0,
+        "VGPR_spills": 0,
+        "LDS": 65536,
+        "waves": 5
+      },
+      "binary_sha256": "4a57038bdee74c44ea11f076093a15ff7c47d7dd515c3a6f0a2b8cb61604ca77",
+      "metadata": {
+        "AMDGCN_USE_BUFFER_OPS": "true",
+        "allow_flush_denorm": false,
+        "allow_flush_denorm_explicitly_set": false,
+        "allowed_dot_input_precisions": [
+          "ieee",
+          "tf32"
+        ],
+        "amdgpu_enable_max_ilp_scheduling_strategy": false,
+        "arch": "gfx946",
+        "assume_no_nans": false,
+        "backend_name": "hip",
+        "block_pingpong_async_global_prefetch": null,
+        "block_pingpong_async_local_prefetch": 1,
+        "buffer_cache_swizzle": false,
+        "cluster_dims": [
+          1,
+          1,
+          1
+        ],
+        "debug": false,
+        "default_dot_input_precision": "ieee",
+        "deprecated_fp8_dot_operand_dtypes": [],
+        "empty_arrive_after_mmac": false,
+        "enable_fp_fusion": true,
+        "enable_v_mmac_cluster": 2,
+        "extern_libs": [
+          [
+            "ocml",
+            "/opt/rocm/amdgcn/bitcode/ocml.bc"
+          ],
+          [
+            "ockl",
+            "/opt/rocm/amdgcn/bitcode/ockl.bc"
+          ],
+          [
+            "hip",
+            "/opt/rocm/amdgcn/bitcode/hip.bc"
+          ],
+          [
+            "opencl",
+            "/opt/rocm/amdgcn/bitcode/opencl.bc"
+          ]
+        ],
+        "hash": "808cda51b7383318384af4096bb3c76e6e51bbcc998a380953585ae75dfe93fc",
+        "hcu_use_gfx946_sched_model_v2": true,
+        "instrumentation_mode": "",
+        "kpack": 1,
+        "launch_cooperative_grid": false,
+        "matrix_instr_nonkdim": 0,
+        "max_memory_cluster_dwords": null,
+        "max_num_imprecise_acc_default": 0,
+        "misched_regpressure": true,
+        "mmac_layout_force": 2,
+        "name": "candidate_kernel",
+        "num_ctas": 1,
+        "num_stages": 2,
+        "num_warps": 5,
+        "optimize_epilogue": false,
+        "profile_scratch_align": 1,
+        "profile_scratch_size": 0,
+        "sanitize_overflow": true,
+        "sched_latency": "none",
+        "schedule_hint": "none",
+        "shared": 65536,
+        "supported_fp8_dtypes": [
+          "fp8e4nv",
+          "fp8e5"
+        ],
+        "target": "GPUTarget(backend='hip', arch='gfx946', warp_size=64)",
+        "tensordesc_meta": [],
+        "triton_version": "3.6.0",
+        "use_async_copy": false,
+        "use_block_pingpong": false,
+        "use_nvshmem": false,
+        "use_rocshmem": false,
+        "utc_warmup": false,
+        "warp_size": 64,
+        "wasp_enabled": true,
+        "wasp_partition_regs": null,
+        "wasp_partition_warps": [
+          1,
+          4
+        ],
+        "wasp_wdra": false,
+        "waves_per_eu": 1
+      },
+      "status": "PASS",
+      "confirmation": {
+        "validation": [
+          {
+            "kernel_us": 17.69495,
+            "shader_us": 14.08316,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/7/stats.txt"
+          }
+        ],
+        "samples": [
+          {
+            "kernel_us": 15.029105,
+            "shader_us": 11.41777,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/27/stats.txt"
+          },
+          {
+            "kernel_us": 14.721525,
+            "shader_us": 11.109735,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/28/stats.txt"
+          },
+          {
+            "kernel_us": 14.705145,
+            "shader_us": 11.09381,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/29/stats.txt"
+          },
+          {
+            "kernel_us": 14.784315,
+            "shader_us": 11.172525,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/30/stats.txt"
+          },
+          {
+            "kernel_us": 14.68558,
+            "shader_us": 11.074245,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/31/stats.txt"
+          },
+          {
+            "kernel_us": 14.633255,
+            "shader_us": 11.021465,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/32/stats.txt"
+          },
+          {
+            "kernel_us": 14.896245,
+            "shader_us": 11.28491,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/33/stats.txt"
+          },
+          {
+            "kernel_us": 14.806155,
+            "shader_us": 11.194365,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/34/stats.txt"
+          },
+          {
+            "kernel_us": 14.847105,
+            "shader_us": 11.23577,
+            "per_die": {
+              "system.shaders1": {
+                "TGs": 52,
+                "active_CUs": 48
+              },
+              "system.shaders0": {
+                "TGs": 52,
+                "active_CUs": 48
+              }
+            },
+            "active_CUs": 96,
+            "completed_TGs": 104,
+            "accuracy": {
+              "elements": 425984,
+              "mismatches": 0,
+              "nonfinite": 0,
+              "max_abs": 0.03125
+            },
+            "stats_path": "m5out/0/35/stats.txt"
+          }
+        ]
+      },
+      "performance": {
+        "kernel_us": 14.784315,
+        "kernel_tops": 118.01902651560117,
+        "bandwidth_TB_s": 1.9194049910327262,
+        "mmac_util_percent": 13.656274684803904
+      }
+    }
+  },
+  "started": 1794969782.8592649,
+  "scope": "complete MNK/grid, no split K; identical A/B/C addresses throughout each layout; contiguous block of9 dispatches per config, median; first sample may be cold after config switch",
+  "input_strides": {
+    "A": [
+      2048,
+      1
+    ],
+    "B": [
+      1,
+      2048
+    ]
+  },
+  "input_addresses": {
+    "A": 140056551489536,
+    "B": 140056163516416,
+    "C": 140056163779072
+  },
+  "current": {
+    "name": "m64n64k64_ch2s2p1c4f0",
+    "phase": "timing",
+    "index": 8
+  },
+  "selected": [
+    "baseline",
+    "m128n64k64_ch1s3p1c4f1",
+    "m64n64k64_ch2s2p1c4f0"
+  ],
+  "best": "m128n64k64_ch1s3p1c4f1",
+  "improvement_percent": 19.409533149242556,
+  "finished": 1794971452.7768629
+}

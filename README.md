@@ -336,3 +336,16 @@ notices; see the source file headers and the module source notes in
 [gemm](boltops/gemm/triton/SOURCE.md), [MLA](boltops/mla/triton/SOURCE.md),
 [MQA logits](boltops/mqa_logits/triton/SOURCE.md), and
 [Step-4 DSA](boltops/step4_dsa/triton/SOURCE.md).
+
+## R004 双 die TN / TT autotune（2026-11-18）
+
+完整MNK=6656×64×2048，PMD sbx2/96CU。同缓冲区9次warm中位数，全量校验通过，无spill；实验配置尚未替换默认。连续及交替测量分开报告。
+
+| 布局 | 测量顺序 | 配对基线 µs | 最优 µs | 耗时降低 | TOPS | 有效带宽 TB/s |
+|---|---|---:|---:|---:|---:|---:|
+| TN | 连续warm | 17.630795 | 14.208740 | 19.41% | 122.80 | 1.997 |
+| TN | 交替配置 | 17.416490 | 14.905800 | 14.42% | 117.06 | 1.904 |
+| TT | 连续warm | 18.007535 | 14.625520 | 18.78% | 119.30 | 1.940 |
+| TT | 交替配置 | 17.046575 | 15.063685 | 11.63% | 115.83 | 1.884 |
+
+完整配置、资源、失败候选、复现说明及日志：[R004双die调优记录](docs/ops/gemm/tuning/r004/2die/README.md)。
