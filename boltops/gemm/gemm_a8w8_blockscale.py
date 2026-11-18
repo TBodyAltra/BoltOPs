@@ -46,13 +46,13 @@ def gemm_a8w8_blockscale(
             None allocates a new tensor. Inputs and out must not overlap.
         config (dict[str, object] | None): Complete backend kernel launch options, such
             as
-            BLOCK_SIZE_M/N/K, num_warps and num_stages. Overrides recorded/default
+            BLOCK_SIZE_M/N/K, num_warps and num_stages. Overrides configured/default
             configuration lookup and is copied before use; the caller dict is unchanged.
             None selects cached configuration files for the device and shape. No tuning
             is performed during an ordinary call.
         backend (str | None): "auto", "triton", "gluon" or "tilelang"; None means
             "auto".
-            Auto selects Gluon only for a recorded precision/recipe/M/N/K/device/CU
+            Auto selects Gluon only for a configured precision/recipe/M/N/K/device/CU
             match, otherwise Triton. Explicit selection never retries a backend.
             TileLang is not implemented; explicit Gluon also requires a supported
             configuration and legal kernel inputs.
@@ -68,21 +68,21 @@ def gemm_a8w8_blockscale(
         NotImplementedError: Requested backend or operation option is unavailable.
 
     Notes:
-        Scale values are numeric, not encoded
-        E8M0. The current tuned Gluon recipe requires K-contiguous x and contiguous
-        scales. Weights are K-contiguous (TN), or N-contiguous (TT) for the
-        recorded R010 gfx946/96-CU persistent configuration. It uses E4M3FN inputs, FP32 A/B scales
-        with A(1,128)/B(128,128), BF16 output and complete 128x256 tiles; its K
-        is 256..6144 divisible by 256. Recorded profiles also select a 64x128x128 entry
-        with native A-scale preloads and eight consumer waves. The chunked-scale
-        persistent entry accepts K=2048/4096/6144 with fixed-size scale banks;
-        auto dispatch selects it only for recorded shape configurations.
-        The same FP32-scale recipe also has a
-        64x64x128 pipeline with one producer wave and four consumer waves.
-        It requires complete tiles and K divisible by 128; auto selection is
-        recorded only for M/N/K=64/2048/4096 on gfx946/48 CU. Auto uses Triton for other matrix views; explicit Gluon reports
-        unsupported storage rather than copying tensors. Other combinations use the native Triton
-        path when supported. There is no software matrix-instruction fallback.
+        Scales contain numeric values, not encoded E8M0. The Gluon path
+        requires K-contiguous x and contiguous scales. Weights may be
+        K-contiguous (TN), or N-contiguous (TT) with a TT-capable persistent
+        kernel. Inputs use E4M3FN, FP32 A/B scales with recipes (1,128) and
+        (128,128), and BF16 output.
+
+        Each Gluon tile entry validates its own geometry. The 64-row
+        pipelines accept complete 32-, 64- or 128-column tiles and K
+        divisible by 128. Persistent pipelines accept complete 128x256
+        tiles and K divisible by 256; chunked scale banks bound their
+        shared-memory use. Shape and device configuration selects the
+        entry and launch resources. Unsupported matrix views use Triton
+        under auto selection; explicit Gluon reports unsupported storage
+        rather than copying tensors. There is no software matrix-instruction
+        fallback.
     """
     a, b, a_scale, b_scale, out_dtype = (x, w, x_scale, w_scale, dtype)
     if a.ndim != 2 or b.ndim != 2 or b_scale.ndim != 2 or (min(b_scale.shape) <= 0):
@@ -211,7 +211,7 @@ def gemm_a8w8_blockscale(
 
             persistent = config.get("kernel", "").endswith("_bk128_persistent_kernel")
             if gluon_layout == "TT" and not persistent:
-                raise NotImplementedError("Gluon TT blockscale requires a recorded persistent configuration")
+                raise NotImplementedError("Gluon TT blockscale requires a TT-capable persistent configuration")
             if persistent:
                 config["B_K_CONTIGUOUS"] = gluon_layout == "TN"
             kernel = getattr(kernels, config.pop("kernel"))

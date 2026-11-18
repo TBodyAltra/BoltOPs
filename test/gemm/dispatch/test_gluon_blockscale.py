@@ -494,3 +494,58 @@ def test_r010_sbx2_layout_dispatch(monkeypatch, layout, m):
         assert options["TILE_LIMIT"] == 960
     else:
         assert backend == "triton"
+
+
+def test_64x32_config_is_shape_and_cu_specific():
+    cfg, tuned = get_gemm_config(
+        "GEMM-A8W8_BLOCKSCALE", 64, 2048, 4096, profile=PROFILE,
+        backend="gluon", arch="gfx946", cu_num=96,
+    )
+    assert tuned and [cfg["BLOCK_SIZE_" + d] for d in "MNK"] == [64, 32, 128]
+    assert cfg["wasp_partition_warps"] == [1, 2]
+    for m in (128, 256):
+        with pytest.raises(KeyError, match="no M bucket"):
+            get_gemm_config(
+                "GEMM-A8W8_BLOCKSCALE", m, 2048, 4096, profile=PROFILE,
+                backend="gluon", arch="gfx946", cu_num=96,
+            )
+    cfg48, tuned48 = get_gemm_config(
+        "GEMM-A8W8_BLOCKSCALE", 64, 2048, 4096, profile=PROFILE,
+        backend="gluon", arch="gfx946", cu_num=48,
+    )
+    assert tuned48 and cfg48["BLOCK_SIZE_N"] == 64
+
+
+@pytest.mark.parametrize("m,n,k", [(64, 96, 128), (64, 192, 256), (128, 160, 384)])
+def test_64x32_scale_groups_and_output_guards(m, n, k):
+    if not torch.cuda.is_available():
+        pytest.skip("requires GPU")
+    from boltops.utility.arch_info import get_device_info
+
+    device = get_device_info()
+    if device.arch != "gfx946" or device.cu_count != 96:
+        pytest.skip("requires gfx946 / 96 CU")
+    cfg, _ = get_gemm_config(
+        "GEMM-A8W8_BLOCKSCALE", 64, 2048, 4096, profile=PROFILE,
+        backend="gluon", arch="gfx946", cu_num=96,
+    )
+    original = {key: value[:] if isinstance(value, list) else value for key, value in cfg.items()}
+    gen = torch.Generator().manual_seed(936)
+    a = (torch.randint(-4, 5, (m, k), generator=gen).float() / 4).to(torch.float8_e4m3fn)
+    b = (torch.randint(-4, 5, (n, k), generator=gen).float() / 4).to(torch.float8_e4m3fn)
+    sa = torch.randint(1, 5, (m, k // 128), generator=gen).float() / 8
+    sb = (torch.randint(1, 5, ((n + 127) // 128, k // 128), generator=gen).float() / 8).bfloat16().float()
+    golden = torch.zeros((m, n))
+    for i in range(k // 128):
+        tile = slice(i * 128, (i + 1) * 128)
+        golden += (a[:, tile].float() @ b[:, tile].float().T) * sa[:, i, None] * sb[:, i].repeat_interleave(128)[:n][None, :]
+    storage = torch.full((m * n + 512,), 123., device="cuda", dtype=torch.bfloat16)
+    out = storage[256:-256].view(m, n)
+    result = gemm_a8w8_blockscale(
+        a.cuda(), b.cuda(), sa.cuda(), sb.cuda(), out=out,
+        backend="gluon", config=cfg,
+    )
+    assert result is out and cfg == original
+    torch.testing.assert_close(result.cpu(), golden.bfloat16(), atol=0, rtol=0)
+    assert bool((storage[:256].cpu() == 123).all())
+    assert bool((storage[-256:].cpu() == 123).all())

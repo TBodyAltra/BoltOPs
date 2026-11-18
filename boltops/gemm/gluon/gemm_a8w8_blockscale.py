@@ -3,7 +3,7 @@
 """Gluon block-scaled GEMM kernels, selected by recipe and tile name.
 
 The entries use E4M3FN inputs, FP32 A(1,128)/B(128,128) scales,
-BF16 output and tiles M/N/K=(128,256,128), (64,64,128) or (64,128,128).
+BF16 output and tiles M/N/K=(128,256,128), (64,32,128), (64,64,128) or (64,128,128).
 Each entry owns its layouts,
 partition resources, pipeline and compile-time legality checks.
 """
@@ -475,25 +475,26 @@ def _accumulate_fp32_block_scale_tiles(BS, Out, a0, a1, b0, b1, scales,
 
 
 @g.jit
-def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bn64_bk128_kernel(A, B, AS, BS, Out,
+def _launch_fp32_scale_m64_pipeline(A, B, AS, BS, Out,
         M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
         GROUP_N: gl.constexpr, GROUP_K: gl.constexpr,
         BLOCK_SIZE_M: gl.constexpr, BLOCK_SIZE_N: gl.constexpr,
         BLOCK_SIZE_K: gl.constexpr):
-    gl.static_assert((BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K) == (64, 64, 128))
+    gl.static_assert(BLOCK_SIZE_M == 64 and BLOCK_SIZE_K == 128)
+    gl.static_assert(BLOCK_SIZE_N == 32 or BLOCK_SIZE_N == 64)
     gl.static_assert(GROUP_N == 128 and GROUP_K == 128)
-    gl.static_assert(M % 64 == 0 and N % 64 == 0 and K >= 128 and K % 128 == 0)
+    gl.static_assert(M % 64 == 0 and N % BLOCK_SIZE_N == 0 and K >= 128 and K % 128 == 0)
     gl.static_assert(A.dtype.element_ty == gl.float8e4nv and B.dtype.element_ty == gl.float8e4nv)
     gl.static_assert(AS.dtype.element_ty == gl.float32 and BS.dtype.element_ty == gl.float32)
     gl.static_assert(Out.dtype.element_ty == gl.bfloat16)
-    BN: gl.constexpr = 64
+    BN: gl.constexpr = BLOCK_SIZE_N
     P: gl.constexpr = 1
-    C: gl.constexpr = 4
-    WM: gl.constexpr = 4
+    C: gl.constexpr = BN // 16
+    WM: gl.constexpr = C
     PR: gl.constexpr = 32
     CR: gl.constexpr = 128
     a_layout: gl.constexpr = MlsSharedLayout(0, (64, 128))
-    b_layout: gl.constexpr = MlsSharedLayout(1, (128, 64), alt=1, order=(0, 1))
+    b_layout: gl.constexpr = MlsSharedLayout(1, (128, BN), alt=1, order=(0, 1))
     a0 = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), a_layout)
     a1 = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), a_layout)
     b0 = gl.allocate_shared_memory(gl.float8e4nv, (128, BN), b_layout)
@@ -510,6 +511,32 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_b
         (_produce_fp32_a_scale_tiles, (A, B, AS, a0, a1, b0, b1, scales, M, N, K, BN, P, C)),
         (_accumulate_fp32_block_scale_tiles, (BS, Out, a0, a1, b0, b1, scales, M, N, K, BN, P, C, WM)),
     ], [P, C], [PR, CR])
+
+
+@g.jit
+def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bn32_bk128_kernel(A, B, AS, BS, Out,
+        M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+        GROUP_N: gl.constexpr, GROUP_K: gl.constexpr,
+        BLOCK_SIZE_M: gl.constexpr, BLOCK_SIZE_N: gl.constexpr,
+        BLOCK_SIZE_K: gl.constexpr):
+    gl.static_assert((BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K) == (64, 32, 128))
+    _launch_fp32_scale_m64_pipeline(
+        A, B, AS, BS, Out, M, N, K, GROUP_N, GROUP_K,
+        BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K,
+    )
+
+
+@g.jit
+def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bn64_bk128_kernel(A, B, AS, BS, Out,
+        M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+        GROUP_N: gl.constexpr, GROUP_K: gl.constexpr,
+        BLOCK_SIZE_M: gl.constexpr, BLOCK_SIZE_N: gl.constexpr,
+        BLOCK_SIZE_K: gl.constexpr):
+    gl.static_assert((BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K) == (64, 64, 128))
+    _launch_fp32_scale_m64_pipeline(
+        A, B, AS, BS, Out, M, N, K, GROUP_N, GROUP_K,
+        BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K,
+    )
 
 
 # M64 pipeline with native FP32 scale transfers and eight consumer waves.
