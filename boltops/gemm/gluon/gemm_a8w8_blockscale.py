@@ -475,7 +475,7 @@ def _accumulate_fp32_block_scale_tiles(BS, Out, a0, a1, b0, b1, scales,
 
 
 @g.jit
-def _launch_fp32_scale_m64_pipeline(A, B, AS, BS, Out,
+def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bk128_kernel(A, B, AS, BS, Out,
         M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
         GROUP_N: gl.constexpr, GROUP_K: gl.constexpr,
         BLOCK_SIZE_M: gl.constexpr, BLOCK_SIZE_N: gl.constexpr,
@@ -513,30 +513,8 @@ def _launch_fp32_scale_m64_pipeline(A, B, AS, BS, Out,
     ], [P, C], [PR, CR])
 
 
-@g.jit
-def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bn32_bk128_kernel(A, B, AS, BS, Out,
-        M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
-        GROUP_N: gl.constexpr, GROUP_K: gl.constexpr,
-        BLOCK_SIZE_M: gl.constexpr, BLOCK_SIZE_N: gl.constexpr,
-        BLOCK_SIZE_K: gl.constexpr):
-    gl.static_assert((BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K) == (64, 32, 128))
-    _launch_fp32_scale_m64_pipeline(
-        A, B, AS, BS, Out, M, N, K, GROUP_N, GROUP_K,
-        BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K,
-    )
-
-
-@g.jit
-def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bn64_bk128_kernel(A, B, AS, BS, Out,
-        M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
-        GROUP_N: gl.constexpr, GROUP_K: gl.constexpr,
-        BLOCK_SIZE_M: gl.constexpr, BLOCK_SIZE_N: gl.constexpr,
-        BLOCK_SIZE_K: gl.constexpr):
-    gl.static_assert((BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K) == (64, 64, 128))
-    _launch_fp32_scale_m64_pipeline(
-        A, B, AS, BS, Out, M, N, K, GROUP_N, GROUP_K,
-        BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K,
-    )
+# Preserve existing configurations while column width is a compile-time parameter.
+_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bn64_bk128_kernel = _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bk128_kernel
 
 
 # M64 pipeline with native FP32 scale transfers and eight consumer waves.

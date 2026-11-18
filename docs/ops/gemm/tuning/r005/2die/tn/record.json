@@ -260,7 +260,9 @@
     "symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bn32_bk128_kernel",
     "commit": "ceae2e40d7f206cc04812fdacae405f9995f0de0",
     "line": 517,
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/ceae2e40d7f206cc04812fdacae405f9995f0de0/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L517"
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/ceae2e40d7f206cc04812fdacae405f9995f0de0/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L517",
+    "historical_symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bn32_bk128_kernel",
+    "current_symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bk128_kernel"
   },
   "config": {
     "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json",
@@ -304,11 +306,19 @@
   },
   "benchmark": {
     "script": "benchmark.py",
-    "sha256": "a0be3322d9946cdf75a4db217c87478e29362e3c32fa1e516e453c540b1ca0d7",
-    "job": "job.json",
+    "sha256": "8cd69d364e6308741c17d3582c9c6e7991719728573659602c099ac9685fb19e",
     "seed": 37,
     "repeats": 3,
-    "command": "Load the recorded environment, set PYTHONPATH to this checkout and the recorded Triton runtime, then run benchmark.py job.json in an empty output directory."
+    "command": "Load the recorded PMD environment, set PYTHONPATH to the checkout and recorded Triton runtime, then run python /path/to/benchmark.py /path/to/record.json in an empty output directory.",
+    "job": {
+      "shape": [
+        64,
+        2048,
+        4096
+      ],
+      "seed": 37,
+      "repeats": 3
+    }
   },
   "performance": {
     "metric": "system.gcSimCycles; full 64-TG dispatch; cold launch excluded; mean of 3 warm launches; not sum of DIE times",
@@ -326,6 +336,12 @@
     "completed_TGs_per_die": {
       "0": 32,
       "1": 32
+    },
+    "effective_bandwidth": {
+      "tensor_bytes": 8912896,
+      "scale_bytes": 10240,
+      "read_write_TB_s": 0.612648531075722,
+      "basis": "Logical A/B each read once, BF16 C written once, FP32 A/B scale storage read once; full dispatch mean; not measured HBM traffic."
     }
   },
   "comparison": {
@@ -432,17 +448,46 @@
     }
   },
   "evidence": {
-    "measurement": "measurement.json",
-    "additional_seed": "measurement_seed91.json",
-    "perf_measurement": "perf_measurement.json",
-    "stats": [
-      "stats_repeat1.txt.gz",
-      "stats_repeat2.txt.gz",
-      "stats_repeat3.txt.gz"
-    ],
-    "perf_stats": "perf_stats.txt.gz",
-    "executable_equivalence": "binary_equivalence.json",
+    "executable_equivalence": {
+      "narrow_tile": {
+        "shared_pipeline": {
+          ".rodata": "dac750a7284411ee7a019e30ff5aa11e0943e20ce1cb485b68c955188c368fa8",
+          ".text": "ce3c849ea78af2db37a25e20ff8e9018ce025418e1792a4bc00794c9df8e240b"
+        },
+        "previous_pipeline": {
+          ".rodata": "dac750a7284411ee7a019e30ff5aa11e0943e20ce1cb485b68c955188c368fa8",
+          ".text": "ce3c849ea78af2db37a25e20ff8e9018ce025418e1792a4bc00794c9df8e240b"
+        },
+        "all_equal": true
+      },
+      "original_tile": {
+        "shared_pipeline": {
+          ".rodata": "d326ba5edd1092edfbc29e0166356e10dab8b348a3c50037d1048ecf9aa3da3f",
+          ".text": "e59a340060e1e184c6720b954a0070545b6b788c0e226e95a4815d3d3fb1c0fc"
+        },
+        "original_pipeline": {
+          ".rodata": "d326ba5edd1092edfbc29e0166356e10dab8b348a3c50037d1048ecf9aa3da3f",
+          ".text": "e59a340060e1e184c6720b954a0070545b6b788c0e226e95a4815d3d3fb1c0fc"
+        },
+        "all_equal": true
+      },
+      "validation": "Both .text and .rodata are identical before and after sharing the pipeline."
+    },
     "local_root": "/home/kxu/r005-sbx2-tn-20261118/mr-evidence",
-    "remote_root": "/xukang/code/pmd-triton-sessions/r005-sbx2-tn-20261118/mr-validation"
+    "remote_root": "/xukang/code/pmd-triton-sessions/r005-sbx2-tn-20261118/mr-validation",
+    "archive": {
+      "path": "evidence.tar.gz",
+      "sha256": "3810d72ff3886aadbbe3d17ce1a70d46bb690a93ba6e63e74fc28deb42f212d9",
+      "members": [
+        "measurement.json",
+        "measurement_seed91.json",
+        "perf_measurement.json",
+        "perf_stats.txt.gz",
+        "stats_repeat1.txt.gz",
+        "stats_repeat2.txt.gz",
+        "stats_repeat3.txt.gz"
+      ]
+    },
+    "external_source_archive": "/home/kxu/boltops-gemm-mr-scan-20261118/mr35-before.tar"
   }
 }

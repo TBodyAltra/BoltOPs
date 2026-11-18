@@ -1,7 +1,7 @@
 """Replay configured FP8 TN blockscale GEMM with full-output validation."""
 from pathlib import Path
 import sys,json,time,traceback,hashlib,re,os
-r=Path.cwd();job=json.loads(Path(sys.argv[1]).read_text());result={'job':job,'status':'STARTING','measurements':[]}
+r=Path.cwd();spec=json.loads(Path(sys.argv[1]).read_text());job=spec['benchmark']['job'] if 'benchmark' in spec else spec;result={'job':job,'status':'STARTING','measurements':[]}
 def save():
  p=r/'result.tmp';p.write_text(json.dumps(result,indent=2,default=str));p.replace(r/'result.json')
 def stats_files():return {p for p in (r/'m5out/0').glob('*/stats.txt')}
