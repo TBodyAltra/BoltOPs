@@ -132,10 +132,10 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r002/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r002/2die/tt/record.json">310.224 / 209.83 / 24.28%<br>读写带宽：3.382 TB/s</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_tt.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=248320-K=2048-TT.json">config</a> / <a href="tuning/r002/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r002/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r002/2die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r002/2die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
       <td>—</td>

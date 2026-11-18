@@ -279,20 +279,23 @@ optest --display                                            # HTML report from l
 
 ## BF16 GEMM measurements on PMD
 
-2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 1 DIE / 48 CU.
-BF16 inputs/output, FP32 accumulation, complete K. Environment, configs, assembly, raw measurements and PERF: [R001 TN](docs/ops/gemm/tuning/r001/1die/tn/record.json), [R001 TT](docs/ops/gemm/tuning/r001/1die/tt/record.json), [R002 TT](docs/ops/gemm/tuning/r002/1die/tt/record.json), [R003 TT](docs/ops/gemm/tuning/r003/1die/tt/record.json), [R004 TT](docs/ops/gemm/tuning/r004/1die/tt/record.json).
+2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946; 1 DIE / 48 CU unless the row specifies 2 DIE / 96 CU.
+BF16 inputs/output, FP32 accumulation, complete K. Environment, configs, assembly, raw measurements and PERF: [R001 TN](docs/ops/gemm/tuning/r001/1die/tn/record.json), [R001 TT](docs/ops/gemm/tuning/r001/1die/tt/record.json), [R002 TT](docs/ops/gemm/tuning/r002/1die/tt/record.json), [R002 TT (2 DIE / 96 CU)](docs/ops/gemm/tuning/r002/2die/tt/record.json), [R003 TT](docs/ops/gemm/tuning/r003/1die/tt/record.json), [R004 TT](docs/ops/gemm/tuning/r004/1die/tt/record.json).
 
 | Case / layout | M × N × K | Full dispatch (µs) | MMAC utilization | Validation / timing |
 |---|---|---:|---:|---|
 | R001 TN | 64 × 64 × 2048 | 5.324 | 0.73% | Random / ones / random; median of 9 warm samples |
 | R001 TT | 64 × 64 × 2048 | 5.744 | 0.68% | Random / ones / random; median of 9 warm samples |
 | R002 TT | 64 × 248320 × 2048 | 596.044 | 25.27% | Full random output; median of 2 warm samples |
+| R002 TT (2 DIE / 96 CU) | 64 × 248320 × 2048 | 310.224 | 24.28% | Full random output; median of 2 warm samples |
 | R003 TT | 2560 × 64 × 2048 | 10.565 | 14.70% | Random / ones / random; median of 9 warm samples |
 | R004 TT | 6656 × 64 × 2048 | 25.327 | 15.94% | Random / ones / random; median of 9 warm samples |
 
-All full-grid outputs have zero mismatches/nonfinite values at abs0.001+rel0.01; output guards and complete TG counts passed. SGPR/VGPR spills are zero. Current dispatch/native checks: 60 passed, 4 persistent cases deselected; configuration checks: 32 passed. Two known persistent TT tail compilation failures were reproduced before the refactor and are not counted as passes. PERF uses the same HSACO as the measured full grid. These are PMD results; detailed sampling scopes and hashes are linked above.
+All full-grid outputs have zero mismatches/nonfinite values at abs0.001+rel0.01; output guards and complete TG counts passed. SGPR/VGPR spills are zero. Current dispatch/native checks on sb/48 CU: 61 passed, 4 persistent cases deselected; configuration checks: 32 passed. Two known persistent TT tail compilation failures were reproduced before the refactor and are not counted as passes. PERF uses the same HSACO as the measured full grid. These are PMD results; detailed sampling scopes and hashes are linked above.
 
-R002 uses three LDS slots and register prefetch to overlap the next operand reads with the current MMAC batch. R002 effective read+write bandwidth is 1.760 TB/s, including one logical read of A/B and one write of C; its formula and measured environment are in the record.
+R002 on `sbx2` uses 2 DIE / 96 CU: 310.224 µs, 209.83 TOPS, 3.382 TB/s effective read+write bandwidth, 1.921× the single-DIE performance. Each DIE completes 485 TGs on 48 active CUs. The same kernel and tile configuration are used; the sbx2 preset also configures its memory and cross-DIE fabric.
+
+R002 uses three LDS slots and register prefetch to overlap the next operand reads with the current MMAC batch. R002 single-DIE effective read+write bandwidth is 1.760 TB/s, including one logical read of A/B and one write of C; its formula and measured environment are in the record.
 
 ## FP8 R010 GEMM measurement on PMD
 

@@ -342,8 +342,13 @@ def test_triton_no_splitk_native_correctness():
     torch.testing.assert_close(result.cpu(), expected, atol=.001, rtol=.01)
 
 
-def test_wide_tt_public_dispatch(monkeypatch):
+@pytest.mark.parametrize("cu_count", [48, 96])
+def test_wide_tt_public_dispatch(monkeypatch, cu_count):
     calls = install_captures(monkeypatch)
+    from boltops.utility.arch_info import DeviceInfo
+    public = import_module("boltops.gemm.gemm_a16w16")
+    monkeypatch.setattr(public, "get_device_info",
+                        lambda device: DeviceInfo(device.index, "gfx946", cu_count))
     module = import_module("boltops.gemm.gluon.gemm_a16w16")
     monkeypatch.setattr(module, NARROW_TT_KERNEL, Capture("wide_tt", calls))
     a = torch.empty((64, 2048), dtype=torch.bfloat16, device="cuda")
