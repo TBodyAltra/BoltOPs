@@ -284,7 +284,20 @@
     "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/049e846c549d651307dd95ca3a7c02a57ff7411b/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json",
     "measured_commit": "ceae2e40d7f206cc04812fdacae405f9995f0de0",
     "measured_sha256": "b066fe77a6b830efa9bba946bc8a522f3f425c227e5241059fe357cb61b2cb8a",
-    "historical_launch_options_note": "Published executable was measured through the historical selector; the generic selector is checked for executable-section equivalence."
+    "historical_launch_options_note": "Published executable was measured through the historical selector; the generic selector is checked for executable-section equivalence.",
+    "measured_launch_options": {
+      "BLOCK_SIZE_M": 64,
+      "BLOCK_SIZE_N": 32,
+      "BLOCK_SIZE_K": 128,
+      "num_warps": 1,
+      "num_stages": 2,
+      "wasp_partition_warps": [
+        1,
+        2
+      ],
+      "wasp_wdra": false,
+      "kernel": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bn32_bk128_kernel"
+    }
   },
   "pipeline": {
     "tile": [
@@ -473,23 +486,35 @@
         },
         "all_equal": true
       },
-      "validation": "Both .text and .rodata are identical before and after sharing the pipeline."
+      "validation": "Both .text and .rodata are identical before and after sharing the pipeline.",
+      "scope": "Historical producer/consumer sharing check before generic selector cleanup; final selector compilation is reported separately in review_report."
     },
     "local_root": "/home/kxu/r005-sbx2-tn-20261118/mr-evidence",
     "remote_root": "/xukang/code/pmd-triton-sessions/r005-sbx2-tn-20261118/mr-validation",
     "archive": {
       "path": "evidence.tar.gz",
-      "sha256": "3810d72ff3886aadbbe3d17ce1a70d46bb690a93ba6e63e74fc28deb42f212d9",
+      "sha256": "fdb0baa946c3171f415a67c2a8a797c587c258b8e55eab17d58d7098f6573105",
       "members": [
         "measurement.json",
         "measurement_seed91.json",
-        "perf_measurement.json",
         "perf_stats.txt.gz",
         "stats_repeat1.txt.gz",
-        "stats_repeat2.txt.gz",
-        "stats_repeat3.txt.gz"
-      ]
+        "stats_repeat2.txt.gz"
+      ],
+      "aliases": {
+        "perf_measurement.json": "measurement.json",
+        "stats_repeat3.txt.gz": "perf_stats.txt.gz"
+      }
     },
     "external_source_archive": "/home/kxu/boltops-gemm-mr-scan-20261118/mr35-before.tar"
+  },
+  "review_provenance": {
+    "original_MR": 35,
+    "original_source_archive": "/home/kxu/boltops-gemm-mr-scan-20261118/mr35-before.tar",
+    "original_source_archive_sha256": "a594abde20478e52ea0dae9451edab76364663dfc6f612fd5637135b1510ac04",
+    "current_kernel_module": "boltops/gemm/gluon/gemm_a8w8_blockscale.py",
+    "current_kernel_module_sha256": "8bc14dacf6307f7652929b3d0334f53ffd68901b8b3edb8c92893137df5a67ea",
+    "review_report": "/home/kxu/boltops-gemm-mr-scan-20261118/review-report.json",
+    "note": "Published measurements and source hashes describe the historical measured entry. Current review validation and compilation comparisons are reported separately; historical timings are not overwritten."
   }
 }

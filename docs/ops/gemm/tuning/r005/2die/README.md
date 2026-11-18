@@ -22,7 +22,7 @@ SBX2 PMD CoreArch1703 / gfx946，2 DIE × 48 CU，GC=455 ps，TN shape 64×2048�
 
 - `tn/benchmark.py`、`tn/record.json`：实际运行的公开接口重放脚本。加载 record.json 的 environment_variables，将 PYTHONPATH 中的源码目录改为待测 checkout，再在空输出目录运行 `python /path/to/benchmark.py /path/to/record.json`。
 - `tn/evidence.tar.gz` 内的 measurement.json、stats_repeat*.txt.gz：全部发射结果及三次暖发射原始统计。
-- `tn/kernel.amdgcn`、`tn/cu0.perf` 及 evidence.tar.gz 内的 perf_measurement.json、perf_stats.txt.gz：匹配的汇编、完整 64 TG 发射中的 CU0 轨迹及统计。PERF 选择最后一次暖发射（14.515865 μs），内嵌 HSACO 已核对一致。
+- `tn/kernel.amdgcn`、`tn/cu0.perf` 及 evidence.tar.gz 内的 measurement.json、perf_stats.txt.gz：匹配的汇编、完整 64 TG 发射中的 CU0 轨迹及统计。PERF 选择最后一次暖发射（14.515865 μs），内嵌 HSACO 已核对一致。
 
 提交仅包含已采用的流水、配置、测试和对应测量产物。候选方案、运行日志和诊断缓存保留在外部实验目录。
 
@@ -31,3 +31,7 @@ The 32/64-column tiles use one configurable `bm64_bk128` kernel; the existing
 are in `tn/evidence.tar.gz`, indexed and hashed by `tn/record.json`; extract the
 archive to inspect the original files. Replay takes `tn/record.json` as its argument.
 Logical read/write bandwidth including FP32 scales is 0.613 TB/s; this is not a hardware HBM counter.
+
+重复的 PERF 测量 JSON 和第三次暖发射统计通过 record.json 的 archive.aliases
+映射到同内容文件；压缩包不重复保存。当前通用入口的指令段与原入口相同，
+.rodata 仅代码入口相对偏移随符号表布局变化，解析后的入口地址及其余描述符一致。
