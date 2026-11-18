@@ -66,20 +66,20 @@
       "OMP_NUM_THREADS": "1",
       "MKL_NUM_THREADS": "1",
       "OPENBLAS_NUM_THREADS": "1",
-      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/r010-sbx2-20261117/96tg/repo:/xukang/code/pmd-triton-sessions/r009-matrix-store-latest/runtime",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/r010-sbx2-sync-20261117/scoped-optimized/fenced/repo:/xukang/code/pmd-triton-sessions/r009-matrix-store-latest/runtime",
       "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
       "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm",
-      "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/r010-sbx2-20261117/96tg/cache",
-      "TRITON_HOME": "/xukang/code/pmd-triton-sessions/r010-sbx2-20261117/96tg/triton-home",
-      "BOLTOPS_GEMM_CONFIG_DIR": "/xukang/code/pmd-triton-sessions/r010-sbx2-20261117/96tg/configs"
+      "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/r010-sbx2-sync-20261117/scoped-optimized/fenced/cache",
+      "TRITON_HOME": "/xukang/code/pmd-triton-sessions/r010-sbx2-sync-20261117/scoped-optimized/fenced/home",
+      "BOLTOPS_GEMM_CONFIG_DIR": null
     },
     "pmd_revision": null,
     "provenance": {
-      "experiment": "r010-sbx2",
+      "experiment": "r010-sbx2-complete-mmac-turn-tn",
       "grid": 96,
       "default_ASLR": true,
       "compiler_assembly_hook": false,
-      "capture_source": "complete public-API dispatch with GPU_CHIP=sbx2; runtime configuration and per-die completion counters"
+      "capture_source": "public-API dispatch; complete-system counters and per-die completedWGs"
     },
     "container_image": {
       "image_id": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
@@ -256,34 +256,42 @@
     "sha256": "5955f2c1c8f319be25e5aa4910583078752eb7b3ccf7d7714dc74af7a58c39f3",
     "seed": 21,
     "repeats": 1,
-    "command": "python docs/ops/gemm/tuning/r010/2die/tn/benchmark.py --record docs/ops/gemm/tuning/r010/2die/tn/record.json --output /tmp/r010-sbx2-96tg"
+    "command": "python docs/ops/gemm/tuning/r010/2die/tn/benchmark.py --record docs/ops/gemm/tuning/r010/2die/tn/record.json --output /tmp/r010-sbx2-tn"
   },
   "source": {
     "path": "boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py",
-    "sha256": "83893f1d546daa3aa6d6a0625ab380775c886518afff89f32d745f570d4a3392",
+    "sha256": "1ea6456fb06323c382a93014f679709e3d13fc6698a00b5e819187139c48ccc5",
+    "measured_source_sha256": "ce72519ede8ed93242c7a2cbcf9d30b9cc8b7ac02fea57991f960ccb7015b55a",
     "symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel",
-    "line": 396,
-    "base_commit": "f54f2cb4",
-    "commit": "61a6b33f923bec6e7bfb6aff3b0436d15ef1fdfd",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/61a6b33f923bec6e7bfb6aff3b0436d15ef1fdfd/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L396"
+    "line": 417,
+    "commit": "b7ba56db19981fe183e270dea1a8a989d5191dc5",
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/b7ba56db19981fe183e270dea1a8a989d5191dc5/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L417",
+    "executable_equivalence": {
+      "path": "binary_equivalence.json",
+      "sha256": "d6b4711b40a44c68028cd6950a6148b486891980e75a152af448dd6774311e4f",
+      "scope": "final TT-capable source compiled for TN has identical .text and .rodata to the measured TN-only fenced source"
+    }
   },
   "config": {
     "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json",
     "sha256": "8604c204f763f3e0b350d907afe2a567757aac9c1024bcb59ede869c71736ff8",
-    "base_commit": "f54f2cb4",
-    "commit": "61a6b33f923bec6e7bfb6aff3b0436d15ef1fdfd",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/61a6b33f923bec6e7bfb6aff3b0436d15ef1fdfd/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json"
+    "commit": "b7ba56db19981fe183e270dea1a8a989d5191dc5",
+    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/b7ba56db19981fe183e270dea1a8a989d5191dc5/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json"
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "941f0e2d3681b402219b8abc430ced7f5d5df38bd85626487b46f27867d26530",
-    "hsaco_sha256": "e66767f976d8b8c3d3dbaa7f6d6f7d544a75cc4de821ec2c1a1f4acd13e43cc4",
-    "normalization": "trailing whitespace removed only"
+    "sha256": "1e8373ee9950c270173ee6bbbcfbbe162e19e77581c7229e2800c89131e20b5a",
+    "hsaco_sha256": "0c86adba4b28b4c52c3c13c916923b1e2d054818cd3bce7353d918d265f6a003",
+    "normalization": "trailing whitespace removed only",
+    "sections_sha256": {
+      ".rodata": "c18b1de204c4ecd4699aaca706275a852ef8e43218139e1c21c928dbbfefd408",
+      ".text": "a5f521e3a896eb1e91d32e84bef3c63518df8e04df5bfd53d411f65f2a75851d"
+    }
   },
   "performance": {
-    "kernel_us": 129.22182,
-    "kernel_cycles": 284004.0,
-    "kernel_tops": 997.1150296443742,
+    "kernel_us": 123.455605,
+    "kernel_cycles": 271331.0,
+    "kernel_tops": 1043.6870718020457,
     "completed_TGs_per_die": {
       "0": 48,
       "1": 48
@@ -323,38 +331,47 @@
       235,
       235
     ],
-    "spill": 0
+    "spill": 0,
+    "mmac_turn": "sync -> all 64 MMAC -> arrive; compiler scheduling fences",
+    "B_load_warps": [
+      1,
+      4
+    ],
+    "B_shared_layout": "alt=1, interleave2",
+    "output_store": "BF16 matrix_store"
   },
   "comparison": {
-    "single_die_chip": "sb",
-    "single_die_TGs": 48,
-    "single_die_kernel_us": 244.12752,
-    "speedup_vs_single_die": 1.889212827988338,
-    "latency_reduction_percent": 47.0679012345679,
-    "scope": "historical single-die cold dispatch vs sbx2 96-TG cold dispatch; chip defaults and topology change"
+    "previous_same_layout_kernel_us": 129.22182,
+    "previous_same_layout_kernel_tops": 997.1150296443742,
+    "latency_reduction_percent": 4.462261094914155,
+    "scope": "same sbx2 topology, shape, TN inputs and toolchain; complete cold dispatch"
   },
   "evidence": {
     "measurement": {
       "path": "measurement.json",
-      "sha256": "10d3e824aa64a52aca391b5c14a22a0dfb0a1b3aeba06e3404a0336efed04af5"
+      "sha256": "da7ca31fcf5d4c97ad1b0bb9ce17aad8ed43eb29826a7657fc18b55fe9fdb3a8"
     },
     "stats": {
       "path": "stats.txt.gz",
-      "sha256": "01f6bec0b4ab0212eb4669ec315740236ddd0d536d7a2d604ac3d19abf94a082"
+      "sha256": "abdefd822b97d5dc419f280a00fa6e2f599a9d9bddd972dd9e4916221234a937"
+    },
+    "mmac_turn_audit": {
+      "path": "mmac_turn_audit.json",
+      "sha256": "b7353602f6b25f61c467d2b6c8d6dcb06a3541cd1bf46df62c8b4669d20f82c5"
     }
   },
   "single_tg_perf": {
     "path": "single_tg.perf",
-    "sha256": "d9cbb6f4d228a2c2afc297f318c3368de1eeb9a1e08ab1ec63dcd4db69a50521",
-    "scope": "sbx2 single TG on die0/CU0; NUM_SMS=96, TILE_LIMIT=960;10 complete output tiles with original full MNK and output stride; independent of96TG full timing",
+    "sha256": "c6f38e630048d6813b73872eb44d8151717ebf9c6b043c3f31537cfe2fc85ccc",
+    "scope": "sbx2 single TG on die0/CU0; NUM_SMS=96, TILE_LIMIT=960; 10 full output tiles with original MNK and output stride; independent of 96-TG full timing",
     "grid": [
       1
     ],
     "tiles_per_TG": 10,
     "repeat": 2,
-    "selection": "minimum cycles of repeats1 and2; repeat0 excluded",
-    "kernel_cycles": 249687.0,
-    "kernel_us": 113.607585,
+    "selection": "minimum cycles of repeats 1 and 2; repeat 0 excluded",
+    "kernel_cycles": 246733.0,
+    "kernel_us": 112.263515,
     "validation": {
       "max_abs": 0.0,
       "mismatch": 0,
@@ -366,23 +383,24 @@
     "full_and_single_text_rodata_equal": true,
     "sections_sha256": {
       ".rodata": "c18b1de204c4ecd4699aaca706275a852ef8e43218139e1c21c928dbbfefd408",
-      ".text": "9474dddebb9468b8f0cf93b89b22b6a5d503317b80bbac6c046516b3681cfc80"
+      ".text": "a5f521e3a896eb1e91d32e84bef3c63518df8e04df5bfd53d411f65f2a75851d"
     },
-    "hsaco_sha256": "3237ea10f3171dd8e513860a708123d7b84a9a291be15baed73d06fd555e553e",
+    "hsaco_sha256": "0c86adba4b28b4c52c3c13c916923b1e2d054818cd3bce7353d918d265f6a003",
+    "embedded_hsaco_verified": true,
     "environment_overrides": {
       "GPU_DFLAGS": "['StatLog','TT0','Perf']",
       "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
     },
     "measurement": {
       "path": "perf_measurement.json",
-      "sha256": "756369bebe07a2db4cf68d78e6a005462d49233d5e556333f00a4a990c201353"
+      "sha256": "dea3834d73d1ac92f75d99d8409ad6e28fe86e8d7a372e2870a976df35d6ade4"
     },
     "stats": {
       "path": "perf_stats.txt.gz",
-      "sha256": "2356a0984b48f98b731421ff90996e3d115cf6ed5a06cad8901d9f5c1af7d8a2"
+      "sha256": "334bd8060002993a394f452c7d0be2d5cf1de6d8169d4fd0310948e90128a507"
     }
   },
   "simulation_run": {
-    "host_wall_seconds": 3186.7523257331923
+    "host_wall_seconds": 3213.6767333499156
   }
 }

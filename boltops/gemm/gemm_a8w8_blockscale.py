@@ -69,7 +69,9 @@ def gemm_a8w8_blockscale(
 
     Notes:
         Scale values are numeric, not encoded
-        E8M0. The current tuned Gluon recipe requires contiguous x/w/scales and uses E4M3FN inputs, FP32 A/B scales
+        E8M0. The current tuned Gluon recipe requires K-contiguous x and contiguous
+        scales. Weights are K-contiguous (TN), or N-contiguous (TT) for the
+        recorded R010 gfx946/96-CU persistent configuration. It uses E4M3FN inputs, FP32 A/B scales
         with A(1,128)/B(128,128), BF16 output and complete 128x256 tiles; its K
         is 256..6144 divisible by 256. Recorded profiles also select a 64x128x128 entry
         with native A-scale preloads and eight consumer waves. The chunked-scale
@@ -78,7 +80,7 @@ def gemm_a8w8_blockscale(
         The same FP32-scale recipe also has a
         64x64x128 pipeline with one producer wave and four consumer waves.
         It requires complete tiles and K divisible by 128; auto selection is
-        recorded only for M/N/K=64/2048/4096 on gfx946/48 CU. Auto uses Triton for noncontiguous matrix views; explicit Gluon reports
+        recorded only for M/N/K=64/2048/4096 on gfx946/48 CU. Auto uses Triton for other matrix views; explicit Gluon reports
         unsupported storage rather than copying tensors. Other combinations use the native Triton
         path when supported. There is no software matrix-instruction fallback.
     """
@@ -149,10 +151,16 @@ def gemm_a8w8_blockscale(
             )
         )
         gluon_profile = f"{dtypes}-RECIPE_A=1x{bk}-RECIPE_B={bn}x{bk}"
+        gluon_layout = "TN" if b.stride() == (k, 1) else "TT"
+        gluon_inputs_supported = (
+            a.stride() == (k, 1)
+            and b.stride() in ((k, 1), (1, n))
+            and a_scale.is_contiguous() and b_scale.is_contiguous()
+        )
         gluon_config = None
         if backend == "auto":
             backend = "triton"
-            if all(t.is_contiguous() for t in (a, b, a_scale, b_scale)):
+            if gluon_inputs_supported:
                 try:
                     gluon_config, tuned = get_gemm_config(
                         "GEMM-A8W8_BLOCKSCALE",
@@ -160,6 +168,7 @@ def gemm_a8w8_blockscale(
                         n,
                         k,
                         profile=gluon_profile,
+                        layout="TT" if gluon_layout == "TT" else None,
                         backend="gluon",
                         arch=device.arch,
                         cu_num=device.cu_count,
@@ -170,9 +179,9 @@ def gemm_a8w8_blockscale(
                     if tuned:
                         backend = "gluon"
         if backend == "gluon":
-            if not all(t.is_contiguous() for t in (a, b, a_scale, b_scale)):
+            if not gluon_inputs_supported:
                 raise NotImplementedError(
-                    "the Gluon blockscale pipeline requires contiguous operands and scales"
+                    "the Gluon blockscale pipeline requires row-contiguous A, TN/TT weights and contiguous scales"
                 )
             if user_config is not None:
                 from copy import deepcopy
@@ -188,6 +197,7 @@ def gemm_a8w8_blockscale(
                         n,
                         k,
                         profile=gluon_profile,
+                        layout="TT" if gluon_layout == "TT" else None,
                         backend=backend,
                         arch=device.arch,
                         cu_num=device.cu_count,
@@ -199,6 +209,11 @@ def gemm_a8w8_blockscale(
             import triton
             from .gluon import gemm_a8w8_blockscale as kernels
 
+            persistent = config.get("kernel", "").endswith("_bk128_persistent_kernel")
+            if gluon_layout == "TT" and not persistent:
+                raise NotImplementedError("Gluon TT blockscale requires a recorded persistent configuration")
+            if persistent:
+                config["B_K_CONTIGUOUS"] = gluon_layout == "TN"
             kernel = getattr(kernels, config.pop("kernel"))
             config = {
                 key: tuple(value) if isinstance(value, list) else value

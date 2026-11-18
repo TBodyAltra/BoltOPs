@@ -309,13 +309,14 @@ One complete cold dispatch, GC455ps. E4M3FN inputs, BF16 output; B scale BF16 va
 
 ## FP8 R010 on dual-die PMD sbx2
 
-2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 2 DIE ×48 CU, GC455ps, TN2560×12288×2048. Same Triton/Clang and input/scale convention as the single-die R010 measurement above.
+2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946, 2 DIE × 48 CU, GC 455 ps, M/N/K = 2560/12288/2048. Same Triton/Clang and scale convention as the single-die measurement above.
 
-| Chip / grid | Kernel (µs / TOPS) | TGs per die | Speedup vs single die |
+| Layout / grid | Kernel (µs / TOPS) | TGs per die | Validation |
 |---|---|---|---|
-| sbx2 /96 TG ×10 tiles | 129.222 /997.12 | {'0': 48, '1': 48} | 1.8892× |
+| TN / 96 TG × 10 tiles | 123.456 / 1043.69 | 48 / 48 | All 31,457,280 outputs exact; guards passed |
+| TT / 96 TG × 10 tiles | 133.084 / 968.18 | 48 / 48 | All 31,457,280 outputs exact; guards passed |
 
-One complete cold public-API dispatch; all31,457,280 outputs match, guards pass, and both dies execute. Time is complete-system gcSimCycles; per-die times are not summed. The96-TG dispatch uses all96 CU. Single-TG PERF covers10 tiles with the same .text/.rodata as the full96-TG kernel; all327,680 selected outputs and uncovered output guards passed in three captures. [Dual-die record](docs/ops/gemm/tuning/r010/2die/tn/record.json).
+TN fences each MMAC turn as `sync → 64 MMAC → arrive`, reducing full-dispatch latency by 4.46% from 129.222 µs. Native TT uses N-contiguous weights, alt=0 shared layout, plain MFMA accumulation and BF16 vector stores, with no timed transpose/repack. Each result is one complete cold public-API dispatch; time is complete-system gcSimCycles. Both layouts include matching single-TG PERF for 10 tiles, separately timed and validated in three captures. Configuration/dispatch and assembly regression checks: 6 passed, 1 skipped (48-CU-only case). [TN record](docs/ops/gemm/tuning/r010/2die/tn/record.json) · [TT record](docs/ops/gemm/tuning/r010/2die/tt/record.json) · [MMAC trace analysis](docs/ops/gemm/tuning/r010/2die/README.md).
 
 ## FP8 R011 on dual-die PMD sbx2
 
