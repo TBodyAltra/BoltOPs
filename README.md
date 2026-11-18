@@ -352,13 +352,14 @@ rejects them. The renamed module was recompiled/replayed on current `gemm`;
 its .rodata is unchanged, while scalar scheduling/register allocation and one
 s_nop differ. Publication assembly/PERF match the freshly measured HSACO.
 
-[Current replay/record](docs/ops/gemm/tuning/r003/2die/tn/autotune-20261118/publication/record.json),
+[Record](docs/ops/gemm/tuning/r003/2die/tn/record.json),
+[measurements](docs/ops/gemm/tuning/r003/2die/tn/measurement.json),
 [profile](boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json),
-[kernel](boltops/gemm/gluon/gemm_a16w16_tn_r003.py),
-[37-config scan](docs/ops/gemm/tuning/r003/2die/tn/autotune-20261118/screening.csv).
-The earlier search and API records remain immutable measurement snapshots with
-the original selector; use `benchmark_public.py` and `replay_input.json` in the
-same evidence folder to replay the published profile.
+[kernel](boltops/gemm/gluon/gemm_a16w16_tn_r003.py).
+The evidence directory follows the R010 layout: final record, measurements,
+benchmark, assembly, full-grid PERF and compressed representative statistics.
+Replay with `benchmark.py --repo <checkout> --record record.json --output <new-directory> --rounds 4`
+after loading the recorded PMD environment.
 
 ## License
 
