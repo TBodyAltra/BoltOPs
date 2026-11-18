@@ -1,0 +1,88 @@
+diff --git a/llvm/lib/CodeGen/TwoAddressInstructionPass.cpp b/llvm/lib/CodeGen/TwoAddressInstructionPass.cpp
+index 4e22e69570c8..6b3df7c72555 100644
+--- a/llvm/lib/CodeGen/TwoAddressInstructionPass.cpp
++++ b/llvm/lib/CodeGen/TwoAddressInstructionPass.cpp
+@@ -451,11 +451,36 @@ bool TwoAddressInstructionImpl::isKilled(MachineInstr &MI, Register Reg,
+     if (Reg.isPhysical())
+       return true;
+     MachineRegisterInfo::def_iterator Begin = MRI->def_begin(Reg);
+-    // If there are multiple defs, we can't do a simple analysis, so just
+-    // go with what the kill flag says.
+-    if (std::next(Begin) != MRI->def_end())
+-      return true;
+     DefMI = Begin->getParent();
++    auto Next = std::next(Begin);
++    if (Next != MRI->def_end()) {
++      // Rewriting INSERT_SUBREG creates a full COPY followed by a partial
++      // COPY to the same register. Although this gives the register two defs,
++      // the inserted subregister can still be coalesced with its source. If
++      // that source stays live, reusing the assembled register for a tied def
++      // would prevent this coalescing and require a copy.
++      if (std::next(Next) != MRI->def_end())
++        return true;
++      MachineInstr *FullCopy = Next->getParent();
++      if (!FullCopy->isCopy() || !DefMI->isCopy())
++        return true;
++      if (FullCopy->getOperand(0).getSubReg())
++        std::swap(FullCopy, DefMI);
++      if (FullCopy->getOperand(0).getSubReg() ||
++          !DefMI->getOperand(0).getSubReg() ||
++          FullCopy->getParent() != DefMI->getParent() ||
++          next_nodbg(FullCopy->getIterator(), FullCopy->getParent()->instr_end(),
++                     /*SkipPseudoOp=*/false) != DefMI->getIterator())
++        return true;
++
++      const MachineOperand &Src = DefMI->getOperand(1);
++      if (!Src.getReg().isVirtual() || Src.getReg() == Reg || Src.isUndef() ||
++          Src.getSubReg() ||
++          !TRI->getMatchingSuperRegClass(MRI->getRegClass(Reg),
++                                        MRI->getRegClass(Src.getReg()),
++                                        DefMI->getOperand(0).getSubReg()))
++        return true;
++    }
+     bool IsSrcPhys, IsDstPhys;
+     Register SrcReg, DstReg;
+     // If the def is something other than a copy, then it isn't going to
+diff --git a/llvm/lib/Target/AMDGPU/SIInstrInfo.cpp b/llvm/lib/Target/AMDGPU/SIInstrInfo.cpp
+index ffdb17989f44..d22fdc54f6a5 100644
+--- a/llvm/lib/Target/AMDGPU/SIInstrInfo.cpp
++++ b/llvm/lib/Target/AMDGPU/SIInstrInfo.cpp
+@@ -4367,11 +4367,14 @@ MachineInstr *SIInstrInfo::convertToThreeAddress(MachineInstr &MI,
+   MachineBasicBlock &MBB = *MI.getParent();
+   unsigned Opc = MI.getOpcode();
+
+-  // Handle MFMA.
+-  int NewMFMAOpc = AMDGPU::getMFMAEarlyClobberOp(Opc);
+-  if (NewMFMAOpc != -1) {
++  // Handle MFMA and HCU MMOP. Both conversions introduce an early-clobber
++  // destination, so they also need to update its live interval definition.
++  int NewMatrixOpc = AMDGPU::getMFMAEarlyClobberOp(Opc);
++  if (NewMatrixOpc == -1)
++    NewMatrixOpc = AMDGPU::getHyMMOPEarlyClobberOp(Opc);
++  if (NewMatrixOpc != -1) {
+     MachineInstrBuilder MIB =
+-        BuildMI(MBB, MI, MI.getDebugLoc(), get(NewMFMAOpc));
++        BuildMI(MBB, MI, MI.getDebugLoc(), get(NewMatrixOpc));
+     for (unsigned I = 0, E = MI.getNumOperands(); I != E; ++I)
+       MIB.add(MI.getOperand(I));
+     updateLiveVariables(LV, MI, *MIB);
+@@ -4400,19 +4403,6 @@ MachineInstr *SIInstrInfo::convertToThreeAddress(MachineInstr &MI,
+     return MIB;
+   }
+
+-  // Handle HCU MMOP
+-  int NewHyMMOPOpc = AMDGPU::getHyMMOPEarlyClobberOp(Opc);
+-  if (NewHyMMOPOpc != -1) {
+-    MachineInstrBuilder MIB =
+-        BuildMI(MBB, MI, MI.getDebugLoc(), get(NewHyMMOPOpc));
+-    for (unsigned I = 0, E = MI.getNumOperands(); I != E; ++I)
+-      MIB.add(MI.getOperand(I));
+-    updateLiveVariables(LV, MI, *MIB);
+-    if (LIS)
+-      LIS->ReplaceMachineInstrInMaps(MI, *MIB);
+-    return MIB;
+-  }
+-
+   if (SIInstrInfo::isWMMA(MI)) {
+     unsigned NewOpc = AMDGPU::mapWMMA2AddrTo3AddrOpcode(MI.getOpcode());
+     MachineInstrBuilder MIB = BuildMI(MBB, MI, MI.getDebugLoc(), get(NewOpc))
