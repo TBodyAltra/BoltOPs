@@ -456,7 +456,7 @@ def test_explicit_fixed_rejects_mismatched_contract(case, kernel_layout):
         gemm_a16w16(a, w, dtype=out_dtype, config=cfg, backend="gluon")
 
 
-NARROW_TT_KERNEL = "_gemm_a16w16_tt_kernel"
+NARROW_TT_KERNEL = "_gemm_a16w16_kernel"
 
 
 @pytest.mark.parametrize("m", [2560, 6656])

@@ -9,7 +9,7 @@ import torch
 from boltops.gemm import gemm_a16w16
 from boltops.gemm.config import get_gemm_config
 
-KERNEL = "_gemm_a16w16_bf16_mls_ring_kernel"
+KERNEL = "_gemm_a16w16_kernel"
 PROFILE = "DTYPE=bfloat16-OUT=bfloat16"
 
 
@@ -99,7 +99,7 @@ def test_mls_ring_reuses_layouts_and_tiles(tn, prefetch, defer, bm, bn, pw, cw):
     from boltops.utility.arch_info import get_device_info
     if get_device_info().arch != "gfx946":
         pytest.skip("requires gfx946")
-    from boltops.gemm.gluon.gemm_a16w16_mls_ring import gemm_a16w16_mls_ring_kernel
+    from boltops.gemm.gluon.gemm_a16w16 import _gemm_a16w16_kernel
 
     m, n, k = 64, max(128, bn * 2), 256
     generator = torch.Generator().manual_seed(59)
@@ -112,7 +112,7 @@ def test_mls_ring_reuses_layouts_and_tiles(tn, prefetch, defer, bm, bn, pw, cw):
     storage = torch.full((m * n + 512,), 123, dtype=torch.bfloat16, device="cuda")
     out = storage[256:-256].view(m, n)
     out.fill_(float("nan"))
-    handle = gemm_a16w16_mls_ring_kernel[(m // bm * (n // bn),)](
+    handle = _gemm_a16w16_kernel[(m // bm * (n // bn),)](
         a, w, out, M=m, N=n, K=k, BLOCK_SIZE_M=bm, BLOCK_SIZE_N=bn,
         BLOCK_SIZE_K=64, CHUNKS=1 if bn == 256 else 2,
         SLOTS=3 if bn == 256 else 2, PW=pw, CW=cw,
