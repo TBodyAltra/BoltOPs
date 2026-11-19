@@ -63,7 +63,7 @@ class Benchmark:
 def select_benchmarks(selectors=()):
     candidates = [
         Benchmark(linear, case) for case in linear.discover_cases() if case.dtype == "bf16"
-    ] + [Benchmark(fp8, case) for case in fp8.discover_cases()]
+    ] + [Benchmark(fp8, case) for case in fp8.discover_cases(include_linear=False)]
     keys = {key.lower() for key in selectors}
     if keys:
         known = set().union(*(benchmark.aliases for benchmark in candidates))

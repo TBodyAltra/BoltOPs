@@ -24,13 +24,13 @@ def config_for(m=64, n=64, k=2048, profile=PROFILE, layout="TN", cu=48):
                            layout=layout, backend="gluon", arch="gfx946", cu_num=cu)
 
 
-def require_device():
+def require_device(cu_count=48):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     from boltops.utility.arch_info import get_device_info
     device = get_device_info()
-    if device.arch != "gfx946" or device.cu_count != 48:
-        pytest.skip("requires gfx946 with 48 CU")
+    if device.arch != "gfx946" or device.cu_count != cu_count:
+        pytest.skip(f"requires gfx946 with {cu_count} CU")
     pytest.importorskip("triton.experimental.gluon.language.amd.hcu")
 
 
@@ -57,8 +57,8 @@ class Capture:
         return run
 
 
-def install_captures(monkeypatch):
-    require_device()
+def install_captures(monkeypatch, cu_count=48):
+    require_device(cu_count)
     calls = []
     gluon = import_module("boltops.gemm.gluon.gemm_a16w16")
     triton = import_module("boltops.gemm.triton.gemm_a16w16")
@@ -277,7 +277,7 @@ def test_streamk_schedule_covers_each_tile_and_k_interval_once(cu):
     assert max(workload) - min(workload) <= 64
 
 
-def test_streamk_compiled_kernel_cache_is_device_specific(monkeypatch):
+def test_streamk_compiled_kernel_cache_is_device_and_layout_specific(monkeypatch):
     from triton.backends.compiler import GPUTarget
 
     runtime = import_module("boltops.gemm.gluon.gemm_a16w16_streamk")
@@ -303,12 +303,16 @@ def test_streamk_compiled_kernel_cache_is_device_specific(monkeypatch):
         for index, expected in ((0, first), (1, second)):
             device[0] = index
             assert runtime._compile_kernel(*args) is expected
-        assert compiled == [first, second]
+        tn = runtime._compile_kernel(*args, b_k_contiguous=True)
+        assert tn is not second
+        assert runtime._compile_kernel(*args, b_k_contiguous=True) is tn
+        assert compiled == [first, second, tn]
     finally:
         runtime._compile_kernel_for_device.cache_clear()
 
 
-def test_streamk_native_sbx2_split_k(monkeypatch):
+@pytest.mark.parametrize("layout", ["TT", "TN"])
+def test_streamk_native_sbx2_split_k(monkeypatch, layout):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     from boltops.utility.arch_info import get_device_info
@@ -323,15 +327,18 @@ def test_streamk_native_sbx2_split_k(monkeypatch):
     a = (torch.rand((m, 128), generator=generator) - .5).bfloat16()
     b = (torch.rand((128, n), generator=generator) - .5).bfloat16()
     expected = (a.float() @ b.float()).bfloat16()
-    ai, bi = a.cuda(), b.cuda()
+    ai = a.cuda()
+    weights = b.T.contiguous() if layout == "TN" else b
+    bi = weights.cuda()
     storage = torch.full((m * n + 128,), 123., dtype=torch.bfloat16).cuda()
     out = storage[64:-64].view(m, n)
+    w = bi if layout == "TN" else bi.T
     provide_gluon_config(monkeypatch, cfg)
-    assert gemm_a16w16(ai, bi.T, out=out, backend="gluon") is out
+    assert gemm_a16w16(ai, w, out=out, backend="gluon") is out
     host = storage.cpu()
     torch.testing.assert_close(host[64:-64].view(m, n), expected, atol=.001, rtol=.01)
     assert bool((host[:64] == 123).all() and (host[-64:] == 123).all())
-    assert torch.equal(ai.cpu(), a) and torch.equal(bi.cpu(), b)
+    assert torch.equal(ai.cpu(), a) and torch.equal(bi.cpu(), weights)
 
 
 @pytest.mark.parametrize("kwargs", [
@@ -475,7 +482,7 @@ def test_explicit_fixed_rejects_mismatched_contract(monkeypatch, case, kernel_la
         gemm_a16w16(a, w, dtype=out_dtype, backend="gluon")
 
 
-NARROW_TT_KERNEL = "_gemm_a16w16_tt_kernel"
+NARROW_TT_KERNEL = "_gemm_a16w16_kernel"
 
 
 @pytest.mark.parametrize("m", [2560, 6656])
@@ -493,6 +500,26 @@ def test_narrow_tt_public_dispatch(monkeypatch, m):
     assert params["wasp_partition_warps"] == (1, 4)
     assert (params["CHUNKS"], params["SLOTS"]) == (2, 3)
     assert params["B_K_CONTIGUOUS"] is False
+
+
+@pytest.mark.parametrize("unaligned", ["x", "w", "out"])
+def test_dual_die_narrow_tt_alignment(monkeypatch, unaligned):
+    calls = install_captures(monkeypatch, cu_count=96)
+    gluon = import_module("boltops.gemm.gluon.gemm_a16w16")
+    monkeypatch.setattr(gluon, NARROW_TT_KERNEL, Capture("narrow_tt", calls))
+
+    def tensor(name, shape):
+        offset = int(name == unaligned)
+        storage = torch.empty(shape[0] * shape[1] + offset, dtype=torch.bfloat16, device="cuda")
+        return storage[offset:].view(shape)
+
+    x = tensor("x", (2048, 2048))
+    w = tensor("w", (2048, 64)).T
+    out = tensor("out", (2048, 64))
+    assert gemm_a16w16(x, w, out=out) is out
+    assert [call[0] for call in calls] == ["triton"]
+    with pytest.raises(ValueError, match="16-byte-aligned tensor pointers"):
+        gemm_a16w16(x, w, out=out, backend="gluon")
 
 
 @pytest.mark.parametrize("case", ["tail", "layout", "dtype", "output"])

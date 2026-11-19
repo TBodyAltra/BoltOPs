@@ -1,0 +1,202 @@
+{
+  "requirement": "R019",
+  "record_key": "R019_2DIE_TN",
+  "status": "PMD_PASS",
+  "shape": [
+    2048,
+    64,
+    2048
+  ],
+  "layout": "TN",
+  "seed": 19,
+  "dtype": {
+    "A": "BF16",
+    "W": "BF16",
+    "output": "BF16",
+    "accumulator": "FP32"
+  },
+  "operand_strides": [
+    [
+      2048,
+      1
+    ],
+    [
+      2048,
+      1
+    ]
+  ],
+  "environment": {
+    "host": "node60",
+    "chip": "sbx2",
+    "arch": "gfx946",
+    "dies": 2,
+    "cu_count": 96,
+    "clock_period_ps": 455,
+    "runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "compiler": {
+        "libtriton": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+        "clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+      }
+    },
+    "bootstrap": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/env.sh",
+    "environment_variables": {
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+      "GPU_ARGS": "['--abs-max-tick=10000000000']",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+      "TRITON_BUILD_PROTON": "OFF",
+      "GPU_DFLAGS": "['StatLog']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "GPU_CHIP": "sbx2",
+      "TRITON_BUILD_DIR": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/build",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "AMDGCN_USE_BUFFER_OPS": "1"
+    }
+  },
+  "source": {
+    "path": "boltops/gemm/triton/gemm_a16w16.py",
+    "symbol": "_gemm_a16_w16_kernel",
+    "line": 44,
+    "sha256": "2b9178db8077b4c0c875119eec68cd69c2d9b0af404b0f46ee6167bac2d5fb86",
+    "measurement_base_commit": "0c532e6aab2f1dedcf083258983a285be0097fd8"
+  },
+  "config": {
+    "path": "boltops/gemm/configs/gfx946/triton/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json",
+    "bucket": "M_EQ_2048",
+    "options": {
+      "BLOCK_SIZE_M": 64,
+      "BLOCK_SIZE_N": 32,
+      "BLOCK_SIZE_K": 64,
+      "GROUP_SIZE_M": 1,
+      "num_warps": 4,
+      "num_stages": 2,
+      "waves_per_eu": 2,
+      "matrix_instr_nonkdim": 16,
+      "cache_modifier": null,
+      "NUM_KSPLIT": 1,
+      "kpack": 1
+    }
+  },
+  "benchmark": {
+    "script": "../../../bf16_2die_small_mn/benchmark.py",
+    "sha256": "3175ddc858f83f17c6ea7e38571d8ffdbe09dd285da8a6fc988a3d434af48c71",
+    "repeats": 1
+  },
+  "variants": {
+    "winner": {
+      "family": "triton",
+      "module": "boltops.gemm.triton.gemm_a16w16",
+      "symbol": "_gemm_a16_w16_kernel",
+      "config": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 32,
+        "BLOCK_SIZE_K": 64,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 2,
+        "waves_per_eu": 2,
+        "matrix_instr_nonkdim": 16,
+        "cache_modifier": null,
+        "NUM_KSPLIT": 1,
+        "kpack": 1,
+        "SPLITK_BLOCK_SIZE": 2048
+      }
+    }
+  },
+  "performance": {
+    "kernel_us": 18.531695,
+    "kernel_tops": 28.970415927954782,
+    "mmac_util_percent": 3.3522387815397705,
+    "logical_bandwidth_tb_s": 0.4809541706789368,
+    "bandwidth_scope": "Logical BF16 reads of A/W and writes of C, divided by aggregate dispatch time. Excludes split-K scratch traffic.",
+    "aggregation": "One cold full-grid trial. Split-K includes reduction.",
+    "baseline_kernel_us": 80.94359,
+    "baseline_status": "PASS",
+    "improvement_percent": 77.10541995975223
+  },
+  "samples": [
+    {
+      "us": 18.531695,
+      "dispatches": [
+        {
+          "cycles": 40729,
+          "TGs_per_die": {
+            "system.shaders0": 32,
+            "system.shaders1": 32
+          },
+          "stats": "model/0/0/stats.txt",
+          "sha256": "e39d605f0a0ff82dfc7819d91822ea5edf13d6b1411ce5482d8b947a90af55f1"
+        }
+      ],
+      "max_abs": 0.03125,
+      "mismatches": 0,
+      "validated_elements": 131072
+    }
+  ],
+  "resources": {
+    "VGPR": 58,
+    "spills": 0,
+    "LDS_bytes": 12288
+  },
+  "validation": {
+    "output_elements": 131072,
+    "rtol": 0.01,
+    "atol": 0.001,
+    "guard_and_input_check": true
+  },
+  "public_api_validation": {
+    "mode": "full_grid",
+    "kernel_us": 18.503485,
+    "validated_elements": 131072,
+    "executable_sections": {
+      ".rodata": "2cbaecd4959fbaaba635f07e75a803cfe1c02acab15b7b6e159f4a5a952a1601",
+      ".text": "6414b09ef20f9052ba5cc8d62b9150824236ddc1f9a0c8bbadc84dcfbea78358"
+    },
+    "result_sha256": "18f52272abc767afd3871efd30eef8e4dfce012d312f0f2a6de765c5dc3dda51"
+  },
+  "single_tg_perf": {
+    "path": "single_tg.perf",
+    "sha256": "59e6fd53b372a80cea0e089247fbe550793f38d5b0c6e860aa45e1b245fba97a",
+    "sample": {
+      "us": 12.518415,
+      "dispatches": [
+        {
+          "cycles": 27513,
+          "TGs_per_die": {
+            "system.shaders0": 1,
+            "system.shaders1": 0
+          },
+          "stats": "model/0/2/stats.txt",
+          "sha256": "b56b11d151e1d6a40dd894820ee6b55f5758e65589e4727750619cb8f98a88e2"
+        }
+      ],
+      "max_abs": 0.0,
+      "mismatches": 0,
+      "validated_elements": 2048,
+      "perf": "model/0/2/866427_python3.10.perf"
+    },
+    "scope": "Isolated TG0 with original dimensions and launch configuration",
+    "selection": "faster of repeats 1 and 2"
+  },
+  "evidence": {
+    "pmd_host_root": "node60:/xukang/q35dd19",
+    "full_grid": "screen/r019-tn/triton_64x32x64",
+    "single_tg": "perf/r019-tn/triton_64x32x64",
+    "public_replay": "public/r019-tn/triton_64x32x64",
+    "baseline": "screen/r019-tn/baseline",
+    "full_grid_result_sha256": "6207863993960f9401801fbd1930f5130028109559f9dc823861ecaa3abaa9d8"
+  },
+  "assembly": {
+    "path": "kernel.amdgcn",
+    "sha256": "d76f40ab9f47f67dbd8b59a231209f038c03e46fa140131056231ea2280a9c88",
+    "raw_sha256": "820f263fbf3d69488f659125aa38187ddc01d93fdfb8535316fedd4bf849193c",
+    "normalization": "Strip trailing horizontal whitespace only",
+    "hsaco_sha256": "70f89dd5d46231209792906a68d0f8dc411990bbd183d9d71d65bc5f59171120",
+    "executable_sections": {
+      ".rodata": "2cbaecd4959fbaaba635f07e75a803cfe1c02acab15b7b6e159f4a5a952a1601",
+      ".text": "6414b09ef20f9052ba5cc8d62b9150824236ddc1f9a0c8bbadc84dcfbea78358"
+    }
+  }
+}

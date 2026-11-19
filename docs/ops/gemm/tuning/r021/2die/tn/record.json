@@ -1,0 +1,272 @@
+{
+  "requirement": "R021",
+  "record_key": "R021_2DIE_TN",
+  "status": "PMD_PASS",
+  "shape": [
+    2048,
+    9216,
+    2048
+  ],
+  "seed": 21,
+  "layout": "TN",
+  "dtype": {
+    "A": "BF16",
+    "W": "BF16",
+    "output": "BF16",
+    "accumulator": "FP32"
+  },
+  "operand_strides": [
+    [
+      2048,
+      1
+    ],
+    [
+      2048,
+      1
+    ]
+  ],
+  "environment": {
+    "host": "node60",
+    "container": "kxu_pmd_8569_fp8_20261017",
+    "type": "PMD",
+    "chip": "sbx2",
+    "arch": "gfx946",
+    "dies": 2,
+    "cu_count": 96,
+    "clock_period_ps": 455,
+    "runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "compiler": {
+        "libtriton": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+        "clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+      }
+    },
+    "environment_variables": {
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+      "GPU_ARGS": "['--abs-max-tick=10000000000']",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+      "TRITON_BUILD_PROTON": "OFF",
+      "GPU_DFLAGS": "['StatLog']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "GPU_CHIP": "sbx2",
+      "TRITON_BUILD_DIR": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/build",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "AMDGCN_USE_BUFFER_OPS": "1"
+    },
+    "bootstrap": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/env.sh"
+  },
+  "source": {
+    "path": "boltops/gemm/gluon/gemm_a16w16.py",
+    "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+    "line": 586,
+    "sha256": "589d076fac70e3059d8539740c58d48e85dff9cdebd10b459740b7db359884de",
+    "measurement_base_commit": "a05a2ef2dcf5b6f5780b1b7639c8bd1264390aa1"
+  },
+  "config": {
+    "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=9216-K=2048-TN.json",
+    "bucket": "M_EQ_2048",
+    "options": {
+      "BLOCK_SIZE_M": 256,
+      "BLOCK_SIZE_N": 256,
+      "BLOCK_SIZE_K": 64,
+      "num_warps": 4,
+      "num_stages": 2,
+      "NUM_SMS": 96,
+      "wasp_partition_warps": [
+        4,
+        4,
+        4
+      ],
+      "wasp_partition_regs": [
+        16,
+        244,
+        244
+      ],
+      "wasp_wdra": true,
+      "enable_v_mmac_cluster": 2,
+      "hcu_use_gfx946_sched_model_v2": true,
+      "mmac_layout_force": 2,
+      "kernel": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel"
+    }
+  },
+  "benchmark": {
+    "script": "../../../bf16_2die_tn/benchmark.py",
+    "sha256": "bdf0f21d696151672b43ff0a17f15529c48739c6a5f4cc4bfababdbee4aea19a",
+    "repeats": 1,
+    "command": "python docs/ops/gemm/tuning/bf16_2die_tn/benchmark.py --input docs/ops/gemm/tuning/r021/2die/tn/record.json --output /tmp/r021-sbx2-tn"
+  },
+  "variants": {
+    "winner": {
+      "family": "gluon",
+      "module": "boltops.gemm.gluon.gemm_a16w16",
+      "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+      "config": {
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 64,
+        "num_warps": 4,
+        "num_stages": 2,
+        "NUM_SMS": 96,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          16,
+          244,
+          244
+        ],
+        "wasp_wdra": true,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "mmac_layout_force": 2,
+        "FORCE_MASKED_STORE": false
+      }
+    },
+    "baseline": {
+      "family": "public",
+      "config": {
+        "backend": "triton"
+      }
+    }
+  },
+  "performance": {
+    "kernel_us": 107.516045,
+    "kernel_tops": 719.0499922871977,
+    "mmac_util_percent": 83.20306052924471,
+    "launched_TGs": 96,
+    "aggregation": "one cold full-grid measurement, no execution warmup",
+    "gemm_kernel_us": 107.516045,
+    "setup_dispatch_us": 0.0,
+    "time_domain": "sum of system.gcSimCycles × 455 ps across all dispatches",
+    "baseline_kernel_us": null,
+    "improvement_percent": null
+  },
+  "resources": {
+    "VGPR": 168,
+    "spills": 0,
+    "LDS_bytes": 131072
+  },
+  "validation": {
+    "all_output_elements": 18874368,
+    "max_abs": 0.0625,
+    "rtol": 0.01,
+    "atol": 0.001,
+    "input_and_output_guards": true
+  },
+  "samples": [
+    {
+      "us": 107.516045,
+      "dispatches": [
+        {
+          "cycles": 236299,
+          "TGs_per_die": {
+            "system.shaders0": 48,
+            "system.shaders1": 48
+          },
+          "stats": "model/0/0/stats.txt",
+          "sha256": "55a6de476d0dc2460d7bcc77a0080910a8cce33064a3232a1b45179b14b032eb"
+        }
+      ],
+      "max_abs": 0.0625,
+      "validated_elements": 18874368
+    }
+  ],
+  "assembly": {
+    "path": "kernel.amdgcn",
+    "sha256": "a4efb729267cead454812cd1fa9a24766789f8dc304b0d0b22309c822522fa26",
+    "hsaco_sha256": "d534e434adb58ed046b1a05854813fc98cc5b33d555ef25dffd5481c09bee4c2",
+    "executable_sections": {
+      ".rodata": "8f2bb74b3d75e7de7e7e06a23ee59c8bbaa7d99d8da0b5596b7a3d6582d0092e",
+      ".text": "5f732d61ae1c41f9c006a43f0aba31d26a14fa1892433a3bfba23da4f6961a21"
+    },
+    "raw_sha256": "caabb5bc02bbf938e053f9265218db8cb96c1028d8c55cb569277a1a236745d7",
+    "normalization": "Strip trailing horizontal whitespace only"
+  },
+  "single_tg_perf": {
+    "path": "single_tg.perf",
+    "sha256": "39745b4ee0e1ed1dc53551931a179d19eb398948bf12fbfd436af5774e6e2a86",
+    "scope": "TG0 with the full-grid persistent stride and original MNK",
+    "selection": "faster of repeats 1 and 2, excluding repeat 0",
+    "selected": {
+      "us": 100.084075,
+      "dispatches": [
+        {
+          "cycles": 219965,
+          "TGs_per_die": {
+            "system.shaders0": 1,
+            "system.shaders1": 0
+          },
+          "stats": "model/0/2/stats.txt",
+          "sha256": "83b8e12fc9eca142525eab97042bcbc65a67ef32fb4d498078b6971917d363ce"
+        }
+      ],
+      "max_abs": 0.0625,
+      "validated_elements": 196608,
+      "perf": "model/0/2/833515_python3.10.perf"
+    },
+    "profiled_hsaco_sha256": "f701b1b2fc611929aa5c33509e37dc9432292cd9873d951709df4b226d8087bc"
+  },
+  "screening_us": {
+    "mls_256": 113.8319,
+    "persistent": 107.516045,
+    "persistent_256_g4": 109.442515
+  },
+  "evidence": {
+    "full_grid": "evidence/screen/r021/persistent",
+    "baseline": "evidence/screen/r021/baseline/result.json",
+    "single_tg": "evidence/perf/r021/persistent",
+    "full_grid_result_sha256": "76200a72709c1c2c756aa9c232fe4fc51093925e115bce99207701f2512aabb4",
+    "baseline_result_sha256": null,
+    "single_tg_result_sha256": "44c029917d63cd3c5e0c68648afa90bcaa190702f12b3b222825338e24474f16",
+    "measured_variant": "persistent"
+  },
+  "baseline_comparison": {
+    "status": "NUMERICAL_FAILURE",
+    "scope": "Full-grid public auto baseline",
+    "failed_reference_region": "727559 / 1179648 (61.7%)",
+    "log": "/xukang/code/pmd-triton-sessions/q35-mxfp4-sbx2-tn-20261118-results/screen/r021/baseline.log",
+    "valid_performance_sample": false
+  },
+  "public_api_validation": {
+    "status": "PASS",
+    "grid": [
+      96
+    ],
+    "config": {
+      "M": 2048,
+      "N": 9216,
+      "K": 2048,
+      "BLOCK_SIZE_M": 256,
+      "BLOCK_SIZE_N": 256,
+      "BLOCK_SIZE_K": 64,
+      "num_warps": 4,
+      "num_stages": 2,
+      "NUM_SMS": 96,
+      "wasp_partition_warps": [
+        4,
+        4,
+        4
+      ],
+      "wasp_partition_regs": [
+        16,
+        244,
+        244
+      ],
+      "wasp_wdra": true,
+      "enable_v_mmac_cluster": 2,
+      "hcu_use_gfx946_sched_model_v2": true,
+      "mmac_layout_force": 2,
+      "B_K_CONTIGUOUS": true
+    },
+    "sections": {
+      ".rodata": "8f2bb74b3d75e7de7e7e06a23ee59c8bbaa7d99d8da0b5596b7a3d6582d0092e",
+      ".text": "5f732d61ae1c41f9c006a43f0aba31d26a14fa1892433a3bfba23da4f6961a21"
+    },
+    "fp16_profile_misses": true,
+    "scope": "Public auto dispatch capture and warmup compilation; no kernel dispatch"
+  }
+}

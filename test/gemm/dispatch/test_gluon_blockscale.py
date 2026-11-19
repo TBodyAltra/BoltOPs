@@ -2,17 +2,45 @@
 # SPDX-License-Identifier: MIT
 """Recorded Gluon selection and its explicit native input contract."""
 
+import sys
 from importlib import import_module
+from types import ModuleType
 
 import pytest
 import torch
 
-from boltops.gemm import gemm_a8w8_blockscale
+from boltops.gemm import gemm_a8w8_blockscale, gluon as gluon_backend
 from boltops.gemm.config import get_gemm_config
 
 PROFILE = "DTYPE=float8_e4m3fn-AS=float32-BS=float32-OUT=bfloat16-RECIPE_A=1x128-RECIPE_B=128x128"
 MODULE = "gemm_a8w8_blockscale"
 KERNEL = "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_kernel"
+
+
+def _require_blockscale_intrinsic():
+    if not gluon_backend.supports_a8w8_blockscale():
+        pytest.skip("requires Triton HCU packed_scale_fma")
+
+
+def test_gluon_selection_requires_packed_scale_fma(monkeypatch):
+    from boltops.utility.arch_info import DeviceInfo
+
+    hcu = "triton.experimental.gluon.language.amd.hcu"
+    monkeypatch.setitem(sys.modules, hcu, ModuleType(hcu))
+    monkeypatch.setattr(
+        gluon_backend, "get_gemm_config", lambda *args, **kwargs: ({"kernel": KERNEL}, True),
+    )
+    a = torch.empty((16, 128), dtype=torch.float8_e4m3fn)
+    b = torch.empty((128, 128), dtype=a.dtype)
+    out = torch.empty((16, 128), dtype=torch.bfloat16)
+    options = dict(
+        a_scale=torch.empty((16, 1)), b_scale=torch.empty((1, 1)),
+        block_size=(128, 128), device=DeviceInfo(0, "gfx946", 48),
+    )
+    resolve = gluon_backend.resolve_a8w8_blockscale_backend
+    assert resolve(a, b, out, automatic=True, **options) is None
+    with pytest.raises(NotImplementedError, match="requires Triton HCU packed_scale_fma"):
+        resolve(a, b, out, automatic=False, **options)
 
 
 def test_48tg_config_is_exact_and_cu_specific():
@@ -70,7 +98,7 @@ def test_auto_selects_only_the_recorded_gluon_shape(
 
     if get_device_info().arch != "gfx946" or get_device_info().cu_count != 48:
         pytest.skip("requires gfx946 with 48 CU")
-    pytest.importorskip("triton.experimental.gluon.language.amd.hcu")
+    _require_blockscale_intrinsic()
     gluon = import_module(f"boltops.gemm.gluon.{MODULE}")
     triton = import_module("boltops.gemm.triton.gemm_a8w8_blockscale_fp8")
     calls = []
@@ -134,7 +162,7 @@ def test_explicit_gluon_rejects_unsupported_combinations(k, scale_dtype, out_dty
 
     if get_device_info().arch != "gfx946" or get_device_info().cu_count != 48:
         pytest.skip("requires gfx946 with 48 CU")
-    pytest.importorskip("triton.experimental.gluon.language.amd.hcu")
+    _require_blockscale_intrinsic()
     a = torch.empty((128, k), dtype=torch.float8_e4m3fn, device="cuda")
     b = torch.empty((256, k), dtype=a.dtype, device=a.device)
     sa = torch.empty((128, k // 128), dtype=scale_dtype, device=a.device)
@@ -153,7 +181,7 @@ def test_native_gluon_blockscale_small():
 
     if get_device_info().arch != "gfx946" or get_device_info().cu_count != 48:
         pytest.skip("requires gfx946 with 48 CU")
-    pytest.importorskip("triton.experimental.gluon.language.amd.hcu")
+    _require_blockscale_intrinsic()
     torch.manual_seed(713)
     a = (torch.randint(-4, 5, (128, 256)).float() / 4).to(torch.float8_e4m3fn)
     b = (torch.randint(-4, 5, (256, 256)).float() / 4).to(torch.float8_e4m3fn)
@@ -183,7 +211,7 @@ def test_gluon_kernel_and_tile_come_from_config(monkeypatch, override_gemm_confi
 
             return launch
 
-    pytest.importorskip("triton.experimental.gluon.language.amd.hcu")
+    _require_blockscale_intrinsic()
     kernels = import_module("boltops.gemm.gluon.gemm_a8w8_blockscale")
     monkeypatch.setattr(kernels, "kernel_another_tile", CaptureKernel(), raising=False)
     config = dict(
@@ -213,6 +241,7 @@ def test_gluon_kernel_and_tile_come_from_config(monkeypatch, override_gemm_confi
 
 @pytest.mark.parametrize("n,tiles", [(9216, 720), (12288, 960)])
 def test_persistent_grid_comes_from_record(monkeypatch, n, tiles):
+    _require_blockscale_intrinsic()
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     from boltops.utility.arch_info import get_device_info
@@ -261,6 +290,7 @@ def test_fp32_scale_64x64_config_is_shape_specific():
 
 @pytest.mark.parametrize("k", [128, 256, 384])
 def test_native_gluon_fp32_scales_64x64(override_gemm_config, k):
+    _require_blockscale_intrinsic()
     if not torch.cuda.is_available():
         pytest.skip("requires GPU")
     from boltops.utility.arch_info import get_device_info
@@ -290,6 +320,7 @@ def test_native_gluon_fp32_scales_64x64(override_gemm_config, k):
 
 @pytest.mark.parametrize("m,n,k,tgs", [(64, 12288, 2048, 96), (64, 9216, 2048, 144), (2560, 2048, 4096, 48)])
 def test_qwen_recorded_pipeline_grid(monkeypatch, m, n, k, tgs):
+    _require_blockscale_intrinsic()
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     from boltops.utility.arch_info import get_device_info
@@ -338,6 +369,7 @@ def test_qwen_recorded_pipeline_grid(monkeypatch, m, n, k, tgs):
     ],
 )
 def test_qwen_native_scale_pipelines(override_gemm_config, record_shape, shape, tgs):
+    _require_blockscale_intrinsic()
     if not torch.cuda.is_available():
         pytest.skip("requires GPU")
     from boltops.utility.arch_info import get_device_info
@@ -378,6 +410,7 @@ def test_qwen_native_scale_pipelines(override_gemm_config, record_shape, shape, 
 
 
 def test_chunked_scale_pipeline_rejects_partial_chunks(override_gemm_config):
+    _require_blockscale_intrinsic()
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     from boltops.utility.arch_info import get_device_info
@@ -407,6 +440,7 @@ def test_chunked_scale_pipeline_rejects_partial_chunks(override_gemm_config):
     ((2560, 12288, 2048), 96, "TT"),
 ])
 def test_mmac_turn_encloses_complete_instruction_group(shape, cu_count, layout):
+    _require_blockscale_intrinsic()
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     import re
@@ -464,6 +498,7 @@ def test_mmac_turn_encloses_complete_instruction_group(shape, cu_count, layout):
 @pytest.mark.parametrize("n,k,tiles", [(12288, 2048, 960), (2048, 4096, 160)])
 @pytest.mark.parametrize("layout,m", [("TN", 2560), ("TT", 2560), ("TT", 128), ("sliced", 2560)])
 def test_sbx2_layout_dispatch(monkeypatch, layout, m, n, k, tiles):
+    _require_blockscale_intrinsic()
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     from boltops.utility.arch_info import get_device_info

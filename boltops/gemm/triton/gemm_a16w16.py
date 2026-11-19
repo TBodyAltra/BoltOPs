@@ -187,6 +187,7 @@ def _gemm_a16_w16_kernel(
             tl.store(c_ptrs, c, mask=c_mask)
 
 
+_BF16_PROFILE = "DTYPE=bfloat16-OUT=bfloat16"
 _BF16_MLS_PROFILE = "DTYPE=bfloat16-OUT=bfloat16-WASP-MLS-EXPERIMENTAL"
 
 
@@ -245,25 +246,30 @@ def gemm_a16w16(
         config = None
         if (
             device.arch == "gfx946"
-            and device.cu_count in (48, 96)
             and a.dtype == out_dtype == torch.bfloat16
             and bias is None
             and activation is None
             and out.is_contiguous()
             and a.stride() == (k, 1)
-            and b.stride() == (1, n)
+            and b.stride() in ((k, 1), (1, n))
         ):
-            try:
-                candidate, tuned = get_gemm_config(
-                    "GEMM-A16W16", m, n, k, backend="triton", layout="TT",
-                    profile=_BF16_MLS_PROFILE, arch=device.arch,
-                    cu_num=device.cu_count,
-                )
-            except (FileNotFoundError, KeyError):
-                pass
-            else:
+            layout = "TN" if b.stride() == (k, 1) else "TT"
+            profiles = ()
+            if device.cu_count == 48 and layout == "TT":
+                profiles = (_BF16_MLS_PROFILE,)
+            elif device.cu_count == 96:
+                profiles = (_BF16_MLS_PROFILE, _BF16_PROFILE) if layout == "TT" else (_BF16_PROFILE,)
+            for profile in profiles:
+                try:
+                    candidate, tuned = get_gemm_config(
+                        "GEMM-A16W16", m, n, k, backend="triton", layout=layout,
+                        profile=profile, arch=device.arch, cu_num=device.cu_count,
+                    )
+                except (FileNotFoundError, KeyError):
+                    continue
                 if tuned:
                     config = candidate
+                    break
         if config is None:
             config, _ = get_gemm_config(
                 "GEMM-A16W16",

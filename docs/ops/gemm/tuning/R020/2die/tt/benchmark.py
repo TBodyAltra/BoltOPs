@@ -11,6 +11,7 @@ to TG0; both complete outputs and published FP32 partials/flags are validated.
 Three correctness cases precede one warmup and two timed repeats. The fastest
 timed repeat on die 0 supplies the PERF so its default XCD0 view contains waves.
 The embedded TT stream is decoded and checked against the simulator counters.
+When the checkout differs, replay uses the frozen BoltOPs source from Git.
 --dry-run verifies artifacts without GPU imports.
 """
 import argparse
@@ -20,6 +21,7 @@ from dataclasses import asdict
 import getpass
 import hashlib
 import importlib
+import io
 import json
 import os
 from pathlib import Path
@@ -27,15 +29,21 @@ import re
 import shutil
 import socket
 import struct
+import subprocess
 import sys
+import tarfile
 import zlib
 
 REPO = next(p for p in Path(__file__).resolve().parents if (p / 'boltops/gemm/config.py').is_file())
 SYMBOL = '_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel'
 SOURCE = 'boltops/gemm/gluon/gemm_a16w16.py'
 PUBLIC = 'boltops/gemm/gemm_a16w16.py'
-DEPENDENCIES = ('boltops/gemm/config.py', 'boltops/utility/arch_info.py',
-                'boltops/gemm/gluon/gemm_a16w16_streamk.py')
+DEPENDENCIES = (
+    'boltops/gemm/config.py',
+    'boltops/utility/arch_info.py',
+    'boltops/gemm/backend_interfaces.py',
+    'boltops/gemm/gluon/gemm_a16w16_streamk.py',
+)
 ENVIRONMENT_SCRIPT = '/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh'
 
 
@@ -51,9 +59,53 @@ def save(path, value):
     Path(path).write_text(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n')
 
 
-def options(m, n, k):
+def frozen_checkout(record):
+    items = [record[key] for key in ('source', 'config', 'public_api')]
+    items.extend(record['source_dependencies'])
+    if all((REPO / item['path']).is_file() and digest(REPO / item['path']) == item['sha256']
+           for item in items):
+        return None
+    commit = record['benchmark']['replay_git_commit']
+    for item in items:
+        content = subprocess.check_output(['git', 'show', f"{commit}:{item['path']}"], cwd=REPO)
+        assert hashlib.sha256(content).hexdigest() == item['sha256'], item['path']
+    return commit
+
+
+def restore_boltops(output, commit):
+    if commit is None:
+        return REPO
+    source = output / 'source'
+    source.mkdir()
+    content = subprocess.check_output(['git', 'archive', commit, 'boltops'], cwd=REPO)
+    with tarfile.open(fileobj=io.BytesIO(content)) as archive:
+        for member in archive.getmembers():
+            assert (source / member.name).resolve().is_relative_to(source)
+            assert member.isfile() or member.isdir(), member.name
+        archive.extractall(source)
+    return source
+
+
+def executable_sections(code):
+    assert code[:5] == b'\x7fELF\x02'
+    offset, = struct.unpack_from('<Q', code, 40)
+    size, count, names = struct.unpack_from('<HHH', code, 58)
+    headers = [struct.unpack_from('<IIQQQQIIQQ', code, offset+i*size) for i in range(count)]
+    strings = code[headers[names][4]:headers[names][4]+headers[names][5]]
+    sections = {}
+    for entry in headers:
+        name = strings[entry[0]:].split(b'\0', 1)[0].decode()
+        if name in ('.text', '.rodata'):
+            sections[name] = hashlib.sha256(code[entry[4]:entry[4]+entry[5]]).hexdigest()
+    assert set(sections) == {'.text', '.rodata'}
+    return sections
+
+
+def options(m, n, k, commit=None):
     path = f'boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N={n}-K={k}-TT.json'
-    data = json.loads((REPO / path).read_text())
+    content = (subprocess.check_output(['git', 'show', f'{commit}:{path}'], cwd=REPO)
+               if commit else (REPO / path).read_bytes())
+    data = json.loads(content)
     bucket = f'M_EQ_{m}'
     params = dict(data['profiles']['DTYPE=bfloat16-OUT=bfloat16'][bucket])
     assert params.pop('kernel') == SYMBOL
@@ -199,21 +251,18 @@ def main():
     requirement = 'R020'
     m, n, k = 2048, 2048, 4096
     seed, guard = int(requirement[1:]), 65536
-    config_path, bucket, params = options(m, n, k)
     grid = 96
     archived = json.loads(args.record.read_text()) if args.record.is_file() else None
+    replay_commit = None
     if archived:
         assert archived['requirement'] == requirement and archived['shape'] == [m, n, k]
         assert archived['environment']['dies'] == 2 and archived['environment']['cu_count'] == 96
         assert digest(__file__) == archived['benchmark']['sha256']
-        for key in ('source', 'config', 'public_api'):
-            item = archived[key]
-            assert digest(REPO / item['path']) == item['sha256'], key
-        for item in archived['source_dependencies']:
-            assert digest(REPO / item['path']) == item['sha256'], item['path']
+        replay_commit = frozen_checkout(archived)
         for key in ('assembly', 'single_tg_perf'):
             item = archived[key]
             assert digest(args.record.parent / item['path']) == item['sha256'], key
+    config_path, bucket, params = options(m, n, k, replay_commit)
     plan = dict(requirement=requirement, shape=[m, n, k], layout='TT', chip='sbx2', dies=2,
                 cu_count=96, backend='auto', resolved_backend='gluon', config=config_path,
                 config_bucket=bucket, launch_options=params, grid=[1 if args.single_tg_perf else grid],
@@ -221,7 +270,8 @@ def main():
                 correctness_dispatches=3 if args.single_tg_perf else 0,
                 execution_warmups=1 if args.single_tg_perf else 0,
                 full_output_validation=not args.single_tg_perf,
-                single_tg_scope='Original dependency-free TG work relocated to TG0; original MNK/strides/instructions', output=str(output))
+                single_tg_scope='Original dependency-free TG work relocated to TG0; original MNK/strides/instructions',
+                replay_git_commit=replay_commit, output=str(output))
     if args.dry_run:
         print(json.dumps(plan, ensure_ascii=False, indent=2))
         return
@@ -258,21 +308,22 @@ def main():
             file = output / 'history.lock'
         return original_open(file, *positional, **kwargs)
     builtins.open = private_open
-    sys.path.insert(0, str(REPO))
+    source_root = restore_boltops(output, replay_commit)
+    sys.path.insert(0, str(source_root))
     import torch
     import triton
     from triton import knobs
     import triton._C.libtriton as lib
     public = importlib.import_module('boltops.gemm.gemm_a16w16')
-    runtime = importlib.import_module('boltops.gemm.gluon.gemm_a16w16_streamk')
     kernels = importlib.import_module('boltops.gemm.gluon.gemm_a16w16')
+    streamk = importlib.import_module('boltops.gemm.gluon.gemm_a16w16_streamk')
     fn = getattr(kernels, SYMBOL)
     assert torch.cuda.get_device_properties(0).multi_processor_count == 96
     target = triton.runtime.driver.active.get_current_target()
     assert target.arch == 'gfx946'
     torch.set_num_threads(1)
     torch.set_num_interop_threads(1)
-    table, records, slots = runtime._make_schedule(m, n, k, 96)
+    table, records, slots = streamk._make_schedule(m, n, k, 96)
     original_tasks = [[list(item) for item in table[pid * records:(pid + 1) * records] if item[2]]
                       for pid in range(grid)]
     selected_pid = next(pid for pid, tasks in enumerate(original_tasks)
@@ -285,7 +336,7 @@ def main():
     compiler_options = {key: tuple(value) if isinstance(value, list) else value
                         for key, value in params.items()
                         if key not in ('BLOCK_SIZE_M', 'BLOCK_SIZE_N', 'BLOCK_SIZE_K', 'NUM_SMS')}
-    original_compile = runtime._compile_kernel
+    original_compile = streamk._compile_kernel
     captured, setup_dispatches = [], []
     class ObservedCompiled:
         def __init__(self, handle):
@@ -310,7 +361,7 @@ def main():
         assert dict(opts) == compiler_options
         return ObservedCompiled(original_compile(kernel, cm, cn, ck, count, opts, actual_target))
     if not args.single_tg_perf:
-        runtime._compile_kernel = observe_compile
+        streamk._compile_kernel = observe_compile
 
     def prepare(input_seed, kind):
         generator = torch.Generator().manual_seed(input_seed)
@@ -384,7 +435,9 @@ def main():
         assert hashlib.sha256(assembly.encode()).hexdigest() == digest(output / 'kernel.amdgcn')
         assert handle.n_spills == 0
         if archived and args.single_tg_perf:
-            assert digest(output / 'kernel.amdgcn') == archived['assembly']['sha256']
+            expected = archived['assembly']['allocated_hsaco_sections_sha256']
+            compiled = executable_sections(handle.asm['hsaco'])
+            assert compiled == {name: expected[name] for name in compiled}
         host = cr.cpu()
         actual = host[guard:-guard].view(m, n)
         outside = nonfinite = elements = 0
@@ -473,9 +526,9 @@ def main():
         selected=selected, plan=plan, resources=resources, benchmark_sha256=digest(__file__),
         assembly_sha256=digest(output / 'kernel.amdgcn'), hsaco_sha256=digest(output / 'kernel.hsaco'),
         perf_sha256=digest(output / 'single_tg.perf'), stats_sha256=selected['stats_sha256'],
-        source_sha256=digest(REPO / SOURCE), config_sha256=digest(REPO / config_path),
-        public_api_sha256=digest(REPO / PUBLIC),
-        source_dependencies=[dict(path=path, sha256=digest(REPO / path)) for path in DEPENDENCIES],
+        source_sha256=digest(source_root / SOURCE), config_sha256=digest(source_root / config_path),
+        public_api_sha256=digest(source_root / PUBLIC),
+        source_dependencies=[dict(path=path, sha256=digest(source_root / path)) for path in DEPENDENCIES],
         runtime=dict(host=socket.gethostname(), torch=torch.__version__, triton=triton.__version__,
             triton_file=triton.__file__, libtriton_sha256=digest(lib.__file__),
             clang_sha256=digest(os.environ['TRITON_HIP_CLANG_PATH']), environment_script=ENVIRONMENT_SCRIPT,

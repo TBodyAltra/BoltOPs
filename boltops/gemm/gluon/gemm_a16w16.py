@@ -18,7 +18,7 @@ from ..config import get_gemm_config
 _KERNEL_MODULES = {
     "_gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel": ".gemm_a16w16_mls",
     "_gemm_a16w16_bf16_tt_bm16_bn32_bk128_kernel": ".gemm_a16w16_mls",
-    "_gemm_a16w16_tt_kernel": ".gemm_a16w16_mls",
+    "_gemm_a16w16_kernel": ".gemm_a16w16_mls",
     "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel": ".gemm_a16w16_persistent",
     "_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel": ".gemm_a16w16_streamk",
     "_gemm_a16w16_bf16_tt_prepare_edges_kernel": ".gemm_a16w16_streamk",
@@ -97,7 +97,7 @@ def _get_gluon_config(m, n, k, *, layout, profile, arch, cu_num):
             profile=profile, arch=arch, cu_num=cu_num,
         )
     except (FileNotFoundError, KeyError):
-        if profile != "DTYPE=float16-OUT=float16":
+        if cu_num != 48 or profile != "DTYPE=float16-OUT=float16":
             raise
         config, tuned = get_gemm_config(
             "GEMM-A16W16", m, n, k, backend="gluon", layout=layout,
@@ -145,6 +145,10 @@ def resolve_backend(
         ) from None
     if automatic and not tuned:
         return None
+    if config.get("requires_16_byte_alignment") and any(t.data_ptr() % 16 for t in (a, b, out)):
+        if automatic:
+            return None
+        raise ValueError("Gluon configuration requires 16-byte-aligned tensor pointers")
     return partial(gemm_a16w16, config=config)
 
 
@@ -158,4 +162,5 @@ def gemm_a16w16(
     if not out.is_contiguous():
         raise NotImplementedError("Gluon A16W16 kernels require a contiguous output")
     layout = "TN" if b.stride() == (a.shape[1], 1) else "TT"
+    config.pop("requires_16_byte_alignment", None)
     _launch_configured(a, b, out, config=config, cu_count=device.cu_count, layout=layout)
