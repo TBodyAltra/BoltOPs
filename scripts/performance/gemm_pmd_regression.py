@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
-"""Run one representative published PMD benchmark per BF16/FP8 GEMM kernel.
+"""Run one representative published PMD benchmark per BF16/FP8 GEMM kernel, DIE count, and layout.
 
 Use --list to inspect the default coverage or --case to select published
 records explicitly. Each case keeps its complete MNK, grid, validation and
@@ -32,8 +32,21 @@ class Benchmark:
 
     @property
     def kernel(self):
-        source = self.case.record["source"]
-        return f"{source['path']}:{source['symbol']}"
+        record = self.case.record
+        source = record["source"]
+        symbol = source.get("current_symbol", source["symbol"])
+        config = record.get("config", {})
+        if {"path", "profile", "M_key"} <= config.keys():
+            # The published symbol identifies the measured binary. A current
+            # config can use a renamed selector for the same replay case.
+            profiles = linear.load(linear.REPO / config["path"])["profiles"]
+            symbol = profiles[config["profile"]][config["M_key"]].get("kernel", symbol)
+        return f"{source.get('current_path', source['path'])}:{symbol}"
+
+    @property
+    def coverage(self):
+        record = self.case.record
+        return self.kernel, self.dtype, record["environment"]["dies"], record["layout"]
 
     @property
     def dtype(self):
@@ -55,7 +68,10 @@ class Benchmark:
 
     def describe(self):
         record = self.case.record
+        registration = record.get("regression", {})
+        standalone = registration.get("interface") == "variant_blocks" and not registration.get("public_auto")
         return dict(case=self.case.key, dtype=self.dtype, kernel=self.kernel,
+                    route="standalone_variant" if standalone else "recorded_replay",
                     shape=record["shape"], baseline_kernel_us=record["performance"]["kernel_us"],
                     record=str(self.case.record_path.relative_to(linear.REPO)))
 
@@ -72,7 +88,7 @@ def select_benchmarks(selectors=()):
         return [benchmark for benchmark in candidates if benchmark.aliases & keys]
     kernels = {}
     for benchmark in sorted(candidates, key=lambda row: row.size_order):
-        kernels.setdefault(benchmark.kernel, benchmark)
+        kernels.setdefault(benchmark.coverage, benchmark)
     return sorted(kernels.values(), key=lambda row: (row.dtype, row.case.key))
 
 

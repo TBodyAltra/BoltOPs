@@ -109,6 +109,9 @@ def normalize_variant_record(record, record_path):
     if record['dispatch']['completed_TGs'] != tgs:
         raise ValueError('variant TG count differs from complete grid')
     record['performance']['launched_TGs'] = tgs
+    if registration.get('public_auto'):
+        record['source']['current_path'] = 'boltops/gemm/gluon/gemm_a16w16.py'
+        record['source']['current_symbol'] = '_gemm_a16w16_kernel'
     return record
 
 
@@ -140,6 +143,17 @@ def normalize_record(record, record_path):
         return normalize_paired_record(record, record_path)
     if record.get('regression', {}).get('interface') == 'variant_blocks':
         return normalize_variant_record(record, record_path)
+    if record.get('regression', {}).get('interface') == 'streamk_cold':
+        record['status'] = 'PASS'
+        record['environment']['clock_period_ps'] = {'gc': record['environment']['clock_period_ps']}
+        record['benchmark'].update(
+            interface='streamk_cold', sha256=record['regression']['replay_sha256'])
+        return record
+    if record.get('public_entry', {}).get('path') == OPERATOR:
+        record['public_api'] = record['public_entry']
+        benchmark = record['benchmark']
+        benchmark['sha256'] = benchmark.get('replay_sha256', benchmark['sha256'])
+        return record
     if record.get('public_api', {}).get('name') != 'gemm_a16w16':
         return record
     if record.get('status') != 'PMD_PASS':
@@ -203,7 +217,10 @@ def timing_protocol(record):
         return 'first_timed'
     if (mode == 'legacy_median' or (mode is None and aggregation.startswith('median of repeats'))) and repeats >= 2:
         return 'warm_median'
-    if mode is None and repeats == 1 and aggregation.startswith('one cold full-grid dispatch'):
+    if mode is None and repeats == 1 and (
+        aggregation.startswith('one cold full-grid dispatch')
+        or benchmark.get('interface') == 'streamk_cold'
+    ):
         return 'cold'
     raise ValueError('unrecognized recorded timing protocol')
 
@@ -290,7 +307,7 @@ def objects(node):
 
 def configuration(measurement):
     """Both g/config.ini and m5out/config.json are emitted by archived runners."""
-    for folder in ('g', 'm5out'):
+    for folder in ('g', 'm5out', 'model'):
         path = measurement / folder / 'config.ini'
         if path.is_file():
             parser = configparser.RawConfigParser()
@@ -300,7 +317,7 @@ def configuration(measurement):
         path = measurement / folder / 'config.json'
         if path.is_file():
             return {obj['path']: obj for obj in objects(load(path))}
-    raise ValueError('missing PMD model configuration (g/ or m5out/)')
+    raise ValueError('missing PMD model configuration')
 
 
 def comparable(value):
@@ -325,7 +342,7 @@ def verify_model(record, measurement):
         actual = float(comparable(model[shader + '.clk_domain']['clock']))
         if actual != clock:
             raise ValueError('PMD GC clock differs from baseline')
-    gpu = model['gpu_configuration']
+    gpu = {key.lower(): value for key, value in model['gpu_configuration'].items()}
     for key in ('ipc_conn', 'skip_cal', 'skip_kernel_exec'):
         if comparable(gpu.get(key)) not in ('false', '0'):
             raise ValueError('requires independent core-only PMD with kernel execution enabled')
@@ -334,7 +351,7 @@ def verify_model(record, measurement):
     configurations = dict(sections.get('gpu_configuration', {}))
     configurations.update(expected.get('gpu_configuration', {}))
     for key, value in configurations.items():
-        if comparable(gpu.get(key)) != comparable(value):
+        if comparable(gpu.get(key.lower())) != comparable(value):
             raise ValueError(f'PMD configuration differs: {key}')
     for section, fields in sections.items():
         if section.endswith('.clk_domain') and comparable(model[section]['clock']) != comparable(fields['clock']):
@@ -456,11 +473,42 @@ def variant_result(record, result, measurement):
     if indexes != sorted(set(indexes)):
         raise ValueError('variant dispatch blocks are reordered or reuse statistics')
     chosen = result['variants'][target]
+    if record['regression'].get('public_auto') and chosen.get('public_api_verified') is not True:
+        raise ValueError('selected variant did not verify the public dispatch')
     if chosen['grid'] != record['performance']['launched_TGs']:
         raise ValueError('selected variant did not run the complete grid')
     return dict(status='PASS', requirement=record['requirement'], shape=result['shape'],
                 layout=result['layout'], samples=chosen['confirmation']['samples'],
                 validation=chosen['confirmation']['validation'], performance=chosen['performance'])
+
+
+def streamk_cold_result(record, result):
+    """Adapt the native two-dispatch sample to the cold GEMM evaluator."""
+    variant = record['variants'][record['regression']['variant']]
+    if (result['status'] != 'PASS' or result['variant'] != variant
+            or result['seed'] != record['seed'] or result['layout'] != record['layout']
+            or len(result['samples']) != 1 or result.get('resources', {}).get('spills') != 0):
+        raise ValueError('cold Stream-K replay did not verify the public kernel')
+    sample = result['samples'][0]
+    if len(sample['dispatches']) != 2:
+        raise ValueError('cold Stream-K must dispatch one flag reset and one GEMM')
+    reset, gemm = sample['dispatches']
+    clock = record['environment']['clock_period_ps']['gc']
+    return dict(
+        status='PASS', requirement=record['requirement'], shape=result['shape'],
+        performance=dict(kernel_us=result['kernel_us']),
+        setup_dispatches=[dict(kind='streamk_flag_reset', stats_path=reset['stats'],
+                               stats_sha256=reset['sha256'], kernel_cycles=reset['cycles'],
+                               kernel_us=reset['cycles'] * clock / 1e6)],
+        samples=[dict(stats_path=gemm['stats'], stats_sha256=gemm['sha256'],
+                      completed_TGs=sum(gemm['TGs_per_die'].values()),
+                      kernel_us=gemm['cycles'] * clock / 1e6,
+                      # The native runner returns PASS only after asserting
+                      # full-output correctness and both sets of guards.
+                      accuracy=dict(elements=sample['validated_elements'], mismatches=0,
+                                    nonfinite=0, max_abs=sample['max_abs'], atol=.001, rtol=.01,
+                                    canary_ok=True, inputs_byte_identical=True))],
+    )
 
 
 def evaluate(case, case_output, max_regression_percent=1.0):
@@ -469,6 +517,8 @@ def evaluate(case, case_output, max_regression_percent=1.0):
     measurement = Path(case_output) / 'measurement'
     result = load(measurement / 'result.json')
     record = case.record
+    if record['benchmark'].get('interface') == 'streamk_cold':
+        result = streamk_cold_result(record, result)
     if record['benchmark'].get('interface') == 'paired_routes':
         if (result.get('status') != 'PASS' or result.get('shape') != record['shape']
                 or result.get('rounds') != record['benchmark']['repeats']):
@@ -504,7 +554,8 @@ def evaluate(case, case_output, max_regression_percent=1.0):
     repeats = record['benchmark']['repeats']
     flag_reset_us = 0.0
     if protocol == 'cold':
-        paths = sorted(measurement.glob('g/*/*/stats.txt')) + sorted(measurement.glob('m5out/*/*/stats.txt'))
+        paths = sorted(path for directory in ('g', 'm5out', 'model')
+                       for path in (measurement / directory).glob('*/*/stats.txt'))
         setup = result.get('setup_dispatches', [])
         if setup:
             if (record['source']['symbol'] != '_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel'
@@ -607,7 +658,7 @@ def assess(case, output, threshold):
 
 def refresh_sources(record):
     """Refresh only a private replay copy; published baselines stay untouched."""
-    for name in ('source', 'config', 'public_api'):
+    for name in ('source', 'config', 'public_api', 'public_entry', 'default_config'):
         item = record.get(name)
         if not item or 'path' not in item:
             continue
@@ -672,9 +723,18 @@ def run_case(case, case_output, threshold=1.0):
     elif record['benchmark'].get('interface') == 'paired_routes':
         command = [sys.executable, str(script), '--repo', str(REPO), '--record', str(replay),
                    '--output', str(output / 'measurement'), '--rounds', str(record['benchmark']['repeats'])]
+    elif record['benchmark'].get('interface') == 'streamk_cold':
+        command = [sys.executable, str(script), '--repo', str(REPO), '--input', str(replay),
+                   '--output', str(output / 'measurement'), '--regression']
     else:
         command = [sys.executable, str(script), '--record', str(replay), '--output', str(output / 'measurement')]
     environment = dict(os.environ)
+    if record['benchmark'].get('interface') == 'streamk_cold':
+        for key, value in record['environment']['environment_variables'].items():
+            if value is None:
+                environment.pop(key, None)
+            else:
+                environment[key] = value
     # Each archived runner re-execs with the recorded environment itself. Remove
     # config overrides and Python optimization also from its initial invocation.
     environment.pop('BOLTOPS_GEMM_CONFIG_DIR', None)

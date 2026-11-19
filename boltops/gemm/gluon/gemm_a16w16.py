@@ -145,10 +145,6 @@ def resolve_backend(
         ) from None
     if automatic and not tuned:
         return None
-    if config.get("requires_16_byte_alignment") and any(t.data_ptr() % 16 for t in (a, b, out)):
-        if automatic:
-            return None
-        raise ValueError("Gluon configuration requires 16-byte-aligned tensor pointers")
     return partial(gemm_a16w16, config=config)
 
 
@@ -162,5 +158,4 @@ def gemm_a16w16(
     if not out.is_contiguous():
         raise NotImplementedError("Gluon A16W16 kernels require a contiguous output")
     layout = "TN" if b.stride() == (a.shape[1], 1) else "TT"
-    config.pop("requires_16_byte_alignment", None)
     _launch_configured(a, b, out, config=config, cu_count=device.cu_count, layout=layout)

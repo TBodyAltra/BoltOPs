@@ -41,7 +41,7 @@ def sections(code):
     assert '.text' in result
     return result
 
-def measure(output, record, variant, repeats, perf, repo):
+def measure(output, record, variant, repeats, perf, repo, *, regression=False):
     output.mkdir(parents=True, exist_ok=False)
     os.chdir(output)
     original_open = builtins.open
@@ -101,7 +101,8 @@ def measure(output, record, variant, repeats, perf, repo):
         def capture(*args, **kwargs):
             handle = original_compile(*args, **kwargs)
             handle._init_handles()
-            assert sections(handle.asm['hsaco']) == record['assembly']['executable_sections']
+            if not regression:
+                assert sections(handle.asm['hsaco']) == record['assembly']['executable_sections']
             resources.update(VGPR=handle.n_regs, spills=handle.n_spills, LDS_bytes=96 * 1024)
             assert not handle.n_spills, resources
             (output / 'kernel.amdgcn').write_text(handle.asm['amdgcn'])
@@ -263,6 +264,7 @@ def main():
     p.add_argument('--repeats', type=int)
     p.add_argument('--perf', action='store_true')
     p.add_argument('--dry-run', action='store_true')
+    p.add_argument('--regression', action='store_true', help='check the current public Stream-K path')
     args = p.parse_args()
     repeats = args.repeats if args.repeats is not None else (3 if args.perf else 1)
     if repeats < 1:
@@ -270,6 +272,8 @@ def main():
     output = args.output.resolve()
     record = json.loads(args.input.read_text())
     variant = record['variants'][args.variant]
+    if args.regression and (variant['family'] != 'streamk' or args.perf or repeats != 1):
+        p.error('--regression requires one full-grid Stream-K launch')
     if args.dry_run:
         print(json.dumps(dict(shape=record['shape'], seed=record['seed'], variant=variant,
                               repeats=repeats, single_tg=args.perf, chip='sbx2', cu_count=96), indent=2))
@@ -285,7 +289,7 @@ def main():
     if args.perf:
         assert variant['family'] != 'public'
         os.environ['HSA_TOOLS_LIB'] = '/opt/rocm/lib/xprofiler/libperf_gen_helper.so'
-    measure(output, record, variant, repeats, args.perf, args.repo.resolve())
+    measure(output, record, variant, repeats, args.perf, args.repo.resolve(), regression=args.regression)
 
 
 if __name__ == '__main__':

@@ -422,7 +422,7 @@ def _persistent_consumer(AS, BS, C, smAS0, smAS1, smBS0, smBS1,
             _consume_ab_and_accumulate(AS + tile_m * (K // 128), BS + (tile_n // 128) * (K // 128),
                                        C + tile_m * N + tile_n,
                                        smAS, smAS, smBS,
-                                       smA0, smA1, smB0, smB1, K, N, GROUP, F, B_K_CONTIGUOUS, FENCE_MMAC_TURN or (N == 12288 and NUM_SMS == 96))
+                                       smA0, smA1, smB0, smB1, K, N, GROUP, F, B_K_CONTIGUOUS, FENCE_MMAC_TURN)
             abarrier_arrive(14 + bank)
 
 
@@ -450,16 +450,16 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_
     gl.static_assert(NUM_SMS == 48 or NUM_SMS == 96, "this pipeline requires 48 or 96 TGs")
     gl.static_assert(TILE_LIMIT == (M // 128) * (N // 256),
                      "this pipeline requires a complete tile grid")
-    gl.static_assert((K // 128) % 4 == 0, "per-slot phases must wrap across tiles")
-    gl.static_assert(((M == 2560 and (N == 9216 or N == 12288) and K == 2048)
-                     or (M == 6656 and N == 9216 and K == 2048 and NUM_SMS == 96 and B_K_CONTIGUOUS))
-                     or (M == 6656 and N == 12288 and K == 2048 and NUM_SMS == 96 and B_K_CONTIGUOUS)
-                     or (M == 6656 and N == 2048 and K == 4096 and NUM_SMS == 96),
-                     "this persistent pipeline requires supported full-tile shapes")
+    gl.static_assert(TILE_LIMIT == NUM_SMS or TILE_LIMIT >= 2 * NUM_SMS,
+                     "a two-bank warmup requires two complete persistent rounds")
     gl.static_assert((BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K) == (128, 256, 128),
                      "this pipeline requires tile (128,256,128)")
-    gl.static_assert(M % 128 == 0 and N % 256 == 0 and K % 256 == 0 and K >= 256 and K <= 6144,
-                     "this pipeline requires complete tiles and K=256..6144 divisible by 256")
+    gl.static_assert(M > 0 and N > 0 and M % 128 == 0 and N % 256 == 0,
+                     "this pipeline requires complete output tiles")
+    # Two banks of A scales and the A/B tiles consume the 128 KiB budget
+    # at K=4096. At that size B scales bypass LDS.
+    gl.static_assert(K >= 512 and K <= 4096 and K % 512 == 0,
+                     "K must fit the scale banks and complete a barrier phase")
     gl.static_assert(GROUP_N == 128 and GROUP_K == 128,
                      "this pipeline requires A(1,128)/B(128,128) scales")
     gl.static_assert(A.dtype.element_ty == gl.float8e4nv and B.dtype.element_ty == gl.float8e4nv,

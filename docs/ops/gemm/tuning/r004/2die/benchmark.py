@@ -1,5 +1,5 @@
 from pathlib import Path
-import os,sys,json,re,statistics,hashlib,traceback,time,configparser,importlib
+import os,sys,json,re,statistics,hashlib,traceback,time,configparser,importlib,subprocess
 def _perf_sections(data):
     import struct
     assert data[:4] == b'\x7fELF'
@@ -152,6 +152,20 @@ def capture_single_tg_perf(root, layout, record, repository):
         raise
 
 
+def load_reference_kernel(reference, repo, output):
+    revision, path = reference['revision'], reference['path']
+    source = subprocess.check_output(['git', 'show', f'{revision}:{path}'], cwd=repo)
+    if hashlib.sha256(source).hexdigest() != reference['sha256']:
+        raise ValueError('archived reference kernel does not match the measured source')
+    path = output / 'reference_kernel.py'
+    path.write_bytes(source)
+    spec = importlib.util.spec_from_file_location('reference_kernel', path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return getattr(module, reference['symbol'])
+
+
 R=Path(__file__).resolve().parent;layout=sys.argv[1];record=json.loads((R/layout.lower()/'record.json').read_text())
 if 'R004_TUNE' not in os.environ:
  env=dict(os.environ)
@@ -174,7 +188,7 @@ save()
 try:
  import torch
  from kernel import candidate_kernel
- from boltops.gemm.gluon.gemm_a16w16 import _gemm_a16w16_tt_kernel
+ from boltops.gemm.gluon.gemm_a16w16 import _gemm_a16w16_kernel
  public=importlib.import_module('boltops.gemm.gemm_a16w16')
  torch.set_num_threads(1);assert torch.cuda.get_device_properties(0).multi_processor_count==96
  M,N,K=record['shape'];gen=torch.Generator().manual_seed(59);ac=(torch.rand((M,K),generator=gen)-.5).bfloat16();bc=(torch.rand((K,N),generator=gen)-.5).bfloat16();golden=(ac.float()@bc.float()).bfloat16().float()
@@ -188,14 +202,54 @@ try:
    def launch():public.gemm_a16w16(A,B.T,out=C,backend='auto')
    runners[name]=launch;return
   symbol=cfg.pop('kernel',None)
-  fn=_gemm_a16w16_tt_kernel if v['family']=='production' else candidate_kernel
+  regression = record.get('regression', {})
+  use_public = regression.get('public_auto') is True and name == regression['variant']
+  if v['family'] == 'production' and 'reference_kernel' in regression:
+   fn = load_reference_kernel(regression['reference_kernel'], repo, d)
+  elif use_public or v['family'] == 'production':
+   fn = _gemm_a16w16_kernel
+  else:
+   fn = candidate_kernel
+  if use_public:
+   from boltops.gemm.config import get_gemm_config
+
+   selected, tuned = get_gemm_config(
+    "GEMM-A16W16", M, N, K, backend="gluon", layout=layout,
+    profile="DTYPE=bfloat16-OUT=bfloat16", arch="gfx946", cu_num=96,
+   )
+   selector = selected.pop("kernel")
+   # The shared kernel derives WN from the tile and uses the candidate's
+   # WAIT=0 scheduling. Preserve the rest of the recorded geometry and options.
+   assert cfg.pop('WN') == max(1, cfg['BLOCK_SIZE_N'] // 64) and cfg.pop('WAIT') == 0
+   assert tuned and selected == cfg
   cfg={k:tuple(x) if isinstance(x,list) else x for k,x in cfg.items()};cfg['B_K_CONTIGUOUS']=layout=='TN';grid=M//cfg['BLOCK_SIZE_M']*(N//cfg['BLOCK_SIZE_N']);r['grid']=grid
   h=fn.warmup(A,B,C,M=M,N=N,K=K,grid=(grid,),**cfg);h._init_handles();asm=h.asm['amdgcn'];native=lambda s:int(re.search(r'\.'+s+r':\s*(\d+)',asm)[1]);r['resources']=dict(SGPR=native('sgpr_count'),VGPR=native('vgpr_count'),SGPR_spills=native('sgpr_spill_count'),VGPR_spills=native('vgpr_spill_count'),LDS=h.metadata.shared,waves=h.metadata.num_warps);r['binary_sha256']=hashlib.sha256(h.kernel).hexdigest();r['metadata']=h.metadata._asdict();(d/'kernel.amdgcn').write_text(asm);(d/'kernel.hsaco').write_bytes(h.kernel)
   if r['resources']['SGPR_spills'] or r['resources']['VGPR_spills']:r['status']='SPILL_REJECTED';return
   assert h.metadata.shared<=131072
   handles[name]=h
-  def launch():
-   z=fn[(grid,)](A,B,C,M=M,N=N,K=K,**cfg);assert z is h
+  if use_public:
+   kernels = importlib.import_module('boltops.gemm.gluon.gemm_a16w16')
+   assert getattr(kernels, selector) is fn
+
+   class ObserveLaunch:
+    def __getitem__(self, launch_grid):
+     def run(*args, **kwargs):
+      assert fn[launch_grid](*args, **kwargs) is h, 'public dispatch changed the kernel or configuration'
+      r['public_api_verified'] = True
+     return run
+
+   def launch():
+    original = getattr(kernels, selector)
+    setattr(kernels, selector, ObserveLaunch())
+    r['public_api_verified'] = False
+    try:
+     assert public.gemm_a16w16(A,B.T,out=C,backend='auto') is C
+     assert r['public_api_verified'], 'public dispatch did not call the recorded kernel'
+    finally:
+     setattr(kernels, selector, original)
+  else:
+   def launch():
+    z=fn[(grid,)](A,B,C,M=M,N=N,K=K,**cfg);assert z is h
   runners[name]=launch
  def run(name):
   torch.cuda.synchronize();r=result['variants'][name];before=set(Path('m5out/0').glob('*/stats.txt'));runners[name]();torch.cuda.synchronize();paths=sorted(set(Path('m5out/0').glob('*/stats.txt'))-before,key=lambda p:int(p.parent.name));assert len(paths)==1,('dispatch count',paths)

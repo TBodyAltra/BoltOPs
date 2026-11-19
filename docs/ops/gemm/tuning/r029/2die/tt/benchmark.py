@@ -396,6 +396,7 @@ def main():
                   cu_count=96 if args.chip == 'sbx2' else 48,
                   reported_device_cu_count=reported_cus, grid=[grid], launch_options=params,
                   performance=performance, validation=validation, samples=samples,
+                  timing_input=dict(seed=seed, input_kind="normal_random"),
                   baseline_record=str(record_path), baseline_record_sha256=digest(record_path),
                   source_sha256=digest(source_root / record['source']['path']), config_sha256=record['config']['sha256'],
                   assembly_sha256=digest(output / 'kernel.amdgcn'), hsaco_sha256=digest(output / 'kernel.hsaco'),
