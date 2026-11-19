@@ -220,8 +220,11 @@ try:
    selector = selected.pop("kernel")
    # The shared kernel derives WN from the tile and uses the candidate's
    # WAIT=0 scheduling. Preserve the rest of the recorded geometry and options.
-   assert cfg.pop('WN') == max(1, cfg['BLOCK_SIZE_N'] // 64) and cfg.pop('WAIT') == 0
-   assert tuned and selected == cfg
+   warp_columns, wait = cfg.pop('WN'), cfg.pop('WAIT')
+   if warp_columns != max(1, cfg['BLOCK_SIZE_N'] // 64) or wait != 0:
+    raise ValueError('recorded warp layout or wait policy differs from the current kernel')
+   if not tuned or selected != cfg:
+    raise ValueError('public dispatch configuration differs from the measured configuration')
   cfg={k:tuple(x) if isinstance(x,list) else x for k,x in cfg.items()};cfg['B_K_CONTIGUOUS']=layout=='TN';grid=M//cfg['BLOCK_SIZE_M']*(N//cfg['BLOCK_SIZE_N']);r['grid']=grid
   h=fn.warmup(A,B,C,M=M,N=N,K=K,grid=(grid,),**cfg);h._init_handles();asm=h.asm['amdgcn'];native=lambda s:int(re.search(r'\.'+s+r':\s*(\d+)',asm)[1]);r['resources']=dict(SGPR=native('sgpr_count'),VGPR=native('vgpr_count'),SGPR_spills=native('sgpr_spill_count'),VGPR_spills=native('vgpr_spill_count'),LDS=h.metadata.shared,waves=h.metadata.num_warps);r['binary_sha256']=hashlib.sha256(h.kernel).hexdigest();r['metadata']=h.metadata._asdict();(d/'kernel.amdgcn').write_text(asm);(d/'kernel.hsaco').write_bytes(h.kernel)
   if r['resources']['SGPR_spills'] or r['resources']['VGPR_spills']:r['status']='SPILL_REJECTED';return

@@ -221,7 +221,7 @@ class GemmRegressionTest(unittest.TestCase):
                         folder = self.root / suite.__name__ / case.directory
                         folder.parent.mkdir(parents=True, exist_ok=True)
                         before = linear.digest(case.record_path)
-                        if case.record['benchmark'].get('interface') == 'job_json':
+                        if case.record['benchmark'].get('interface') in ('job_json', 'public_job_json'):
                             runtime = self.root / 'test-runtime'
                             library = runtime / 'triton/_C/libtriton.so'
                             library.parent.mkdir(parents=True, exist_ok=True)
@@ -243,6 +243,21 @@ class GemmRegressionTest(unittest.TestCase):
                             staged = linear.load(folder / 'runner' / case.record['layout'].lower() / 'record.json')
                             self.assertEqual(staged, replay)
                         self.assertEqual(before, linear.digest(case.record_path))
+
+    def test_verify_model_uses_pmd_json_metadata_when_both_formats_exist(self):
+        case = self.case('R005/2die/tn')
+        path = self.evidence(case, [case.record['performance']['kernel_us']])
+        measurement = path.parent
+        ini = measurement / 'm5out/config.ini'
+        config = configparser.RawConfigParser()
+        config.read(ini)
+        fields = {section: dict(config[section], path=section) for section in config.sections()}
+        (ini.parent / 'config.json').write_text(json.dumps(list(fields.values())))
+        for field in ('path', 'cxx_class', 'name'):
+            config.remove_option('gpu_configuration', field)
+        with ini.open('w') as stream:
+            config.write(stream)
+        self.assertEqual(linear.verify_model(case.record, measurement)['cu_count'], 96)
 
     def test_all_validated_warm_samples_contribute_to_median(self):
         case = self.case('R002/2die/tt')

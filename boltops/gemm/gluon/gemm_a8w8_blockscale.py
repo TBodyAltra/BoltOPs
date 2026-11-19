@@ -650,16 +650,16 @@ def gemm_a8w8_blockscale(
         out, (m, n), a.device, (torch.float16, torch.bfloat16, torch.float32), contiguous=True,
     )
 
-    persistent = config.get("kernel", "").endswith("_bk128_persistent_kernel")
-    if gluon_layout == "TT" and not persistent:
-        raise NotImplementedError("Gluon TT blockscale requires a recorded persistent configuration")
-    if persistent:
-        config["B_K_CONTIGUOUS"] = gluon_layout == "TN"
-    kernel = getattr(sys.modules[__name__], config.pop("kernel"))
+    kernel = getattr(sys.modules[__name__], config["kernel"])
     config = {
         key: tuple(value) if isinstance(value, list) else value
         for key, value in config.items()
+        if key != "kernel"
     }
+    if "B_K_CONTIGUOUS" in kernel.arg_names:
+        config["B_K_CONTIGUOUS"] = gluon_layout == "TN"
+    elif gluon_layout == "TT":
+        raise NotImplementedError("the configured Gluon blockscale kernel requires TN weights")
     grid = lambda meta: (meta["NUM_SMS"],) if "NUM_SMS" in meta else (
         triton.cdiv(m, meta["BLOCK_SIZE_M"]),
         triton.cdiv(n, meta["BLOCK_SIZE_N"]),

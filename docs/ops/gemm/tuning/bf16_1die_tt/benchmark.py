@@ -166,10 +166,12 @@ def measure_single_tg(record, params, fn, torch, lib, output):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--record', type=Path, default=Path(__file__).with_name('record.json'))
+    parser.add_argument('--record', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--single-tg-perf', action='store_true')
     parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--current-source', action='store_true',
+                        help='explicitly replay the current public path')
     parser.add_argument('--triton-build', type=Path)
     args = parser.parse_args()
     record_path = args.record.resolve()
@@ -181,9 +183,12 @@ def main():
     for name in ('assembly', 'single_tg_perf'):
         item = record[name]
         assert digest(record_path.parent / item['path']) == item['sha256'], name
-    for name in ('source', 'config', 'public_api'):
-        item = record[name]
-        assert digest(REPO / item['path']) == item['sha256'], name
+    fingerprints = {name: digest(REPO / record[name]['path'])
+                    for name in ('source', 'config', 'public_api')}
+    changed = [name for name, sha256 in fingerprints.items() if sha256 != record[name]['sha256']]
+    if changed and not (args.current_source or args.dry_run):
+        parser.error(f"recorded source differs for {', '.join(changed)}; "
+                     "pass --current-source to measure the current public path")
     params = options(record)
     m, n, k = record['shape']
     grid = min(48, ((m + 255) // 256) * ((n + 255) // 256))
@@ -198,6 +203,8 @@ def main():
         repeats=1, execution_warmups=0, compile_warmup_calls=0, total_gemm_dispatches=1,
         host_padding=False, full_output_validation=True,
         single_tg_scope=record['single_tg_perf']['scope'], triton_build=str(build), output=str(output),
+        source_mode='current' if args.current_source else 'recorded',
+        changed_fingerprints=changed,
         archived_measurement='Original experimental source/binary only; production replay is a new measurement.')
     if args.single_tg_perf:
         tile_ids, _, elements = single_tg_plan(record)

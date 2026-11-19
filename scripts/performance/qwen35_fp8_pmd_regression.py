@@ -287,11 +287,17 @@ def run_case(case, case_output, threshold=1.0):
                 environment[key] = value
         # The legacy script does not locate the repository itself.
         environment['PYTHONPATH'] = str(REPO) + os.pathsep + environment.get('PYTHONPATH', '')
-        expected_library = record['environment'].get('triton_library_sha256')
+        recorded_environment = record['environment']
+        expected_library = (
+            recorded_environment.get('triton_library_sha256')
+            or recorded_environment.get('triton', {}).get('libtriton_sha256')
+        )
         if expected_library:
-            libraries = [Path(root)/'triton/_C/libtriton.so' for root in environment['PYTHONPATH'].split(os.pathsep)]
-            if not any(path.is_file() and digest(path)==expected_library for path in libraries):
-                raise ValueError('recorded Triton library does not match; R005 needs its wave-sharing fixes')
+            libraries = (Path(root) / 'triton/_C/libtriton.so'
+                         for root in environment['PYTHONPATH'].split(os.pathsep))
+            library = next((path for path in libraries if path.is_file()), None)
+            if library is None or digest(library) != expected_library:
+                raise ValueError('recorded Triton library does not match the replay environment')
         measurement = output / 'measurement'
         measurement.mkdir()
         if record['benchmark']['interface'] == 'public_job_json':

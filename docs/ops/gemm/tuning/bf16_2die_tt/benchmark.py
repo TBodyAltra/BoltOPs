@@ -56,19 +56,35 @@ def executable_sections(data):
     return result
 
 
-def measured_source(record, output):
-    if digest(REPO / record['source']['path']) == record['source']['sha256']:
-        return REPO
+def resolve_source(record, output, current_source):
+    source = record['source']
+    if current_source:
+        current = source.get('current_path', source['path'])
+        if not (REPO / current).is_file():
+            raise FileNotFoundError(f'current kernel source is missing: {current}')
+        return REPO, current, 'current'
+    local = REPO / source['path']
+    if local.is_file() and digest(local) == source['sha256']:
+        return REPO, source['path'], 'matched_checkout'
+    revision = source['commit']
+    if subprocess.run(['git', 'cat-file', '-e', f"{revision}:{source['path']}"],
+                      cwd=REPO, capture_output=True).returncode:
+        raise FileNotFoundError(
+            f"measured source {revision}:{source['path']} is unavailable. "
+            "Use --current-source to verify the current kernel against the measured executable."
+        )
     snapshot = output / 'source'
     snapshot.mkdir()
-    archive = subprocess.check_output(['git', 'archive', record['source']['commit'], 'boltops'], cwd=REPO)
+    archive = subprocess.check_output(['git', 'archive', revision, 'boltops'], cwd=REPO)
     with tarfile.open(fileobj=io.BytesIO(archive)) as files:
         for item in files.getmembers():
             destination = (snapshot / item.name).resolve()
-            assert destination.is_relative_to(snapshot)
+            if not destination.is_relative_to(snapshot) or not (item.isfile() or item.isdir()):
+                raise ValueError(f'invalid Git archive entry: {item.name}')
         files.extractall(snapshot)
-    assert digest(snapshot / record['source']['path']) == record['source']['sha256'], 'measured kernel source differs'
-    return snapshot
+    if digest(snapshot / source['path']) != source['sha256']:
+        raise ValueError('measured kernel source differs from its recorded SHA-256')
+    return snapshot, source['path'], 'measured_checkout'
 
 
 def launch_options(record):
@@ -78,10 +94,12 @@ def launch_options(record):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--record', type=Path, default=Path(__file__).with_name('record.json'))
+    parser.add_argument('--record', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--single-tg-perf', action='store_true')
     parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--current-source', action='store_true',
+                        help='check current kernel against recorded executable sections')
     args = parser.parse_args()
     record_path = args.record.resolve()
     record = json.loads(record_path.read_text())
@@ -111,6 +129,7 @@ def main():
     plan = dict(requirement=record['requirement'], shape=record['shape'], chip=args.chip,
                 kernel=symbol, options=params, grid=[grid], protocol=protocol, repeats=repeats,
                 correctness_dispatches=0 if protocol == 'cold' else 3,
+                source_mode='current' if args.current_source else 'measured',
                 launch='repository JIT with archived tile/warp/stage configuration; persistent grid/NUM_SMS follow device CUs')
     plan.update(single_tg=args.single_tg_perf, full_grid=[full_grid],
                 selected_tile_ids=tile_ids if args.single_tg_perf else None)
@@ -164,7 +183,7 @@ def main():
         return original_open(file, *positional, **kwargs)
 
     builtins.open = private_open
-    source_root = measured_source(record, output)
+    source_root, source_path, source_origin = resolve_source(record, output, args.current_source)
     sys.path.insert(0, str(source_root))
     import torch
     import triton
@@ -177,7 +196,7 @@ def main():
     assert target.arch == 'gfx946' and target.warp_size == 64
     reported_cus = torch.cuda.get_device_properties(0).multi_processor_count
     assert reported_cus == (96 if args.chip == 'sbx2' else 48), reported_cus
-    module = importlib.import_module(record['source']['path'][:-3].replace('/', '.'))
+    module = importlib.import_module(source_path[:-3].replace('/', '.'))
     fn = getattr(module, symbol)
     guard = 256 if small else 128 if mls else 65536
     bshape = (n, k) if small else (k, n)
@@ -342,13 +361,16 @@ def main():
                   reported_device_cu_count=reported_cus, grid=[grid], launch_options=params,
                   performance=performance, validation=validation, samples=samples,
                   baseline_record=str(record_path), baseline_record_sha256=digest(record_path),
-                  source_sha256=digest(source_root / record['source']['path']), config_sha256=record['config']['sha256'],
+                  source_sha256=digest(source_root / source_path), source_origin=source_origin,
+                  source_path=source_path, config_sha256=record['config']['sha256'],
                   assembly_sha256=digest(output / 'kernel.amdgcn'), hsaco_sha256=digest(output / 'kernel.hsaco'),
                   assembly_matches_archived=digest(output / 'kernel.amdgcn') == record['assembly']['sha256'],
                   benchmark_sha256=digest(__file__), resources=dict(VGPR=handle.n_regs, spills=handle.n_spills,
                       LDS_bytes=handle.metadata.shared),
                   runtime=dict(torch=torch.__version__, triton=triton.__version__, triton_path=triton.__file__,
                       libtriton_sha256=digest(lib.__file__)))
+    if protocol != 'cold' and not small:
+        result['timing_input'] = dict(seed=seed, input_kind='normal_random')
     save(output / 'result.json', result)
     print(json.dumps(dict(requirement=record['requirement'], status='PASS', performance=performance)), flush=True)
 

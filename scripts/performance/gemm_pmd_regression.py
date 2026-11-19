@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
-"""Run one representative published PMD benchmark per BF16/FP8 GEMM kernel, DIE count, and layout.
+"""Run one representative published PMD benchmark per BF16/FP8 GEMM kernel.
 
 Use --list to inspect the default coverage or --case to select published
 records explicitly. Each case keeps its complete MNK, grid, validation and
@@ -37,16 +37,12 @@ class Benchmark:
         symbol = source.get("current_symbol", source["symbol"])
         config = record.get("config", {})
         if {"path", "profile", "M_key"} <= config.keys():
-            # The published symbol identifies the measured binary. A current
-            # config can use a renamed selector for the same replay case.
-            profiles = linear.load(linear.REPO / config["path"])["profiles"]
-            symbol = profiles[config["profile"]][config["M_key"]].get("kernel", symbol)
+            # A current config can use a renamed selector for the same replay case.
+            path = linear.REPO / config["path"]
+            if path.is_file():
+                profile = linear.load(path).get("profiles", {}).get(config["profile"], {})
+                symbol = profile.get(config["M_key"], {}).get("kernel", symbol)
         return f"{source.get('current_path', source['path'])}:{symbol}"
-
-    @property
-    def coverage(self):
-        record = self.case.record
-        return self.kernel, self.dtype, record["environment"]["dies"], record["layout"]
 
     @property
     def dtype(self):
@@ -88,7 +84,7 @@ def select_benchmarks(selectors=()):
         return [benchmark for benchmark in candidates if benchmark.aliases & keys]
     kernels = {}
     for benchmark in sorted(candidates, key=lambda row: row.size_order):
-        kernels.setdefault(benchmark.coverage, benchmark)
+        kernels.setdefault(benchmark.kernel, benchmark)
     return sorted(kernels.values(), key=lambda row: (row.dtype, row.case.key))
 
 

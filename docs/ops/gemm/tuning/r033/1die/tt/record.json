@@ -102,11 +102,12 @@
     }
   },
   "benchmark": {
-    "script": "benchmark.py",
+    "script": "../../../bf16_1die_tt/benchmark.py",
     "seed": 21,
     "repeats": 1,
-    "sha256": "82b74c600761c5645122c1042b3d52e52a82fdba4a81c340bcec89c601803649",
-    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r033/1die/tt/benchmark.py --record docs/ops/gemm/tuning/r033/1die/tt/record.json --output /tmp/r033-triton36-full-new",
+    "sha256": "20eecba69afd626fbc2be4f71194cf1e4b949b7d09c4ff100dc7ce5490c46e9f",
+    "previous_replay_sha256": "82b74c600761c5645122c1042b3d52e52a82fdba4a81c340bcec89c601803649",
+    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/bf16_1die_tt/benchmark.py --record docs/ops/gemm/tuning/r033/1die/tt/record.json --output /tmp/r033-triton36-full-new",
     "cache": "fresh per-output HOME/cache/temp/history; existing output directory rejected"
   },
   "resources": {
@@ -262,7 +263,7 @@
       "GPU_ARGS": "['--abs-max-tick=10000000000']",
       "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
     },
-    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r033/1die/tt/benchmark.py --record docs/ops/gemm/tuning/r033/1die/tt/record.json --output /tmp/r033-independent-single-new --single-tg-perf"
+    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/bf16_1die_tt/benchmark.py --record docs/ops/gemm/tuning/r033/1die/tt/record.json --output /tmp/r033-independent-single-new --single-tg-perf"
   },
   "validation": [
     {
@@ -297,9 +298,9 @@
   "interface_validation": {
     "exit_code": 0,
     "summary": "PASS: public-API launch, one cold full-grid dispatch and full-output correctness.",
-    "source_test": "tmp/1114/a16w16_triton36_replay_20261114/r001_schema_alignment_20261116/before/docs/ops/gemm/tuning/r033/1die/tt/benchmark.py",
+    "source_test": "tmp/1114/a16w16_triton36_replay_20261114/r001_schema_alignment_20261116/before/docs/ops/gemm/tuning/bf16_1die_tt/benchmark.py",
     "test_sha256": "0432f0b3a7d2565c8508e1e32d421b03b68d0ad9437b3dbe6ac2b4e56cdf1d10",
-    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && taskset -c 15 /usr/bin/python /public/home/duyubo/bolt/new/github/BoltOPs/docs/ops/gemm/tuning/r033/1die/tt/benchmark.py --record /public/home/duyubo/bolt/new/github/BoltOPs/tmp/1114/a16w16_triton36_replay_20261114/full/r033/bf16/1die/tt/replay-record.json --output /public/home/duyubo/bolt/new/github/BoltOPs/tmp/1114/a16w16_triton36_replay_20261114/full/r033/bf16/1die/tt/measurement --triton-build /public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10",
+    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && taskset -c 15 /usr/bin/python /public/home/duyubo/bolt/new/github/BoltOPs/docs/ops/gemm/tuning/bf16_1die_tt/benchmark.py --record /public/home/duyubo/bolt/new/github/BoltOPs/tmp/1114/a16w16_triton36_replay_20261114/full/r033/bf16/1die/tt/replay-record.json --output /public/home/duyubo/bolt/new/github/BoltOPs/tmp/1114/a16w16_triton36_replay_20261114/full/r033/bf16/1die/tt/measurement --triton-build /public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10",
     "scope": "Public API selects the recorded Gluon persistent kernel/config. Full CPU FP32 reference from BF16 inputs, rounded to BF16, atol=0.001, rtol=0.01. Output canaries, input bytes and 65536-element NaN input guards preserved; CU0 PERF captured in the same full dispatch. Independent grid=(1,) TG0 timing and correctness are recorded in single_tg_perf."
   }
 }

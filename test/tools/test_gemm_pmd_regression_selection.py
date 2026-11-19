@@ -3,7 +3,7 @@ from collections import defaultdict
 from scripts.performance import gemm_pmd_regression as regression
 
 
-def test_default_selects_smallest_published_case_for_each_kernel_die_and_layout():
+def test_default_selects_smallest_published_case_for_each_kernel():
     candidates = defaultdict(list)
     for runner, cases in (
         (regression.linear, regression.linear.discover_cases()),
@@ -11,16 +11,16 @@ def test_default_selects_smallest_published_case_for_each_kernel_die_and_layout(
     ):
         for case in cases:
             benchmark = regression.Benchmark(runner, case)
-            candidates[benchmark.coverage].append(benchmark)
+            candidates[benchmark.kernel].append(benchmark)
 
-    selected = {benchmark.coverage: benchmark for benchmark in regression.select_benchmarks()}
+    selected = {benchmark.kernel: benchmark for benchmark in regression.select_benchmarks()}
 
     assert selected.keys() == candidates.keys()
     assert all(selected[kernel] == min(rows, key=lambda row: row.size_order)
                for kernel, rows in candidates.items())
     assert {row.dtype for row in selected.values()} == {"bf16", "fp8"}
-    assert any("/triton/" in kernel for kernel, *_ in selected)
-    assert any("/gluon/" in kernel for kernel, *_ in selected)
+    assert any("/triton/" in kernel for kernel in selected)
+    assert any("/gluon/" in kernel for kernel in selected)
 
 
 def test_explicit_record_keeps_published_shape_and_timing():
@@ -46,8 +46,8 @@ def test_early_public_replay_accepts_perf_metadata_without_path(tmp_path):
     assert replay["environment"]["environment_variables"]["GPU_OUT"] == "m5out"
 
 
-def test_default_covers_both_streamk_layouts_and_fp8_widths():
-    cases = {row.case.key: row for row in regression.select_benchmarks()}
+def test_explicit_selection_preserves_both_streamk_layouts_and_fp8_widths():
+    cases = {row.case.key: row for row in regression.select_benchmarks(["R020", "R005", "R029", "R004"])}
     assert cases["R020/bf16/2die/tn"].kernel == cases["R020/bf16/2die/tt"].kernel
     assert cases["R005/1die/tn"].kernel == cases["R005/2die/tn"].kernel
     assert "R029/bf16/2die/tt" in cases

@@ -308,15 +308,15 @@ def objects(node):
 def configuration(measurement):
     """Both g/config.ini and m5out/config.json are emitted by archived runners."""
     for folder in ('g', 'm5out', 'model'):
+        path = measurement / folder / 'config.json'
+        if path.is_file():
+            return {obj['path']: obj for obj in objects(load(path))}
         path = measurement / folder / 'config.ini'
         if path.is_file():
             parser = configparser.RawConfigParser()
             parser.optionxform = str
             parser.read_string(path.read_text())
             return {section: dict(parser[section]) for section in parser.sections()}
-        path = measurement / folder / 'config.json'
-        if path.is_file():
-            return {obj['path']: obj for obj in objects(load(path))}
     raise ValueError('missing PMD model configuration')
 
 
