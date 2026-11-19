@@ -74,11 +74,39 @@ def precision(record):
     return a
 
 
+def normalize_public_record(record, path):
+    """Adapt early public-API Gluon records without modifying published files."""
+    public = record.get('public_api', {})
+    if public.get('path') or public.get('name') != 'gemm_a16w16' or public.get('verified') is not True:
+        return record
+    record = deepcopy(record)
+    archived = record['benchmark']
+    samples = record['samples']
+    validation = record['validation']
+    grids = {sample['completed_TGs'] for sample in samples + validation}
+    if len(grids) != 1:
+        raise ValueError(f'{path}: inconsistent published full-grid TG count')
+    config = record['config']
+    types = record['precision']
+    record.update(
+        status='PASS' if record['status'] == 'PMD_PASS' else record['status'],
+        dtype=dict(A=types['A'], W=types['B'], output=types['C']),
+        public_api={**public, 'path': OPERATOR},
+        source=dict(path='boltops/gemm/gluon/gemm_a16w16.py', symbol=config['selected']['kernel']),
+        benchmark={**archived, 'script': 'benchmark.py', 'sha256': archived['source_sha256'],
+                   'timing_mode': 'public_warm_median', 'validation_count': len(validation)},
+    )
+    record['performance']['launched_TGs'] = grids.pop()
+    return record
+
+
 def timing_protocol(record):
     """Choose the archived protocol, never infer a new one from current samples."""
     benchmark, performance = record['benchmark'], record['performance']
     repeats = positive(benchmark['repeats'], 'benchmark repeats', integer=True)
     mode = benchmark.get('timing_mode')
+    if mode == 'public_warm_median':
+        return mode
     aggregation = performance.get('aggregation', '')
     if (mode == 'existing_first_timed' or (mode is None and aggregation.startswith('first timed repeat'))) and repeats >= 2:
         return 'first_timed'
@@ -124,7 +152,7 @@ def discover_cases(repo=REPO, records=None):
             path.relative_to(repo)
     cases = []
     for path in paths:
-        record = load(path)
+        record = normalize_public_record(load(path), path)
         if record.get('public_api', {}).get('path') != OPERATOR:
             if records:
                 raise ValueError(f'{path}: not a public linear gemm_a16w16 record')
@@ -361,6 +389,12 @@ def evaluate(case, case_output, max_regression_percent=1.0):
             raise ValueError('cold baseline must not have execution warmups')
         validation = []
         selected = [0]
+    elif protocol == 'public_warm_median':
+        samples, validation = result['samples'], result['validation']
+        if (result.get('public_api_verified') is not True or len(samples) != repeats
+                or not isinstance(validation, list) or len(validation) != record['benchmark']['validation_count']):
+            raise ValueError('public replay or recorded validation/timing count differs')
+        selected = list(range(repeats))
     else:
         samples, validation = result['samples'], result['validation']
         if len(samples) != repeats or not isinstance(validation, list) or len(validation) != 3:
@@ -418,7 +452,7 @@ def replay_record(case, output):
     """
     record = deepcopy(case.record)
     for name in ('assembly', 'single_tg_perf'):
-        if name in record:
+        if record.get(name, {}).get('path'):
             record[name]['path'] = str((case.record_path.parent / record[name]['path']).resolve())
     for name in ('source', 'config', 'public_api'):
         item = record[name]
@@ -437,7 +471,7 @@ def replay_record(case, output):
     record['environment']['environment_variables'].update(
         HOME=str(runtime / 'home'), TMPDIR=str(runtime / 'temp'),
         TRITON_CACHE_DIR=str(runtime / 'cache'), TRITON_HOME=str(runtime / 'triton-home'),
-        GPU_OUT='m5out' if case.record['source']['symbol'] == '_gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel' else 'g',
+        GPU_OUT='m5out' if timing_protocol(record) == 'public_warm_median' else 'g',
         RPY_HISTORY_LOG=str(runtime / 'history.log'), RPY_HISTORY_SIZE='1024',
         BOLTOPS_GEMM_CONFIG_DIR=None, PYTHONDONTWRITEBYTECODE='1', PYTHONOPTIMIZE=None)
     return record

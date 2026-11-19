@@ -81,6 +81,9 @@ def normalize_record(record):
                                    repeats=warm_repeats + 1, job_config={'BN': record['tile'][1]})
         environment['environment_variables'].setdefault(
             'PYTHONPATH', str(Path(environment['variables']['TRITON_HOME']).parent / 'runtime'))
+    performance = record['performance']
+    if 'launched_TGs' not in performance and 'completed_TGs' in performance:
+        performance['launched_TGs'] = performance['completed_TGs']
     return record
 
 
@@ -111,7 +114,11 @@ def discover_cases(repo=REPO):
     for link in sorted(links):
         path = (document.parent / link).resolve()
         path.relative_to(repo.resolve())
-        record = normalize_record(load(path))
+        published = load(path)
+        if ('gemm_a8w8_blockscale' not in published.get('config', {}).get('path', '')
+                and 'mean_kernel_us' not in published['performance']):
+            continue
+        record = normalize_record(published)
         positive(record['performance']['kernel_us'], 'baseline kernel_us')
         positive(record['performance']['launched_TGs'], 'baseline launched_TGs')
         if record['environment']['type'] != 'PMD':
