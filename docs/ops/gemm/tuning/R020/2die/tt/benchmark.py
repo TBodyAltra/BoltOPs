@@ -43,7 +43,6 @@ PUBLIC = 'boltops/gemm/gemm_a16w16.py'
 DEPENDENCIES = (
     'boltops/gemm/config.py',
     'boltops/utility/arch_info.py',
-    'boltops/gemm/backend_interfaces.py',
     'boltops/gemm/gluon/gemm_a16w16_streamk.py',
 )
 ENVIRONMENT_SCRIPT = '/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh'
@@ -318,6 +317,8 @@ def main():
         return original_open(file, *positional, **kwargs)
     builtins.open = private_open
     source_root = restore_boltops(output, replay_commit)
+    dependencies = [item['path'] for item in archived['source_dependencies']] if archived else DEPENDENCIES
+    source_dependencies = [dict(path=path, sha256=digest(source_root / path)) for path in dependencies]
     sys.path.insert(0, str(source_root))
     import torch
     import triton
@@ -542,7 +543,7 @@ def main():
         perf_sha256=digest(output / 'single_tg.perf'), stats_sha256=selected['stats_sha256'],
         source_sha256=digest(source_root / SOURCE), config_sha256=digest(source_root / config_path),
         public_api_sha256=digest(source_root / PUBLIC),
-        source_dependencies=[dict(path=path, sha256=digest(source_root / path)) for path in DEPENDENCIES],
+        source_dependencies=source_dependencies,
         runtime=dict(host=socket.gethostname(), torch=torch.__version__, triton=triton.__version__,
             triton_file=triton.__file__, libtriton_sha256=digest(lib.__file__),
             clang_sha256=digest(os.environ['TRITON_HIP_CLANG_PATH']), environment_script=environment_script,

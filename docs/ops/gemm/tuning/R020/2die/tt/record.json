@@ -193,13 +193,13 @@
     "script": "benchmark.py",
     "seed": 20,
     "repeats": 1,
-    "sha256": "0881ddc136fbdfbda4b0f49a6659b6abacaedb68364f69e7f74bdcae36111636",
+    "sha256": "7a5877a2abf139ad3dab474705c7ae8d31ab05e8d4418774538b4d5cb6a5bc5c",
     "replay_git_commit": "a05a2ef2dcf5b6f5780b1b7639c8bd1264390aa1",
     "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && taskset -c 0 /usr/bin/python -u docs/ops/gemm/tuning/R020/2die/tt/benchmark.py --output tmp/1117/streamk_sbx2_20261117_v1/R020-full",
     "guard_elements_each_side": 65536,
     "cache": "fresh per-output Triton cache, XDG cache, temporary files and private PMD history",
     "measured_sha256": "421959c63f883c8de976b7b3288a21e556ec9fa637669377d45dd99315d7b49b",
-    "previous_replay_sha256": "df2806ff12291371da320f2d25023a1a4ad3e02cdb29c00f9d60fbb12733996d"
+    "previous_replay_sha256": "0881ddc136fbdfbda4b0f49a6659b6abacaedb68364f69e7f74bdcae36111636"
   },
   "resources": {
     "LDS_bytes": 98304,
@@ -886,5 +886,31 @@
       "sha256": "f1e1d0a2a70e70f13cb4278db36ae3dba829b5a1c445f4649e033732de7e3e89",
       "measured_sha256": "5f2cc8f76245cc7acced876f69771defd7119955f9769b59e23014a8e382951f"
     }
-  ]
+  ],
+  "current_toolchain_validation": {
+    "status": "raw_stats_verified",
+    "interface": "public auto",
+    "driver": "node60 PMD",
+    "kernel_us": 68.601715,
+    "clock_period_ps": 455,
+    "gemm_cycles": 139241.0,
+    "flag_reset_cycles": 11532.0,
+    "full_grid_TGs": 96,
+    "accuracy": {
+      "status": "PASS",
+      "elements": 4194304,
+      "atol": 0.001,
+      "rtol": 0.01,
+      "outside_tolerance": 0,
+      "nonfinite": 0,
+      "max_abs": 0.25,
+      "canary_ok": true,
+      "inputs_byte_identical": true,
+      "unselected_output_nan": true
+    },
+    "gemm_stats_sha256": "203c4c9eefed76182d8ad8a8be5affe6dc7b33804aeed61b4e0fc6e6354f10e2",
+    "flag_reset_stats_sha256": "624ef9c241ece2339870782144241ae1c42fca38d704633d76771fb54631aedd",
+    "report_location": "node60:/tmp/pr45-r020-tt.KUY5RC/replay",
+    "scope": "One cold dispatch plus native flag reset; recovered from validated raw PMD samples."
+  }
 }
