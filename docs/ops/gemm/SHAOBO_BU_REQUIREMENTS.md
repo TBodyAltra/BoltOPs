@@ -975,11 +975,11 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td><a href="tuning/r028/2die/tt/record.json">sbx2 / 96 CU</a></td>
       <td><a href="tuning/r028/2die/tt/record.json">114.543 / 449.96 / 52.06%</a></td>
-      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r028/2die/tt/record.json">config</a> / <a href="tuning/r028/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r028/2die/tt/record.json">记录</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r028/2die/tt/record.json">config</a> / <a href="tuning/r027/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r028/2die/tt/record.json">记录</a></td>
       <td>—</td>
       <td><a href="tuning/r028/2die/tn/record.json">sbx2 / 96 CU</a></td>
       <td><a href="tuning/r028/2die/tn/record.json">116.199 / 443.55 / 51.32%</a></td>
-      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r028/2die/tn/record.json">config</a> / <a href="tuning/r028/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r028/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r028/2die/tn/record.json">config</a> / <a href="tuning/r027/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r028/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1007,7 +1007,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r029/2die/tt/single_tg.perf">PERF</a></td>
       <td><a href="tuning/r029/2die/tn/record.json">sbx2 / 96 CU</a></td>
       <td><a href="tuning/r029/2die/tn/record.json">45.066 / 571.83 / 66.16%</a></td>
-      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r029/2die/tn/record.json">config</a> / <a href="tuning/r029/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r029/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r029/2die/tn/record.json">config</a> / <a href="tuning/r027/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r029/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1063,7 +1063,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r031/2die/tt/single_tg.perf">PERF</a></td>
       <td><a href="tuning/r031/2die/tn/record.json">sbx2 / 96 CU</a></td>
       <td><a href="tuning/r031/2die/tn/record.json">1029.360 / 619.09 / 71.63%</a></td>
-      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r031/2die/tn/record.json">config</a> / <a href="tuning/r031/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r031/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r031/2die/tn/record.json">config</a> / <a href="tuning/r027/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r031/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>

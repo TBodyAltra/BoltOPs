@@ -1,4 +1,4 @@
-"""Measure a BF16 TN candidate on PMD sbx2. Run each job in its own directory."""
+"""Replay a recorded BF16 GEMM kernel on dual-die PMD."""
 import argparse
 import builtins
 import configparser
@@ -12,7 +12,10 @@ import os
 from pathlib import Path
 import re
 import statistics
+import struct
 import sys
+
+from benchmark import elf_sections, executable_sections
 
 
 def write_json(name, value):
@@ -21,6 +24,34 @@ def write_json(name, value):
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def code_object_abi(data):
+    """Return the AMDHSA kernel ABI that must agree with the fresh launcher."""
+    import msgpack
+
+    for _, section_type, section in elf_sections(data):
+        if section_type != 7:  # SHT_NOTE
+            continue
+        offset = 0
+        while offset + 12 <= len(section):
+            name_size, desc_size, note_type = struct.unpack_from('<III', section, offset)
+            name = section[offset + 12:offset + 12 + name_size].rstrip(b'\x00')
+            start = offset + 12 + ((name_size + 3) & ~3)
+            offset = start + ((desc_size + 3) & ~3)
+            if name != b'AMDGPU' or note_type != 32:  # NT_AMDGPU_METADATA
+                continue
+            metadata = msgpack.unpackb(section[start:start + desc_size], raw=False)
+            keys = ('.name', '.symbol', '.args', '.kernarg_segment_size',
+                    '.kernarg_segment_align', '.group_segment_fixed_size',
+                    '.private_segment_fixed_size', '.wavefront_size',
+                    '.max_flat_workgroup_size', '.reqd_workgroup_size',
+                    '.uniform_work_group_size', '.workgroup_processor_mode')
+            kernels = [{key: kernel.get(key) for key in keys}
+                       for kernel in metadata['amdhsa.kernels']]
+            return (data[7:9], struct.unpack_from('<I', data, 48)[0],
+                    metadata['amdhsa.version'], metadata.get('amdhsa.target'), kernels)
+    raise ValueError('code object has no AMDHSA metadata')
 
 
 def collect_dispatch(stats_path, grid, tiles, options, k):
@@ -70,6 +101,14 @@ def main():
     import triton._C.libtriton as lib
     from boltops.gemm.config import get_gemm_config
     from boltops.gemm.triton.gemm_config_utils import compute_splitk_params
+
+    toolchain = dict(triton=triton.__version__, torch=torch.__version__,
+                     libtriton_sha256=sha(Path(lib.__file__).read_bytes()),
+                     clang_sha256=sha(Path(os.environ['TRITON_HIP_CLANG_PATH']).read_bytes()))
+    expected_toolchain = job['expected_toolchain']
+    for key, expected in expected_toolchain.items():
+        if toolchain.get(key) != expected:
+            raise ValueError(f'replay toolchain differs for {key}: expected {expected}, got {toolchain.get(key)}')
 
     assert os.environ['GPU_CHIP'] == 'sbx2'
     assert triton.runtime.driver.active.get_current_target().arch == 'gfx946'
@@ -135,24 +174,38 @@ def main():
         positional = (a, b, None, c, m, n, k, *a.stride(), *b.stride(), m*n, *c.stride())
         options.update(activation="", use_activation=False, ADD_BIAS=False, SKIP_REDUCE=False)
     handle = kernel.warmup(*positional, grid=(grid,), **options)
+    expected_sections = job['expected_executable_sections']
+    fresh_binary = handle.asm['hsaco']
+    fresh_sections = executable_sections(fresh_binary)
+    fresh_matches_measured = fresh_sections == expected_sections
+    code_origin = 'fresh'
+    archived_abi_verified = False
     if 'archived_code_object' in job:
         binary = Path(job['archived_code_object']).read_bytes()
         assembly = Path(job['archived_assembly']).read_bytes()
-        assert sha(binary) == job['archived_code_sha256']
-        assert sha(assembly) == job['archived_assembly_sha256']
-        # Preserve the launch metadata and use the measured instructions.
-        handle.kernel = binary
-        handle.asm['hsaco'] = binary
-        handle.asm['amdgcn'] = assembly.decode()
+        if sha(binary) != job['archived_code_sha256'] or sha(assembly) != job['archived_assembly_sha256']:
+            raise ValueError('archived code object or assembly differs from the record')
+        if executable_sections(binary) != expected_sections:
+            raise ValueError('archived executable sections differ from the record')
+        if code_object_abi(fresh_binary) != code_object_abi(binary):
+            raise ValueError('archived code object is incompatible with the fresh launcher ABI')
+        archived_abi_verified = True
+        if not job.get('compile_only'):
+            handle.kernel = binary
+            handle.asm['hsaco'] = binary
+            handle.asm['amdgcn'] = assembly.decode()
+            code_origin = 'archived'
+    elif not fresh_matches_measured:
+        raise ValueError('fresh executable sections differ from the measured code object')
     handle._init_handles()
     resources = dict(VGPR=handle.n_regs, spills=handle.n_spills, LDS_bytes=handle.metadata.shared)
     Path('kernel.amdgcn').write_text(handle.asm['amdgcn'])
     Path('kernel.hsaco').write_bytes(handle.asm['hsaco'])
     write_json('compile.json', dict(job=job, grid=grid, logical_tiles=tiles, strides=dict(A=a.stride(), B=b.stride(), C=c.stride()),
                symbol=symbol, options=options, resources=resources, source_sha256=sha(Path(module.__file__).read_bytes()),
-               toolchain=dict(triton=triton.__version__, torch=torch.__version__, libtriton_sha256=sha(Path(lib.__file__).read_bytes()),
-                              clang_sha256=sha(Path(os.environ['TRITON_HIP_CLANG_PATH']).read_bytes())),
-               hsaco_sha256=sha(handle.asm['hsaco'])))
+               toolchain=toolchain, code_origin=code_origin, archived_abi_verified=archived_abi_verified,
+               fresh_hsaco_sha256=sha(fresh_binary), fresh_executable_sections=fresh_sections,
+               fresh_matches_measured=fresh_matches_measured, hsaco_sha256=sha(handle.asm['hsaco'])))
     assert resources['spills'] == 0 or (family == 'baseline' and not job.get('fallback_baseline')), resources
     if job.get('compile_only'):
         return
