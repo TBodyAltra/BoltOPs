@@ -945,13 +945,13 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      <td><a href="tuning/r027/2die/tt/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r027/2die/tt/record.json">41.086 / 418.14 / 48.38%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r027/2die/tt/record.json">config</a> / <a href="tuning/r027/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r027/2die/tt/record.json">记录</a></td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r027/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r027/2die/tn/record.json">41.509 / 413.88 / 47.89%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r027/2die/tn/record.json">config</a> / <a href="tuning/r027/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r027/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -973,13 +973,13 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      <td><a href="tuning/r028/2die/tt/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r028/2die/tt/record.json">114.543 / 449.96 / 52.06%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r028/2die/tt/record.json">config</a> / <a href="tuning/r028/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r028/2die/tt/record.json">记录</a></td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r028/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r028/2die/tn/record.json">116.199 / 443.55 / 51.32%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r028/2die/tn/record.json">config</a> / <a href="tuning/r028/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r028/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1005,9 +1005,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r029/2die/tt/record.json">45.939 / 560.96 / 64.91%</a></td>
       <td><a href="../../../boltops/gemm/triton/gemm_a16w16_wasp.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=6144-K=4096-TT.json">config</a> / <a href="tuning/r029/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r029/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r029/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r029/2die/tt/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r029/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r029/2die/tn/record.json">45.066 / 571.83 / 66.16%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r029/2die/tn/record.json">config</a> / <a href="tuning/r029/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r029/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1033,9 +1033,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r030/2die/tt/record.json">140.685 / 732.69 / 84.78%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/triton/gemm_a16w16_wasp.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=24576-K=4096-TT.json">config</a> / <a href="tuning/r030/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r030/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r030/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r030/2die/tt/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r030/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r030/2die/tn/record.json">136.705 / 754.03 / 87.25%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r030/2die/tn/record.json">config</a> / <a href="tuning/r030/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r030/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1061,9 +1061,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r031/2die/tt/record.json">866.163 / 735.73 / 85.13%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=151936-K=4096-TT.json">config</a> / <a href="tuning/r031/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r031/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r031/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r031/2die/tt/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r031/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r031/2die/tn/record.json">1029.360 / 619.09 / 71.63%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r031/2die/tn/record.json">config</a> / <a href="tuning/r031/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r031/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1085,13 +1085,13 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      <td><a href="tuning/r032/2die/tt/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r032/2die/tt/record.json">130.211 / 659.69 / 76.33%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r032/2die/tt/record.json">config</a> / <a href="tuning/r032/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r032/2die/tt/record.json">记录</a></td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r032/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r032/2die/tn/record.json">130.550 / 657.98 / 76.13%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r032/2die/tn/record.json">config</a> / <a href="tuning/r032/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r032/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1117,9 +1117,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r033/2die/tt/record.json">378.185 / 681.41 / 78.85%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=12288-TT.json">config</a> / <a href="tuning/r033/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r033/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r033/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r033/2die/tt/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r033/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r033/2die/tn/record.json">375.008 / 687.18 / 79.51%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r033/2die/tn/record.json">config</a> / <a href="tuning/r033/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r033/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1145,9 +1145,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r034/2die/tt/record.json">196.794 / 654.74 / 75.76%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=6144-K=4096-TT.json">config</a> / <a href="tuning/r034/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r034/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r034/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r034/2die/tt/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r034/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r034/2die/tn/record.json">193.185 / 666.97 / 77.17%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r034/2die/tn/record.json">config</a> / <a href="tuning/r034/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r034/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1201,9 +1201,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r036/2die/tt/record.json">303.457 / 707.06 / 81.82%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=4608-TT.json">config</a> / <a href="tuning/r036/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r036/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r036/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r036/2die/tt/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r036/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r036/2die/tn/record.json">412.776 / 519.81 / 60.14%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r036/2die/tn/record.json">config</a> / <a href="tuning/r036/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r036/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1257,9 +1257,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r038/2die/tt/record.json">321.556 / 694.55 / 80.37%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=4096-TT.json">config</a> / <a href="tuning/r038/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r038/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r038/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r038/2die/tt/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r038/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r038/2die/tn/record.json">317.361 / 703.74 / 81.43%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r038/2die/tn/record.json">config</a> / <a href="tuning/r038/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r038/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1313,9 +1313,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r040/2die/tt/record.json">447.169 / 749.17 / 86.69%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=6144-K=4096-TT.json">config</a> / <a href="tuning/r040/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r040/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r040/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r040/2die/tt/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r040/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r040/2die/tn/record.json">441.802 / 758.27 / 87.74%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r040/2die/tn/record.json">config</a> / <a href="tuning/r040/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r040/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1365,13 +1365,13 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      <td><a href="tuning/r042/2die/tt/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r042/2die/tt/record.json">109.405 / 551.59 / 63.82%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r042/2die/tt/record.json">config</a> / <a href="tuning/r042/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r042/2die/tt/record.json">记录</a></td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r042/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r042/2die/tn/record.json">110.406 / 546.58 / 63.24%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r042/2die/tn/record.json">config</a> / <a href="tuning/r042/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r042/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1393,13 +1393,13 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      <td><a href="tuning/r043/2die/tt/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r043/2die/tt/record.json">137.580 / 584.83 / 67.67%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r043/2die/tt/record.json">config</a> / <a href="tuning/r043/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r043/2die/tt/record.json">记录</a></td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r043/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r043/2die/tn/record.json">160.739 / 500.57 / 57.92%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r043/2die/tn/record.json">config</a> / <a href="tuning/r043/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r043/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1453,9 +1453,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r045/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r045/2die/tn/record.json">278.681 / 649.62 / 75.17%</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r045/2die/tn/record.json">config</a> / <a href="tuning/r045/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r045/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
