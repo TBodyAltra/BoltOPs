@@ -1,0 +1,243 @@
+{
+  "requirement": "R011",
+  "layout": "TT",
+  "shape": [
+    6656,
+    2048,
+    4096
+  ],
+  "status": "PMD_PASS",
+  "data_kind": "experimental_candidate",
+  "environment": {
+    "type": "PMD",
+    "model": "CoreArch1703",
+    "arch": "gfx946",
+    "dies": 2,
+    "cu_count": 96,
+    "triton": {
+      "branch": "release/3.6.x",
+      "commit": "f8cbbee1849806f96337e85685e1ba031b63f096",
+      "libtriton_sha256": "6cbab0d6f24186d876868340bb215ec62e2529353a7f70b5b4582a94a6ca0b11",
+      "build_llvm_commit": "02cd0a4ddec90de4c0691e40e50ad2d2c1d9d8a2"
+    },
+    "clang": {
+      "repository": "ssh://git@10.16.1.204:10022/dcu-aicc/llvm-project.git",
+      "branch": "dtk-llvm-7.2.1",
+      "commit": "264542e7e37f15dd13ab063d59522652268cf7d9",
+      "sha256": "e9b384d42aea5caac01aaf25cfcd1d187e13559aa016ee8df7c237c1fbd0c565",
+      "lld_sha256": "fd737133caeaf686ec816e3a3e2db386fd6713fc892b4884b8731deb571dc6e1",
+      "local_patches": [
+        {
+          "path": "../../../r009/2die/tn/mmac-c-no-sink.patch",
+          "sha256": "4cdd471d821fcd800b3899051f392a6d6fee347b30520c12d1411916f84dfec0"
+        }
+      ],
+      "ds_read2": "upstream in 264542e7e3",
+      "test_patch_applied": false
+    },
+    "clock_period_ps": {
+      "cache": 455,
+      "system": 1000,
+      "umc": 2276,
+      "gc": 455
+    },
+    "frequency_ghz": {
+      "cache": 2.197802197802198,
+      "system": 1.0,
+      "umc": 0.43936731107205623,
+      "gc": 2.197802197802198
+    },
+    "environment_variables": {
+      "GPU_CHIP": "sbx2",
+      "GPU_GFLAGS": null,
+      "GPU_DFLAGS": "['StatLog']",
+      "GPU_ARGS": "['--abs-max-tick=10000000000']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "HSA_TOOLS_LIB": null,
+      "HIP_VISIBLE_DEVICES": null,
+      "ROCR_VISIBLE_DEVICES": null,
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/r009-264542-patch-comparison/bin/clang-22",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/r009-264542-patch-comparison/bin/ld.lld",
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_HCU_MATRIX_STORE_INSN": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
+      "HCU_PIPELINE_ENV_REV": null,
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119-prefill:/xukang/code/pmd-triton-sessions/r009-matrix-store-latest/runtime",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm",
+      "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119-prefill/r011/tt/persistent-96tg/cache",
+      "TRITON_HOME": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119-prefill/r011/tt/persistent-96tg/triton-home",
+      "BOLTOPS_GEMM_CONFIG_DIR": null
+    },
+    "pmd_revision": null,
+    "container_image": {
+      "image_id": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "repo_tags": [
+        "10.65.42.71:9092/perf-model-env:8569"
+      ],
+      "repo_digests": [
+        "10.65.42.71:9092/perf-model-env@sha256:dc5a9d4be8aeffbcc5a950f0ffdf85921c9dd0159c55d26a4adcac3c205f6bd2"
+      ],
+      "image_created": "2026-10-12T20:20:10.804529356Z",
+      "architecture": "amd64",
+      "os": "linux",
+      "container_name": "kxu_pmd_8569_fp8_20261017",
+      "container_id": "740cf5c897145f09f404fca1a14b936deaba587f32bb7549ad25664d52aa41b5",
+      "version": "8569",
+      "capture_source": "docker inspect during this run; immutable Image ID matches the recorded image"
+    },
+    "die_topology": [
+      {
+        "die": 0,
+        "shader_path": "system.shaders0",
+        "cu_count": 48
+      },
+      {
+        "die": 1,
+        "shader_path": "system.shaders1",
+        "cu_count": 48
+      }
+    ],
+    "host": "node60"
+  },
+  "source": {
+    "commit": "8494cee97bd3abd88dd3525b3489de7441b4861e",
+    "path": "boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py",
+    "symbol": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel",
+    "patches": [
+      "gemm_a8w8_blockscale.patch",
+      "gemm_a8w8_blockscale_persistent.patch"
+    ]
+  },
+  "config": {
+    "BLOCK_SIZE_M": 128,
+    "BLOCK_SIZE_N": 256,
+    "BLOCK_SIZE_K": 128,
+    "num_warps": 4,
+    "num_stages": 2,
+    "wasp_partition_warps": [
+      4,
+      4,
+      4,
+      4
+    ],
+    "wasp_wdra": true,
+    "kernel": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel",
+    "NUM_SMS": 96,
+    "TILE_LIMIT": 416,
+    "B_LOAD_WARPS": [
+      2,
+      2
+    ],
+    "FENCE_MMAC_TURN": true
+  },
+  "replay": {
+    "worker": "fp8",
+    "input": {
+      "case": "r011",
+      "layout": "tt",
+      "variant": "persistent-96tg",
+      "backend": "gluon",
+      "shape": [
+        6656,
+        2048,
+        4096
+      ],
+      "config": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "num_warps": 4,
+        "num_stages": 2,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4,
+          4
+        ],
+        "wasp_wdra": true,
+        "kernel": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm128_bn256_bk128_persistent_kernel",
+        "NUM_SMS": 96,
+        "TILE_LIMIT": 416,
+        "B_LOAD_WARPS": [
+          2,
+          2
+        ],
+        "FENCE_MMAC_TURN": true
+      },
+      "repeats": 1,
+      "seed": 21
+    }
+  },
+  "backend": "gluon",
+  "launch_path": "explicit_backend_config",
+  "measurement": {
+    "kernel_us": 132.548325,
+    "kernel_tops": 842.4787691281651,
+    "mmac_util_percent": 48.74265543026162,
+    "sample_mode": "cold_single",
+    "logical_ab_read_c_write_bytes": 62914560,
+    "logical_ab_read_c_write_gbps": 474.6537536404175,
+    "samples": [
+      {
+        "kernel_cycles": 291315.0,
+        "kernel_us": 132.548325,
+        "active_CUs": 96,
+        "completed_TGs_per_die": {
+          "0": 48,
+          "1": 48
+        },
+        "stats_path": "m5out/0/0/stats.txt",
+        "repeat": 0,
+        "host_wall_seconds": 5347.2447570641525,
+        "accuracy": {
+          "elements": 13631488,
+          "max_abs": 0.00390625,
+          "mismatch": 1223,
+          "nonfinite": 0,
+          "outside_tolerance": 0,
+          "canary_ok": true
+        },
+        "stats_sha256": "0d76d21bbb4c26f59f1a1123729f01a14ccc0a71f718920ddf6d5b1414b99d73"
+      }
+    ],
+    "operand_strides": {
+      "x": [
+        4096,
+        1
+      ],
+      "w": [
+        1,
+        2048
+      ],
+      "x_scale": [
+        32,
+        1
+      ],
+      "w_scale": [
+        32,
+        1
+      ]
+    }
+  },
+  "artifacts": {
+    "kernel.amdgcn": {
+      "sha256": "b5f5b0238154477738e04683332f0c46db7115689cca271278d8056987902e8e"
+    },
+    "measured_hsaco_sha256": "e926c34b57cb96c00122d0617694ebe9f5f8458edd7eb6d6e407db8ef341b5ae",
+    "raw_result_sha256": "4e5abbc826bc8e5759d166fe885f04f5d310f27a5ee56e2c16a4dcc1512133e2",
+    "raw_run": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119-prefill/r011/tt/persistent-96tg"
+  },
+  "baseline_comparison": {
+    "kernel_us": 459.39939499999997,
+    "variant": "baseline",
+    "same_batch": false,
+    "raw_run": "/xukang/code/pmd-triton-sessions/q35-fp8-missing-sbx2/r011/tt/baseline"
+  }
+}

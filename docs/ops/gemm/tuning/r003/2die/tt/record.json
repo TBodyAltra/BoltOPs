@@ -1,0 +1,151 @@
+{
+  "requirement": "R003",
+  "layout": "TT",
+  "shape": [
+    2560,
+    64,
+    2048
+  ],
+  "status": "PMD_PASS",
+  "data_kind": "baseline",
+  "environment": {
+    "TRITON_OFFLINE_BUILD": "1",
+    "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+    "GPU_ARGS": "['--abs-max-tick=10000000000']",
+    "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+    "TRITON_BUILD_PROTON": "OFF",
+    "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/q35-fp8-bf16-gaps-20261119/confirm/r003-tt/baseline/cache",
+    "GPU_DFLAGS": "['StatLog']",
+    "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+    "GPU_CHIP": "sbx2",
+    "TRITON_BUILD_DIR": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/build",
+    "TRITON_BACKENDS_IN_TREE": "1",
+    "AMDGCN_USE_BUFFER_OPS": "1",
+    "TRITON_HOME": "/xukang/code/pmd-triton-sessions/q35-fp8-bf16-gaps-20261119/confirm/r003-tt/baseline/triton-home",
+    "GPU_OUT": "/xukang/code/pmd-triton-sessions/q35-fp8-bf16-gaps-20261119/confirm/r003-tt/baseline/model",
+    "runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "compiler": {
+        "libtriton": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+        "clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+      }
+    }
+  },
+  "source": {
+    "commit": "8494cee97bd3abd88dd3525b3489de7441b4861e",
+    "path": "boltops/gemm/gluon/gemm_a16w16_mls.py",
+    "symbol": "_gemm_a16w16_kernel",
+    "patches": []
+  },
+  "config": {
+    "BLOCK_SIZE_M": 64,
+    "BLOCK_SIZE_N": 64,
+    "BLOCK_SIZE_K": 64,
+    "CHUNKS": 2,
+    "SLOTS": 3,
+    "PW": 1,
+    "CW": 4,
+    "LTS": true,
+    "num_warps": 1,
+    "num_stages": 2,
+    "wasp_partition_warps": [
+      1,
+      4
+    ],
+    "wasp_wdra": false,
+    "mmac_layout_force": 2,
+    "enable_v_mmac_cluster": 2,
+    "hcu_use_gfx946_sched_model_v2": true,
+    "kernel": "_gemm_a16w16_kernel"
+  },
+  "replay": {
+    "worker": "bf16",
+    "variant": "baseline",
+    "repeats": 2,
+    "input": {
+      "shape": [
+        2560,
+        64,
+        2048
+      ],
+      "layout": "TT",
+      "seed": 2059,
+      "variants": {
+        "baseline": {
+          "family": "public"
+        }
+      }
+    }
+  },
+  "backend": "gluon",
+  "launch_path": "public_auto",
+  "measurement": {
+    "kernel_us": 9.446255,
+    "kernel_tops": 71.04282490786031,
+    "mmac_util_percent": 8.220541720854806,
+    "sample_mode": "warm_median",
+    "logical_ab_read_c_write_bytes": 11075584,
+    "logical_ab_read_c_write_gbps": 1172.4841220144913,
+    "samples": [
+      {
+        "us": 16.58202,
+        "dispatches": [
+          {
+            "cycles": 36444,
+            "TGs_per_die": {
+              "system.shaders0": 20,
+              "system.shaders1": 20
+            },
+            "stats": "model/0/0/stats.txt",
+            "sha256": "49017b358e479bd4a19ac5432b27b6f08ab534bff05077a2c39b34e963d2ec0a"
+          }
+        ],
+        "max_abs": 0.03125,
+        "mismatches": 0,
+        "validated_elements": 163840
+      },
+      {
+        "us": 9.446255,
+        "dispatches": [
+          {
+            "cycles": 20761,
+            "TGs_per_die": {
+              "system.shaders0": 20,
+              "system.shaders1": 20
+            },
+            "stats": "model/0/1/stats.txt",
+            "sha256": "04e12e8efa194765c17346ba6fbb8a2e7925b74ece5b2da97a561ed231db204b"
+          }
+        ],
+        "max_abs": 0.03125,
+        "mismatches": 0,
+        "validated_elements": 163840
+      }
+    ],
+    "operand_strides": [
+      [
+        2048,
+        1
+      ],
+      [
+        1,
+        64
+      ]
+    ]
+  },
+  "artifacts": {
+    "kernel.amdgcn": {
+      "sha256": "004612a64282ae2bfe558e4e6ba46f5b703c0ecb86f2cba5264e3300d1e92d3a"
+    },
+    "measured_hsaco_sha256": "8553b5c0b987d303ebc7de7ee657cefedd0c6e7299edab81a1319d3d08dc3798",
+    "raw_result_sha256": "5aa8095e8f21ee26e6c87fabb64825e70b8a72017d918e6651cf1e1c0aa4bc1e",
+    "raw_run": "/xukang/code/pmd-triton-sessions/q35-fp8-bf16-gaps-20261119/confirm/r003-tt/baseline"
+  },
+  "baseline_comparison": {
+    "kernel_us": 9.446255,
+    "variant": "baseline",
+    "same_batch": true,
+    "raw_run": "/xukang/code/pmd-triton-sessions/q35-fp8-bf16-gaps-20261119/confirm/r003-tt/baseline"
+  }
+}
