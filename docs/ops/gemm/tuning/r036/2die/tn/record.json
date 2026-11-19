@@ -1,0 +1,285 @@
+{
+  "requirement": "R036",
+  "record_key": {
+    "requirement": "R036",
+    "dies": 2,
+    "layout": "TN"
+  },
+  "status": "PASS",
+  "layout": "TN",
+  "shape": [
+    5684,
+    4096,
+    4608
+  ],
+  "dtype": {
+    "A": "BF16",
+    "W": "BF16",
+    "output": "BF16",
+    "accumulator": "FP32"
+  },
+  "environment": {
+    "type": "PMD",
+    "arch": "gfx946",
+    "chip": "sbx2",
+    "dies": 2,
+    "cu_count": 96,
+    "time_per_gc_cycle_ps": 455,
+    "toolchain": {
+      "triton": "3.6.0",
+      "torch": "2.6.0+d8c4c7c",
+      "libtriton_sha256": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+      "clang_sha256": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+    },
+    "gpu_configuration": {
+      "device_id": "26295",
+      "num_chip": "2",
+      "num_cu": "48",
+      "gpu_clock": "455",
+      "lds_size": "131072",
+      "mem_size": "68719476736",
+      "parallel": "false",
+      "skip_cal": "false",
+      "skip_kernel_exec": "false"
+    },
+    "environment_variables": {
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": "1",
+      "TRITON_MLS_B_INTERLEAVE": "2",
+      "GPU_CHIP": "sbx2",
+      "GPU_DFLAGS": "['StatLog']"
+    }
+  },
+  "benchmark": {
+    "path": "../../../qwen3_vl_bf16_sbx2/benchmark.py",
+    "repeats": 3,
+    "validation_count": 3,
+    "measurement_script_sha256": "c20a7cf5d9f8423a4452067b98ec3cdee13947a15801d296132ab5482a4868f9",
+    "seed_sequence": [
+      2059,
+      59,
+      59
+    ],
+    "invocation": "direct JIT",
+    "replay_sha256": "82e79e3ad0242c15e44ed632a9687432a1e77cdc8d081cc34c88124d2c8761b9",
+    "worker_sha256": "aa5c41c04e502a280d64fdffe4ce144841a322df79a519a9e276ac66aa2593bf"
+  },
+  "replay_job": {
+    "record": "R036",
+    "shape": [
+      5684,
+      4096,
+      4608
+    ],
+    "family": "wasp",
+    "name": "r036-masked256x128",
+    "options": {
+      "GROUP_SIZE_M": 1,
+      "WARP_SPECIALIZE": true,
+      "wasp_wdra": true,
+      "amdgpu_enable_max_ilp_scheduling_strategy": true,
+      "hcu_use_gfx946_sched_model_v2": false,
+      "wasp_partition_warps": [
+        4,
+        4,
+        4
+      ],
+      "wasp_partition_regs": [
+        16,
+        244,
+        244
+      ],
+      "BLOCK_SIZE_M": 256,
+      "BLOCK_SIZE_N": 128,
+      "BLOCK_SIZE_K": 64,
+      "empty_arrive_after_mmac": false,
+      "enable_v_mmac_cluster": 0,
+      "num_stages": 2,
+      "mmac_layout_force": 2,
+      "buffer_cache_swizzle": true,
+      "USE_MATRIX_STORE": false,
+      "HAS_BIAS": false
+    },
+    "archived_tt_us": 303.45727231115455,
+    "masked_mls": true,
+    "timed_seed": 59,
+    "dispatches": 3,
+    "seed": 2059,
+    "input": "random",
+    "clang22": false
+  },
+  "source": {
+    "path": "wasp_edges.py",
+    "member": "masked_mls_mn.py",
+    "sha256": "ba35cc7168de3e2fe6a4415ce21b573bc0c6dca0f96687d666dd47927d3cb22f",
+    "symbol": "gemm_mls_masked",
+    "archive": "../../../qwen3_vl_bf16_sbx2/source.tar.gz",
+    "measured_tree": "9a34b7c780ebbf06604d178e8fca651bcce5a8ee",
+    "archive_sha256": "46a83e216bc41457f4b780dea52317e10373318cded5d360541482e0b5817d8b"
+  },
+  "config": {
+    "parameters": {
+      "GROUP_SIZE_M": 1,
+      "WARP_SPECIALIZE": true,
+      "wasp_wdra": true,
+      "amdgpu_enable_max_ilp_scheduling_strategy": true,
+      "hcu_use_gfx946_sched_model_v2": false,
+      "wasp_partition_warps": [
+        4,
+        4,
+        4
+      ],
+      "wasp_partition_regs": [
+        16,
+        244,
+        244
+      ],
+      "BLOCK_SIZE_M": 256,
+      "BLOCK_SIZE_N": 128,
+      "BLOCK_SIZE_K": 64,
+      "empty_arrive_after_mmac": false,
+      "enable_v_mmac_cluster": 0,
+      "num_stages": 2,
+      "mmac_layout_force": 2,
+      "buffer_cache_swizzle": true,
+      "USE_MATRIX_STORE": false,
+      "HAS_BIAS": false,
+      "MASK_M": true,
+      "MASK_N": false
+    },
+    "strides": {
+      "A": [
+        4608,
+        1
+      ],
+      "B": [
+        1,
+        4608
+      ],
+      "C": [
+        4096,
+        1
+      ]
+    }
+  },
+  "full_grid_TGs": 736,
+  "resources": {
+    "VGPR": 168,
+    "spills": 0,
+    "LDS_bytes": 131072
+  },
+  "samples": [
+    {
+      "cycles": 916291,
+      "us": 416.912405,
+      "completed_TGs": {
+        "system.shaders0": 368,
+        "system.shaders1": 368
+      },
+      "active_CUs": {
+        "system.shaders0": 48,
+        "system.shaders1": 48
+      },
+      "mmop_instructions": 27131904,
+      "stats_sha256": "7c75dab6997abb54f9492252fd32a8672380484c47e3267fa464fe829ec5bcbd",
+      "seed": 2059,
+      "input_kind": "random",
+      "validation": {
+        "elements": 23281664,
+        "mismatch": 0,
+        "nonfinite": 0,
+        "max_abs": 0.25,
+        "atol": 0.02,
+        "rtol": 0.01,
+        "output_canaries": true,
+        "inputs_unchanged": true,
+        "mean_abs_vs_fp32": 0.019088935664240157,
+        "rounding_floor": 0.01908893205432544
+      }
+    },
+    {
+      "cycles": 904228,
+      "us": 411.42374,
+      "completed_TGs": {
+        "system.shaders0": 368,
+        "system.shaders1": 368
+      },
+      "active_CUs": {
+        "system.shaders0": 48,
+        "system.shaders1": 48
+      },
+      "mmop_instructions": 27131904,
+      "stats_sha256": "a7a8f8d6b595080bb1e4293d9c43987fb9716842df38921f277cd1e65c3bf32f",
+      "seed": 59,
+      "input_kind": "random",
+      "validation": {
+        "elements": 23281664,
+        "mismatch": 0,
+        "nonfinite": 0,
+        "max_abs": 0.25,
+        "atol": 0.02,
+        "rtol": 0.01,
+        "output_canaries": true,
+        "inputs_unchanged": true,
+        "mean_abs_vs_fp32": 0.01908188677489681,
+        "rounding_floor": 0.019081883094938516
+      }
+    },
+    {
+      "cycles": 910173,
+      "us": 414.128715,
+      "completed_TGs": {
+        "system.shaders0": 368,
+        "system.shaders1": 368
+      },
+      "active_CUs": {
+        "system.shaders0": 48,
+        "system.shaders1": 48
+      },
+      "mmop_instructions": 27131904,
+      "stats_sha256": "c9c579f068da5b173835c98fde2d328d69f22f97de71df8c2ec94f88227d08af",
+      "seed": 59,
+      "input_kind": "random",
+      "validation": {
+        "elements": 23281664,
+        "mismatch": 0,
+        "nonfinite": 0,
+        "max_abs": 0.25,
+        "atol": 0.02,
+        "rtol": 0.01,
+        "output_canaries": true,
+        "inputs_unchanged": true,
+        "mean_abs_vs_fp32": 0.01908188677489681,
+        "rounding_floor": 0.019081883094938516
+      }
+    }
+  ],
+  "performance": {
+    "kernel_cycles": 907200.5,
+    "kernel_us": 412.7762275,
+    "kernel_tops": 519.8066194933671,
+    "logical_GBs": 331.1620168339273,
+    "aggregation": "median of repeats 1 and 2 after one warmup; all dispatches validated",
+    "launched_TGs": 736,
+    "samples": 2,
+    "time_domain": "complete dispatch system.gcSimCycles * 455 ps"
+  },
+  "assembly": {
+    "path": "kernel.amdgcn",
+    "sha256": "daceee17fd2fc7e5dbc23eca7fd9eae4598c43356aaeb7ceb35383758e01691c",
+    "hsaco_sha256": "5225b356160067d5fe368d6aeb5f640bb250c835e53cad4f89acf1e8fc5be597",
+    "executable_sections": {
+      ".rodata": "216bcf65e2514e706183d53b9aa6d122b43d80294c532226908eb3e9866b3fca",
+      ".text": "05768eb7060f4cf520ded68817933e9b6dda5e78503086fc3d143756fba29c68"
+    }
+  },
+  "evidence": {
+    "run": "confirm-spillfree-r036-masked256x128",
+    "measurement_sha256": "d34a3c0eb3de63fe26466d4f85cfaa0e25bf7c2d71be6255934e9cb96d034c16",
+    "raw_samples": [
+      "7c75dab6997abb54f9492252fd32a8672380484c47e3267fa464fe829ec5bcbd",
+      "a7a8f8d6b595080bb1e4293d9c43987fb9716842df38921f277cd1e65c3bf32f",
+      "c9c579f068da5b173835c98fde2d328d69f22f97de71df8c2ec94f88227d08af"
+    ]
+  }
+}
