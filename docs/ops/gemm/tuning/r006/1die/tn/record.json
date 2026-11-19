@@ -306,5 +306,41 @@
   },
   "comparison": {
     "notes": "Registers the fastest tested existing 64x64 pipeline; the attempted persistent and wider-tile variants did not improve this control. No new speedup is claimed over this same kernel."
+  },
+  "current_toolchain_validation": {
+    "driver": "node60 PMD",
+    "interface": "recorded_replay",
+    "config": {
+      "path": "boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json",
+      "profile": "DTYPE=float8_e4m3fn-AS=float32-BS=float32-OUT=bfloat16-RECIPE_A=1x128-RECIPE_B=128x128",
+      "bucket": "M_EQ_64",
+      "misched_regpressure": false
+    },
+    "aggregation": "median of three independent regression runs",
+    "kernel_us": 18.26916,
+    "runs": [
+      {
+        "kernel_us": 18.536245,
+        "samples_kernel_us": [
+          18.536245
+        ],
+        "launched_TGs": 144
+      },
+      {
+        "kernel_us": 18.26916,
+        "samples_kernel_us": [
+          18.26916
+        ],
+        "launched_TGs": 144
+      },
+      {
+        "kernel_us": 18.26916,
+        "samples_kernel_us": [
+          18.26916
+        ],
+        "launched_TGs": 144
+      }
+    ],
+    "report_location": "node60:/tmp/pr45-ci-head.gFNXUw/confirm-r014-r006/r006/1die/tn"
   }
 }

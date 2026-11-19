@@ -241,7 +241,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r006/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r006/1die/tn/record.json">18.880 / 127.96 / 14.81%<br>读写带宽：1.070 TB/s（逻辑 A/B 读、C 写及 FP32 scale 读）</a></td>
+      <td><a href="tuning/r006/1die/tn/record.json">18.880 / 127.96 / 14.81%<br>读写带宽：1.070 TB/s（逻辑 A/B 读、C 写及 FP32 scale 读）</a><br>当前 CI 复测：18.269 µs</td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L478">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r006/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r006/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r006/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r006/1die/tn/single_tg.perf">PERF</a></td>
       <td>—</td>
