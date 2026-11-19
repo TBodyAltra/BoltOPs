@@ -199,5 +199,82 @@
       ".rodata": "2cbaecd4959fbaaba635f07e75a803cfe1c02acab15b7b6e159f4a5a952a1601",
       ".text": "6414b09ef20f9052ba5cc8d62b9150824236ddc1f9a0c8bbadc84dcfbea78358"
     }
+  },
+  "current_toolchain_validation": {
+    "interface": "public auto",
+    "driver": "node60 PMD",
+    "config": {
+      "path": "boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json",
+      "profile": "DTYPE=bfloat16-OUT=bfloat16",
+      "bucket": "M_EQ_2048",
+      "amdgpu_enable_max_ilp_scheduling_strategy": true
+    },
+    "runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "compiler": {
+        "libtriton": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+        "clang": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe"
+      }
+    },
+    "shape": [
+      2048,
+      64,
+      2048
+    ],
+    "seed": 19,
+    "full_grid_TGs": 64,
+    "resources": {
+      "VGPR": 62,
+      "spills": 0,
+      "LDS_bytes": 12288
+    },
+    "samples": [
+      {
+        "kernel_us": 18.230485,
+        "dispatches": [
+          {
+            "cycles": 40067,
+            "TGs_per_die": {
+              "system.shaders0": 32,
+              "system.shaders1": 32
+            },
+            "stats": "model/0/0/stats.txt",
+            "sha256": "52550b2d0ffc0f0f2301c4fa5db85d2aecb350deb710aeea7573420d2ebb5415"
+          }
+        ]
+      },
+      {
+        "kernel_us": 18.258695,
+        "dispatches": [
+          {
+            "cycles": 40129,
+            "TGs_per_die": {
+              "system.shaders0": 32,
+              "system.shaders1": 32
+            },
+            "stats": "model/0/0/stats.txt",
+            "sha256": "69b6d95b73809f10d186e761195fc19fa4f25c29d7745c9e0cf245ebbcf49842"
+          }
+        ]
+      },
+      {
+        "kernel_us": 18.27462,
+        "dispatches": [
+          {
+            "cycles": 40164,
+            "TGs_per_die": {
+              "system.shaders0": 32,
+              "system.shaders1": 32
+            },
+            "stats": "model/0/0/stats.txt",
+            "sha256": "1331acce7ed10cd8de3ba9ba6ccc712f971779976378a79dc7ac97dcd52a22ca"
+          }
+        ]
+      }
+    ],
+    "kernel_us": 18.258695,
+    "aggregation": "median of three independent cold dispatches",
+    "report_location": "node60:/tmp/pr45-ab-base.2hychE/r019-public-candidate"
   }
 }

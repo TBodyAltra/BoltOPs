@@ -670,7 +670,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_mls.py#L398">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json">config</a> / <a href="tuning/r019/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/bf16_2die_small_mn/benchmark.py">测试代码</a> / <a href="tuning/r019/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r019/2die/tt/single_tg.perf">PERF</a></td>
       <td><a href="tuning/r019/2die/tn/record.json">sbx2 / 96 CU</a></td>
-      <td><a href="tuning/r019/2die/tn/record.json">18.532 / 28.97 / 3.35%</a><br>读写带宽：0.481 TB/s</td>
+      <td><a href="tuning/r019/2die/tn/record.json">18.532 / 28.97 / 3.35%</a><br>读写带宽：0.481 TB/s<br>当前 CI 公开接口复测：18.259 µs</td>
       <td><a href="../../../boltops/gemm/triton/gemm_a16w16.py#L52">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/triton/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json">config</a> / <a href="tuning/r019/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/bf16_2die_small_mn/benchmark.py">测试代码</a> / <a href="tuning/r019/2die/tn/record.json">记录</a></td>
       <td><a href="tuning/r019/2die/tn/single_tg.perf">PERF</a></td>
     </tr>
