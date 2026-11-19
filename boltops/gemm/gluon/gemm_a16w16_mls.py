@@ -7,140 +7,151 @@ from triton.experimental.gluon import language as gl
 from triton.experimental.gluon.language.amd.cdna4 import async_copy
 from triton.experimental.gluon.language.amd.hcu import (
     MlsSharedLayout, MmacLayout, matrix_load, sched_barrier, wait_lgkmcnt,
-    abarrier_arrive, abarrier_seq, abarrier_init, abarrier_try_wait, ebarrier_sync,
+    abarrier_arrive, abarrier_seq, abarrier_init, abarrier_try_wait, ebarrier_sync, get_wave_id,
 )
 
 from .common import _idle_partition
-from .gemm_a16w16_tt import gemm_a16w16_tt_kernel as _gemm_a16w16_tt_kernel
+
+
+# BF16 small-tile TN MLS ring
+
+@g.jit
+def _tn_idle_partition():
+    pass
 
 
 @g.jit
-def _load_mls_batch(A, B, sa, sb, om, on, START: gl.constexpr):
-    for j in gl.static_range(4):
-        matrix_load(sa[j], A, (64, 2048), (2048, 1),
-                    (om, (START + j) * 128), warps=(1, 1))
-        matrix_load(sb[j], B, (2048, 64), (1, 2048),
-                    ((START + j) * 128, on), warps=(1, 1))
+def _load_mls_batch(A, B, sa, sb, om, on, start,
+                    M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+                    BK: gl.constexpr, CHUNKS: gl.constexpr, PW: gl.constexpr, TN: gl.constexpr):
+    for i in gl.static_range(CHUNKS):
+        matrix_load(sa[i], A, (M, K), (K, 1),
+                    (om, (start + i) * BK), warps=(PW, 1))
+        matrix_load(sb[i], B, (K, N), (1, K) if TN else (N, 1),
+                    ((start + i) * BK, on), warps=(1, PW))
 
+
+@g.jit
+def _mls_producer(A, B, aa, bb,
+                  M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+                  BM: gl.constexpr, BN: gl.constexpr, BK: gl.constexpr,
+                  CHUNKS: gl.constexpr, SLOTS: gl.constexpr,
+                  PW: gl.constexpr, CW: gl.constexpr, TN: gl.constexpr):
+    # One physical wave initializes all EMPTY/READY pairs. Every consumer
+    # releases one EMPTY arrival; every producer contributes one READY arrival.
+    if get_wave_id() == 0:
+        for s in gl.static_range(SLOTS):
+            abarrier_init(s * 2, CW)
+            abarrier_init(s * 2 + 1, PW)
+            abarrier_arrive(s * 2, CW)
+    ebarrier_sync(0, PW + CW)
+    pid = gl.program_id(0)
+    om, on = (pid // (N // BN)) * BM, (pid % (N // BN)) * BN
+    for batch in gl.static_range(K // (BK * CHUNKS)):
+        # Keep tuple subscripts as compile-time expressions: assigning this
+        # remainder to an ordinary local would turn it into a tensor index.
+        abarrier_try_wait((batch % SLOTS) * 2, (batch // SLOTS) % 2)
+        abarrier_seq((batch % SLOTS) * 2 + 1)
+        _load_mls_batch(A, B, aa[batch % SLOTS], bb[batch % SLOTS], om, on,
+                        batch * CHUNKS, M, N, K, BK, CHUNKS, PW, TN)
+        abarrier_arrive((batch % SLOTS) * 2 + 1)
+    ebarrier_sync(15, PW + CW)
+
+
+@g.jit
+def _consume_tn_batch(sa, sb, acc, F: gl.constexpr,
+                       CHUNKS: gl.constexpr, release: gl.constexpr, WAIT: gl.constexpr):
+    xx, yy = (), ()
+    for i in gl.static_range(CHUNKS):
+        xx += (async_copy.load_shared_relaxed(sa[i], gl.DotOperandLayout(0, F, 4)),)
+        yy += (async_copy.load_shared_relaxed(sb[i], gl.DotOperandLayout(1, F, 4)),)
+    sched_barrier(0)
+    for i in gl.static_range(CHUNKS):
+        if WAIT == 1:
+            wait_lgkmcnt(15 if i < CHUNKS - 2 else (8 if i == CHUNKS - 2 else 0))
+        if i == CHUNKS - 1:
+            # All DS reads must finish before the producer reuses this slot.
+            # The last MMAC can overlap that refill because operands are VGPRs.
+            wait_lgkmcnt(0)
+            abarrier_arrive(release)
+        sched_barrier(0)
+        acc = gl.amd.cdna4.mfma(xx[i], yy[i], acc)
+        sched_barrier(0)
+    return acc
+
+
+@g.jit
+def _mmac_consumer(C, aa, bb, F: gl.constexpr,
+                   M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+                   BM: gl.constexpr, BN: gl.constexpr, BK: gl.constexpr,
+                   CHUNKS: gl.constexpr, SLOTS: gl.constexpr,
+                   PW: gl.constexpr, CW: gl.constexpr, WAIT: gl.constexpr):
+    ebarrier_sync(0, PW + CW)
+    pid = gl.program_id(0)
+    om, on = (pid // (N // BN)) * BM, (pid % (N // BN)) * BN
+    acc = gl.full((BM, BN), 0, gl.float32, F)
+    for batch in gl.static_range(K // (BK * CHUNKS)):
+        abarrier_try_wait((batch % SLOTS) * 2 + 1, (batch // SLOTS) % 2)
+        acc = _consume_tn_batch(aa[batch % SLOTS], bb[batch % SLOTS], acc,
+                                 F, CHUNKS, (batch % SLOTS) * 2, WAIT)
+    rows = om + gl.arange(0, BM, layout=gl.SliceLayout(1, F))
+    cols = on + gl.arange(0, BN, layout=gl.SliceLayout(0, F))
+    gl.amd.cdna3.buffer_store(acc.to(gl.bfloat16), C,
+                             rows[:, None] * N + cols[None, :])
+    ebarrier_sync(15, PW + CW)
+
+
+@g.jit
+def gemm_a16w16_tn_kernel(
+    A, B, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+    BLOCK_SIZE_M: gl.constexpr = 16, BLOCK_SIZE_N: gl.constexpr = 16,
+    BLOCK_SIZE_K: gl.constexpr = 128, B_K_CONTIGUOUS: gl.constexpr = True,
+    LOOP_UNROLL_FACTOR: gl.constexpr = 4,
+    CHUNKS: gl.constexpr = 4, SLOTS: gl.constexpr = 2,
+):
+    gl.static_assert(B_K_CONTIGUOUS, "this pipeline requires TN weights")
+    gl.static_assert(M % BLOCK_SIZE_M == 0 and N % BLOCK_SIZE_N == 0)
+    gl.static_assert((CHUNKS == 1 or CHUNKS == 2 or CHUNKS == 4) and SLOTS >= 1 and SLOTS <= 4)
+    gl.static_assert(K % (BLOCK_SIZE_K * CHUNKS) == 0)
+    gl.static_assert(LOOP_UNROLL_FACTOR == 4)
+    gl.static_assert((BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K) == (16, 16, 128))
+    gl.static_assert(A.dtype.element_ty == gl.bfloat16 and
+                     B.dtype.element_ty == gl.bfloat16 and
+                     C.dtype.element_ty == gl.bfloat16)
+    BM: gl.constexpr = BLOCK_SIZE_M
+    BN: gl.constexpr = BLOCK_SIZE_N
+    BK: gl.constexpr = BLOCK_SIZE_K
+    F: gl.constexpr = gl.amd.AMDMFMALayout(
+        version=4, instr_shape=[16, 16, 16], mmac_layout=MmacLayout.LIT,
+        warps_per_cta=[1, 1], tiles_per_warp=[1, 1],
+    )
+    SA: gl.constexpr = MlsSharedLayout(0, (16, 32), bits=16, order=(1, 0))
+    SB: gl.constexpr = MlsSharedLayout(1, (32, 16), bits=16, order=(0, 1))
+    aa, bb = (), ()
+    for slot in gl.static_range(SLOTS):
+        sa, sb = (), ()
+        for i in gl.static_range(CHUNKS):
+            sa += (gl.allocate_shared_memory(gl.bfloat16, (BM, BK), SA),)
+            sb += (gl.allocate_shared_memory(gl.bfloat16, (BK, BN), SB),)
+        aa += (sa,)
+        bb += (sb,)
+    gl.warp_specialize([
+        (_tn_idle_partition, ()),
+        (_mls_producer, (A, B, aa, bb, M, N, K, BM, BN, BK, CHUNKS, SLOTS, 1, 1, True)),
+        (_mmac_consumer, (C, aa, bb, F, M, N, K, BM, BN, BK, CHUNKS, SLOTS, 1, 1, 1)),
+    ], [1, 1], [48, 240])
+
+
+_gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel = gemm_a16w16_tn_kernel
+
+
+# BF16 fixed-tile TT MLS ring
 
 @g.jit
 def _read_mmac_operands(sa, sb, F: gl.constexpr):
     a = async_copy.load_shared_relaxed(sa, gl.DotOperandLayout(0, F, 4))
     b = async_copy.load_shared_relaxed(sb, gl.DotOperandLayout(1, F, 4))
     return a, b
-
-
-@g.jit
-def _mls_producer(A, B, a0, b0, a1, b1):
-    # Per-slot EMPTY=2*slot, READY=2*slot+1. One wave contributes to each.
-    # Prime EMPTY phase 0; later phases are released by the Consumer only.
-    for bid in gl.static_range(4):
-        abarrier_init(bid, 1)
-    abarrier_arrive(0)
-    abarrier_arrive(2)
-    ebarrier_sync(0, 2)
-    pid = gl.program_id(0)
-    om, on = (pid // 4) * 16, (pid % 4) * 16
-    for batch in gl.static_range(4):
-        if batch % 2 == 0:
-            sa, sb = a0, b0
-        elif batch % 2 == 1:
-            sa, sb = a1, b1
-        abarrier_try_wait((batch % 2) * 2, batch // 2)
-        # READY tracks completion of both A and B MLS transfers.
-        abarrier_seq((batch % 2) * 2 + 1)
-        _load_mls_batch(A, B, sa, sb, om, on, batch * 4)
-        abarrier_arrive((batch % 2) * 2 + 1)
-    ebarrier_sync(15, 2)
-
-
-@g.jit
-def _mmac_consumer(C, a0, b0, a1, b1, F: gl.constexpr):
-    ebarrier_sync(0, 2)
-    pid = gl.program_id(0)
-    om, on = (pid // 4) * 16, (pid % 4) * 16
-    acc = gl.full((16, 16), 0, gl.float32, F)
-    for batch in gl.static_range(4):
-        if batch % 2 == 0:
-            ca, cb = a0, b0
-        elif batch % 2 == 1:
-            ca, cb = a1, b1
-        abarrier_try_wait((batch % 2) * 2 + 1, batch // 2)
-        x0, y0 = _read_mmac_operands(ca[0], cb[0], F)
-        x1, y1 = _read_mmac_operands(ca[1], cb[1], F)
-        x2, y2 = _read_mmac_operands(ca[2], cb[2], F)
-        x3, y3 = _read_mmac_operands(ca[3], cb[3], F)
-        sched_barrier(0)
-        wait_lgkmcnt(15)
-        sched_barrier(0)
-        acc = gl.amd.cdna4.mfma(x0, y0, acc)
-        sched_barrier(0)
-        wait_lgkmcnt(15)
-        acc = gl.amd.cdna4.mfma(x1, y1, acc)
-        sched_barrier(0)
-        wait_lgkmcnt(8)
-        acc = gl.amd.cdna4.mfma(x2, y2, acc)
-        sched_barrier(0)
-        wait_lgkmcnt(0)
-        # All reads of this slot have returned; Producer can refill it while
-        # Consumer executes the last eight K16 MMAC instructions.
-        abarrier_arrive((batch % 2) * 2)
-        acc = gl.amd.cdna4.mfma(x3, y3, acc)
-        sched_barrier(0)
-    m = om + gl.arange(0, 16, layout=gl.SliceLayout(1, F))
-    n = on + gl.arange(0, 16, layout=gl.SliceLayout(0, F))
-    gl.amd.cdna3.buffer_store(acc.to(gl.bfloat16), C, m[:, None] * 64 + n[None, :])
-    ebarrier_sync(15, 2)
-
-
-@g.jit
-def _gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel(
-    A, B, C,
-    M: gl.constexpr,
-    N: gl.constexpr,
-    K: gl.constexpr,
-    BLOCK_SIZE_M: gl.constexpr = 16,
-    BLOCK_SIZE_N: gl.constexpr = 16,
-    BLOCK_SIZE_K: gl.constexpr = 128,
-    LOOP_UNROLL_FACTOR: gl.constexpr = 4,
-    B_K_CONTIGUOUS: gl.constexpr = True,
-):
-    gl.static_assert(B_K_CONTIGUOUS, "this pipeline requires TN weights")
-    gl.static_assert(M == 64 and N == 64 and K == 2048,
-                     "this pipeline requires MNK=(64,64,2048)")
-    gl.static_assert(BLOCK_SIZE_M == 16 and BLOCK_SIZE_N == 16)
-    gl.static_assert(BLOCK_SIZE_K == 128 and LOOP_UNROLL_FACTOR == 4)
-    gl.static_assert(A.dtype.element_ty == gl.bfloat16)
-    gl.static_assert(B.dtype.element_ty == gl.bfloat16)
-    gl.static_assert(C.dtype.element_ty == gl.bfloat16)
-    F: gl.constexpr = gl.amd.AMDMFMALayout(
-        version=4, instr_shape=[16, 16, 16], mmac_layout=MmacLayout.LIT,
-        warps_per_cta=[1, 1])
-    SA: gl.constexpr = MlsSharedLayout(0, (16, 32), bits=16, order=(1, 0))
-    SB: gl.constexpr = MlsSharedLayout(1, (32, 16), bits=16, order=(0, 1))
-    a0 = (gl.allocate_shared_memory(gl.bfloat16, (16, 128), SA),
-          gl.allocate_shared_memory(gl.bfloat16, (16, 128), SA),
-          gl.allocate_shared_memory(gl.bfloat16, (16, 128), SA),
-          gl.allocate_shared_memory(gl.bfloat16, (16, 128), SA))
-    b0 = (gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB),
-          gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB),
-          gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB),
-          gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB))
-    a1 = (gl.allocate_shared_memory(gl.bfloat16, (16, 128), SA),
-          gl.allocate_shared_memory(gl.bfloat16, (16, 128), SA),
-          gl.allocate_shared_memory(gl.bfloat16, (16, 128), SA),
-          gl.allocate_shared_memory(gl.bfloat16, (16, 128), SA))
-    b1 = (gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB),
-          gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB),
-          gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB),
-          gl.allocate_shared_memory(gl.bfloat16, (128, 16), SB))
-    # HCU removes the empty default: exactly one Producer + one Consumer.
-    # Register requests are hints; WDRA is disabled by the recorded config.
-    gl.warp_specialize([
-        (_idle_partition, ()),
-        (_mls_producer, (A, B, a0, b0, a1, b1)),
-        (_mmac_consumer, (C, a0, b0, a1, b1, F)),
-    ], [1, 1], [32, 160])
 
 
 # Fixed BF16 TT pipeline: 16x32 per TG, three 24-KiB LDS slots.
@@ -221,6 +232,7 @@ def _tt_mmac_consumer(C, a0, b0, a1, b1, a2, b2, F: gl.constexpr,
     gl.amd.cdna3.buffer_store(acc.to(gl.bfloat16), C, m[:, None] * 64 + n[None, :])
     ebarrier_sync(15, 2)
 
+
 @g.jit
 def _gemm_a16w16_bf16_tt_bm16_bn32_bk128_kernel(
     A, B, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
@@ -259,3 +271,187 @@ def _gemm_a16w16_bf16_tt_bm16_bn32_bk128_kernel(
         (_tt_mls_producer, (A, B, a0, b0, a1, b1, a2, b2, BK, CHUNKS)),
         (_tt_mmac_consumer, (C, a0, b0, a1, b1, a2, b2, F, BK, CHUNKS)),
     ], [1, 1], [32, 240])
+
+
+# BF16 configurable TN/TT MLS ring
+
+@g.jit
+def _load_tile_mls_batch(A, B, sa, sb, om, on, start,
+                    M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+                    BK: gl.constexpr, CHUNKS: gl.constexpr, PW: gl.constexpr,
+                    BM: gl.constexpr, BN: gl.constexpr, B_K_CONTIGUOUS: gl.constexpr):
+    AM: gl.constexpr = min(PW, BM // 16) if B_K_CONTIGUOUS else PW
+    BNW: gl.constexpr = min(PW, BN // 16) if B_K_CONTIGUOUS else PW
+    B_STRIDES: gl.constexpr = (1, K) if B_K_CONTIGUOUS else (N, 1)
+    for i in gl.static_range(CHUNKS):
+        matrix_load(sa[i], A, (M, K), (K, 1),
+                    (om, (start + i) * BK), warps=(AM, PW // AM))
+        matrix_load(sb[i], B, (K, N), B_STRIDES,
+                    ((start + i) * BK, on), warps=(PW // BNW, BNW))
+
+
+@g.jit
+def _tile_mls_producer(A, B, aa, bb,
+                  M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+                  BM: gl.constexpr, BN: gl.constexpr, BK: gl.constexpr,
+                  CHUNKS: gl.constexpr, SLOTS: gl.constexpr,
+                  PW: gl.constexpr, CW: gl.constexpr, B_K_CONTIGUOUS: gl.constexpr):
+    # One physical wave initializes all EMPTY/READY pairs. Every consumer
+    # releases one EMPTY arrival; every producer contributes one READY arrival.
+    if get_wave_id() == 0:
+        for s in gl.static_range(SLOTS):
+            abarrier_init(s * 2, CW)
+            abarrier_init(s * 2 + 1, PW)
+            abarrier_arrive(s * 2, CW)
+    ebarrier_sync(0, PW + CW)
+    pid = gl.program_id(0)
+    om, on = (pid // (N // BN)) * BM, (pid % (N // BN)) * BN
+    for batch in gl.static_range(K // (BK * CHUNKS)):
+        # Keep tuple subscripts as compile-time expressions: assigning this
+        # remainder to an ordinary local would turn it into a tensor index.
+        abarrier_try_wait((batch % SLOTS) * 2, (batch // SLOTS) % 2)
+        abarrier_seq((batch % SLOTS) * 2 + 1)
+        _load_tile_mls_batch(A, B, aa[batch % SLOTS], bb[batch % SLOTS], om, on,
+                        batch * CHUNKS, M, N, K, BK, CHUNKS, PW, BM, BN, B_K_CONTIGUOUS)
+        abarrier_arrive((batch % SLOTS) * 2 + 1)
+    ebarrier_sync(15, PW + CW)
+
+
+@g.jit
+def _consume_mls_batch(sa, sb, acc, F: gl.constexpr,
+                       CHUNKS: gl.constexpr, release: gl.constexpr, DEFER_RELEASE: gl.constexpr):
+    xx, yy = (), ()
+    for i in gl.static_range(CHUNKS):
+        xx += (async_copy.load_shared_relaxed(sa[i], gl.DotOperandLayout(0, F, 4)),)
+        yy += (async_copy.load_shared_relaxed(sb[i], gl.DotOperandLayout(1, F, 4)),)
+    sched_barrier(0)
+    for i in gl.static_range(CHUNKS):
+        if not DEFER_RELEASE and i == CHUNKS - 1:
+            # All DS reads must finish before the producer reuses this slot.
+            # The last MMAC can overlap that refill because operands are VGPRs.
+            wait_lgkmcnt(0)
+            abarrier_arrive(release)
+        sched_barrier(0)
+        acc = gl.amd.cdna4.mfma(xx[i], yy[i], acc)
+        sched_barrier(0)
+    if DEFER_RELEASE:
+        # Operand dependencies complete the reads before this slot is reused.
+        abarrier_arrive(release)
+    return acc
+
+
+@g.jit
+def _load_operand_batch(sa, sb, F: gl.constexpr, CHUNKS: gl.constexpr):
+    xx, yy = (), ()
+    for i in gl.static_range(CHUNKS):
+        xx += (async_copy.load_shared_relaxed(sa[i], gl.DotOperandLayout(0, F, 4)),)
+        yy += (async_copy.load_shared_relaxed(sb[i], gl.DotOperandLayout(1, F, 4)),)
+    return xx, yy
+
+
+@g.jit
+def _tile_mmac_consumer(C, aa, bb, F: gl.constexpr,
+                   M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+                   BM: gl.constexpr, BN: gl.constexpr, BK: gl.constexpr,
+                   CHUNKS: gl.constexpr, SLOTS: gl.constexpr,
+                   PW: gl.constexpr, CW: gl.constexpr, PREFETCH: gl.constexpr,
+                   DEFER_RELEASE: gl.constexpr):
+    ebarrier_sync(0, PW + CW)
+    pid = gl.program_id(0)
+    om, on = (pid // (N // BN)) * BM, (pid % (N // BN)) * BN
+    acc = gl.full((BM, BN), 0, gl.float32, F)
+    if PREFETCH:
+        gl.static_assert(SLOTS >= 2)
+        abarrier_try_wait(1, 0)
+        xx, yy = _load_operand_batch(aa[0], bb[0], F, CHUNKS)
+        wait_lgkmcnt(0)
+        abarrier_arrive(0)
+        for batch in gl.static_range(K // (BK * CHUNKS)):
+            if batch + 1 < K // (BK * CHUNKS):
+                abarrier_try_wait(((batch + 1) % SLOTS) * 2 + 1,
+                                 ((batch + 1) // SLOTS) % 2)
+                nx, ny = _load_operand_batch(aa[(batch + 1) % SLOTS],
+                                            bb[(batch + 1) % SLOTS], F, CHUNKS)
+                sched_barrier(0)
+            for i in gl.static_range(CHUNKS):
+                acc = gl.amd.cdna4.mfma(xx[i], yy[i], acc)
+            sched_barrier(0)
+            if batch + 1 < K // (BK * CHUNKS):
+                # The next reads overlap this batch's MMAC. Release their LDS
+                # slot only after completion; retain their operands in VGPRs.
+                wait_lgkmcnt(0)
+                abarrier_arrive(((batch + 1) % SLOTS) * 2)
+                xx, yy = nx, ny
+    else:
+        for batch in gl.static_range(K // (BK * CHUNKS)):
+            abarrier_try_wait((batch % SLOTS) * 2 + 1, (batch // SLOTS) % 2)
+            acc = _consume_mls_batch(aa[batch % SLOTS], bb[batch % SLOTS], acc,
+                                     F, CHUNKS, (batch % SLOTS) * 2, DEFER_RELEASE)
+    rows = om + gl.arange(0, BM, layout=gl.SliceLayout(1, F))
+    cols = on + gl.arange(0, BN, layout=gl.SliceLayout(0, F))
+    gl.amd.cdna3.buffer_store(acc.to(gl.bfloat16), C,
+                             rows[:, None] * N + cols[None, :])
+    ebarrier_sync(15, PW + CW)
+
+
+@g.jit
+def _gemm_a16w16_kernel(
+    A, B, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+    BLOCK_SIZE_M: gl.constexpr, BLOCK_SIZE_N: gl.constexpr,
+    BLOCK_SIZE_K: gl.constexpr, CHUNKS: gl.constexpr = 1,
+    SLOTS: gl.constexpr = 2, PW: gl.constexpr = 1, CW: gl.constexpr = 4,
+    LTS: gl.constexpr = True, B_K_CONTIGUOUS: gl.constexpr = False,
+    PREFETCH: gl.constexpr = False, DEFER_RELEASE: gl.constexpr = False,
+):
+    BM: gl.constexpr = BLOCK_SIZE_M
+    BN: gl.constexpr = BLOCK_SIZE_N
+    BK: gl.constexpr = BLOCK_SIZE_K
+    gl.static_assert(M > 0 and N > 0 and K > 0)
+    gl.static_assert(A.dtype.element_ty == gl.bfloat16 and
+                     B.dtype.element_ty == gl.bfloat16 and
+                     C.dtype.element_ty == gl.bfloat16)
+    gl.static_assert(PW >= 1 and CW >= 1 and PW + CW <= 16)
+    gl.static_assert(SLOTS >= 1 and SLOTS <= 4 and (CHUNKS == 1 or CHUNKS == 2 or CHUNKS == 4))
+    gl.static_assert(M % BM == 0 and N % BN == 0 and K % (BK * CHUNKS) == 0)
+    gl.static_assert(BM == 16 or BM == 32 or BM == 64 or BM == 128)
+    gl.static_assert(BK % 64 == 0)
+    gl.static_assert(not (PREFETCH and DEFER_RELEASE))
+    if B_K_CONTIGUOUS:
+        WN: gl.constexpr = BN // 16
+        WM: gl.constexpr = BM // 16
+        gl.static_assert(BN == 16 or BN == 32 or BN == 64)
+        gl.static_assert(CW == WM * WN and PW <= CW)
+        gl.static_assert(PW == 1 or PW == 2 or PW == 4)
+        gl.static_assert(PW % min(PW, WM) == 0 and PW % min(PW, WN) == 0)
+    else:
+        WN: gl.constexpr = max(1, BN // 64)
+        WM: gl.constexpr = CW // WN
+        gl.static_assert(PW == 1 or PW == 2)
+        gl.static_assert(BN == 32 or BN == 64 or BN == 128 or BN == 256 or BN == 512)
+        gl.static_assert(CW >= WN and CW % WN == 0 and BM % (16 * WM) == 0)
+        gl.static_assert(BM != 32 or WM == 2)
+        # Each wave's non-K span must fit one MLS tile.
+        gl.static_assert(BM // WM <= (16 if BM <= 32 else 64))
+    F: gl.constexpr = gl.amd.AMDMFMALayout(
+        version=4, instr_shape=[16, 16, 16],
+        mmac_layout=MmacLayout.LTS if LTS else MmacLayout.LIT,
+        warps_per_cta=[WM, WN], tiles_per_warp=[BM // WM // 16, BN // WN // 16],
+    )
+    SA: gl.constexpr = MlsSharedLayout(
+        0, (16, 32) if B_K_CONTIGUOUS or BM <= 32 else (64, 64), bits=16, order=(1, 0))
+    SB: gl.constexpr = MlsSharedLayout(
+        1, (32, 16) if B_K_CONTIGUOUS else ((16, 32) if BN == 32 else (64, 64)),
+        bits=16, order=(0, 1) if B_K_CONTIGUOUS else (1, 0))
+    aa, bb = (), ()
+    for slot in gl.static_range(SLOTS):
+        sa, sb = (), ()
+        for i in gl.static_range(CHUNKS):
+            sa += (gl.allocate_shared_memory(gl.bfloat16, (BM, BK), SA),)
+            sb += (gl.allocate_shared_memory(gl.bfloat16, (BK, BN), SB),)
+        aa += (sa,)
+        bb += (sb,)
+    gl.warp_specialize([
+        (_idle_partition, ()),
+        (_tile_mls_producer, (A, B, aa, bb, M, N, K, BM, BN, BK, CHUNKS, SLOTS, PW, CW, B_K_CONTIGUOUS)),
+        (_tile_mmac_consumer, (C, aa, bb, F, M, N, K, BM, BN, BK, CHUNKS, SLOTS, PW, CW, PREFETCH, DEFER_RELEASE)),
+    ], [PW, CW], [48, 240])

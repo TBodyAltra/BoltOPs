@@ -108,10 +108,10 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r001/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r001/2die/tn/record.json">5.290 / 3.17 / 0.37%<br>读写带宽：100.66 GB/s</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_tn.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json">config</a> / <a href="tuning/r001/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r001/2die/tn/benchmark.py">测试代码</a> / <a href="tuning/r001/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r001/2die/tn/single_tg.perf">PERF</a></td>
     </tr>
     <tr>
       <td><a href="#r002">R002</a><a name="r002"></a></td>
@@ -126,7 +126,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r002/1die/tt/record.json">flags / env</a></td>
       <td><a href="tuning/r002/1die/tt/record.json">596.044 / 109.21 / 25.27%<br>读写带宽：1.760 TB/s</a></td>
-      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_tt.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=248320-K=2048-TT.json">config</a> / <a href="tuning/r002/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r002/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r002/1die/tt/record.json">记录</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=248320-K=2048-TT.json">config</a> / <a href="tuning/r002/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r002/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r002/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r002/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
@@ -134,7 +134,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td><a href="tuning/r002/2die/tt/record.json">flags / env</a></td>
       <td><a href="tuning/r002/2die/tt/record.json">310.224 / 209.83 / 24.28%<br>读写带宽：3.382 TB/s</a></td>
-      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_tt.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=248320-K=2048-TT.json">config</a> / <a href="tuning/r002/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r002/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r002/2die/tt/record.json">记录</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=248320-K=2048-TT.json">config</a> / <a href="tuning/r002/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r002/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r002/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r002/2die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
@@ -154,7 +154,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r003/1die/tt/record.json">flags / env</a></td>
       <td><a href="tuning/r003/1die/tt/record.json">10.565 / 63.52 / 14.70%</a></td>
-      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_tt.py">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json">config</a> / <a href="tuning/r003/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r003/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r003/1die/tt/record.json">记录</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json">config</a> / <a href="tuning/r003/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r003/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r003/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r003/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
@@ -164,10 +164,10 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r003/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r003/2die/tn/record.json">8.639 / 77.68 / 8.99%</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json">config</a> / <a href="tuning/r003/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r003/2die/tn/benchmark.py">测试代码</a> / <a href="tuning/r003/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r003/2die/tn/full_grid.perf">完整 grid PERF</a></td>
     </tr>
     <tr>
       <td><a href="#r004">R004</a><a name="r004"></a></td>
@@ -182,7 +182,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r004/1die/tt/record.json">flags / env</a></td>
       <td><a href="tuning/r004/1die/tt/record.json">25.327 / 68.89 / 15.94%</a></td>
-      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_tt.py">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json">config</a> / <a href="tuning/r004/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r004/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r004/1die/tt/record.json">记录</a></td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json">config</a> / <a href="tuning/r004/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r004/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r004/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r004/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>

@@ -1,0 +1,202 @@
+{
+  "requirement": "R003",
+  "shape": [
+    2560,
+    64,
+    2048
+  ],
+  "layout": "TN",
+  "chip": "sbx2",
+  "configured_DIEs": 2,
+  "configured_CUs": 96,
+  "precision": {
+    "A": "BF16",
+    "W": "BF16",
+    "accumulator": "FP32",
+    "C": "BF16"
+  },
+  "date": "2026-11-18",
+  "scope": "R003 sbx2 TN: A[M,K], W[N,K] both K contiguous; no transpose/copy; shared aligned buffers; full grid",
+  "environment": {
+    "type": "PMD",
+    "model": "CoreArch:HEAD_1703",
+    "arch": "gfx946",
+    "dies": 2,
+    "cu_count": 96,
+    "host": "node60",
+    "container": "kxu_pmd_8569_fp8_20261017",
+    "triton": {
+      "branch": "release/3.6.x",
+      "base_commit": "6b111ee3efaf1275903deaf0957393ee2c79a48a",
+      "runtime": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "additional_changes": "MR !565: packed matrix-store conversion and ROCDL support; these kernels use buffer stores",
+      "source_commit": "f8cbbee1849806f96337e85685e1ba031b63f096"
+    },
+    "clang": {
+      "branch": "dtk-llvm-6.3.3",
+      "commit": "3599a58d7aebe66dc1cec4f830f82cb96e505666"
+    },
+    "clock_period_ps": {
+      "shader": 455,
+      "gc": 455
+    },
+    "frequency_ghz": {
+      "shader": 2.197802197802198,
+      "gc": 2.197802197802198
+    },
+    "environment_variables": {
+      "GPU_CHIP": "sbx2",
+      "GPU_GFLAGS": null,
+      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+      "GPU_ARGS": "['--abs-max-tick=100000000000']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
+      "HIP_VISIBLE_DEVICES": null,
+      "ROCR_VISIBLE_DEVICES": null,
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_HCU_MATRIX_STORE_INSN": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
+      "HCU_PIPELINE_ENV_REV": null,
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm"
+    },
+    "compiler_hashes": {
+      "libtriton": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+      "clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+    },
+    "container_image": {
+      "name": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "image_id": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "repo_digests": [
+        "10.65.42.71:9092/perf-model-env@sha256:dc5a9d4be8aeffbcc5a950f0ffdf85921c9dd0159c55d26a4adcac3c205f6bd2"
+      ]
+    },
+    "llvm_triton": {
+      "branch": "hygon/triton-3.6.x",
+      "commit": "02cd0a4ddec90de4c0691e40e50ad2d2c1d9d8a2",
+      "additional_changes": "MR !21 packed-conversion ROCDL ops"
+    },
+    "source_checkout_commit": null,
+    "verified_runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "binaries": {
+        "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime/triton/_C/libtriton.so": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+        "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+      },
+      "environment": {
+        "PYTHONPATH": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+        "GPU_CHIP": "sbx2",
+        "GPU_DFLAGS": "['StatLog']",
+        "GPU_ARGS": "['--abs-max-tick=1000000000']",
+        "HSA_TOOLS_LIB": null,
+        "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+        "AMDGCN_USE_BUFFER_OPS": "1"
+      }
+    },
+    "date": "2026-11-17",
+    "source_state": "Shared configurable TN/TT MLS ring, before commit; exact measured source hashes below"
+  },
+  "actual_environment": {
+    "pid": 823240,
+    "environment_variables": {
+      "GPU_CHIP": "sbx2",
+      "GPU_GFLAGS": null,
+      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+      "GPU_ARGS": "['--abs-max-tick=100000000000']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
+      "HIP_VISIBLE_DEVICES": null,
+      "ROCR_VISIBLE_DEVICES": null,
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_HCU_MATRIX_STORE_INSN": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
+      "HCU_PIPELINE_ENV_REV": null,
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm"
+    }
+  },
+  "source_base_commit": "643eabffd092e1078d40d10075abfb116bbe2f9b",
+  "source_hashes": {
+    "boltops/gemm/gemm_a16w16.py": "2d3563a0820177b2a847e779d3e202e0ac94b4c5bc3c304a43806ada9ecba54a",
+    "boltops/gemm/gluon/gemm_a16w16.py": "68a2a3d1a8630b55a8888f6a082d686a475d62923a8f3fae7959537102d9ffcc",
+    "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json": "d0111d4bc45ceaf37f3046264cb9254033378e3592429366b552751341ba1099",
+    "test/gemm/dispatch/test_gluon_mls_ring.py": "357ac58c33849ba743d69480a931e9974aa09337228590e6805831abe5361551",
+    "docs/ops/gemm/tuning/r003/2die/tn/benchmark.py": "91551f61ffe784d002247d6292ab02a46e47e6cad7e036710f9c0c6ce9e19b7e"
+  },
+  "validation_tolerance": {
+    "absolute": 0.001,
+    "relative": 0.01
+  },
+  "validation_summary": "61 passed, 74 skipped, 1 deselected: configuration/dispatch/alignment checks and five complete-tile TN/TT numerical cases (including TT prefetch and 64x256 tile); full public outputs and guards pass random59 / ones / random2059; four counterbalanced timing rounds per route",
+  "comparison": {
+    "baseline": "default_triton",
+    "candidate": "tuned_auto",
+    "speedup": 8.768315163006267,
+    "time_reduction_percent": 88.59530044929242
+  },
+  "baseline_note": "The unchanged generic Triton fallback uses 256 VGPRs and five VGPR spills; the tuned TN kernel is spill-free. Speedup is against that existing public default, not against a separately tuned Triton kernel.",
+  "effective_bandwidth_basis": "A/W each read once plus one BF16 C write",
+  "process_exit_code": 0,
+  "test_exit_code": 0,
+  "completed_utc": "2026-11-18T08:31:47.733297+00:00",
+  "benchmark": "benchmark.py",
+  "measurement": "measurement.json",
+  "kernel": "kernel.amdgcn",
+  "perf": "full_grid.perf",
+  "stats": "stats.txt.gz",
+  "dispatch_tests": "test/gemm/dispatch/test_gluon_mls_ring.py",
+  "replay": "source the recorded PMD environment; python3 benchmark.py --repo <checkout> --record record.json --output <new-directory> --rounds 4",
+  "measurement_note": "Shared TN/TT kernel freshly recompiled and measured; full-grid timings and selected-CU trace. Historical autotune candidates are omitted.",
+  "artifacts": {
+    "benchmark.py": {
+      "sha256": "0be9a2450d166a832e681a7ea0c8519971183dbfebcd9e87c9e9f1950bd71dd8"
+    },
+    "measurement.json": {
+      "sha256": "0e14499a0f30381025e12e521d4d9be101d1f8ebfaef260cdf977c45098cf3e5"
+    },
+    "kernel.amdgcn": {
+      "sha256": "caa4944499d5e86b63d3cb3e17686bbf74c6e3a89dd37ee878d326bc8003aaa6"
+    },
+    "full_grid.perf": {
+      "sha256": "c387fa4fd8b9327a7d071fddbf0c3fdd2859820455e13d4d839ecabfdabaae58"
+    },
+    "stats.txt.gz": {
+      "sha256": "415c345391efff887b94aec3111b8211d3c08af7083b6a660cd54fe46cecdb91"
+    }
+  },
+  "regression": {
+    "operator": "boltops/gemm/gemm_a16w16.py",
+    "interface": "paired_routes",
+    "variant": "tuned_auto",
+    "measurement": "measurement.json",
+    "environment_marker": "R003_SBX2_TN_TUNE"
+  },
+  "review_provenance": {
+    "original_MR": 33,
+    "original_source_archive": "/home/kxu/boltops-gemm-mr-scan-20261118/mr33-before.tar",
+    "original_source_archive_sha256": "ae38e220640113dacc0eaf9dd42da9a22a98b7e4cb147d56e7a1e0afe09460fb",
+    "current_kernel_module": "boltops/gemm/gluon/gemm_a16w16.py",
+    "current_kernel_module_sha256": "9a9a6e6352a0ebabba76b732d4b41a92086a0ea7a39d422b5bd7d9333d2907c5",
+    "review_report": "/home/kxu/boltops-gemm-mr-scan-20261118/review-report.json",
+    "note": "Published measurements and source hashes describe the historical measured entry. Current review validation and compilation comparisons are reported separately; historical timings are not overwritten."
+  }
+}
