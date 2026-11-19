@@ -40,14 +40,14 @@ def _validate_bf16_mls_environment(config):
 
 
 def _get_gluon_config(m, n, k, *, layout, profile, arch, cu_num):
-    """Share same-precision persistent launch geometry between FP16 and BF16."""
+    """Share the validated single-die persistent launch geometry with FP16."""
     try:
         return get_gemm_config(
             "GEMM-A16W16", m, n, k, backend="gluon", layout=layout,
             profile=profile, arch=arch, cu_num=cu_num,
         )
     except (FileNotFoundError, KeyError):
-        if profile != "DTYPE=float16-OUT=float16":
+        if cu_num != 48 or profile != "DTYPE=float16-OUT=float16":
             raise
         config, tuned = get_gemm_config(
             "GEMM-A16W16", m, n, k, backend="gluon", layout=layout,
@@ -106,9 +106,10 @@ def gemm_a16w16(
             a persistent FP16/BF16 TN/TT entry with one active TG per device CU
             (bounded by the output tile count), automatic tail handling,
             K-contiguous x, matching input/output dtype, no bias or activation.
-            BF16 TT also has a 256x128x64 Stream-K entry with one TG per CU,
-            requiring M % 4 = N % 128 = K % 16 = 0, 16-byte-aligned tensor
-            pointers and at least one tile per CU. Auto uses Triton for unaligned pointers.
+            BF16 also has a 256x128x64 Stream-K entry with one TG per CU.
+            It requires 16-byte-aligned tensor pointers, at least one tile
+            per CU, M divisible by 4 and N divisible by 128. K must be
+            divisible by 64 for TN and by 16 for TT. Auto uses Triton for unaligned pointers.
             FP16 can reuse the 256x256 persistent BF16 launch geometry. TileLang is not
             implemented for nonempty computation. After Gluon selection, exact experimental BF16
             TT profiles may select WASP/MLS on gfx946/48 CU without bias or activation.

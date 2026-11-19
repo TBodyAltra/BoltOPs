@@ -227,7 +227,7 @@ def test_streamk_schedule_covers_each_tile_and_k_interval_once(cu):
     assert max(workload) - min(workload) <= 64
 
 
-def test_streamk_compiled_kernel_cache_is_device_specific(monkeypatch):
+def test_streamk_compiled_kernel_cache_is_device_and_layout_specific(monkeypatch):
     from triton.backends.compiler import GPUTarget
 
     runtime = import_module("boltops.gemm.gluon.gemm_a16w16_streamk")
@@ -253,12 +253,16 @@ def test_streamk_compiled_kernel_cache_is_device_specific(monkeypatch):
         for index, expected in ((0, first), (1, second)):
             device[0] = index
             assert runtime._compile_kernel(*args) is expected
-        assert compiled == [first, second]
+        tn = runtime._compile_kernel(*args, b_k_contiguous=True)
+        assert tn is not second
+        assert runtime._compile_kernel(*args, b_k_contiguous=True) is tn
+        assert compiled == [first, second, tn]
     finally:
         runtime._compile_kernel_for_device.cache_clear()
 
 
-def test_streamk_native_sbx2_split_k():
+@pytest.mark.parametrize("layout", ["TT", "TN"])
+def test_streamk_native_sbx2_split_k(layout):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     from boltops.utility.arch_info import get_device_info
@@ -273,14 +277,17 @@ def test_streamk_native_sbx2_split_k():
     a = (torch.rand((m, 128), generator=generator) - .5).bfloat16()
     b = (torch.rand((128, n), generator=generator) - .5).bfloat16()
     expected = (a.float() @ b.float()).bfloat16()
-    ai, bi = a.cuda(), b.cuda()
+    ai = a.cuda()
+    weights = b.T.contiguous() if layout == "TN" else b
+    bi = weights.cuda()
     storage = torch.full((m * n + 128,), 123., dtype=torch.bfloat16).cuda()
     out = storage[64:-64].view(m, n)
-    assert gemm_a16w16(ai, bi.T, out=out, config=cfg, backend="gluon") is out
+    w = bi if layout == "TN" else bi.T
+    assert gemm_a16w16(ai, w, out=out, config=cfg, backend="gluon") is out
     host = storage.cpu()
     torch.testing.assert_close(host[64:-64].view(m, n), expected, atol=.001, rtol=.01)
     assert bool((host[:64] == 123).all() and (host[-64:] == 123).all())
-    assert torch.equal(ai.cpu(), a) and torch.equal(bi.cpu(), b)
+    assert torch.equal(ai.cpu(), a) and torch.equal(bi.cpu(), weights)
 
 
 @pytest.mark.parametrize("kwargs", [

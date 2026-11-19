@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
-"""Task scheduling and dynamic-LDS launch for the BF16 TT Stream-K kernel."""
+"""Task scheduling and dynamic-LDS launch for the BF16 Stream-K kernel."""
 
 from collections import defaultdict
 from functools import lru_cache
@@ -58,22 +58,23 @@ def _device_schedule(m, n, k, cu_count, device, stream):
     return torch.tensor(table, dtype=torch.int32, device=device), records, slots
 
 
-def _compile_kernel(kernel, m, n, k, records, options, target):
+def _compile_kernel(kernel, m, n, k, records, options, target, *, b_k_contiguous=False):
     return _compile_kernel_for_device(
-        kernel, m, n, k, records, options, target, torch.cuda.current_device(),
+        kernel, m, n, k, records, options, target, torch.cuda.current_device(), b_k_contiguous,
     )
 
 
 @lru_cache(maxsize=128)
-def _compile_kernel_for_device(kernel, m, n, k, records, options, target, device_index):
+def _compile_kernel_for_device(kernel, m, n, k, records, options, target, device_index, b_k_contiguous):
     # CompiledKernel retains HIP function handles from its first launch device.
     # Include the device index even when both GPUs have the same target ISA.
+    constexprs = dict(M=m, N=n, K=k, RECORDS=records, B_K_CONTIGUOUS=b_k_contiguous)
     source = GluonASTSource(
         kernel,
         signature=dict(A="*bf16", B="*bf16", C="*bf16", Schedule="*i32",
                        Workspace="*fp32", Flags="*i32", EdgeM="*bf16",
                        EdgeKA="*bf16", EdgeKB="*bf16", Epoch="i32"),
-        constexprs=dict(M=m, N=n, K=k, RECORDS=records),
+        constexprs=constexprs,
         attrs={(i,): [("tt.divisibility", 16)] for i in range(9)},
     )
     return triton.compile(source, target=target, options=dict(options))
@@ -90,8 +91,11 @@ def _launch_gemm_a16w16_streamk(kernel, prepare_edges, a, b, out, *, cu_count, c
     n = b.shape[0]
     if a.dtype != torch.bfloat16 or out.dtype != torch.bfloat16:
         raise ValueError("Stream-K Gluon requires BF16 input and output")
-    if a.stride() != (k, 1) or b.stride() != (1, n):
-        raise ValueError("Stream-K Gluon requires K-contiguous x and N-contiguous w (TT)")
+    b_k_contiguous = b.stride() == (k, 1)
+    if a.stride() != (k, 1) or b.stride() not in ((k, 1), (1, n)):
+        raise ValueError("Stream-K Gluon requires contiguous x and TN or TT w")
+    if b_k_contiguous and k % 64:
+        raise ValueError("Stream-K Gluon requires K divisible by 64 for TN")
     if any(t.data_ptr() % 16 for t in (a, b, out)):
         raise ValueError("Stream-K Gluon requires 16-byte-aligned tensor pointers")
     tile = tuple(config.get(key) for key in ("BLOCK_SIZE_M", "BLOCK_SIZE_N", "BLOCK_SIZE_K"))
@@ -115,8 +119,9 @@ def _launch_gemm_a16w16_streamk(kernel, prepare_edges, a, b, out, *, cu_count, c
                   triton.cdiv(m, 256) * 256 * 64 if k % 64 else 0,
                   64 * n if k % 64 else 0)
     edges = [torch.empty(max(size, 1), dtype=a.dtype, device=a.device) for size in edge_sizes]
+    layout_options = {"b_k_contiguous": True} if b_k_contiguous else {}
     compiled = _compile_kernel(kernel, m, n, k, records, tuple(sorted(options.items())),
-                               driver.active.get_current_target())
+                               driver.active.get_current_target(), **layout_options)
     # Initialize Triton's launcher before retrieving the module function.
     run = compiled.run
     if any(edge_sizes):
