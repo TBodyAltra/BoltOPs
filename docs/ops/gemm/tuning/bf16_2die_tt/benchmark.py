@@ -100,7 +100,11 @@ def main():
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--current-source', action='store_true',
                         help='check current kernel against recorded executable sections')
+    parser.add_argument('--current-toolchain', action='store_true',
+                        help='measure the compiled full grid and report differences from the archived executable')
     args = parser.parse_args()
+    if args.current_toolchain and args.single_tg_perf:
+        parser.error('--current-toolchain is for full-grid comparison')
     record_path = args.record.resolve()
     record = json.loads(record_path.read_text())
     args.chip = 'sbx2'
@@ -130,7 +134,7 @@ def main():
                 kernel=symbol, options=params, grid=[grid], protocol=protocol, repeats=repeats,
                 correctness_dispatches=0 if protocol == 'cold' else 3,
                 source_mode='current' if args.current_source else 'measured',
-                launch='repository JIT with archived tile/warp/stage configuration; persistent grid/NUM_SMS follow device CUs')
+                current_toolchain=args.current_toolchain, launch='repository JIT with archived tile/warp/stage configuration; persistent grid/NUM_SMS follow device CUs')
     plan.update(single_tg=args.single_tg_perf, full_grid=[full_grid],
                 selected_tile_ids=tile_ids if args.single_tg_perf else None)
     if args.single_tg_perf:
@@ -216,8 +220,13 @@ def main():
     assert handle.n_spills == 0
     (output / 'kernel.amdgcn').write_text(handle.asm['amdgcn'])
     (output / 'kernel.hsaco').write_bytes(handle.asm['hsaco'])
-    assert executable_sections(handle.asm['hsaco']) == record['assembly']['executable_sections'], 'compiled kernel differs from measured binary'
-    assert dict(VGPR=handle.n_regs, spills=handle.n_spills, LDS_bytes=handle.metadata.shared) == record['resources'], 'launch resources differ'
+    sections = executable_sections(handle.asm['hsaco'])
+    binary_matches = sections == record['assembly']['executable_sections']
+    resources = dict(VGPR=handle.n_regs, spills=handle.n_spills, LDS_bytes=handle.metadata.shared)
+    resources_match = resources == record['resources']
+    if not args.current_toolchain:
+        assert binary_matches, 'compiled kernel differs from measured binary'
+        assert resources_match, 'launch resources differ'
 
     def prepare(seed, kind):
         generator = torch.Generator().manual_seed(seed)
@@ -355,6 +364,7 @@ def main():
     performance = {key: statistics.median(s[key] for s in selected) for key in ('kernel_cycles', 'kernel_us')}
     performance.update(kernel_tops=2*m*n*k/(performance['kernel_us']*1e6), launched_TGs=grid,
                        samples=len(selected), aggregation=aggregation, time_domain=record['performance']['time_domain'])
+    clang = os.environ.get('TRITON_HIP_CLANG_PATH')
     result = dict(requirement=record['requirement'], status='PASS', shape=record['shape'], dtype=record['dtype'],
                   layout=record['layout'], chip=args.chip, dies=2 if args.chip == 'sbx2' else 1,
                   cu_count=96 if args.chip == 'sbx2' else 48,
@@ -365,10 +375,12 @@ def main():
                   source_path=source_path, config_sha256=record['config']['sha256'],
                   assembly_sha256=digest(output / 'kernel.amdgcn'), hsaco_sha256=digest(output / 'kernel.hsaco'),
                   assembly_matches_archived=digest(output / 'kernel.amdgcn') == record['assembly']['sha256'],
-                  benchmark_sha256=digest(__file__), resources=dict(VGPR=handle.n_regs, spills=handle.n_spills,
-                      LDS_bytes=handle.metadata.shared),
+                  benchmark_sha256=digest(__file__), resources=resources,
+                  executable_sections=sections, matches_measured_executable=binary_matches,
+                  matches_measured_resources=resources_match,
                   runtime=dict(torch=torch.__version__, triton=triton.__version__, triton_path=triton.__file__,
-                      libtriton_sha256=digest(lib.__file__)))
+                      libtriton_sha256=digest(lib.__file__),
+                      clang_sha256=digest(clang) if clang else None))
     if protocol != 'cold' and not small:
         result['timing_input'] = dict(seed=seed, input_kind='normal_random')
     save(output / 'result.json', result)
