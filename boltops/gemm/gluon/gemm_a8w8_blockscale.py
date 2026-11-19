@@ -8,6 +8,9 @@ Each entry owns its layouts,
 partition resources, pipeline and compile-time legality checks.
 """
 
+import sys
+
+import torch
 import triton
 
 from triton.experimental import gluon as g
@@ -31,6 +34,9 @@ from triton.experimental.gluon.language.amd.hcu import (
     sched_barrier,
     packed_scale_fma,
 )
+
+from boltops.utility.arch_info import DeviceInfo
+from ..validation import validate_output
 
 
 from .gemm_a8w8_blockscale_persistent import (
@@ -624,3 +630,45 @@ def _gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_b
         (_produce_fp32_scales_m64_tiles,(A,B,AS,a0,a1,b0,b1,scales,M,N,K,BN,P,C,pid,NUM_SMS,TILE_LIMIT)),
         (_consume_fp32_scales_m64_tiles,(BS,Out,a0,a1,b0,b1,scales,M,N,K,BN,P,C,WM,pid,NUM_SMS,TILE_LIMIT)),
     ],[P,C],[32,128])
+
+
+def gemm_a8w8_blockscale(
+    a: torch.Tensor, b: torch.Tensor, out: torch.Tensor, /, *,
+    a_scale: torch.Tensor, b_scale: torch.Tensor,
+    block_size: tuple[int, int], device: DeviceInfo,
+    config: dict[str, object], gluon_layout: str,
+) -> None:
+    m, k = a.shape
+    n = b.shape[0]
+    bn, bk = block_size
+    validate_output(
+        out, (m, n), a.device, (torch.float16, torch.bfloat16, torch.float32), contiguous=True,
+    )
+
+    persistent = config.get("kernel", "").endswith("_bk128_persistent_kernel")
+    if gluon_layout == "TT" and not persistent:
+        raise NotImplementedError("Gluon TT blockscale requires a recorded persistent configuration")
+    if persistent:
+        config["B_K_CONTIGUOUS"] = gluon_layout == "TN"
+    kernel = getattr(sys.modules[__name__], config.pop("kernel"))
+    config = {
+        key: tuple(value) if isinstance(value, list) else value
+        for key, value in config.items()
+    }
+    grid = lambda meta: (meta["NUM_SMS"],) if "NUM_SMS" in meta else (
+        triton.cdiv(m, meta["BLOCK_SIZE_M"]),
+        triton.cdiv(n, meta["BLOCK_SIZE_N"]),
+    )
+    kernel[grid](
+        a,
+        b,
+        a_scale,
+        b_scale,
+        out,
+        M=m,
+        N=n,
+        K=k,
+        GROUP_N=bn,
+        GROUP_K=bk,
+        **config,
+    )
