@@ -324,11 +324,13 @@
   },
   "public_api": {
     "path": "boltops/gemm/gemm_a16w16.py",
-    "sha256": "f2b45aa5566739ea6abbdaf593ccbdd89e893277c4a5d9079c61964ca4211752",
+    "sha256": "8be394018eb7b55922c51f4f8d7a25e363364478dbb8996e336b4898898b1fd2",
     "backend": "auto",
     "resolved_backend": "gluon",
     "out": "preallocated",
-    "measured_sha256": "32f1a766a5e4d89c503be485669ed767846a68e4cd304f335eab5957853f6c63"
+    "measured_sha256": "32f1a766a5e4d89c503be485669ed767846a68e4cd304f335eab5957853f6c63",
+    "previous_sha256": "f2b45aa5566739ea6abbdaf593ccbdd89e893277c4a5d9079c61964ca4211752",
+    "note": "Current entry includes 96-CU Triton MLS support. R020's auto selection, Gluon branch and Stream-K launch are unchanged; measured_sha256 retains the original measured entry and previous_sha256 retains the entry before MLS integration."
   },
   "layout": "TT",
   "dispatch_note": "The 96-CU R020 Gluon profile selects the existing Stream-K device kernel through public auto. The original scheduler launches one TG per CU: 96 TGs for 128 output tiles. Reported kernel_cycles, kernel_us and kernel_tops include the native flag-reset dispatch and the cold GEMM; gemm_kernel_* and flag_reset_* retain their individual costs.",

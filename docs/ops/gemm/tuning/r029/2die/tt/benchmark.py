@@ -1,13 +1,14 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
-"""Replay the archived BF16 GEMM on sbx2 (2 dies / 96 CUs).
+"""Replay R029 V2 through the public GEMM entry on sbx2 (2 dies / 96 CUs).
 
-The default launch retains the archived full-grid timing protocol. Optional
---single-tg-perf launches TG0 three times, keeping MNK, strides, all compile
-options and persistent NUM_SMS=96; select the faster of repeats 1 and 2.
-Source the recorded Triton path.sh first. The measured source is recovered from
-the recorded Git commit into the output directory when the checkout differs.
---dry-run checks the launch without importing Torch or running a simulation.
+The public entry loads the recorded 96-CU JSON with backend=auto and no explicit
+config. Every call verifies the selected kernel, 96-TG grid and launch options.
+The full protocol checks three inputs, then one warmup and three timed calls.
+--single-tg-perf intercepts that same public launch and executes only TG0 three
+times, preserving full MNK/strides/options; select a timed XCD0 repeat.
+Source the recorded Triton path.sh first. --compile-only checks the public
+dispatch and binary without launching GPU work; --dry-run needs no Torch.
 """
 import argparse
 import builtins
@@ -24,9 +25,6 @@ import re
 import statistics
 import shutil
 import struct
-import tarfile
-import io
-import subprocess
 import sys
 
 REPO = next(p for p in Path(__file__).resolve().parents if (p / 'boltops/gemm/config.py').is_file())
@@ -57,18 +55,10 @@ def executable_sections(data):
 
 
 def measured_source(record, output):
-    if digest(REPO / record['source']['path']) == record['source']['sha256']:
-        return REPO
-    snapshot = output / 'source'
-    snapshot.mkdir()
-    archive = subprocess.check_output(['git', 'archive', record['source']['commit'], 'boltops'], cwd=REPO)
-    with tarfile.open(fileobj=io.BytesIO(archive)) as files:
-        for item in files.getmembers():
-            destination = (snapshot / item.name).resolve()
-            assert destination.is_relative_to(snapshot)
-        files.extractall(snapshot)
-    assert digest(snapshot / record['source']['path']) == record['source']['sha256'], 'measured kernel source differs'
-    return snapshot
+    for key in ('source', 'config', 'public_entry', 'default_config'):
+        item = record[key]
+        assert digest(REPO / item['path']) == item['sha256'], f'{key} differs from the recorded implementation'
+    return REPO
 
 
 def launch_options(record):
@@ -81,10 +71,23 @@ def main():
     parser.add_argument('--record', type=Path, default=Path(__file__).with_name('record.json'))
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--single-tg-perf', action='store_true')
+    parser.add_argument('--compile-only', action='store_true')
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
     record_path = args.record.resolve()
     record = json.loads(record_path.read_text())
+    if args.single_tg_perf and args.compile_only:
+        parser.error('--single-tg-perf and --compile-only are mutually exclusive')
+    measured_source(record, None)
+    config = record['config']
+    recorded_options = json.loads((REPO / config['path']).read_text())['profiles'][config['profile']][config['bucket']]
+    actual_options = deepcopy(recorded_options)
+    assert actual_options.pop('wasp') is True
+    assert actual_options.pop('wdra') is False
+    assert actual_options.pop('use_mls') is True
+    actual_options['USE_MATRIX_STORE'] = actual_options.pop('use_matrix_store')
+    actual_options['HAS_BIAS'] = False
+    assert actual_options == record['launch']['options'], 'config and launch options differ'
     args.chip = 'sbx2'
     assert record['environment']['cu_count'] == 96 and record['environment']['dies'] == 2
     assert record['dtype']['A'] == record['dtype']['W'] == record['dtype']['output'] == 'BF16'
@@ -111,17 +114,20 @@ def main():
     plan = dict(requirement=record['requirement'], shape=record['shape'], chip=args.chip,
                 kernel=symbol, options=params, grid=[grid], protocol=protocol, repeats=repeats,
                 correctness_dispatches=0 if protocol == 'cold' else 3,
-                launch='repository JIT with archived tile/warp/stage configuration; persistent grid/NUM_SMS follow device CUs')
+                launch='public boltops.gemm.gemm_a16w16, backend=auto, no explicit config',
+                config_path=config['path'], compile_only=args.compile_only)
     plan.update(single_tg=args.single_tg_perf, full_grid=[full_grid],
                 selected_tile_ids=tile_ids if args.single_tg_perf else None)
     if args.single_tg_perf:
         plan.update(protocol='single_tg_perf', correctness_dispatches=0,
                     each_dispatch_validated=True, execution_warmups=1,
-                    selection='minimum cycles of repeats 1 and 2; repeat 0 excluded')
+                    selection='fastest timed XCD0 repeat; repeat 0 excluded')
+    if args.compile_only:
+        plan.update(correctness_dispatches=0, repeats=0)
     if args.dry_run:
         print(json.dumps(plan, indent=2))
         return
-    marker = 'BOLTOPS_FIXED_BF16_RECORD'
+    marker = 'BOLTOPS_R029_PUBLIC_REPLAY_RECORD'
     if os.environ.get(marker) != str(record_path):
         env = dict(os.environ)
         # Retain path.sh's compiler, PMD and Python paths; preserve per-kernel
@@ -192,13 +198,57 @@ def main():
     ci, cr, c = guarded((m, n), 123.)
     ci[guard:-guard] = float('nan')
     positional = (a, b, c, b, m, n, k, *a.stride(), *b.stride(), *c.stride()) if mls else (a, b, c)
-    handle = fn.warmup(*positional, grid=(grid,), **params)
+    from boltops.gemm import gemm_a16w16
+
+    handle = None
+    compiling = True
+    public_calls = []
+
+    class PublicLaunch:
+        def __getitem__(self, requested_grid):
+            def run(*actual, **options):
+                nonlocal handle
+                requested = requested_grid(options)
+                assert requested == (full_grid,), requested
+                assert options == params, (options, params)
+                assert actual[4:] == positional[4:]
+                assert all(x.data_ptr() == y.data_ptr() and x.stride() == y.stride()
+                           for x, y in zip(actual[:4], positional[:4]))
+                if compiling:
+                    assert handle is None
+                    handle = fn.warmup(*actual, grid=requested, **options)
+                else:
+                    assert fn[(grid,)](*actual, **options) is handle
+                public_calls.append(dict(requested_grid=list(requested),
+                                         executed_grid=None if compiling else [grid],
+                                         options_match=True, compiling=compiling))
+            return run
+
+    setattr(module, symbol, PublicLaunch())
+
+    def public_launch():
+        assert gemm_a16w16(a, b.T, out=c, backend='auto') is c
+
+    public_launch()
+    assert handle is not None
+    compiling = False
     handle._init_handles()
     assert handle.n_spills == 0
     (output / 'kernel.amdgcn').write_text(handle.asm['amdgcn'])
     (output / 'kernel.hsaco').write_bytes(handle.asm['hsaco'])
     assert executable_sections(handle.asm['hsaco']) == record['assembly']['executable_sections'], 'compiled kernel differs from measured binary'
     assert dict(VGPR=handle.n_regs, spills=handle.n_spills, LDS_bytes=handle.metadata.shared) == record['resources'], 'launch resources differ'
+    public_entry = dict(name='boltops.gemm.gemm_a16w16', backend='auto', explicit_config=False,
+                        source_sha256=record['public_entry']['sha256'],
+                        config_path=config['path'], config_sha256=config['sha256'],
+                        requested_grid=[full_grid], calls=public_calls)
+    if args.compile_only:
+        save(output / 'compile.json', dict(status='PASS', public_entry=public_entry,
+             options=params, executable_sections=executable_sections(handle.asm['hsaco']),
+             resources=record['resources'], hsaco_sha256=digest(output / 'kernel.hsaco'),
+             benchmark_sha256=digest(__file__)))
+        print('PASS: public auto dispatch, config, executable sections and resources match', flush=True)
+        return
 
     def prepare(seed, kind):
         generator = torch.Generator().manual_seed(seed)
@@ -221,7 +271,9 @@ def main():
         cr.copy_(ci)
         torch.cuda.synchronize()
         before = set((output / 'g').glob('*/*/stats.txt'))
-        assert fn[(grid,)](*positional, **params) is handle
+        before_calls = len(public_calls)
+        public_launch()
+        assert len(public_calls) == before_calls + 1
         torch.cuda.synchronize()
         paths = set((output / 'g').glob('*/*/stats.txt')) - before
         assert len(paths) == 1, paths
@@ -321,14 +373,17 @@ def main():
     samples = [launch(index, 'warmup' if args.single_tg_perf and index == 0 else 'timed' if args.single_tg_perf else 'cold' if protocol == 'cold' else 'warmup' if index == 0 else 'timed', ah, bh)
                for index in range(repeats)]
     if args.single_tg_perf:
-        selected = min(samples[1:], key=lambda sample: sample['kernel_cycles'])
+        candidates = [s for s in samples[1:] if s['completed_TGs_per_die'].get('system.shaders0') == 1]
+        assert candidates, 'a timed XCD0 sample is required for the default PERF view'
+        selected = min(candidates, key=lambda sample: sample['kernel_cycles'])
         shutil.copyfile(output / selected['perf_path'], output / 'single_tg.perf')
         result = dict(requirement=record['requirement'], status='PASS', single_tg=True,
                       grid=[1], full_grid=[full_grid], tile_ids=tile_ids, options=params,
                       samples=samples, selected=dict(selected, sha256=digest(output / 'single_tg.perf')),
                       resources=record['resources'], full_and_single_text_rodata_equal=True,
                       executable_sections=executable_sections(handle.asm['hsaco']),
-                      hsaco_sha256=digest(output / 'kernel.hsaco'), benchmark_sha256=digest(__file__))
+                      hsaco_sha256=digest(output / 'kernel.hsaco'), benchmark_sha256=digest(__file__),
+                      public_entry=public_entry)
         save(output / 'result.json', result)
         print(json.dumps(dict(requirement=record['requirement'], status='PASS', single_tg=True)), flush=True)
         return
@@ -348,7 +403,7 @@ def main():
                   benchmark_sha256=digest(__file__), resources=dict(VGPR=handle.n_regs, spills=handle.n_spills,
                       LDS_bytes=handle.metadata.shared),
                   runtime=dict(torch=torch.__version__, triton=triton.__version__, triton_path=triton.__file__,
-                      libtriton_sha256=digest(lib.__file__)))
+                      libtriton_sha256=digest(lib.__file__)), public_entry=public_entry)
     save(output / 'result.json', result)
     print(json.dumps(dict(requirement=record['requirement'], status='PASS', performance=performance)), flush=True)
 

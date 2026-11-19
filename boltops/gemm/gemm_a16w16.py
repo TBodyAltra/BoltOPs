@@ -111,7 +111,8 @@ def gemm_a16w16(
             pointers and at least one tile per CU. Auto uses Triton for unaligned pointers.
             FP16 can reuse the 256x256 persistent BF16 launch geometry. TileLang is not
             implemented for nonempty computation. After Gluon selection, exact experimental BF16
-            TT profiles may select WASP/MLS on gfx946/48 CU without bias or activation.
+            TT profiles may select WASP/MLS on gfx946 with 48 or 96 CU without
+            bias or activation.
             BF16 MLS requires complete M/N/K tiles, BF16 output, and the recorded
             compiler environment set before importing boltops:
             AMDGCN_USE_BUFFER_OPS=1, TRITON_BUFFER_CACHE_SWIZZLE=1,
@@ -240,7 +241,7 @@ def gemm_a16w16(
                 config = None
                 if (
                     device.arch == "gfx946"
-                    and device.cu_count == 48
+                    and device.cu_count in (48, 96)
                     and a.dtype == out_dtype == torch.bfloat16
                     and bias is None
                     and activation is None
@@ -278,7 +279,7 @@ def gemm_a16w16(
                     device.arch != "gfx946"
                     or a.dtype != out_dtype
                     or (a.dtype != torch.float16 and not bf16_mls)
-                    or (bf16_mls and (device.cu_count != 48 or not config["use_mls"]))
+                    or (bf16_mls and (device.cu_count not in (48, 96) or not config["use_mls"]))
                     or (bias is not None)
                     or activation is not None
                     or (a.stride() != (k, 1))
@@ -287,7 +288,7 @@ def gemm_a16w16(
                     raise ValueError(
                         "recorded pipeline requires gfx946, same-precision FP16 or "
                         "BF16 output and TT operands without bias or activation; "
-                        "BF16 requires MLS and 48 CU"
+                        "BF16 requires MLS and 48 or 96 CU"
                     )
                 if bf16_mls:
                     for dim, size in zip("MNK", (m, n, k)):

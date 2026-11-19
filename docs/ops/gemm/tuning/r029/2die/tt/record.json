@@ -19,12 +19,12 @@
     "accumulator": "FP32"
   },
   "layout": "TT",
-  "full_grid_TGs": 48,
+  "full_grid_TGs": 96,
   "performance": {
-    "kernel_cycles": 153155.0,
-    "kernel_us": 69.68553127169783,
-    "kernel_tops": 369.80135339035843,
-    "launched_TGs": 48,
+    "kernel_cycles": 100965.0,
+    "kernel_us": 45.93907913451713,
+    "kernel_tops": 560.9560370276863,
+    "launched_TGs": 96,
     "samples": 3,
     "aggregation": "median of repeats 1..3; repeat 0 excluded",
     "time_domain": "Complete-dispatch system.gcSimCycles/(gcFrequency_GHz*1000), microseconds"
@@ -37,11 +37,6 @@
     "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/docs/ops/gemm/tuning/r029/1die/tt/record.json",
     "note": "The comparison uses this immutable archived baseline; subsequent checkout tuning can change the current 1die record."
   },
-  "comparison": {
-    "speedup": 1.0097091182135745,
-    "latency_change_percent": -0.9615757685492832,
-    "note": "Comparison to the published 1die record; R001 published baseline used an older compiler environment."
-  },
   "source": {
     "path": "boltops/gemm/triton/gemm_a16w16_wasp.py",
     "symbol": "_gemm_fp16_mls_kernel",
@@ -51,13 +46,13 @@
   },
   "config": {
     "path": "boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=6144-K=4096-TT.json",
-    "sha256": "4356a6b4c4f73c90e76d861cf08f5eb2940e4b28a94618f170c699a42a3f17fd",
+    "sha256": "fc682203be33b8f40e358aa4abdbaa8b09931a83bf586ec46fabb539eec740a7",
     "profile": "DTYPE=bfloat16-OUT=bfloat16-WASP-MLS-EXPERIMENTAL",
     "bucket": "M_EQ_512",
     "parameters": {
       "GROUP_SIZE_M": 1,
       "WARP_SPECIALIZE": true,
-      "wasp_wdra": true,
+      "wasp_wdra": false,
       "amdgpu_enable_max_ilp_scheduling_strategy": true,
       "hcu_use_gfx946_sched_model_v2": false,
       "wasp_partition_warps": [
@@ -65,12 +60,7 @@
         4,
         4
       ],
-      "wasp_partition_regs": [
-        16,
-        244,
-        244
-      ],
-      "BLOCK_SIZE_M": 256,
+      "BLOCK_SIZE_M": 128,
       "BLOCK_SIZE_N": 256,
       "BLOCK_SIZE_K": 64,
       "empty_arrive_after_mmac": false,
@@ -78,21 +68,23 @@
       "num_stages": 2,
       "mmac_layout_force": 3,
       "buffer_cache_swizzle": true,
+      "misched_regpressure": false,
       "wasp": true,
-      "wdra": true,
+      "wdra": false,
       "use_mls": true,
       "use_matrix_store": true
     },
-    "runtime_overrides": {}
+    "runtime_overrides": {},
+    "note": "96-CU V2 profile selected by the public gemm_a16w16 entry; no caller-supplied config."
   },
   "launch": {
     "grid": [
-      48
+      96
     ],
     "options": {
       "GROUP_SIZE_M": 1,
       "WARP_SPECIALIZE": true,
-      "wasp_wdra": true,
+      "wasp_wdra": false,
       "amdgpu_enable_max_ilp_scheduling_strategy": true,
       "hcu_use_gfx946_sched_model_v2": false,
       "wasp_partition_warps": [
@@ -100,12 +92,7 @@
         4,
         4
       ],
-      "wasp_partition_regs": [
-        16,
-        244,
-        244
-      ],
-      "BLOCK_SIZE_M": 256,
+      "BLOCK_SIZE_M": 128,
       "BLOCK_SIZE_N": 256,
       "BLOCK_SIZE_K": 64,
       "empty_arrive_after_mmac": false,
@@ -114,23 +101,23 @@
       "mmac_layout_force": 3,
       "buffer_cache_swizzle": true,
       "USE_MATRIX_STORE": true,
-      "HAS_BIAS": false
+      "HAS_BIAS": false,
+      "misched_regpressure": false
     },
-    "method": "Direct repository JIT; original tile/warp/stage options and kernel source; device CU count sets persistent NUM_SMS/grid."
+    "method": "Public gemm_a16w16, backend=auto, loads the recorded 96-CU profile with no explicit config. Full performance is retained from the executable-equivalent V2 measurement."
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "a54948ae12de9a1a10bc813bb746a109e11b8904595f05c473b082b3fb51e5b7",
-    "hsaco_sha256": "4d9af5923c8e0111bb50e8c4c3cb90d4cd83506fc3263066a8dbc43549edcd18",
-    "matches_1die_assembly": true,
+    "sha256": "90f9d870326c4cb7d48811762df364c1c22908117b68f9b46dd07ab75075d16e",
+    "hsaco_sha256": "ed589dd91dca1743b3ad48b723e11e7c187b9661ec650fd4c3bf7a36a54dfb14",
     "executable_sections": {
       ".rodata": {
         "size": 64,
-        "sha256": "a828f9d103695d786b9e18c23c2a9a98dabeceda4e70ded341e06519ec5d54b3"
+        "sha256": "2c4c9bad3fbf92d524d04d3a8dd03f0ab7eef4da382efa17a78f33f9c182bcbe"
       },
       ".text": {
-        "size": 9504,
-        "sha256": "4d04cd53a31ef7ba9ad4cf35b81883bb510f36eed2ed0220ab51caed99a1dda0"
+        "size": 5952,
+        "sha256": "1e5c00816b16f531eac24edb29995ab321aa99e332a03971b3ff13d8bbfa7d5d"
       }
     }
   },
@@ -161,10 +148,10 @@
       "OMP_NUM_THREADS": "1",
       "MKL_NUM_THREADS": "1",
       "OPENBLAS_NUM_THREADS": "1",
-      "GPU_OUT": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r029/measurement/g",
-      "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r029/measurement/cache",
-      "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r029/measurement/triton-home",
-      "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r029/measurement/history.log",
+      "GPU_OUT": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/opt/R029/V2/cases/16_static_regpressure_off/full/g",
+      "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/opt/R029/V2/cases/16_static_regpressure_off/full/cache",
+      "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/opt/R029/V2/cases/16_static_regpressure_off/full/triton-home",
+      "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/opt/R029/V2/cases/16_static_regpressure_off/full/history.log",
       "RPY_HISTORY_SIZE": "1024"
     },
     "runtime": {
@@ -306,46 +293,126 @@
     },
     "model_configuration": {
       "path": "pmd-config.json.gz",
-      "sha256": "36f5605cd0190bec08b257673cc615686ed979b46e7db59a8719ac5149600b8b"
+      "sha256": "803397867bdad75b628115a4afebfd45adf3e8c232082e2fb3d1462c25f9f0c2"
     }
   },
   "benchmark": {
     "script": "benchmark.py",
-    "sha256": "ba927f71d2e76ca1369a8d04de19672ffb129b8d45184b74dcba7289aa7e9eee",
+    "path": "benchmark.py",
+    "sha256": "8d5a8aa70e8bc055184ee9b33b383d2f36bced2fde247b680c09e5f406fd46e2",
     "seed": 29,
     "repeats": 4,
-    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r029/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r029/2die/tt/record.json --output /tmp/r029-sbx2-full-new",
-    "measured_script_sha256": "767bae92ff03bcadf6e1b1717838f6ed1a625e5d7722a8cc830e9522131a6c87",
-    "publication_changes": "Embed frozen launch options; recover measured source from Git when needed; add optional independent single-TG PERF capture. Default full-grid protocol and published full-grid performance are preserved. Single-TG dry-run plan labels clarified after capture; executable measurement logic unchanged.",
-    "single_tg_measured_script_sha256": "e434fb3bf8d4ec28bf7ccb89094d3b860090f0f7c29b55d3396b62ea4e94232e"
+    "protocol": "Three independent correctness inputs; normal seed29; warmup + median of three timed dispatches",
+    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r029/2die/tt/benchmark.py --output /tmp/r029-v2-full-new",
+    "measured_script_sha256": "ff0d873a1ceb05d6b02df3ea5faaa6963759ab213a2d66cdb8ebddd52b9491b8",
+    "single_tg_measured_script_sha256": "8d5a8aa70e8bc055184ee9b33b383d2f36bced2fde247b680c09e5f406fd46e2",
+    "publication_changes": "Replay now calls the public entry and checks the selected 96-CU configuration. Published full data retains the seven V2 JIT dispatches; the fresh three-dispatch public-entry PERF proves identical executable sections and resources."
   },
   "resources": {
-    "VGPR": 168,
+    "VGPR": 129,
     "spills": 0,
-    "LDS_bytes": 131072
+    "LDS_bytes": 98304
+  },
+  "measurement_result_path": "tmp/opt/R029/V2/cases/16_static_regpressure_off/full/result.json",
+  "measurement_result_sha256": "2bd7515278bc3d6265b8868fe52c0cb19ee6a5c673b749847f644ac154d39b5f",
+  "measured_at": "2026-11-18T10:09:45.285977+00:00",
+  "evidence": {
+    "stats": {
+      "path": "stats.txt.gz",
+      "sha256": "cb6d1ee7ca29f96e47d3b635ea972bc84109d54c5f908410f76234927e58e2ca",
+      "dispatches": 7,
+      "format": "Complete raw PMD statistics concatenated in validation-then-samples order; stats_section is zero-based; each original block SHA256 is retained."
+    },
+    "model_config": {
+      "path": "pmd-config.json.gz",
+      "sha256": "803397867bdad75b628115a4afebfd45adf3e8c232082e2fb3d1462c25f9f0c2"
+    },
+    "perf_stats": {
+      "path": "perf_stats.txt.gz",
+      "sha256": "b283612fb1f9a7396001e9372bfabbdca57557eb9f4d889d98debe6c5ce4b982"
+    }
+  },
+  "comparison": {
+    "speedup": 1.531639677115832,
+    "latency_change_percent": -34.71049262166811,
+    "note": "Comparison with the unchanged published 1die baseline.",
+    "previous_2die": {
+      "performance": {
+        "kernel_cycles": 153155.0,
+        "kernel_us": 69.68553127169783,
+        "kernel_tops": 369.80135339035843,
+        "launched_TGs": 48,
+        "samples": 3,
+        "aggregation": "median of repeats 1..3; repeat 0 excluded",
+        "time_domain": "Complete-dispatch system.gcSimCycles/(gcFrequency_GHz*1000), microseconds"
+      },
+      "launch": {
+        "grid": [
+          48
+        ],
+        "options": {
+          "GROUP_SIZE_M": 1,
+          "WARP_SPECIALIZE": true,
+          "wasp_wdra": true,
+          "amdgpu_enable_max_ilp_scheduling_strategy": true,
+          "hcu_use_gfx946_sched_model_v2": false,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "empty_arrive_after_mmac": false,
+          "enable_v_mmac_cluster": 0,
+          "num_stages": 2,
+          "mmac_layout_force": 3,
+          "buffer_cache_swizzle": true,
+          "USE_MATRIX_STORE": true,
+          "HAS_BIAS": false
+        },
+        "method": "Direct repository JIT; original tile/warp/stage options and kernel source; device CU count sets persistent NUM_SMS/grid."
+      },
+      "config_path": "boltops/gemm/configs/gfx946/48cu/triton/gemm_a16w16/GEMM-A16W16-N=6144-K=4096-TT.json",
+      "config_sha256": "4356a6b4c4f73c90e76d861cf08f5eb2940e4b28a94618f170c699a42a3f17fd",
+      "resources": {
+        "VGPR": 168,
+        "spills": 0,
+        "LDS_bytes": 131072
+      },
+      "speedup": 1.5169118011191998,
+      "latency_reduction_percent": 34.07658907642585
+    }
   },
   "validation": [
     {
       "index": 0,
       "phase": "correctness",
       "status": "PASS",
-      "kernel_cycles": 162671.0,
-      "kernel_us": 74.01531166137806,
-      "completed_TGs": 48,
+      "kernel_cycles": 107716.0,
+      "kernel_us": 49.0107844109706,
+      "completed_TGs": 96,
       "completed_TGs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "active_CUs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "mmop_instructions": 3145728,
       "gc_frequency_ghz": 2.197802,
       "stats_path": "stats.txt.gz",
-      "stats_sha256": "03fb407db36cd6c1268bee41741a5433b148674730e0accc62197bd4393cee26",
+      "stats_sha256": "fdc17319f780a37e480a96e8f08275b8d023d60e3edb52d7d3b6109d97f6ae9a",
       "accuracy": {
         "elements": 3145728,
+        "unselected_output_nan": true,
         "outside_tolerance": 0,
         "nonfinite": 0,
         "max_abs": 0.0625,
@@ -358,30 +425,31 @@
       },
       "seed": 29,
       "input_kind": "uniform_random",
-      "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r029/measurement/g/0/0/stats.txt",
+      "raw_stats_path": "tmp/opt/R029/V2/cases/16_static_regpressure_off/full/g/0/0/stats.txt",
       "stats_section": 0
     },
     {
       "index": 1,
       "phase": "correctness",
       "status": "PASS",
-      "kernel_cycles": 153167.0,
-      "kernel_us": 69.69099127218922,
-      "completed_TGs": 48,
+      "kernel_cycles": 100951.0,
+      "kernel_us": 45.93270913394383,
+      "completed_TGs": 96,
       "completed_TGs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "active_CUs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "mmop_instructions": 3145728,
       "gc_frequency_ghz": 2.197802,
       "stats_path": "stats.txt.gz",
-      "stats_sha256": "bdba89880a9bb96017d114fc420c98ea46e4228c502c7193c30c5c694cf019d1",
+      "stats_sha256": "a9df7c0b303110fd8f46d7198abc08ef55950c3bd69e7f59ec356ca9660c9a86",
       "accuracy": {
         "elements": 3145728,
+        "unselected_output_nan": true,
         "outside_tolerance": 0,
         "nonfinite": 0,
         "max_abs": 0.0,
@@ -394,30 +462,31 @@
       },
       "seed": 1029,
       "input_kind": "ones",
-      "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r029/measurement/g/0/1/stats.txt",
+      "raw_stats_path": "tmp/opt/R029/V2/cases/16_static_regpressure_off/full/g/0/1/stats.txt",
       "stats_section": 1
     },
     {
       "index": 2,
       "phase": "correctness",
       "status": "PASS",
-      "kernel_cycles": 153230.0,
-      "kernel_us": 69.71965627476908,
-      "completed_TGs": 48,
+      "kernel_cycles": 101045.0,
+      "kernel_us": 45.97547913779313,
+      "completed_TGs": 96,
       "completed_TGs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "active_CUs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "mmop_instructions": 3145728,
       "gc_frequency_ghz": 2.197802,
       "stats_path": "stats.txt.gz",
-      "stats_sha256": "82003667a1e481bc17b86495f58797ef5f053e1291bd34ee266426437ed1a69d",
+      "stats_sha256": "a392a67a6bf286c048c15eea4dcf4ccb53a0bf240d1c965af9e4148154827c29",
       "accuracy": {
         "elements": 3145728,
+        "unselected_output_nan": true,
         "outside_tolerance": 0,
         "nonfinite": 0,
         "max_abs": 0.0625,
@@ -430,7 +499,7 @@
       },
       "seed": 2029,
       "input_kind": "uniform_random",
-      "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r029/measurement/g/0/2/stats.txt",
+      "raw_stats_path": "tmp/opt/R029/V2/cases/16_static_regpressure_off/full/g/0/2/stats.txt",
       "stats_section": 2
     }
   ],
@@ -439,23 +508,24 @@
       "index": 0,
       "phase": "warmup",
       "status": "PASS",
-      "kernel_cycles": 153255.0,
-      "kernel_us": 69.73103127579283,
-      "completed_TGs": 48,
+      "kernel_cycles": 101597.0,
+      "kernel_us": 46.22663916039753,
+      "completed_TGs": 96,
       "completed_TGs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "active_CUs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "mmop_instructions": 3145728,
       "gc_frequency_ghz": 2.197802,
       "stats_path": "stats.txt.gz",
-      "stats_sha256": "0e1cee8fd380fe05394cb064814ce1993f5cb8ed671294affa17483bb0815433",
+      "stats_sha256": "87c6be22f778d93e35037b67fbf3a4e0c741ff4cac157e15b40bddd5e5146bbe",
       "accuracy": {
         "elements": 3145728,
+        "unselected_output_nan": true,
         "outside_tolerance": 0,
         "nonfinite": 0,
         "max_abs": 1.0,
@@ -466,30 +536,31 @@
         "mean_abs_vs_fp32": 0.07193210148590386,
         "rounding_floor": 0.07193209103217175
       },
-      "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r029/measurement/g/0/3/stats.txt",
+      "raw_stats_path": "tmp/opt/R029/V2/cases/16_static_regpressure_off/full/g/0/3/stats.txt",
       "stats_section": 3
     },
     {
       "index": 1,
       "phase": "timed",
       "status": "PASS",
-      "kernel_cycles": 153183.0,
-      "kernel_us": 69.69827127284442,
-      "completed_TGs": 48,
+      "kernel_cycles": 101019.0,
+      "kernel_us": 45.96364913672843,
+      "completed_TGs": 96,
       "completed_TGs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "active_CUs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "mmop_instructions": 3145728,
       "gc_frequency_ghz": 2.197802,
       "stats_path": "stats.txt.gz",
-      "stats_sha256": "4a47d5ae95aa7847e13f45208450199b1869df5368957250cd5318332137600f",
+      "stats_sha256": "e3d55ced2ecc4d79fc9c657fc8d88932de1ddb466e9b2f143538f07df412ab16",
       "accuracy": {
         "elements": 3145728,
+        "unselected_output_nan": true,
         "outside_tolerance": 0,
         "nonfinite": 0,
         "max_abs": 1.0,
@@ -500,30 +571,31 @@
         "mean_abs_vs_fp32": 0.07193210148590386,
         "rounding_floor": 0.07193209103217175
       },
-      "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r029/measurement/g/0/4/stats.txt",
+      "raw_stats_path": "tmp/opt/R029/V2/cases/16_static_regpressure_off/full/g/0/4/stats.txt",
       "stats_section": 4
     },
     {
       "index": 2,
       "phase": "timed",
       "status": "PASS",
-      "kernel_cycles": 153155.0,
-      "kernel_us": 69.68553127169783,
-      "completed_TGs": 48,
+      "kernel_cycles": 100565.0,
+      "kernel_us": 45.75707911813713,
+      "completed_TGs": 96,
       "completed_TGs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "active_CUs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "mmop_instructions": 3145728,
       "gc_frequency_ghz": 2.197802,
       "stats_path": "stats.txt.gz",
-      "stats_sha256": "8f03e90926407b74a4eb0337ead45a1b9e43367f5d5bc139dc5c1fc4d990cdd0",
+      "stats_sha256": "df5fd2d726472544be678ddce18bd289ba02194083072fa2c2b059b76f0c21a5",
       "accuracy": {
         "elements": 3145728,
+        "unselected_output_nan": true,
         "outside_tolerance": 0,
         "nonfinite": 0,
         "max_abs": 1.0,
@@ -534,30 +606,31 @@
         "mean_abs_vs_fp32": 0.07193210148590386,
         "rounding_floor": 0.07193209103217175
       },
-      "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r029/measurement/g/0/5/stats.txt",
+      "raw_stats_path": "tmp/opt/R029/V2/cases/16_static_regpressure_off/full/g/0/5/stats.txt",
       "stats_section": 5
     },
     {
       "index": 3,
       "phase": "timed",
       "status": "PASS",
-      "kernel_cycles": 153062.0,
-      "kernel_us": 69.64321626788947,
-      "completed_TGs": 48,
+      "kernel_cycles": 100965.0,
+      "kernel_us": 45.93907913451713,
+      "completed_TGs": 96,
       "completed_TGs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "active_CUs_per_die": {
-        "system.shaders0": 24,
-        "system.shaders1": 24
+        "system.shaders0": 48,
+        "system.shaders1": 48
       },
       "mmop_instructions": 3145728,
       "gc_frequency_ghz": 2.197802,
       "stats_path": "stats.txt.gz",
-      "stats_sha256": "0600da212052bd8778eb4a659baa5f1fc7e87be57ad5e551a6b485b872d8ee54",
+      "stats_sha256": "7d0a08d6a056ac849739840a0c35003c5517613e33ff0007b31c0d7fd6682219",
       "accuracy": {
         "elements": 3145728,
+        "unselected_output_nan": true,
         "outside_tolerance": 0,
         "nonfinite": 0,
         "max_abs": 1.0,
@@ -568,61 +641,44 @@
         "mean_abs_vs_fp32": 0.07193210148590386,
         "rounding_floor": 0.07193209103217175
       },
-      "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r029/measurement/g/0/6/stats.txt",
+      "raw_stats_path": "tmp/opt/R029/V2/cases/16_static_regpressure_off/full/g/0/6/stats.txt",
       "stats_section": 6
     }
   ],
-  "measurement_result_path": "tmp/1117/bf16_sbx2_20261117/r029/measurement/result.json",
-  "measurement_result_sha256": "78ec424bf3ba575b3bd15dcf24cadb94ee2e6bb766adf80316439116a385313a",
-  "measured_at": "2026-11-17T10:38:56.162285+00:00",
-  "evidence": {
-    "stats": {
-      "path": "stats.txt.gz",
-      "sha256": "aac99b3d4b49a681e5b50f46ee6522c1a1c6e69552981be5a25b007aaea9a7d6",
-      "dispatches": 7,
-      "format": "Complete raw PMD statistics concatenated in validation-then-samples order; stats_section is a zero-based block index. Individual raw hashes remain in each sample."
-    },
-    "model_config": {
-      "path": "pmd-config.json.gz",
-      "sha256": "36f5605cd0190bec08b257673cc615686ed979b46e7db59a8719ac5149600b8b"
-    },
-    "layout_reference": {
-      "branch": "origin/gemm",
-      "commit": "2ef6411e7c7f729d879e1a739c1d57082362d38d",
-      "path": "docs/ops/gemm/tuning/r011/2die/tn"
-    }
-  },
   "single_tg_perf": {
+    "path": "single_tg.perf",
+    "sha256": "ef343f17b490b7e6b4933a4545ccc52ae1ca7f4d9bf11e5aabca30a74dbb641a",
     "environment_overrides": {
       "GPU_DFLAGS": "['StatLog','TT0','Perf']",
       "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
     },
-    "path": "single_tg.perf",
-    "sha256": "d16dfb8914a46473a46d27d264ace36dfe77ceb0e6bd9a167a56e5e557b116ff",
     "grid": [
       1
     ],
-    "scope": "Independent TG0 dispatch on the sbx2 device (2 dies / 96 CUs); original MNK, strides and compile options including NUM_SMS=96 when persistent. This PMD rotates the starting die between launches; each sample records the actual die/CU. Full-grid performance is independent of this capture.",
+    "full_grid": [
+      96
+    ],
     "tile_ids": [
       0
     ],
     "tiles_per_TG": 1,
     "repeat": 2,
-    "selection": "minimum system.gcSimCycles of repeats 1 and 2; repeat 0 excluded",
-    "kernel_cycles": 152272.0,
-    "kernel_us": 69.28376623553898,
+    "scope": "Public gemm_a16w16 selects the 96-CU JSON, full MNK/strides/options; only its execution grid is intercepted to [1]. Full-grid timing is independent.",
+    "selection": "fastest timed XCD0 repeat; repeat 0 excluded",
+    "kernel_cycles": 85725.0,
+    "kernel_us": 39.00487851043907,
     "validation": {
-      "elements": 65536,
+      "elements": 32768,
       "unselected_output_nan": true,
       "outside_tolerance": 0,
       "nonfinite": 0,
-      "max_abs": 0.125,
+      "max_abs": 0.001953125,
       "canary_ok": true,
       "inputs_byte_identical": true,
       "atol": 0.02,
       "rtol": 0.01,
-      "mean_abs_vs_fp32": 0.07208806966445991,
-      "rounding_floor": 0.07208806240305421
+      "mean_abs_vs_fp32": 0.07188799109098909,
+      "rounding_floor": 0.07188798820970987
     },
     "completed_TGs_per_die": {
       "system.shaders0": 1,
@@ -632,14 +688,113 @@
       "system.shaders0": 1,
       "system.shaders1": 0
     },
+    "selected": {
+      "index": 2,
+      "phase": "timed",
+      "status": "PASS",
+      "kernel_cycles": 85725.0,
+      "kernel_us": 39.00487851043907,
+      "completed_TGs": 1,
+      "completed_TGs_per_die": {
+        "system.shaders0": 1,
+        "system.shaders1": 0
+      },
+      "active_CUs_per_die": {
+        "system.shaders0": 1,
+        "system.shaders1": 0
+      },
+      "mmop_instructions": 32768,
+      "gc_frequency_ghz": 2.197802,
+      "stats_path": "perf_stats.txt.gz",
+      "stats_sha256": "b2a41618079a7fd9fb446b65f9fc4c5a7f0058fe18760c6728cd9317fd4f4cb9",
+      "accuracy": {
+        "elements": 32768,
+        "unselected_output_nan": true,
+        "outside_tolerance": 0,
+        "nonfinite": 0,
+        "max_abs": 0.001953125,
+        "canary_ok": true,
+        "inputs_byte_identical": true,
+        "atol": 0.02,
+        "rtol": 0.01,
+        "mean_abs_vs_fp32": 0.07188799109098909,
+        "rounding_floor": 0.07188798820970987
+      },
+      "perf_path": "single_tg.perf",
+      "sha256": "ef343f17b490b7e6b4933a4545ccc52ae1ca7f4d9bf11e5aabca30a74dbb641a",
+      "raw_stats_path": "tmp/opt/R029/publication_20261118/single/g/0/2/stats.txt",
+      "stats_section": 2,
+      "raw_perf_path": "tmp/opt/R029/publication_20261118/single/g/0/2/1532048_python3.10.perf"
+    },
     "samples_validated": 3,
+    "full_and_single_text_rodata_equal": true,
+    "launch_resources_equal": true,
+    "hsaco_sha256": "5f639a17bd60354c076f70e5f820736137df92a98b8c57e1bc88a04d95251f40",
+    "stats": {
+      "path": "perf_stats.txt.gz",
+      "sha256": "b283612fb1f9a7396001e9372bfabbdca57557eb9f4d889d98debe6c5ce4b982"
+    },
+    "raw_result_path": "tmp/opt/R029/publication_20261118/single/result.json",
+    "raw_result_sha256": "0c6e5026058a00b7506ed2a83de09c4016aec406604061de854488b03ff64b28",
+    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r029/2die/tt/benchmark.py --output /tmp/r029-v2-perf-new --single-tg-perf",
+    "public_entry": {
+      "name": "boltops.gemm.gemm_a16w16",
+      "backend": "auto",
+      "explicit_config": false,
+      "source_sha256": "8be394018eb7b55922c51f4f8d7a25e363364478dbb8996e336b4898898b1fd2",
+      "config_path": "boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=6144-K=4096-TT.json",
+      "config_sha256": "fc682203be33b8f40e358aa4abdbaa8b09931a83bf586ec46fabb539eec740a7",
+      "requested_grid": [
+        96
+      ],
+      "calls": [
+        {
+          "requested_grid": [
+            96
+          ],
+          "executed_grid": null,
+          "options_match": true,
+          "compiling": true
+        },
+        {
+          "requested_grid": [
+            96
+          ],
+          "executed_grid": [
+            1
+          ],
+          "options_match": true,
+          "compiling": false
+        },
+        {
+          "requested_grid": [
+            96
+          ],
+          "executed_grid": [
+            1
+          ],
+          "options_match": true,
+          "compiling": false
+        },
+        {
+          "requested_grid": [
+            96
+          ],
+          "executed_grid": [
+            1
+          ],
+          "options_match": true,
+          "compiling": false
+        }
+      ]
+    },
     "samples": [
       {
         "index": 0,
         "phase": "warmup",
         "status": "PASS",
-        "kernel_cycles": 163058.0,
-        "kernel_us": 74.19139667722571,
+        "kernel_cycles": 99519.0,
+        "kernel_us": 45.281149075303425,
         "completed_TGs": 1,
         "completed_TGs_per_die": {
           "system.shaders0": 1,
@@ -649,32 +804,33 @@
           "system.shaders0": 1,
           "system.shaders1": 0
         },
-        "mmop_instructions": 65536,
+        "mmop_instructions": 32768,
         "gc_frequency_ghz": 2.197802,
-        "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r029/g/0/0/stats.txt",
-        "stats_sha256": "4953bcf820342b9b676dd87a9516a63de94b3cb16751b756f555f4a760b33e37",
+        "stats_path": "perf_stats.txt.gz",
+        "stats_sha256": "9437404a58ecdaec8daed3a1c23779240a053b44ca15db1835701fdd5ab4aa19",
         "accuracy": {
-          "elements": 65536,
+          "elements": 32768,
           "unselected_output_nan": true,
           "outside_tolerance": 0,
           "nonfinite": 0,
-          "max_abs": 0.125,
+          "max_abs": 0.001953125,
           "canary_ok": true,
           "inputs_byte_identical": true,
           "atol": 0.02,
           "rtol": 0.01,
-          "mean_abs_vs_fp32": 0.07208806966445991,
-          "rounding_floor": 0.07208806240305421
+          "mean_abs_vs_fp32": 0.07188799109098909,
+          "rounding_floor": 0.07188798820970987
         },
-        "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r029/g/0/0/936146_python3.10.perf",
-        "repeat": 0
+        "raw_stats_path": "tmp/opt/R029/publication_20261118/single/g/0/0/stats.txt",
+        "stats_section": 0,
+        "raw_perf_path": "tmp/opt/R029/publication_20261118/single/g/0/0/1532048_python3.10.perf"
       },
       {
         "index": 1,
         "phase": "timed",
         "status": "PASS",
-        "kernel_cycles": 160238.0,
-        "kernel_us": 72.9082965617467,
+        "kernel_cycles": 95461.0,
+        "kernel_us": 43.434758909128306,
         "completed_TGs": 1,
         "completed_TGs_per_die": {
           "system.shaders0": 0,
@@ -684,32 +840,33 @@
           "system.shaders0": 0,
           "system.shaders1": 1
         },
-        "mmop_instructions": 65536,
+        "mmop_instructions": 32768,
         "gc_frequency_ghz": 2.197802,
-        "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r029/g/0/1/stats.txt",
-        "stats_sha256": "ab4c013252cc9487538568e920545e360764e7b3cea6878ddf7dc2099fecede7",
+        "stats_path": "perf_stats.txt.gz",
+        "stats_sha256": "f7b0e62ea54e84adbaab386962a1184f91cac13b519f579bbe19f471959c83d9",
         "accuracy": {
-          "elements": 65536,
+          "elements": 32768,
           "unselected_output_nan": true,
           "outside_tolerance": 0,
           "nonfinite": 0,
-          "max_abs": 0.125,
+          "max_abs": 0.001953125,
           "canary_ok": true,
           "inputs_byte_identical": true,
           "atol": 0.02,
           "rtol": 0.01,
-          "mean_abs_vs_fp32": 0.07208806966445991,
-          "rounding_floor": 0.07208806240305421
+          "mean_abs_vs_fp32": 0.07188799109098909,
+          "rounding_floor": 0.07188798820970987
         },
-        "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r029/g/0/1/936146_python3.10.perf",
-        "repeat": 1
+        "raw_stats_path": "tmp/opt/R029/publication_20261118/single/g/0/1/stats.txt",
+        "stats_section": 1,
+        "raw_perf_path": "tmp/opt/R029/publication_20261118/single/g/0/1/1532048_python3.10.perf"
       },
       {
         "index": 2,
         "phase": "timed",
         "status": "PASS",
-        "kernel_cycles": 152272.0,
-        "kernel_us": 69.28376623553898,
+        "kernel_cycles": 85725.0,
+        "kernel_us": 39.00487851043907,
         "completed_TGs": 1,
         "completed_TGs_per_die": {
           "system.shaders0": 1,
@@ -719,37 +876,72 @@
           "system.shaders0": 1,
           "system.shaders1": 0
         },
-        "mmop_instructions": 65536,
+        "mmop_instructions": 32768,
         "gc_frequency_ghz": 2.197802,
-        "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r029/g/0/2/stats.txt",
-        "stats_sha256": "8ba150fd70de03e23d2d362de257df318d2117985c0ac28eb5eccb6f44725def",
+        "stats_path": "perf_stats.txt.gz",
+        "stats_sha256": "b2a41618079a7fd9fb446b65f9fc4c5a7f0058fe18760c6728cd9317fd4f4cb9",
         "accuracy": {
-          "elements": 65536,
+          "elements": 32768,
           "unselected_output_nan": true,
           "outside_tolerance": 0,
           "nonfinite": 0,
-          "max_abs": 0.125,
+          "max_abs": 0.001953125,
           "canary_ok": true,
           "inputs_byte_identical": true,
           "atol": 0.02,
           "rtol": 0.01,
-          "mean_abs_vs_fp32": 0.07208806966445991,
-          "rounding_floor": 0.07208806240305421
+          "mean_abs_vs_fp32": 0.07188799109098909,
+          "rounding_floor": 0.07188798820970987
         },
-        "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r029/g/0/2/936146_python3.10.perf",
-        "repeat": 2
+        "raw_stats_path": "tmp/opt/R029/publication_20261118/single/g/0/2/stats.txt",
+        "stats_section": 2,
+        "raw_perf_path": "tmp/opt/R029/publication_20261118/single/g/0/2/1532048_python3.10.perf",
+        "perf_path": "single_tg.perf"
       }
+    ]
+  },
+  "public_entry": {
+    "path": "boltops/gemm/gemm_a16w16.py",
+    "sha256": "8be394018eb7b55922c51f4f8d7a25e363364478dbb8996e336b4898898b1fd2",
+    "name": "boltops.gemm.gemm_a16w16",
+    "backend": "auto",
+    "explicit_config": false,
+    "requested_grid": [
+      96
     ],
-    "full_and_single_text_rodata_equal": true,
-    "launch_resources_equal": true,
-    "embedded_hsaco_verified": true,
-    "hsaco_sha256": "b365df152c92c697e79b4e7a7ee618f5a477d8658ab7c0a35e243b4b4a723acf",
-    "stats": {
-      "path": "perf_stats.txt.gz",
-      "sha256": "7f75c2972feac8de7373df597ea866445a4645a90fc662b1bc3cd98a972f3077"
+    "validation_field": "single_tg_perf.public_entry"
+  },
+  "default_config": {
+    "path": "boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/DEFAULT.json",
+    "sha256": "5c67bc8c518af7a0f850d44ff14dc806d7647cbb8ecc7019a2ab8d467a85c5ab"
+  },
+  "measurement_timestamp_source": "V2 full/result.json modification time at completion",
+  "published_at": "2026-11-18T12:31:58.512531+00:00",
+  "measurement_provenance": {
+    "full_grid": "Retained V2 native JIT measurements; frozen kernel source is byte-identical to the repository common kernel.",
+    "public_entry": "Fresh public-API single-TG measurement after integration, no explicit config; public grid=96 intercepted to execute TG0 only.",
+    "machine_code_equivalence": "Full, public compilation and PERF embedded HSACO have identical .text/.rodata and VGPR/spill/LDS resources.",
+    "full_runtime": {
+      "torch": "2.6.0+d1e87ac",
+      "triton": "3.6.0",
+      "triton_path": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10/triton/__init__.py",
+      "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3"
     },
-    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r029/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r029/2die/tt/record.json --output /tmp/r029-sbx2-single-tg-new --single-tg-perf",
-    "raw_result_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r029/result.json",
-    "raw_result_sha256": "c8e00cf4f0323e0ecdd6a883a7ffd51bd1e7a33338ae31f2cc5292ac528f18d0"
+    "source_full_result": "tmp/opt/R029/V2/cases/16_static_regpressure_off/full/result.json",
+    "source_full_result_sha256": "2bd7515278bc3d6265b8868fe52c0cb19ee6a5c673b749847f644ac154d39b5f"
+  },
+  "verification": {
+    "status": "PASS",
+    "full_dispatches": 7,
+    "full_grid": [
+      96
+    ],
+    "full_kernel_us": 45.93907913451713,
+    "full_kernel_tops": 560.9560370276863,
+    "public_single_TG_dispatches": 3,
+    "selected_perf_XCD": 0,
+    "compiler_options_match_96cu_config": true,
+    "public_and_full_and_perf_executable_sections_equal": true,
+    "full_performance_provenance": "V2 full-dispatch measurements before public-config integration"
   }
 }
