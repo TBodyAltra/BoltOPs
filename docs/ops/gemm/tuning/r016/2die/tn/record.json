@@ -58,20 +58,20 @@
   "source": {
     "path": "boltops/gemm/triton/gemm_a16w16.py",
     "symbol": "_gemm_a16_w16_kernel",
-    "line": 44,
-    "sha256": "2b9178db8077b4c0c875119eec68cd69c2d9b0af404b0f46ee6167bac2d5fb86",
-    "measurement_base_commit": "0c532e6aab2f1dedcf083258983a285be0097fd8"
+    "line": 52,
+    "sha256": "0ed29b0c25dc5611e81716b62119fbe310694944cbac0aa944a1492835ece21d",
+    "measurement_base_commit": "8494cee97bd3abd88dd3525b3489de7441b4861e"
   },
   "config": {
-    "path": "boltops/gemm/configs/gfx946/triton/gemm_a16w16/GEMM-A16W16-N=9216-K=2048-TN.json",
+    "path": "boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=9216-K=2048-TN.json",
     "bucket": "M_EQ_12",
     "options": {
       "BLOCK_SIZE_M": 16,
-      "BLOCK_SIZE_N": 64,
+      "BLOCK_SIZE_N": 16,
       "BLOCK_SIZE_K": 128,
-      "GROUP_SIZE_M": 1,
-      "num_warps": 4,
+      "num_warps": 1,
       "num_stages": 2,
+      "GROUP_SIZE_M": 1,
       "waves_per_eu": 2,
       "matrix_instr_nonkdim": 16,
       "cache_modifier": null,
@@ -81,7 +81,7 @@
   },
   "benchmark": {
     "script": "../../../bf16_2die_small_mn/benchmark.py",
-    "sha256": "3175ddc858f83f17c6ea7e38571d8ffdbe09dd285da8a6fc988a3d434af48c71",
+    "sha256": "b54f5540b9de397be6850fe50803a6696377df1d4b57728d1f3b18b6291d69bf",
     "repeats": 1
   },
   "variants": {
@@ -91,11 +91,11 @@
       "symbol": "_gemm_a16_w16_kernel",
       "config": {
         "BLOCK_SIZE_M": 16,
-        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_N": 16,
         "BLOCK_SIZE_K": 128,
-        "GROUP_SIZE_M": 1,
-        "num_warps": 4,
+        "num_warps": 1,
         "num_stages": 2,
+        "GROUP_SIZE_M": 1,
         "waves_per_eu": 2,
         "matrix_instr_nonkdim": 16,
         "cache_modifier": null,
@@ -106,28 +106,30 @@
     }
   },
   "performance": {
-    "kernel_us": 22.59257,
-    "kernel_tops": 20.050168351807695,
-    "mmac_util_percent": 2.3200547790711723,
-    "logical_bandwidth_tb_s": 1.6828130664196237,
+    "kernel_us": 19.18644,
+    "kernel_tops": 23.60963430422736,
+    "mmac_util_percent": 2.7319294251565167,
+    "logical_bandwidth_tb_s": 1.9815594763801936,
     "bandwidth_scope": "Logical BF16 reads of A/W and writes of C, divided by aggregate dispatch time. Excludes split-K scratch traffic.",
     "aggregation": "One cold full-grid trial. Split-K includes reduction.",
-    "baseline_kernel_us": 31.145205,
+    "baseline_kernel_us": 22.94838,
     "baseline_status": "PASS",
-    "improvement_percent": 27.46051920351785
+    "improvement_percent": 16.39305258148941,
+    "previous_tuned_kernel_us": 22.59257,
+    "improvement_vs_previous_tuned_percent": 15.076328191082277
   },
   "samples": [
     {
-      "us": 22.59257,
+      "us": 19.18644,
       "dispatches": [
         {
-          "cycles": 49654,
+          "cycles": 42168,
           "TGs_per_die": {
-            "system.shaders0": 72,
-            "system.shaders1": 72
+            "system.shaders0": 288,
+            "system.shaders1": 288
           },
           "stats": "model/0/0/stats.txt",
-          "sha256": "787d25818483ea9ca8d203145ffe3352f88bbfc1161fe9e358db68df9bb3eb32"
+          "sha256": "d1669d4050e10ae34c04b4d8768340a91c358a56245e5f52fa872309c6875b0e"
         }
       ],
       "max_abs": 0.03125,
@@ -136,9 +138,9 @@
     }
   ],
   "resources": {
-    "VGPR": 88,
+    "VGPR": 80,
     "spills": 0,
-    "LDS_bytes": 20480
+    "LDS_bytes": 8192
   },
   "validation": {
     "output_elements": 110592,
@@ -147,55 +149,56 @@
     "guard_and_input_check": true
   },
   "public_api_validation": {
-    "kernel_us": 22.60804,
+    "mode": "full_grid",
+    "kernel_us": 19.18644,
     "validated_elements": 110592,
     "executable_sections": {
-      ".rodata": "f2627760205d822aaf288e70f041606c0a7f04d1b5140947698ea98992115124",
-      ".text": "db694d7f9843f4c4310ec22f976365f69b4d607d46cd1eab0ff8529160ce0aa4"
+      ".rodata": "4b881a465f5202983f495b15cf493d199836808f9cf4215c5358ae12ced43b4f",
+      ".text": "d418a0b4bc1d00244be860482b80626b237d25fc2e9714f7247a908deb501f86"
     },
-    "result_sha256": "628c0d800c0377151ca973f31f7adc8d9525afbe966976271930fb52239437b7"
+    "result_sha256": "a9d7c66bbcab9533dc5b5880624a2ea1b59ae861096ceed51358b46fa2ff686a"
   },
   "single_tg_perf": {
     "path": "single_tg.perf",
-    "sha256": "e18130c32d4c6b176d252356f7f7a9c7c2a60917bc99a4f71ad6998e4bcadf96",
+    "sha256": "e68430d184e0ec95d8d33a80475a4e4dfceb0d5d0d32cd7b304f8937f358c2e4",
     "sample": {
-      "us": 12.78732,
+      "us": 17.015635,
       "dispatches": [
         {
-          "cycles": 28104,
+          "cycles": 37397,
           "TGs_per_die": {
             "system.shaders0": 1,
             "system.shaders1": 0
           },
-          "stats": "model/0/2/stats.txt",
-          "sha256": "680ac023d3c94d00e383dea525817035caab293dfc3995118622a758419e6649"
+          "stats": "model/0/0/stats.txt",
+          "sha256": "d1eab8be024cf4d4baabf695671e35609711c3a48db4509c2c0fa201cc645b20"
         }
       ],
       "max_abs": 0.0,
       "mismatches": 0,
-      "validated_elements": 768,
-      "perf": "model/0/2/860663_python3.10.perf"
+      "validated_elements": 192,
+      "perf": "model/0/0/939548_python3.10.perf"
     },
     "scope": "Isolated TG0 with original dimensions and launch configuration",
     "selection": "faster of repeats 1 and 2"
   },
   "evidence": {
-    "pmd_host_root": "node60:/xukang/q35dd19",
-    "full_grid": "confirm/r016-tn/triton_16x64x128",
-    "single_tg": "perf/r016-tn/triton_16x64x128",
-    "public_replay": "public/r016-tn/triton_16x64x128",
+    "pmd_host_root": "node60:/xukang/q35p3",
+    "full_grid": "public/r016-tn/refined",
+    "single_tg": "perf/r016-tn/refined",
+    "public_replay": "public/r016-tn/refined",
     "baseline": "screen/r016-tn/baseline",
-    "full_grid_result_sha256": "962aea693c694d19b75ae46db94a513b4de1f03b6a783ec7d230b64f24d596a1"
+    "full_grid_result_sha256": "a9d7c66bbcab9533dc5b5880624a2ea1b59ae861096ceed51358b46fa2ff686a"
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "0d1ee08ebcdfa94d547e2ce8b3b4f799bbdd4498dfe639a3c44f05f2f5f39e72",
-    "raw_sha256": "2332e1d9aedea8b6aebef4ff390ef419fd601d13783cd06fc300c932b837c04b",
+    "sha256": "07d1f3985fff2a3f0a37e43ef073d8f31490522234a1e4aa8fbf39d846967831",
+    "raw_sha256": "b2204f79a650912841dd1cd7c706a43810b44578e2cd19a2ae7194a4e53bf2f3",
     "normalization": "Strip trailing horizontal whitespace only",
-    "hsaco_sha256": "395518a683526067c6b156b7e053eaa936416864b2a8b0026b874c265f0b4323",
+    "hsaco_sha256": "0994d4c8fea9a3304e4bfb9721f6c6d2ebb6f4a01be3232e408cc3f0bf60a161",
     "executable_sections": {
-      ".rodata": "f2627760205d822aaf288e70f041606c0a7f04d1b5140947698ea98992115124",
-      ".text": "db694d7f9843f4c4310ec22f976365f69b4d607d46cd1eab0ff8529160ce0aa4"
+      ".rodata": "4b881a465f5202983f495b15cf493d199836808f9cf4215c5358ae12ced43b4f",
+      ".text": "d418a0b4bc1d00244be860482b80626b237d25fc2e9714f7247a908deb501f86"
     }
   }
 }
