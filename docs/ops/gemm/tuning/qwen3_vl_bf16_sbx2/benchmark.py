@@ -21,19 +21,24 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def executable_sections(data):
-    assert data[:5] == b'\x7fELF\x02'
+def elf_sections(data):
+    if data[:6] != b'\x7fELF\x02\x01':
+        raise ValueError('expected a little-endian ELF64 code object')
     offset, = struct.unpack_from('<Q', data, 40)
     size, count, names = struct.unpack_from('<HHH', data, 58)
     entries = [struct.unpack_from('<IIQQQQIIQQ', data, offset + index*size)
                for index in range(count)]
     symbols = data[entries[names][4]:entries[names][4] + entries[names][5]]
-    sections = {}
     for entry in entries:
         name = symbols[entry[0]:].split(b'\x00', 1)[0].decode()
-        if name in ('.text', '.rodata'):
-            sections[name] = sha(data[entry[4]:entry[4]+entry[5]])
-    assert '.text' in sections
+        yield name, entry[1], data[entry[4]:entry[4]+entry[5]]
+
+
+def executable_sections(data):
+    sections = {name: sha(contents) for name, _, contents in elf_sections(data)
+                if name in ('.text', '.rodata')}
+    if '.text' not in sections:
+        raise ValueError('code object has no executable section')
     return sections
 
 
@@ -45,7 +50,8 @@ def main():
     parser.add_argument('--compile-only', action='store_true')
     args = parser.parse_args()
     record = json.loads(args.record.read_text())
-    job = dict(record['replay_job'])
+    job = dict(record['replay_job'], expected_toolchain=record['environment']['toolchain'],
+               expected_executable_sections=record['assembly']['executable_sections'])
     if args.compile_only:
         job['compile_only'] = True
     source = record['source']
@@ -97,7 +103,15 @@ def main():
     assert compiled['source_sha256'] == source['sha256']
     assert compiled['grid'] == record['full_grid_TGs'] and compiled['strides'] == record['config']['strides']
     assert compiled['resources'] == record['resources']
-    assert executable_sections((out/'kernel.hsaco').read_bytes()) == record['assembly']['executable_sections']
+    sections = executable_sections((out/'kernel.hsaco').read_bytes())
+    if args.compile_only:
+        assert compiled['code_origin'] == 'fresh'
+        assert sections == compiled['fresh_executable_sections']
+        print(json.dumps(dict(code_origin='fresh',
+                              matches_measured=compiled['fresh_matches_measured'],
+                              archived_abi_verified=compiled['archived_abi_verified'])))
+    else:
+        assert sections == record['assembly']['executable_sections']
 
 
 if __name__ == '__main__':
