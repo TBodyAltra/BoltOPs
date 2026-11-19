@@ -1173,9 +1173,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r035/2die/tt/record.json">653.810 / 788.30 / 91.22%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=24576-K=4096-TT.json">config</a> / <a href="tuning/r035/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r035/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r035/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r035/2die/tt/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r035/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r035/2die/tn/record.json">648.260 / 795.05 / 91.99%</a></td>
+      <td><a href="tuning/r035/2die/tn/../../../qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r035/2die/tn/record.json">config</a> / <a href="tuning/r035/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r035/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -1229,9 +1229,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r037/2die/tt/record.json">378.548 / 637.66 / 73.79%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4608-K=4608-TT.json">config</a> / <a href="tuning/r037/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r037/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r037/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r037/2die/tt/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r037/2die/tn/record.json">sbx2 / 96 CU</a></td>
+      <td><a href="tuning/r037/2die/tn/record.json">369.399 / 653.45 / 75.61%</a></td>
+      <td><a href="tuning/r037/2die/tn/../../../qwen3_vl_bf16_sbx2/source-m-axis.tar.gz">Gluon 源码</a> / <a href="tuning/r037/2die/tn/record.json">config</a> / <a href="tuning/r037/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r037/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
