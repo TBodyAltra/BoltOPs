@@ -35,7 +35,7 @@
   },
   "source": {
     "path": "boltops/gemm/gluon/gemm_a16w16.py",
-    "sha256": "45d606c778676adbf79f0e7e3fc471fbe7126b506b278a434c9814942c807474",
+    "sha256": "252719c59411bb392b72156ec37e5e6ec1c0ba158de2ff252f1cf01017d3c9be",
     "measured_sha256": "711f312aaaa064083e5cf822119248f24141c82631d3fe9a32895faaf305b847",
     "symbol": "_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel",
     "line": 1008,
@@ -52,9 +52,12 @@
       "sha256": "6823eb9d9790aaff81ee8f9f42860410a102c5a7355d751f7d91dc1eca1a3a3b"
     },
     {
+      "path": "boltops/gemm/backend_interfaces.py",
+      "sha256": "1fb13e6948d9ad0472b53616c3744ea8a440ae3e4821864e99da292b108489da"
+    },
+    {
       "path": "boltops/gemm/gluon/gemm_a16w16_streamk.py",
-      "sha256": "f1e1d0a2a70e70f13cb4278db36ae3dba829b5a1c445f4649e033732de7e3e89",
-      "measured_sha256": "5f2cc8f76245cc7acced876f69771defd7119955f9769b59e23014a8e382951f"
+      "sha256": "3f4b74aa2fbdabd64b53e3d770d4c5ec485cd674b38d30cc86485faa9b6a1680"
     }
   ],
   "streamk_schedule": {
@@ -192,11 +195,12 @@
     "script": "benchmark.py",
     "seed": 20,
     "repeats": 1,
-    "sha256": "dfaeedb6056220419e9bc845d6ac3d3bc81788db8d22a60938b8de37f39aaa5c",
+    "sha256": "bb4a1094aa85c0d62b52256deed14e193a24cc4325f4e945ed69463e1f87529b",
     "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && taskset -c 0 /usr/bin/python -u docs/ops/gemm/tuning/R020/2die/tt/benchmark.py --output tmp/1117/streamk_sbx2_20261117_v1/R020-full",
     "guard_elements_each_side": 65536,
     "cache": "fresh per-output Triton cache, XDG cache, temporary files and private PMD history",
-    "measured_sha256": "421959c63f883c8de976b7b3288a21e556ec9fa637669377d45dd99315d7b49b"
+    "measured_sha256": "421959c63f883c8de976b7b3288a21e556ec9fa637669377d45dd99315d7b49b",
+    "previous_replay_sha256": "01d82bcaf20897583d77f38eb127bf5bd12683ad7adad753fef6dc482d1c771f"
   },
   "resources": {
     "LDS_bytes": 98304,
@@ -324,7 +328,7 @@
   },
   "public_api": {
     "path": "boltops/gemm/gemm_a16w16.py",
-    "sha256": "f2b45aa5566739ea6abbdaf593ccbdd89e893277c4a5d9079c61964ca4211752",
+    "sha256": "cf01a0278ca57dcae7ad335eeb205385c30070604b427a716bec9cea77b23ad5",
     "backend": "auto",
     "resolved_backend": "gluon",
     "out": "preallocated",
@@ -876,5 +880,12 @@
       "benchmark_AST_equal_after_resolving_R020_shape_and_grid": true
     },
     "benchmark_sha256_at_equivalence": "f233f333b0778aeeb463bcaac8e7d617d0f95e9f973274308c5169dc0967d19f"
-  }
+  },
+  "historical_source_dependencies": [
+    {
+      "path": "boltops/gemm/gluon/gemm_a16w16_streamk.py",
+      "sha256": "f1e1d0a2a70e70f13cb4278db36ae3dba829b5a1c445f4649e033732de7e3e89",
+      "measured_sha256": "5f2cc8f76245cc7acced876f69771defd7119955f9769b59e23014a8e382951f"
+    }
+  ]
 }

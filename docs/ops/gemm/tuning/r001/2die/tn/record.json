@@ -1,0 +1,354 @@
+{
+  "requirement": "R001",
+  "record_key": "R001_2DIE_TN",
+  "date": "2026-11-18",
+  "shape": [
+    64,
+    64,
+    2048
+  ],
+  "layout": "TN",
+  "status": "PMD_PASS",
+  "precision": {
+    "A": "BF16",
+    "B": "BF16",
+    "accumulator": "FP32",
+    "C": "BF16"
+  },
+  "environment": {
+    "type": "PMD",
+    "model": "CoreArch:HEAD_1703",
+    "arch": "gfx946",
+    "dies": 2,
+    "cu_count": 96,
+    "host": "node60",
+    "container": "kxu_pmd_8569_fp8_20261017",
+    "triton": {
+      "branch": "release/3.6.x",
+      "base_commit": "6b111ee3efaf1275903deaf0957393ee2c79a48a",
+      "runtime": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "additional_changes": "MR !565: packed matrix-store conversion and ROCDL support; these kernels use buffer stores",
+      "source_commit": "f8cbbee1849806f96337e85685e1ba031b63f096"
+    },
+    "clang": {
+      "branch": "dtk-llvm-6.3.3",
+      "commit": "3599a58d7aebe66dc1cec4f830f82cb96e505666"
+    },
+    "clock_period_ps": {
+      "shader": 455,
+      "gc": 455
+    },
+    "frequency_ghz": {
+      "shader": 2.197802197802198,
+      "gc": 2.197802197802198
+    },
+    "environment_variables": {
+      "GPU_CHIP": "sbx2",
+      "GPU_GFLAGS": null,
+      "GPU_DFLAGS": "['StatLog']",
+      "GPU_ARGS": "['--abs-max-tick=200000000']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "HSA_TOOLS_LIB": null,
+      "HIP_VISIBLE_DEVICES": null,
+      "ROCR_VISIBLE_DEVICES": null,
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_HCU_MATRIX_STORE_INSN": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
+      "HCU_PIPELINE_ENV_REV": null,
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/runtime",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm"
+    },
+    "compiler_hashes": {
+      "libtriton": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+      "clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+    },
+    "source_checkout_commit": "986ceba8998f09ec9edab3ab99346b8403b7237b"
+  },
+  "config": {
+    "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json",
+    "profile": "DTYPE=bfloat16-OUT=bfloat16",
+    "M_key": "M_EQ_64",
+    "selected": {
+      "BLOCK_SIZE_M": 16,
+      "BLOCK_SIZE_N": 16,
+      "BLOCK_SIZE_K": 128,
+      "CHUNKS": 2,
+      "SLOTS": 3,
+      "num_warps": 1,
+      "num_stages": 2,
+      "enable_v_mmac_cluster": 2,
+      "hcu_use_gfx946_sched_model_v2": true,
+      "mmac_layout_force": 2,
+      "kernel": "_gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel",
+      "wasp_partition_warps": [
+        1,
+        1
+      ],
+      "wasp_wdra": false
+    },
+    "commit": "986ceba8998f09ec9edab3ab99346b8403b7237b",
+    "sha256": "ed1e8b1a40a472e2147aae913d8af53a774fea9a63c4c98be63f8586b486fe34"
+  },
+  "resources": {
+    "SGPR": 63,
+    "VGPR": 69,
+    "SGPR_spills": 0,
+    "VGPR_spills": 0,
+    "shared_bytes": 49152,
+    "waves_per_TG": 2,
+    "completed_TGs": 16,
+    "active_CUs": 16,
+    "per_die": {
+      "system.shaders0": {
+        "completed_TGs": 8,
+        "active_CUs": 8
+      },
+      "system.shaders1": {
+        "completed_TGs": 8,
+        "active_CUs": 8
+      }
+    }
+  },
+  "performance": {
+    "kernel_us": 5.28983,
+    "kernel_cycles": 11626.0,
+    "shader_us": 1.677585,
+    "kernel_tops": 3.1715983311372957,
+    "effective_peak_tops": 864.2109890109891,
+    "useful_mmac_util_percent": 0.3669935202706577,
+    "logical_read_write_GB_s": 100.66107984566612
+  },
+  "benchmark": {
+    "seed": 59,
+    "validation_count": 3,
+    "repeats": 12,
+    "scope": "public gemm_a16w16 backend=auto, complete MNK/grid",
+    "aggregation": "median of 12 warm dispatches after random/ones/random validation",
+    "source_path": "docs/ops/gemm/tuning/r001/2die/tn/benchmark.py",
+    "source_commit": "986ceba8998f09ec9edab3ab99346b8403b7237b",
+    "source_sha256": "83a9889568cee07cc551b0dccf40e7eb0fa1549388d86b4221cd79e9d3379a89"
+  },
+  "validation": [
+    {
+      "dispatch_cycles": 19023.0,
+      "kernel_us": 8.655465,
+      "wave_interval_us": 5.04413,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/3/stats.txt",
+      "active_CUs": 16,
+      "per_die": {
+        "system.shaders0": {
+          "completed_TGs": 8,
+          "active_CUs": 8
+        },
+        "system.shaders1": {
+          "completed_TGs": 8,
+          "active_CUs": 8
+        }
+      },
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0001220703125
+      }
+    },
+    {
+      "dispatch_cycles": 11970.0,
+      "kernel_us": 5.44635,
+      "wave_interval_us": 1.834105,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/6/stats.txt",
+      "active_CUs": 16,
+      "per_die": {
+        "system.shaders0": {
+          "completed_TGs": 8,
+          "active_CUs": 8
+        },
+        "system.shaders1": {
+          "completed_TGs": 8,
+          "active_CUs": 8
+        }
+      },
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0
+      }
+    },
+    {
+      "dispatch_cycles": 11300.0,
+      "kernel_us": 5.1415,
+      "wave_interval_us": 1.530165,
+      "completed_TGs": 16,
+      "stats_path": "m5out/0/9/stats.txt",
+      "active_CUs": 16,
+      "per_die": {
+        "system.shaders0": {
+          "completed_TGs": 8,
+          "active_CUs": 8
+        },
+        "system.shaders1": {
+          "completed_TGs": 8,
+          "active_CUs": 8
+        }
+      },
+      "accuracy": {
+        "elements": 4096,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0009765625
+      }
+    }
+  ],
+  "binary": {
+    "sha256": "bed9ed9202ffef29a2db3257aaf8481ae3d859f1c45d8ff4f4fde5bab65a0121",
+    "assembly_sha256": "f69e5574f11722cf781e1087ed6c722933c334fdd21ecaf3ffe5d5ac53bb7bf3",
+    "text_sha256": "93d32530cf179d95224b8e327caf47f74e02342497cc0bee19c7f0b45aa4feaf",
+    "text_matches_autotune_winner": true
+  },
+  "sources": [
+    {
+      "path": "boltops/gemm/gemm_a16w16.py",
+      "commit": "986ceba8998f09ec9edab3ab99346b8403b7237b",
+      "sha256": "976f754418d1f2a76169c42f95d276d09d71e8d93b4dde0e97abbc1a27da66e1",
+      "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/986ceba8998f09ec9edab3ab99346b8403b7237b/boltops/gemm/gemm_a16w16.py"
+    },
+    {
+      "path": "boltops/gemm/gluon/gemm_a16w16.py",
+      "commit": "986ceba8998f09ec9edab3ab99346b8403b7237b",
+      "sha256": "a5eeaf881026d10a819d13c17c42251984d193cdd1ba00e273a602c2988df61f",
+      "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/986ceba8998f09ec9edab3ab99346b8403b7237b/boltops/gemm/gluon/gemm_a16w16.py"
+    },
+    {
+      "path": "boltops/gemm/gluon/gemm_a16w16_tn.py",
+      "commit": "986ceba8998f09ec9edab3ab99346b8403b7237b",
+      "sha256": "822c101c315fcf71d4080f0c37e36b462b5abe52f417db2674b30e4984524483",
+      "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/986ceba8998f09ec9edab3ab99346b8403b7237b/boltops/gemm/gluon/gemm_a16w16_tn.py"
+    }
+  ],
+  "public_api": {
+    "name": "gemm_a16w16",
+    "backend": "auto",
+    "verified": true,
+    "layout_argument": "B_K_CONTIGUOUS derived from actual strides"
+  },
+  "checks": {
+    "command": "python3 -m pytest -q test/gemm/dispatch/test_configuration.py test/gemm/dispatch/test_gluon_a16w16_sbx2_tn.py test/gemm/dispatch/test_gluon_a16w16.py::test_streamk_recorded_config_matches_shape_reuse_compiler test/gemm/dispatch/test_gluon_a16w16.py::test_streamk_schedule_covers_each_tile_and_k_interval_once test/gemm/dispatch/test_gluon_a16w16.py::test_streamk_compiled_kernel_cache_is_device_specific",
+    "passed": 40,
+    "test_sha256": "9eee1fbe6ae8e800a0b136fc6517685e44151796c2005da33ddf95fe689bb87e"
+  },
+  "measurement": {
+    "path": "measurement.json",
+    "sha256": "245674df0e5bbe0b225e3796eb92a30e7d388364218d727c7176d59feade6d5e",
+    "stats_archive": "stats.tar.gz",
+    "stats_sha256": "d3a34450377272f897d92ef7031283b3e4bcaab07532e5d57d88a1eeb55788bb",
+    "stats_scope": "raw stats for every validation and timed dispatch plus PMD topology/configuration"
+  },
+  "single_tg_perf": {
+    "environment_overrides": {
+      "GPU_DFLAGS": "['StatLog','TT','Perf']",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+    },
+    "status": "PASS",
+    "scope": "first 16x16 output tile, original strides/descriptors, complete K; selected tile and uncovered output guards checked",
+    "binary_matches_full_grid": true,
+    "binary_sha256": "bed9ed9202ffef29a2db3257aaf8481ae3d859f1c45d8ff4f4fde5bab65a0121",
+    "sha256": "a107dc0a22d0319ca2987dc4f6f046dca543425c5f8612f7fb55b11fc790a003",
+    "sample": {
+      "dispatch_cycles": 11537.0,
+      "kernel_us": 5.249335,
+      "wave_interval_us": 1.63709,
+      "completed_TGs": 1,
+      "stats_path": "m5out/0/6/stats.txt",
+      "active_CUs": 1,
+      "per_die": {
+        "system.shaders0": {
+          "completed_TGs": 1,
+          "active_CUs": 1
+        },
+        "system.shaders1": {
+          "completed_TGs": 0,
+          "active_CUs": 0
+        }
+      },
+      "perf_path": "m5out/0/6/818215_python3.10.perf",
+      "accuracy": {
+        "elements": 256,
+        "mismatches": 0,
+        "nonfinite": 0,
+        "max_abs": 0.0
+      },
+      "sha256": "a107dc0a22d0319ca2987dc4f6f046dca543425c5f8612f7fb55b11fc790a003"
+    },
+    "path": "single_tg.perf"
+  },
+  "perf": {
+    "environment_overrides": {
+      "GPU_DFLAGS": "['StatLog','TT','Perf']",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+    }
+  },
+  "autotune": {
+    "candidates": 152,
+    "outcomes": {
+      "PASS": 141,
+      "TIMEOUT": 7,
+      "ERROR": 2,
+      "SPILL_REJECTED": 2
+    },
+    "matched_12_warm_medians_us": {
+      "two_slots": 5.43361,
+      "three_slots": 5.29256
+    },
+    "dispatch_improvement_percent": 2.6,
+    "full_evidence_archive_local": "/home/kxu/r001-sbx2-tn-mr-validation-20261118/full-tuning-before-trim-20261118.tar.gz",
+    "archive_sha256": "f54856dcd7acd908558b774721a0c0cb4f8b863baa9a7e2b69bcb1b0635abfae"
+  },
+  "reuse_validation": {
+    "single_die": {
+      "status": "PASS",
+      "patterns": [
+        "random",
+        "ones",
+        "random"
+      ],
+      "elements_per_pattern": 4096,
+      "guards": "PASS",
+      "CHUNKS": 4,
+      "SLOTS": 2,
+      "old_resources": {
+        "vgpr": 133,
+        "shared": 65536,
+        "spills": 0
+      },
+      "new_resources": {
+        "vgpr": 133,
+        "shared": 65536,
+        "spills": 0
+      },
+      "matched_6_warm_medians_us": [
+        5.405855,
+        5.39903
+      ]
+    },
+    "dual_die_text_matches_autotune_winner": true,
+    "tt_source_unchanged": true
+  },
+  "sampling_note": {
+    "pattern": "alternating fast/slow warm samples",
+    "same_series_first_9_median_us": 5.147415,
+    "same_series_12_median_us": 5.29256,
+    "historical_odd_sample_medians_not_mixed": true
+  }
+}

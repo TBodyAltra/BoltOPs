@@ -34,8 +34,12 @@ REPO = next(p for p in Path(__file__).resolve().parents if (p / 'boltops/gemm/co
 SYMBOL = '_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel'
 SOURCE = 'boltops/gemm/gluon/gemm_a16w16.py'
 PUBLIC = 'boltops/gemm/gemm_a16w16.py'
-DEPENDENCIES = ('boltops/gemm/config.py', 'boltops/utility/arch_info.py',
-                'boltops/gemm/gluon/gemm_a16w16_streamk.py')
+DEPENDENCIES = (
+    'boltops/gemm/config.py',
+    'boltops/utility/arch_info.py',
+    'boltops/gemm/backend_interfaces.py',
+    'boltops/gemm/gluon/gemm_a16w16_streamk.py',
+)
 ENVIRONMENT_SCRIPT = '/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh'
 
 
@@ -264,15 +268,15 @@ def main():
     from triton import knobs
     import triton._C.libtriton as lib
     public = importlib.import_module('boltops.gemm.gemm_a16w16')
-    runtime = importlib.import_module('boltops.gemm.gluon.gemm_a16w16_streamk')
     kernels = importlib.import_module('boltops.gemm.gluon.gemm_a16w16')
+    streamk = importlib.import_module('boltops.gemm.gluon.gemm_a16w16_streamk')
     fn = getattr(kernels, SYMBOL)
     assert torch.cuda.get_device_properties(0).multi_processor_count == 96
     target = triton.runtime.driver.active.get_current_target()
     assert target.arch == 'gfx946'
     torch.set_num_threads(1)
     torch.set_num_interop_threads(1)
-    table, records, slots = runtime._make_schedule(m, n, k, 96)
+    table, records, slots = streamk._make_schedule(m, n, k, 96)
     original_tasks = [[list(item) for item in table[pid * records:(pid + 1) * records] if item[2]]
                       for pid in range(grid)]
     selected_pid = next(pid for pid, tasks in enumerate(original_tasks)
@@ -285,7 +289,7 @@ def main():
     compiler_options = {key: tuple(value) if isinstance(value, list) else value
                         for key, value in params.items()
                         if key not in ('BLOCK_SIZE_M', 'BLOCK_SIZE_N', 'BLOCK_SIZE_K', 'NUM_SMS')}
-    original_compile = runtime._compile_kernel
+    original_compile = streamk._compile_kernel
     captured, setup_dispatches = [], []
     class ObservedCompiled:
         def __init__(self, handle):
@@ -310,7 +314,7 @@ def main():
         assert dict(opts) == compiler_options
         return ObservedCompiled(original_compile(kernel, cm, cn, ck, count, opts, actual_target))
     if not args.single_tg_perf:
-        runtime._compile_kernel = observe_compile
+        streamk._compile_kernel = observe_compile
 
     def prepare(input_seed, kind):
         generator = torch.Generator().manual_seed(input_seed)

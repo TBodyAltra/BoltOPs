@@ -11,6 +11,14 @@ from ..backend_interfaces import BlockScaledGemmBackend
 from ..config import get_gemm_config
 
 
+def supports_a8w8_blockscale() -> bool:
+    try:
+        from triton.experimental.gluon.language.amd.hcu import packed_scale_fma
+    except ImportError:
+        return False
+    return callable(packed_scale_fma)
+
+
 def resolve_a8w8_blockscale_backend(
     a: torch.Tensor, b: torch.Tensor, out: torch.Tensor, *,
     a_scale: torch.Tensor, b_scale: torch.Tensor, block_size: tuple[int, int],
@@ -54,6 +62,13 @@ def resolve_a8w8_blockscale_backend(
         ) from None
     if automatic and not tuned:
         return None
+    if not supports_a8w8_blockscale():
+        if automatic:
+            return None
+        raise NotImplementedError(
+            "the Gluon blockscale pipeline requires Triton HCU packed_scale_fma support"
+        )
+
     from .gemm_a8w8_blockscale import gemm_a8w8_blockscale
 
     return partial(gemm_a8w8_blockscale, config=default, gluon_layout=layout)
