@@ -10,11 +10,11 @@ on:
         required: true
         type: number
       mode:
-        description: Preset when no records are selected (dual DIE, full grid)
+        description: Choose records manually or run the full dual-DIE suite
         required: true
         type: choice
-        options: [quick, full]
-        default: quick
+        options: [selected, full]
+        default: selected
       record_1:
         description: Optional record 1 (requirement / DIE / layout)
         type: choice
@@ -112,7 +112,7 @@ jobs:
         set -euo pipefail
         [[ "$PR" =~ ^[1-9][0-9]*$ ]]
         case "$MODE" in
-          quick|full) ;;
+          selected|full) ;;
           *) exit 1 ;;
         esac
         selected=()
@@ -122,6 +122,14 @@ jobs:
             selected+=("$record")
           fi
         done
+        if [[ "$MODE" == selected ]] && (( ! ${#selected[@]} )); then
+          echo "Select at least one record for the selected mode." >&2
+          exit 1
+        fi
+        if [[ "$MODE" == full ]] && (( ${#selected[@]} )); then
+          echo "Clear the record selections for the full suite." >&2
+          exit 1
+        fi
         gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" |
           jq -e --arg repo "$GITHUB_REPOSITORY" '
             .state == "open" and .base.ref == "gemm" and
