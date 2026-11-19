@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 """GEMM entry points with explicit computation and storage contracts."""
 
+# Capture Triton compiler settings before any backend is selected.
+from . import triton as _triton  # noqa: F401
 from .gemm_a16w16 import gemm_a16w16
 from .gemm_a32w32 import gemm_a32w32
 from .batched_gemm_bf16 import batched_gemm_bf16
