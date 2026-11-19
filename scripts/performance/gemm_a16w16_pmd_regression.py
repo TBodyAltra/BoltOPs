@@ -7,11 +7,12 @@ Prepare the recorded PMD/Torch/Triton environment, then run from the repository:
   python scripts/performance/gemm_a16w16_pmd_regression.py --dtype bf16 --case R021 --output /tmp/a16-perf
   python scripts/performance/gemm_a16w16_pmd_regression.py --evaluate --output /tmp/a16-perf --case R021
 
-Discover published gemm_a16w16 records across all models in the requirements
+Discover published gemm_a16w16 records and explicitly registered replay cases in the requirements
 document, or supply --record (repeatable) instead. FP16 and BF16 require separate
 baselines; selecting a precision with no records is an error. Preserve each
 record's cold/first-timed/warm-median protocol. Latency increases above 1% fail;
 exactly 1% passes. Published baselines and artifacts are never changed.
+Public Gluon records also retain every warm sample after full validation.
 --list and --evaluate use only the standard library and launch no kernels.
 """
 import argparse
@@ -26,6 +27,7 @@ import math
 import os
 from pathlib import Path
 import re
+import shutil
 import statistics
 import subprocess
 import sys
@@ -74,29 +76,117 @@ def precision(record):
     return a
 
 
-def normalize_public_record(record, path):
-    """Adapt early public-API Gluon records without modifying published files."""
-    public = record.get('public_api', {})
-    if public.get('path') or public.get('name') != 'gemm_a16w16' or public.get('verified') is not True:
-        return record
-    record = deepcopy(record)
-    archived = record['benchmark']
-    samples = record['samples']
-    validation = record['validation']
-    grids = {sample['completed_TGs'] for sample in samples + validation}
-    if len(grids) != 1:
-        raise ValueError(f'{path}: inconsistent published full-grid TG count')
-    config = record['config']
+def is_linear_record(record):
+    return (record.get('public_api', {}).get('path') == OPERATOR
+            or record.get('regression', {}).get('operator') == OPERATOR)
+
+
+def normalize_variant_record(record, record_path):
+    """Enroll a recorded multi-variant benchmark without changing its protocol."""
+    if record['status'] != 'PMD_PASS':
+        raise ValueError('variant-block baseline is not PMD_PASS')
+    registration = record['regression']
+    if registration['operator'] != OPERATOR or registration['variant'] != record['best']:
+        raise ValueError('regression must select the published linear GEMM variant')
+    root = Path(record_path).resolve().parent
+    source = (root / registration['source']).resolve()
+    script = (root / registration['script']).resolve()
+    record['source'] = dict(path=str(source.relative_to(REPO)), symbol=record['kernel_symbol'],
+                            sha256=record['provenance']['kernel_sha256'])
+    record['benchmark'].update(script=registration['script'],
+        sha256=record['provenance']['benchmark_sha256'], interface='variant_blocks',
+        timing_mode='variant_block_median', validation_count=registration['validation_count'])
+    if digest(script) != record['benchmark']['sha256']:
+        raise ValueError('archived variant runner changed; retain its measurement protocol')
+    dtype = record['precision']
+    record['dtype'] = dict(A=dtype['A'], B=dtype['B'], output=dtype['C'],
+                           accumulator=dtype['accumulator'])
+    record['status'] = 'PASS'
+    cfg = record['config']; m, n, _ = record['shape']
+    if m % cfg['BLOCK_SIZE_M'] or n % cfg['BLOCK_SIZE_N']:
+        raise ValueError('variant benchmark requires complete output tiles')
+    tgs = m // cfg['BLOCK_SIZE_M'] * (n // cfg['BLOCK_SIZE_N'])
+    if record['dispatch']['completed_TGs'] != tgs:
+        raise ValueError('variant TG count differs from complete grid')
+    record['performance']['launched_TGs'] = tgs
+    return record
+
+
+def normalize_paired_record(record, record_path):
+    """Enroll a fixed route from the archived counterbalanced measurement."""
+    registration = record['regression']
+    path = Path(record_path).parent / registration['measurement']
+    if digest(path) != record['artifacts'][path.name]['sha256']:
+        raise ValueError('paired baseline measurement changed')
+    measurement = load(path)
+    chosen = measurement['variants'][registration['variant']]
+    record['status'] = 'PASS'
     types = record['precision']
-    record.update(
-        status='PASS' if record['status'] == 'PMD_PASS' else record['status'],
-        dtype=dict(A=types['A'], W=types['B'], output=types['C']),
-        public_api={**public, 'path': OPERATOR},
-        source=dict(path='boltops/gemm/gluon/gemm_a16w16.py', symbol=config['selected']['kernel']),
-        benchmark={**archived, 'script': 'benchmark.py', 'sha256': archived['source_sha256'],
-                   'timing_mode': 'public_warm_median', 'validation_count': len(validation)},
-    )
-    record['performance']['launched_TGs'] = grids.pop()
+    record['dtype'] = dict(A=types['A'], B=types['W'], output=types['C'], accumulator=types['accumulator'])
+    record['performance'] = dict(chosen['performance'], launched_TGs=chosen['grid'])
+    record['source'] = dict(path='boltops/gemm/gluon/gemm_a16w16.py',
+                            symbol=chosen['config']['kernel'])
+    record['benchmark'] = dict(script=record['benchmark'], interface='paired_routes',
+        sha256=record['artifacts']['benchmark.py']['sha256'], timing_mode='validated_warm_median',
+        repeats=measurement['rounds'], validation_count=len(chosen['validation']))
+    registration['config'] = chosen['config']
+    return record
+
+
+def normalize_record(record, record_path):
+    """Adapt public Gluon measurements without changing their timing baseline."""
+    record = deepcopy(record)
+    if record.get('regression', {}).get('interface') == 'paired_routes':
+        return normalize_paired_record(record, record_path)
+    if record.get('regression', {}).get('interface') == 'variant_blocks':
+        return normalize_variant_record(record, record_path)
+    if record.get('public_api', {}).get('name') != 'gemm_a16w16':
+        return record
+    if record.get('status') != 'PMD_PASS':
+        raise ValueError('public Gluon baseline is not PMD_PASS')
+    dtype = record['precision']
+    record['dtype'] = dict(A=dtype['A'], B=dtype['B'], output=dtype['C'],
+                           accumulator=dtype['accumulator'])
+    precision(record)
+    record['status'] = 'PASS'
+    api = record['public_api']
+    api['path'] = OPERATOR
+    sources = {item['path']: item for item in record['sources']}
+    api['sha256'] = sources[OPERATOR]['sha256']
+    source_path = 'boltops/gemm/gluon/gemm_a16w16.py'
+    record['source'] = dict(sources[source_path], symbol=record['config']['selected']['kernel'])
+    dependencies = {name: item for name, item in sources.items()
+                    if name not in (OPERATOR, source_path) and (REPO / name).is_file()}
+    # Old measurements may name modules that have since been split or renamed.
+    # Track the current entry module's local imports in the private replay copy.
+    for node in ast.parse((REPO / source_path).read_text()).body:
+        if isinstance(node, ast.ImportFrom) and node.level and node.module:
+            parent = Path(source_path).parent
+            for _ in range(node.level - 1):
+                parent = parent.parent
+            path = parent / (node.module.replace('.', '/') + '.py')
+            if (REPO / path).is_file():
+                dependencies[str(path)] = dict(path=str(path), sha256=digest(REPO / path))
+    record['source_dependencies'] = list(dependencies.values())
+    benchmark = record['benchmark']
+    if 'median' not in benchmark.get('aggregation', ''):
+        raise ValueError('unrecognized public Gluon timing protocol')
+    script = Path(record_path).parent / 'benchmark.py'
+    if not script.is_file():
+        raise ValueError(f'missing public Gluon benchmark: {script}')
+    benchmark.update(script=script.name, sha256=benchmark['source_sha256'],
+                     timing_mode='validated_warm_median')
+    tgs = positive(record['resources']['completed_TGs'], 'complete TG count', integer=True)
+    selected = record['config']['selected']
+    m, n, _ = record['shape']
+    tiles = ((m + selected['BLOCK_SIZE_M'] - 1) // selected['BLOCK_SIZE_M']
+             * ((n + selected['BLOCK_SIZE_N'] - 1) // selected['BLOCK_SIZE_N']))
+    if tgs != min(tiles, selected.get('NUM_SMS', tiles)):
+        raise ValueError('recorded TG count differs from full launch geometry')
+    for sample in record.get('samples', []) + record['validation']:
+        if sample['completed_TGs'] != tgs:
+            raise ValueError('recorded sample TG count differs from complete grid')
+    record['performance']['launched_TGs'] = tgs
     return record
 
 
@@ -105,7 +195,8 @@ def timing_protocol(record):
     benchmark, performance = record['benchmark'], record['performance']
     repeats = positive(benchmark['repeats'], 'benchmark repeats', integer=True)
     mode = benchmark.get('timing_mode')
-    if mode == 'public_warm_median':
+    if mode in ('validated_warm_median', 'variant_block_median'):
+        positive(benchmark['validation_count'], 'validation count', integer=True)
         return mode
     aggregation = performance.get('aggregation', '')
     if (mode == 'existing_first_timed' or (mode is None and aggregation.startswith('first timed repeat'))) and repeats >= 2:
@@ -152,8 +243,8 @@ def discover_cases(repo=REPO, records=None):
             path.relative_to(repo)
     cases = []
     for path in paths:
-        record = normalize_public_record(load(path), path)
-        if record.get('public_api', {}).get('path') != OPERATOR:
+        record = normalize_record(load(path), path)
+        if not is_linear_record(record):
             if records:
                 raise ValueError(f'{path}: not a public linear gemm_a16w16 record')
             continue
@@ -261,7 +352,7 @@ def verify_sample(record, sample, measurement, clock):
     finite = accuracy.get('nonfinite') == 0 or accuracy.get('finite') is True
     if ('nonfinite' in accuracy and accuracy['nonfinite'] != 0) or ('finite' in accuracy and accuracy['finite'] is not True):
         finite = False
-    if bad != 0 or not finite or accuracy.get('canary_ok', True) is not True or accuracy.get('inputs_byte_identical', True) is not True:
+    if bad != 0 or not finite or accuracy.get('canary_ok', True) is not True or accuracy.get('guards_ok', True) is not True or accuracy.get('inputs_byte_identical', True) is not True:
         raise ValueError('precision, nonfinite, boundary or input-preservation check failed')
     reference = record.get('validation', {})
     if isinstance(reference, list):
@@ -276,7 +367,7 @@ def verify_sample(record, sample, measurement, clock):
         if key in accuracy and (not math.isfinite(accuracy[key]) or accuracy[key] < 0):
             raise ValueError(f'invalid numerical error summary: {key}')
     if (record['benchmark'].get('timing_mode') in ('legacy_median', 'existing_first_timed')
-            or record['source'].get('symbol') == '_gemm_fp16_mls_kernel'):
+            or record.get('source', {}).get('symbol') == '_gemm_fp16_mls_kernel'):
         if accuracy['mean_abs_vs_fp32'] > 1.05 * accuracy['rounding_floor'] + 1e-6:
             raise ValueError('mean numerical error exceeds recorded rounding tolerance')
         if accuracy['atol'] != .02 or accuracy['rtol'] != .01:
@@ -330,12 +421,77 @@ def verify_sample(record, sample, measurement, clock):
     return us
 
 
+def variant_result(record, result, measurement):
+    """Select the fixed published variant, not whichever variant wins this run."""
+    if (result.get('status') != 'COMPLETE' or result.get('stage') != 'complete'
+            or result.get('shape') != record['shape'] or result.get('layout') != record['layout']):
+        raise ValueError('variant runner did not complete the recorded shape/layout')
+    target = record['regression']['variant']
+    configs = [('baseline', record['baseline']['config']), (target, record['config']),
+               (record['interleaved_comparison']['best'], record['interleaved_comparison']['config'])]
+    if list(result['variants']) != [name for name, _ in configs]:
+        raise ValueError('variant block order differs from the published protocol')
+    paths = []
+    model = verify_model(record, measurement)
+    for name, cfg in configs:
+        variant = result['variants'][name]
+        if (variant.get('status') != 'PASS' or variant['config'] != cfg
+                or variant['resources']['SGPR_spills'] or variant['resources']['VGPR_spills']):
+            raise ValueError('variant configuration, status or spill check failed')
+        confirmation = variant['confirmation']
+        if (len(confirmation['samples']) != record['benchmark']['repeats']
+                or len(confirmation['validation']) != record['benchmark']['validation_count']):
+            raise ValueError('variant block has different timing/validation counts')
+        m, n, _ = record['shape']
+        grid = m // cfg['BLOCK_SIZE_M'] * (n // cfg['BLOCK_SIZE_N'])
+        if variant['grid'] != grid:
+            raise ValueError('variant did not run the complete grid')
+        expected = dict(record, performance=dict(record['performance'], launched_TGs=grid))
+        for sample in confirmation['validation'] + confirmation['samples']:
+            verify_sample(expected, sample, measurement, model['clock_period_ps'])
+        paths.extend(confirmation['validation'])
+    for name, _ in configs:
+        paths.extend(result['variants'][name]['confirmation']['samples'])
+    indexes = [int(Path(sample['stats_path']).parent.name) for sample in paths]
+    if indexes != sorted(set(indexes)):
+        raise ValueError('variant dispatch blocks are reordered or reuse statistics')
+    chosen = result['variants'][target]
+    if chosen['grid'] != record['performance']['launched_TGs']:
+        raise ValueError('selected variant did not run the complete grid')
+    return dict(status='PASS', requirement=record['requirement'], shape=result['shape'],
+                layout=result['layout'], samples=chosen['confirmation']['samples'],
+                validation=chosen['confirmation']['validation'], performance=chosen['performance'])
+
+
 def evaluate(case, case_output, max_regression_percent=1.0):
     if not math.isfinite(max_regression_percent) or max_regression_percent < 0:
         raise ValueError('regression threshold must be finite and nonnegative')
     measurement = Path(case_output) / 'measurement'
     result = load(measurement / 'result.json')
     record = case.record
+    if record['benchmark'].get('interface') == 'paired_routes':
+        if (result.get('status') != 'PASS' or result.get('shape') != record['shape']
+                or result.get('rounds') != record['benchmark']['repeats']):
+            raise ValueError('paired runner did not complete its recorded protocol')
+        target = record['regression']['variant']
+        if list(result['variants']) != ['default_triton', target]:
+            raise ValueError('paired route order differs from the archived protocol')
+        chosen = result['variants'][target]
+        if chosen['config'] != record['regression']['config']:
+            raise ValueError('paired runner changed the fixed published configuration')
+        model = verify_model(record, measurement)
+        for variant in result['variants'].values():
+            expected = dict(record, performance=dict(record['performance'], launched_TGs=variant['grid']))
+            if (len(variant['samples']) != record['benchmark']['repeats']
+                    or len(variant['validation']) != record['benchmark']['validation_count']):
+                raise ValueError('paired runner changed sampling or validation counts')
+            for sample in variant['validation'] + variant['samples']:
+                verify_sample(expected, sample, measurement, model['clock_period_ps'])
+        result = dict(status='PASS', requirement=record['requirement'], shape=result['shape'],
+            samples=chosen['samples'], validation=chosen['validation'], performance=chosen['performance'],
+            public_api_verified=True, benchmark_sha256=record['benchmark']['sha256'])
+    if timing_protocol(record) == 'variant_block_median':
+        result = variant_result(record, result, measurement)
     if result.get('status') != 'PASS' or result.get('single_tg') is True:
         raise ValueError('benchmark did not pass a complete-grid measurement')
     if result['requirement'] != record['requirement'] or result.get('shape', record['shape']) != record['shape']:
@@ -389,11 +545,17 @@ def evaluate(case, case_output, max_regression_percent=1.0):
             raise ValueError('cold baseline must not have execution warmups')
         validation = []
         selected = [0]
-    elif protocol == 'public_warm_median':
+    elif protocol in ('validated_warm_median', 'variant_block_median'):
         samples, validation = result['samples'], result['validation']
-        if (result.get('public_api_verified') is not True or len(samples) != repeats
-                or not isinstance(validation, list) or len(validation) != record['benchmark']['validation_count']):
-            raise ValueError('public replay or recorded validation/timing count differs')
+        if len(samples) != repeats or len(validation) != record['benchmark']['validation_count']:
+            raise ValueError('missing recorded warm samples or complete public validation')
+        if any(sample.get('phase', 'timed') != 'timed' for sample in samples):
+            raise ValueError('validated warm samples must not include a cold/warmup dispatch')
+        if protocol == 'validated_warm_median':
+            if result.get('public_api_verified') is not True:
+                raise ValueError('missing complete public API validation')
+            if result.get('benchmark_sha256') != record['benchmark']['sha256']:
+                raise ValueError('measurement benchmark differs from recorded protocol')
         selected = list(range(repeats))
     else:
         samples, validation = result['samples'], result['validation']
@@ -402,7 +564,7 @@ def evaluate(case, case_output, max_regression_percent=1.0):
         for index, sample in enumerate(samples):
             if sample.get('index', index) != index or sample.get('phase', 'warmup' if index == 0 else 'timed') != ('warmup' if index == 0 else 'timed'):
                 raise ValueError('warmup/timed sample order differs from baseline')
-        if record['benchmark'].get('timing_mode') or record['source'].get('symbol') == '_gemm_fp16_mls_kernel':
+        if record['benchmark'].get('timing_mode') or record.get('source', {}).get('symbol') == '_gemm_fp16_mls_kernel':
             seed = record['benchmark']['seed']
             if result['timing_input'] != dict(seed=seed, input_kind='normal_random'):
                 raise ValueError('timing inputs differ from baseline')
@@ -443,19 +605,12 @@ def assess(case, output, threshold):
         return dict(case=case.key, dtype=case.dtype, status='INVALID', error=str(error))
 
 
-def replay_record(case, output):
-    """Relocate artifacts/runtime state and identify current source in a private copy.
-
-    Archived runners assert source hashes. Refresh only the replay copy so a code
-    change is measured, rather than rejected before compilation. Baseline timing,
-    precision, sampling and resolved launch options remain unchanged.
-    """
-    record = deepcopy(case.record)
-    for name in ('assembly', 'single_tg_perf'):
-        if record.get(name, {}).get('path'):
-            record[name]['path'] = str((case.record_path.parent / record[name]['path']).resolve())
+def refresh_sources(record):
+    """Refresh only a private replay copy; published baselines stay untouched."""
     for name in ('source', 'config', 'public_api'):
-        item = record[name]
+        item = record.get(name)
+        if not item or 'path' not in item:
+            continue
         path = REPO / item['path']
         item['sha256'] = digest(path)
         if 'kernel_sha256' in item:
@@ -465,13 +620,28 @@ def replay_record(case, output):
             item['kernel_sha256'] = hashlib.sha256(''.join(source.splitlines(keepends=True)[start - 1:node.end_lineno]).encode()).hexdigest()
     for item in record.get('source_dependencies', []):
         item['sha256'] = digest(REPO / item['path'])
+
+
+def replay_record(case, output):
+    """Relocate artifacts/runtime state and identify current source in a private copy.
+
+    Archived runners assert source hashes. Refresh only the replay copy so a code
+    change is measured, rather than rejected before compilation. Baseline timing,
+    precision, sampling and resolved launch options remain unchanged.
+    """
+    record = deepcopy(case.record)
+    for name in ('assembly', 'single_tg_perf'):
+        if 'path' in record.get(name, {}):
+            record[name]['path'] = str((case.record_path.parent / record[name]['path']).resolve())
+    refresh_sources(record)
     runtime = output / 'runtime'
     for name in ('home', 'temp', 'cache', 'triton-home'):
         (runtime / name).mkdir(parents=True)
     record['environment']['environment_variables'].update(
         HOME=str(runtime / 'home'), TMPDIR=str(runtime / 'temp'),
         TRITON_CACHE_DIR=str(runtime / 'cache'), TRITON_HOME=str(runtime / 'triton-home'),
-        GPU_OUT='m5out' if timing_protocol(record) == 'public_warm_median' else 'g',
+        GPU_OUT='m5out' if (timing_protocol(record) in ('validated_warm_median', 'variant_block_median')
+            or case.record['source']['symbol'] == '_gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel') else 'g',
         RPY_HISTORY_LOG=str(runtime / 'history.log'), RPY_HISTORY_SIZE='1024',
         BOLTOPS_GEMM_CONFIG_DIR=None, PYTHONDONTWRITEBYTECODE='1', PYTHONOPTIMIZE=None)
     return record
@@ -487,16 +657,36 @@ def run_case(case, case_output, threshold=1.0):
         raise ValueError('archived benchmark changed; retain its recorded measurement protocol')
     replay = output / 'replay-record.json'
     save(replay, record)
-    command = [sys.executable, str(script), '--record', str(replay), '--output', str(output / 'measurement')]
+    if record['benchmark'].get('interface') == 'variant_blocks':
+        runner = output / 'runner'
+        runner.mkdir()
+        shutil.copyfile(script, runner / script.name)
+        source = REPO / record['source']['path']
+        shutil.copyfile(source, runner / source.name)
+        inputs = runner / record['layout'].lower()
+        inputs.mkdir()
+        save(inputs / 'record.json', record)
+        target = runner / (record['layout'] + '-standalone')
+        (output / 'measurement').symlink_to(target, target_is_directory=True)
+        command = [sys.executable, str(runner / script.name), record['layout'], str(REPO)]
+    elif record['benchmark'].get('interface') == 'paired_routes':
+        command = [sys.executable, str(script), '--repo', str(REPO), '--record', str(replay),
+                   '--output', str(output / 'measurement'), '--rounds', str(record['benchmark']['repeats'])]
+    else:
+        command = [sys.executable, str(script), '--record', str(replay), '--output', str(output / 'measurement')]
     environment = dict(os.environ)
     # Each archived runner re-execs with the recorded environment itself. Remove
     # config overrides and Python optimization also from its initial invocation.
     environment.pop('BOLTOPS_GEMM_CONFIG_DIR', None)
     environment.pop('PYTHONOPTIMIZE', None)
+    marker = record.get('regression', {}).get('environment_marker')
+    if marker:
+        environment.pop(marker, None)
     environment['PYTHONDONTWRITEBYTECODE'] = '1'
     save(output / 'invocation.json', dict(command=command, benchmark_sha256=benchmark_hash,
         baseline_record=str(case.record_path), baseline_record_sha256=digest(case.record_path),
-        current_sha256={name: record[name]['sha256'] for name in ('source', 'config', 'public_api')},
+        current_sha256={name: record[name]['sha256'] for name in ('source', 'config', 'public_api')
+                        if 'sha256' in record.get(name, {})},
         cache_isolated=True))
     with (output / 'benchmark.log').open('w') as log:
         child = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, cwd=output, env=environment)

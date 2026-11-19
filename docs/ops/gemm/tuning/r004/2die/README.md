@@ -24,3 +24,20 @@ TN对照为无spill ring参考配置，TT对照为原TT ring参数在双DIE上�
 PERF采集沿用R010的三次单TG方式，完整MNK与输入输出strides不变，仅启动1TG，覆盖首个128×64 tile并计算完整K；每次8192个输出精确匹配，另检查417792个未覆盖输出保持NaN及两侧guard。排除第0次，在第1/2次中选择cycles较小的一次；PMD会轮换调度DIE，所选trace的DIE分配记录在record.json中。单TG耗时独立于表内全量耗时，不用于替换全量结果。采集命令：`python3 benchmark.py TN /path/to/repo --single-tg-perf`（TT将TN替换为TT），使用新任务目录；更换源码绝对路径时允许debug信息不同，但必须匹配所记录的`.text`/`.rodata`。
 
 本次三次采集的完整本地证据为 `/home/kxu/r004-sbx2-tn-tt-20261118-results/perf-evidence.tar.gz`，SHA-256：`6b18efad99f98aa789450604e5f670c193cff89f5a85231851c2bc89a855d190`。采集日志与中间文件均留在本地，MR只保留两份选定PERF及现有record.json中的校验摘要。
+
+## 性能回归门槛
+
+TN/TT 两条记录已显式注册到 BF16 回归和 Qwen3.5 FP8 模型回归套件。回放保持原始三个配置的顺序与相同 A/B/C 缓冲区，每配置连续测 9 次，取包含首个样本的中位数。门槛固定绑定已发布的 `m128n64k64_ch1s3p1c4f1`，不随复测中的最快候选切换。此注册不改变公开接口的默认分发配置。
+
+| 布局 | 基线（µs） | 默认上限：基线 × 1.01（µs） |
+|---|---:|---:|
+| TN | 14.208740 | 14.3508274 |
+| TT | 14.625520 | 14.7717752 |
+
+超过上限判定退化，恰好增加 1% 通过。统计验证覆盖两个 DIE / 96 CU、完整输出和 TG 数，拒绝缺失采样、改变配置、spill、数值错误及重复或乱序的统计文件。新输出目录中运行：
+
+```bash
+python scripts/performance/gemm_a16w16_pmd_regression.py --dtype bf16 --case R004/2die/tn --case R004/2die/tt --output /tmp/r004-bf16-regression
+```
+
+两条基线数值、kernel 和原始 benchmark 保持不变；每次回归在输出目录内创建独立回放副本，支持 `--evaluate` 评估已保存的结果。

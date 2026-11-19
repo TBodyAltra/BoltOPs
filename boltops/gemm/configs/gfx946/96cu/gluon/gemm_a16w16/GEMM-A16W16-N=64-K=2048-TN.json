@@ -1,0 +1,46 @@
+{
+  "profiles": {
+    "DTYPE=bfloat16-OUT=bfloat16": {
+      "M_EQ_64": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "CHUNKS": 2,
+        "SLOTS": 3,
+        "num_warps": 1,
+        "num_stages": 2,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "mmac_layout_force": 2,
+        "kernel": "_gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel",
+        "wasp_partition_warps": [
+          1,
+          1
+        ],
+        "wasp_wdra": false
+      },
+      "M_EQ_2560": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 64,
+        "CHUNKS": 2,
+        "SLOTS": 4,
+        "PW": 2,
+        "CW": 8,
+        "LTS": false,
+        "num_warps": 1,
+        "num_stages": 2,
+        "wasp_partition_warps": [
+          2,
+          8
+        ],
+        "wasp_wdra": false,
+        "mmac_layout_force": 2,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "kernel": "_gemm_a16w16_kernel",
+        "DEFER_RELEASE": true
+      }
+    }
+  }
+}

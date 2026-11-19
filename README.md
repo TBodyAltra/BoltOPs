@@ -279,12 +279,13 @@ optest --display                                            # HTML report from l
 
 ## BF16 GEMM measurements on PMD
 
-2026-11-17 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946; 1 DIE / 48 CU unless the row specifies 2 DIE / 96 CU.
-BF16 inputs/output, FP32 accumulation, complete K. Environment, configs, assembly, raw measurements and PERF: [R001 TN](docs/ops/gemm/tuning/r001/1die/tn/record.json), [R001 TT](docs/ops/gemm/tuning/r001/1die/tt/record.json), [R002 TT](docs/ops/gemm/tuning/r002/1die/tt/record.json), [R002 TT (2 DIE / 96 CU)](docs/ops/gemm/tuning/r002/2die/tt/record.json), [R003 TT](docs/ops/gemm/tuning/r003/1die/tt/record.json), [R004 TT](docs/ops/gemm/tuning/r004/1die/tt/record.json).
+2026-11-17–18 · node60 / `kxu_pmd_8569_fp8_20261017` · gfx946; 1 DIE / 48 CU unless the row specifies 2 DIE / 96 CU.
+BF16 inputs/output, FP32 accumulation, complete K. Environment, configs, assembly, raw measurements and PERF: [R001 TN](docs/ops/gemm/tuning/r001/1die/tn/record.json), [R001 TN (2 DIE / 96 CU)](docs/ops/gemm/tuning/r001/2die/tn/record.json), [R001 TT](docs/ops/gemm/tuning/r001/1die/tt/record.json), [R002 TT](docs/ops/gemm/tuning/r002/1die/tt/record.json), [R002 TT (2 DIE / 96 CU)](docs/ops/gemm/tuning/r002/2die/tt/record.json), [R003 TT](docs/ops/gemm/tuning/r003/1die/tt/record.json), [R004 TT](docs/ops/gemm/tuning/r004/1die/tt/record.json).
 
 | Case / layout | M × N × K | Full dispatch (µs) | MMAC utilization | Validation / timing |
 |---|---|---:|---:|---|
 | R001 TN | 64 × 64 × 2048 | 5.324 | 0.73% | Random / ones / random; median of 9 warm samples |
+| R001 TN (2 DIE / 96 CU) | 64 × 64 × 2048 | 5.290 | 0.37% | Random / ones / random; median of 12 warm samples |
 | R001 TT | 64 × 64 × 2048 | 5.744 | 0.68% | Random / ones / random; median of 9 warm samples |
 | R002 TT | 64 × 248320 × 2048 | 596.044 | 25.27% | Full random output; median of 2 warm samples |
 | R002 TT (2 DIE / 96 CU) | 64 × 248320 × 2048 | 310.224 | 24.28% | Full random output; median of 2 warm samples |
@@ -296,6 +297,47 @@ All full-grid outputs have zero mismatches/nonfinite values at abs0.001+rel0.01;
 R002 on `sbx2` uses 2 DIE / 96 CU: 310.224 µs, 209.83 TOPS, 3.382 TB/s effective read+write bandwidth, 1.921× the single-DIE performance. Each DIE completes 485 TGs on 48 active CUs. The same kernel and tile configuration are used; the sbx2 preset also configures its memory and cross-DIE fabric.
 
 R002 uses three LDS slots and register prefetch to overlap the next operand reads with the current MMAC batch. R002 single-DIE effective read+write bandwidth is 1.760 TB/s, including one logical read of A/B and one write of C; its formula and measured environment are in the record.
+
+R001 TN on `sbx2` uses three 16-KiB LDS slots, BK128 ×2 chunks and 1P+1C: 5.290 µs, 3.17 TOPS and 100.66 GB/s logical read+write bandwidth. Each DIE completes 8 TG; LDS48KiB / VGPR69, no spills. The 152-candidate scan retained this configuration; matched twelve-sample medians improve 2.60% over the original two-slot kernel. [Record and sampling protocol](docs/ops/gemm/tuning/r001/2die/tn/record.json). The single-TG PERF matches the public kernel binary.
+
+## PMD performance regression
+
+The Qwen3.5 FP8-model suite includes its BF16 and FP8 GEMMs. The linear GEMM suite selects FP16/BF16 baselines independently. Both retain the recorded sampling protocol, validate full outputs and native PMD statistics, and reject latency increases above 1%; published baselines are unchanged.
+
+```bash
+python scripts/performance/qwen35_fp8_pmd_regression.py --list
+python scripts/performance/qwen35_fp8_pmd_regression.py --case R010 --output /tmp/fp8-regression
+python scripts/performance/gemm_a16w16_pmd_regression.py --dtype bf16 --list
+python scripts/performance/gemm_a16w16_pmd_regression.py --dtype bf16 --case R001 --output /tmp/bf16-regression
+```
+
+Replay requires the PMD/toolchain environment recorded by each case and a new output directory. Add `--evaluate` to assess saved run outputs without launching kernels; `--list` also requires no GPU or Torch/Triton imports. FP16 needs its own published baseline and never reuses BF16 timings. Explicitly registered candidate records also participate in regression; unregistered experimental records are excluded.
+
+Affected-record regression on 2026-11-18, node60 container `kxu_pmd_8569_fp8_20261017`, core-only PMD HEAD_1703 / gfx946 / MR565 Triton / DTKClang 6.3.3; tested commit `a4a8c15c`. All five checks pass the 1% gate with complete outputs and guards. R001 retains its published 9/12-warm protocols; R004 retains three consecutive configuration blocks and all nine target samples.
+
+| Record | Baseline (µs) | MR (µs) | Change | Gate |
+|---|---:|---:|---:|---|
+| R001 TN / 1 DIE | 5.323955 | 5.309395 | -0.27% | PASS |
+| R001 TN / 2 DIE | 5.289830 | 5.288010 | -0.03% | PASS |
+| R004 TN / 2 DIE | 14.208740 | 14.271985 | +0.45% | PASS |
+| R004 TT / 2 DIE | 14.625520 | 14.638715 | +0.09% | PASS |
+| R020 TT / 2 DIE | 68.922035 | 68.585790 | -0.49% | PASS |
+
+R020 uses a same-node60 comparison against MR merge base `ad557996`; both measurements include the native flag reset and one cold full-grid GEMM. Its original nmz27 baseline (68.163095 µs) uses a different PMD/compiler environment and was not replaced. The base/head `.text` and `.rodata` are identical. Only environment path literals were adapted in private benchmark copies; computation and timing ASTs are preserved.
+
+Full reports and logs: `/home/kxu/mr32-affected-regression-20261118/report.json` and `regression-evidence.tar.gz`; raw run outputs remain under node60 `/xukang/code/pmd-triton-sessions/mr32-affected-regression-20261118`. Historical performance baselines are unchanged.
+
+Consolidated BF16 validation on 2026-11-18, node60 PMD HEAD_1703 / gfx946 / MR565 Triton / DTKClang 6.3.3, using the BF16 compute, interface and replay files from `217ce4ec` (these files remain byte-identical in the reviewed revision):
+
+| Record | Baseline (µs) | Reviewed code (µs) | Change | Gate |
+|---|---:|---:|---:|---|
+| R002 TT / 1 DIE | 596.043858 | 595.068792 | -0.164% | PASS |
+| R002 TT / 2 DIE | 310.224005 | 310.480170 | +0.083% | PASS |
+| R003 TN / 2 DIE | 8.639085 | 8.633625 | -0.063% | PASS |
+
+R002 retains its original full 970-TG grid, one complete validation and the median of both timed dispatches. R003 retains the original four counterbalanced control/tuned rounds and three independent validation inputs; the fixed published `tuned_auto` route supplies the production gate. Full outputs, guards and native PMD statistics pass without changing historical baselines or the 1% threshold. The combined BF16/FP8 regression tooling passes 20 CPU tests, including rejection of an unexpected observed FP8 kernel; on node60, 26 BF16 and 9 FP8 configuration, dispatch and numerical checks pass.
+
+Review results and SHA-verified evidence: `/home/kxu/boltops-gemm-mr-scan-20261118/review-report.json` and `review-evidence.tar.gz`; raw outputs remain under node60 `/xukang/code/pmd-triton-sessions/gemm-mr-scan-20261118`. R009's newer compiler comparison remains a separate +2.80% REGRESSION; its historical production baseline is preserved.
 
 ## FP8 R010 GEMM measurement on PMD
 
@@ -327,6 +369,41 @@ TN fences each MMAC turn as `sync → 64 MMAC → arrive`, reducing full-dispatc
 | sbx2 /96 TG, 4–5 tiles each | 128.180 /871.19 | 48 /48 | 1.1367× |
 
 One complete cold public-API dispatch; all 13,631,488 outputs match and guards pass on all 96 CU. Latency is 12.03% below the same-environment nonpersistent 145.708 µs baseline. Reuses the R010 continuous pipeline with two complete A-scale banks and consumer FP32 B-scale loads, fitting 131072 B LDS without spills. Single-TG PERF covers 5 tiles with the same .text/.rodata as the full 96-TG kernel; all 163,840 selected outputs and uncovered output guards passed in three captures. R009/R010 48-TG and 96-TG executable sections remain unchanged. [Dual-die record](docs/ops/gemm/tuning/r011/2die/tn/record.json).
+
+## R003 BF16 TN on dual-die PMD sbx2
+
+2026-11-18 · node60 · gfx946 / 96 CU · M/N/K=2560/64/2048 · BF16 A/W/C,
+FP32 accumulation. A[M,K] and W[N,K] are K-contiguous; no transpose, repack,
+Split-K or workspace is used. The shared TN/TT MLS ring accepts configurable tiles, waves and slots.
+The exact TN profile enables it through
+`backend=auto`: block32×64×64, 2P+8C (10 waves/TG), CHUNKS=2, SLOTS=4,
+80 TGs (40 per die), 96 KiB LDS, 38 VGPRs and zero spills.
+
+| Public route | Full median (µs) | Range (µs) | Effective read+write (TB/s) |
+|---|---:|---:|---:|
+| Existing generic Triton default | 75.750 | 75.738–75.779 | 0.146 |
+| Tuned Gluon via auto | 8.639 | 8.623–8.693 | 1.282 |
+
+The matched speedup is 8.77× against the existing 256×256×64,
+10-TG generic fallback, which has five VGPR spills; this is not a comparison
+against a separately tuned Triton implementation. Bandwidth counts A/W each read
+once plus one BF16 C write. These are complete GPU gcSimCycles durations, with
+identical buffers and four counterbalanced timing rounds. All outputs and guards
+pass random59 / ones / random2059. Historical configuration/dispatch/alignment checks: **61 passed** (74 skipped;
+one unrelated Stream-K native test deselected). The alignment dispatch checks
+have since been removed: callers supply aligned tensors, consistent with the
+shared interface contract. Five additional tile/layout cases cover both TN and TT, including
+prefetch and the existing wide TT tile. The existing TT ring is reused for both layouts through compile-time operand
+strides and MLS layouts. Assembly/PERF match the freshly measured shared kernel.
+
+[Record](docs/ops/gemm/tuning/r003/2die/tn/record.json),
+[measurements](docs/ops/gemm/tuning/r003/2die/tn/measurement.json),
+[profile](boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json),
+[kernel](boltops/gemm/gluon/gemm_a16w16.py).
+The evidence directory follows the R010 layout: final record, measurements,
+benchmark, assembly, full-grid PERF and compressed representative statistics.
+Replay with `benchmark.py --repo <checkout> --record record.json --output <new-directory> --rounds 4`
+after loading the recorded PMD environment.
 
 ## FP8 R008 GEMM on dual-die PMD sbx2
 

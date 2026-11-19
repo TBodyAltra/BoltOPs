@@ -482,7 +482,7 @@ def test_explicit_fixed_rejects_mismatched_contract(monkeypatch, case, kernel_la
         gemm_a16w16(a, w, dtype=out_dtype, backend="gluon")
 
 
-NARROW_TT_KERNEL = "_gemm_a16w16_tt_kernel"
+NARROW_TT_KERNEL = "_gemm_a16w16_kernel"
 
 
 @pytest.mark.parametrize("m", [2560, 6656])

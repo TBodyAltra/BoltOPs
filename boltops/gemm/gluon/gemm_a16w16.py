@@ -18,7 +18,7 @@ from ..config import get_gemm_config
 _KERNEL_MODULES = {
     "_gemm_a16w16_bf16_tn_bm16_bn16_bk128_kernel": ".gemm_a16w16_mls",
     "_gemm_a16w16_bf16_tt_bm16_bn32_bk128_kernel": ".gemm_a16w16_mls",
-    "_gemm_a16w16_tt_kernel": ".gemm_a16w16_mls",
+    "_gemm_a16w16_kernel": ".gemm_a16w16_mls",
     "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel": ".gemm_a16w16_persistent",
     "_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel": ".gemm_a16w16_streamk",
     "_gemm_a16w16_bf16_tt_prepare_edges_kernel": ".gemm_a16w16_streamk",
