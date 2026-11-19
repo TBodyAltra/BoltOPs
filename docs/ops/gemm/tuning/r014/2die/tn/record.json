@@ -232,5 +232,72 @@
       ".rodata": "34ae6aee9e990059e1a091f6d67f51fac3beb188cbc8fe4be2171933cb409773",
       ".text": "e78d1a7f4a6a4d8cacd0919386eb58c5cd671684de51a922677dc1b637780378"
     }
+  },
+  "current_toolchain_validation": {
+    "driver": "node60 PMD",
+    "interface": "public auto",
+    "runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "compiler": {
+        "libtriton": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+        "clang": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe"
+      }
+    },
+    "config": {
+      "path": "boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json",
+      "profile": "DTYPE=bfloat16-OUT=bfloat16",
+      "bucket": "M_EQ_12",
+      "BLOCK_SIZE_N": 16,
+      "kpack": 2
+    },
+    "shape": [
+      12,
+      64,
+      2048
+    ],
+    "seed": 14,
+    "resources": {
+      "VGPR": 33,
+      "spills": 0,
+      "LDS_bytes": 8192,
+      "reduction": {
+        "VGPR": 43,
+        "spills": 0,
+        "LDS_bytes": 0
+      }
+    },
+    "aggregation": "median of three independent cold runs, including reduction",
+    "kernel_us": 12.129845,
+    "report_location": "node60:/tmp/pr45-ci-head.gFNXUw/confirm-r014-tile/r014/2die/tn",
+    "samples_kernel_us": [
+      12.120745,
+      12.129845,
+      12.464725
+    ],
+    "sample_stats_sha256": [
+      [
+        "cdf113981af0f5de00f59bb1abcc2400931f215b5614f18665166c879a1e52fa",
+        "d830c930b9e4a984845afe5a5aba57fa5992486495ef9a464d784da0fc148a14"
+      ],
+      [
+        "224adc07aa434b8309f34f5f6f16b7509b0f4e00ada7dd1762983dc2d65498ad",
+        "7b06b89c66da7b9467c06064cf95dcfbfc7f15eeb8e7f1b93b07efc04f4ebabe"
+      ],
+      [
+        "b951dcb9cd1ee6b7216c8bceee148047073b3703ddde91fcd96e6e341b86f3de",
+        "b0c53cf5c3a4e55a2fd1f8b7af38e93bbea2a8cd182d1211a3e22a9cdb9f794f"
+      ]
+    ],
+    "dispatch_TGs_per_die": [
+      {
+        "system.shaders0": 32,
+        "system.shaders1": 32
+      },
+      {
+        "system.shaders0": 1,
+        "system.shaders1": 1
+      }
+    ]
   }
 }
