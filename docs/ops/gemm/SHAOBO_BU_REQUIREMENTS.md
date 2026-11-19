@@ -220,10 +220,10 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r005/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r005/2die/tn/record.json">14.565 / 73.72 / 4.27%</a><br>读写带宽 0.613 TB/s（逻辑 A/B+C+FP32 scales）</td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/ceae2e40d7f206cc04812fdacae405f9995f0de0/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L517">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/049e846c549d651307dd95ca3a7c02a57ff7411b/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json">config</a> / <a href="tuning/r005/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r005/2die/tn/benchmark.py">测试代码</a> / <a href="tuning/r005/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r005/2die/tn/cu0.perf">PERF</a></td>
     </tr>
     <tr>
       <td><a href="#r006">R006</a><a name="r006"></a></td>
@@ -325,7 +325,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r009/1die/tn/record.json">flags / env</a></td>
-      <td><a href="tuning/r009/1die/tn/record.json">183.864 / 525.59 / 60.82%</a></td>
+      <td><a href="tuning/r009/1die/tn/record.json">183.864 / 525.59 / 60.82%</a><br><a href="tuning/r009/1die/tn/compiler-test/record.json">编译器对照：189.014 μs（回退 2.80%，不作为基线）</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/40c5ad2d3adb9348bead8a68cb58f03550891220/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L396">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/40c5ad2d3adb9348bead8a68cb58f03550891220/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r009/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r009/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r009/1die/tn/record.json">记录</a></td>
       <td>—</td>
       <td>—</td>
