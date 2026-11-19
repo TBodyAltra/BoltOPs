@@ -68,15 +68,45 @@ def install_captures(monkeypatch):
     return calls
 
 
+def provide_gluon_config(monkeypatch, config):
+    module = import_module("boltops.gemm.gluon.gemm_a16w16")
+    monkeypatch.setattr(module, "get_gemm_config", lambda *args, **kwargs: (deepcopy(config), True))
+
+
+def provide_triton_config(monkeypatch, config):
+    module = import_module("boltops.gemm.triton.gemm_a16w16")
+    monkeypatch.setattr(module, "get_gemm_config", lambda *args, **kwargs: (deepcopy(config), True))
+
+
 @pytest.mark.parametrize("case,expected", [
     ("recorded", "gluon"), ("different_m", "triton"),
     ("fp16", "triton"), ("column_major", "triton"),
     ("weight_column_major", "gluon_tt"),
     ("fp32_output", "triton"), ("bias", "triton"),
-    ("activation", "triton"), ("explicit_triton_config", "triton"),
+    ("activation", "triton"),
+    ("other_arch_with_config", "gluon"),
 ])
 def test_auto_selects_only_recorded_contract(monkeypatch, case, expected):
     calls = install_captures(monkeypatch)
+    gluon = import_module("boltops.gemm.gluon.gemm_a16w16")
+    dispatch_gluon = gluon.gemm_a16w16
+    gluon_calls = []
+
+    def observe_gluon(*args, **kwargs):
+        gluon_calls.append(kwargs["config"])
+        return dispatch_gluon(*args, **kwargs)
+
+    monkeypatch.setattr(gluon, "gemm_a16w16", observe_gluon)
+    if case == "other_arch_with_config":
+        public = import_module("boltops.gemm.gemm_a16w16")
+        monkeypatch.setattr(public, "get_device_info",
+                            lambda device: SimpleNamespace(arch="gfx950", cu_count=48))
+
+        def lookup(*args, **kwargs):
+            assert kwargs["arch"] == "gfx950"
+            return config_for()
+
+        monkeypatch.setattr(gluon, "get_gemm_config", lookup)
     m = 63 if case == "different_m" else 64
     dtype = torch.float16 if case == "fp16" else torch.bfloat16
     a = torch.empty((m, 2048), dtype=dtype, device="cuda")
@@ -92,13 +122,10 @@ def test_auto_selects_only_recorded_contract(monkeypatch, case, expected):
         kw['bias'] = torch.empty((64,), dtype=dtype, device=a.device)
     if case == "activation":
         kw['activation'] = "relu"
-    if case == "explicit_triton_config":
-        kw['config'] = dict(BLOCK_SIZE_M=16, BLOCK_SIZE_N=16, BLOCK_SIZE_K=128,
-                            GROUP_SIZE_M=1, NUM_KSPLIT=1, SPLITK_BLOCK_SIZE=2048,
-                            num_warps=1, num_stages=2)
     out = gemm_a16w16(a, w, **kw)
     assert out.shape == (m, 64)
     assert len(calls) == 1 and calls[0][0] == expected
+    assert len(gluon_calls) == (expected in ("gluon", "gluon_tt"))
     if expected in ("gluon", "gluon_tt"):
         _, grid, args, params = calls[0]
         assert grid == ((8,) if expected == "gluon_tt" else (16,))
@@ -107,6 +134,28 @@ def test_auto_selects_only_recorded_contract(monkeypatch, case, expected):
         assert params['wasp_partition_warps'] == (1, 1)
         assert params['wasp_wdra'] is False
         assert params["B_K_CONTIGUOUS"] is (expected == "gluon")
+
+
+@pytest.mark.parametrize("backend", ["auto", "gluon"])
+def test_gluon_backend_rejects_strided_output(monkeypatch, backend):
+    calls = install_captures(monkeypatch)
+    config, _ = config_for()
+    provide_gluon_config(monkeypatch, config)
+    a = torch.empty((64, 2048), dtype=torch.bfloat16, device="cuda")
+    w = torch.empty_like(a)
+    out = torch.empty((64, 64), dtype=a.dtype, device=a.device).T
+
+    with pytest.raises(NotImplementedError, match="Gluon A16W16 kernels require a contiguous output"):
+        gemm_a16w16(a, w, out=out, backend=backend)
+    assert not calls
+
+
+def test_unknown_backend_uses_triton(monkeypatch):
+    calls = install_captures(monkeypatch)
+    a = torch.empty((64, 2048), dtype=torch.bfloat16, device="cuda")
+    w = torch.empty_like(a)
+    gemm_a16w16(a, w, backend="unknown")
+    assert len(calls) == 1 and calls[0][0] == "triton"
 
 
 @pytest.mark.parametrize("layout", ["TN", "TT"])
@@ -124,7 +173,8 @@ def test_explicit_gluon_selects_kernel_without_mutating_config(monkeypatch, layo
     cfg['BLOCK_SIZE_M'] = cfg['BLOCK_SIZE_N'] = 32
     cfg["B_K_CONTIGUOUS"] = layout != "TN"
     before = deepcopy(cfg)
-    result = gemm_a16w16(a, w, out=out, backend="gluon", config=cfg)
+    provide_gluon_config(monkeypatch, cfg)
+    result = gemm_a16w16(a, w, out=out, backend="gluon")
     assert result is out and cfg == before and calls[0][0] == "custom"
     assert "kernel" not in calls[0][3] and calls[0][1] == (4,)
     assert calls[0][3]["B_K_CONTIGUOUS"] is (layout == "TN")
@@ -258,7 +308,7 @@ def test_streamk_compiled_kernel_cache_is_device_specific(monkeypatch):
         runtime._compile_kernel_for_device.cache_clear()
 
 
-def test_streamk_native_sbx2_split_k():
+def test_streamk_native_sbx2_split_k(monkeypatch):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     from boltops.utility.arch_info import get_device_info
@@ -276,7 +326,8 @@ def test_streamk_native_sbx2_split_k():
     ai, bi = a.cuda(), b.cuda()
     storage = torch.full((m * n + 128,), 123., dtype=torch.bfloat16).cuda()
     out = storage[64:-64].view(m, n)
-    assert gemm_a16w16(ai, bi.T, out=out, config=cfg, backend="gluon") is out
+    provide_gluon_config(monkeypatch, cfg)
+    assert gemm_a16w16(ai, bi.T, out=out, backend="gluon") is out
     host = storage.cpu()
     torch.testing.assert_close(host[64:-64].view(m, n), expected, atol=.001, rtol=.01)
     assert bool((host[:64] == 123).all() and (host[-64:] == 123).all())
@@ -328,56 +379,22 @@ def test_streamk_dispatch_uses_dynamic_lds_launcher(monkeypatch, m, n, k, backen
     public = import_module("boltops.gemm.gemm_a16w16")
     monkeypatch.setattr(public, "get_device_info", lambda device: SimpleNamespace(arch="gfx946", cu_count=cu))
     kernels = import_module("boltops.gemm.gluon.gemm_a16w16")
-    runtime = import_module("boltops.gemm.gluon.gemm_a16w16_streamk")
     calls = []
 
-    def launch(kernel, prepare_edges, a, b, out, *, cu_count, config):
-        calls.append((kernel, prepare_edges, a, b, out, cu_count, config))
+    def launch(kernel, a, b, out, *, cu_count, config, layout):
+        calls.append((kernel, a, b, out, cu_count, config, layout))
 
-    monkeypatch.setattr(runtime, "_launch_gemm_a16w16_streamk", launch)
+    monkeypatch.setitem(kernels._SPECIAL_LAUNCHERS, STREAMK_KERNEL, launch)
     a = torch.empty((m, k), dtype=torch.bfloat16, device="cuda")
     w = torch.empty((k, n), dtype=a.dtype, device=a.device).T
     out = gemm_a16w16(a, w, backend=backend)
     assert len(calls) == 1
-    kernel, edges, actual_a, actual_w, actual_out, cu_count, config = calls[0]
+    kernel, actual_a, actual_w, actual_out, cu_count, config, layout = calls[0]
     assert kernel is getattr(kernels, STREAMK_KERNEL)
-    assert edges is kernels._gemm_a16w16_bf16_tt_prepare_edges_kernel
+    assert layout == "TT"
     assert actual_a is a and actual_w is w and actual_out is out
     assert cu_count == cu and config["NUM_SMS"] == cu and "kernel" not in config
     assert config["wasp_partition_warps"] == [2, 2, 4, 4]
-
-
-@pytest.mark.parametrize("m,n,k,cu", [
-    pytest.param(2048, 2048, 4096, 48, id="R020-48cu"),
-    pytest.param(2048, 2048, 4096, 96, id="R020-96cu"),
-])
-@pytest.mark.parametrize("unaligned", ["x", "w", "out"])
-@pytest.mark.parametrize("backend", [None, "auto", "gluon"])
-def test_streamk_unaligned_pointers_use_triton_only_in_auto(
-    monkeypatch, m, n, k, cu, unaligned, backend,
-):
-    calls = install_captures(monkeypatch)
-    public = import_module("boltops.gemm.gemm_a16w16")
-    monkeypatch.setattr(public, "get_device_info", lambda device: SimpleNamespace(arch="gfx946", cu_count=cu))
-
-    def matrix(rows, cols, name):
-        offset = int(unaligned == name)
-        return torch.empty(rows * cols + offset, dtype=torch.bfloat16,
-                           device="cuda")[offset:].view(rows, cols)
-
-    a, w, out = matrix(m, k, "x"), matrix(k, n, "w").T, matrix(m, n, "out")
-    assert a.stride() == (k, 1) and w.stride() == (1, n) and out.is_contiguous()
-    assert [t.data_ptr() % 16 for t in (a, w, out)] == [
-        2 * (name == unaligned) for name in ("x", "w", "out")
-    ]
-    if backend == "gluon":
-        with pytest.raises(ValueError, match="16-byte-aligned"):
-            gemm_a16w16(a, w, out=out, backend=backend)
-        assert not calls
-    else:
-        assert gemm_a16w16(a, w, out=out, backend=backend) is out
-        assert len(calls) == 1 and calls[0][0] == "triton"
-        assert calls[0][2][0] is a and calls[0][2][3] is out
 
 
 @pytest.mark.parametrize("layout", ["TN", "TT"])
@@ -394,7 +411,7 @@ def test_persistent_native_correctness(layout):
 
 
 @pytest.mark.parametrize("dtype", [torch.bfloat16, torch.float16])
-def test_persistent_native_tt_tail_correctness(dtype):
+def test_persistent_native_tt_tail_correctness(monkeypatch, dtype):
     require_device()
     m, n, k = 17, 33, 65
     gen = torch.Generator().manual_seed(21)
@@ -407,8 +424,8 @@ def test_persistent_native_tt_tail_correctness(dtype):
     # Select the general pipeline explicitly; the recorded BF16 TT shape now
     # dispatches to Stream-K, whose alignment contract excludes this tail case.
     cfg, _ = config_for(m=2048, n=2048, k=4096, layout="TN")
-    result = gemm_a16w16(a_dev, b_dev.T, dtype=dtype, out=out,
-                         config=cfg, backend="gluon")
+    provide_gluon_config(monkeypatch, cfg)
+    result = gemm_a16w16(a_dev, b_dev.T, dtype=dtype, out=out, backend="gluon")
     assert result is out
     torch.testing.assert_close(result.cpu(), gold, atol=.001, rtol=.01)
     assert bool(torch.all(storage[:64].cpu() == 123))
@@ -426,8 +443,9 @@ def test_explicit_gluon_config_requires_selector(monkeypatch, selector):
         cfg.pop("kernel")
     else:
         cfg["kernel"] = selector
+    provide_gluon_config(monkeypatch, cfg)
     with pytest.raises(ValueError, match="kernel selector"):
-        gemm_a16w16(a, w, config=cfg, backend="gluon")
+        gemm_a16w16(a, w, backend="gluon")
     assert not calls
 
 
@@ -440,7 +458,7 @@ def test_fixed_tt_config_has_matching_layout_and_precision():
 
 @pytest.mark.parametrize("case", ["layout", "dtype", "output", "shape"])
 @pytest.mark.parametrize("kernel_layout", ["TN", "TT"])
-def test_explicit_fixed_rejects_mismatched_contract(case, kernel_layout):
+def test_explicit_fixed_rejects_mismatched_contract(monkeypatch, case, kernel_layout):
     require_device()
     from triton.compiler.errors import CompilationError
     dtype = torch.float16 if case == "dtype" else torch.bfloat16
@@ -452,8 +470,9 @@ def test_explicit_fixed_rejects_mismatched_contract(case, kernel_layout):
         w = w.as_strided(w.shape, (1, 64))
     cfg, _ = config_for(layout=kernel_layout)
     out_dtype = torch.float32 if case == "output" else dtype
+    provide_gluon_config(monkeypatch, cfg)
     with pytest.raises(CompilationError):
-        gemm_a16w16(a, w, dtype=out_dtype, config=cfg, backend="gluon")
+        gemm_a16w16(a, w, dtype=out_dtype, backend="gluon")
 
 
 NARROW_TT_KERNEL = "_gemm_a16w16_tt_kernel"
@@ -477,7 +496,7 @@ def test_narrow_tt_public_dispatch(monkeypatch, m):
 
 
 @pytest.mark.parametrize("case", ["tail", "layout", "dtype", "output"])
-def test_narrow_tt_explicit_contract_rejects_unsafe_inputs(case):
+def test_narrow_tt_explicit_contract_rejects_unsafe_inputs(monkeypatch, case):
     require_device()
     from triton.compiler.errors import CompilationError
     cfg, _ = config_for(m=2560, layout="TT")
@@ -487,8 +506,9 @@ def test_narrow_tt_explicit_contract_rejects_unsafe_inputs(case):
     if case != "layout":
         w = w.as_strided(w.shape, (1, 64))
     output = torch.float32 if case == "output" else dtype
+    provide_gluon_config(monkeypatch, cfg)
     with pytest.raises(CompilationError):
-        gemm_a16w16(a, w, dtype=output, backend="gluon", config=cfg)
+        gemm_a16w16(a, w, dtype=output, backend="gluon")
 
 
 @pytest.mark.parametrize("layout", ["TN", "TT"])
@@ -501,12 +521,13 @@ def test_triton_no_splitk_passes_positive_unused_stride(monkeypatch, layout):
     cfg = dict(BLOCK_SIZE_M=32, BLOCK_SIZE_N=64, BLOCK_SIZE_K=64,
                GROUP_SIZE_M=1, NUM_KSPLIT=1, SPLITK_BLOCK_SIZE=2048,
                num_warps=4, num_stages=2, cache_modifier=".cg")
-    result = gemm_a16w16(a, w, backend="triton", config=cfg)
+    provide_triton_config(monkeypatch, cfg)
+    result = gemm_a16w16(a, w, backend="triton")
     assert len(calls) == 1 and calls[0][0] == "triton"
     assert calls[0][2][11] == result.numel()
 
 
-def test_triton_no_splitk_native_correctness():
+def test_triton_no_splitk_native_correctness(monkeypatch):
     require_device()
     gen = torch.Generator().manual_seed(59)
     a = (torch.rand((64, 2048), generator=gen) - .5).bfloat16()
@@ -515,7 +536,8 @@ def test_triton_no_splitk_native_correctness():
     cfg = dict(BLOCK_SIZE_M=32, BLOCK_SIZE_N=64, BLOCK_SIZE_K=64,
                GROUP_SIZE_M=1, NUM_KSPLIT=1, SPLITK_BLOCK_SIZE=2048,
                num_warps=4, num_stages=2, cache_modifier=".cg")
-    result = gemm_a16w16(a.cuda(), b.cuda().T, backend="triton", config=cfg)
+    provide_triton_config(monkeypatch, cfg)
+    result = gemm_a16w16(a.cuda(), b.cuda().T, backend="triton")
     torch.testing.assert_close(result.cpu(), expected, atol=.001, rtol=.01)
 
 
