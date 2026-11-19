@@ -32,3 +32,12 @@ def test_fp8_discovery_skips_bf16_and_accepts_recorded_completion_count():
     cases = {case.key: case.record for case in regression.fp8.discover_cases()}
     assert "R001/1die/tn" not in cases
     assert cases["R008/2die/tn"]["performance"]["launched_TGs"] == 96
+
+
+def test_early_public_replay_accepts_perf_metadata_without_path(tmp_path):
+    [benchmark] = regression.select_benchmarks(["R001/1die/tn"])
+    replay = regression.linear.replay_record(benchmark.case, tmp_path)
+
+    assert replay["benchmark"]["timing_mode"] == "public_warm_median"
+    assert replay["performance"]["kernel_us"] == benchmark.case.record["performance"]["kernel_us"]
+    assert replay["environment"]["environment_variables"]["GPU_OUT"] == "m5out"

@@ -452,7 +452,7 @@ def replay_record(case, output):
     """
     record = deepcopy(case.record)
     for name in ('assembly', 'single_tg_perf'):
-        if name in record:
+        if record.get(name, {}).get('path'):
             record[name]['path'] = str((case.record_path.parent / record[name]['path']).resolve())
     for name in ('source', 'config', 'public_api'):
         item = record[name]
