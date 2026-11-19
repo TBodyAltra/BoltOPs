@@ -278,13 +278,14 @@
         2
       ],
       "wasp_wdra": false,
-      "kernel": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bk128_kernel"
+      "kernel": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bk128_kernel",
+      "enable_v_mmac_cluster": 2
     },
     "commit": "049e846c549d651307dd95ca3a7c02a57ff7411b",
     "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/049e846c549d651307dd95ca3a7c02a57ff7411b/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json",
     "measured_commit": "ceae2e40d7f206cc04812fdacae405f9995f0de0",
     "measured_sha256": "b066fe77a6b830efa9bba946bc8a522f3f425c227e5241059fe357cb61b2cb8a",
-    "historical_launch_options_note": "Published executable was measured through the historical selector; the generic selector is checked for executable-section equivalence.",
+    "historical_launch_options_note": "The archived executable used measured_launch_options. launch_options describes the current public replay configuration.",
     "measured_launch_options": {
       "BLOCK_SIZE_M": 64,
       "BLOCK_SIZE_N": 32,
@@ -517,5 +518,64 @@
     "current_kernel_module_sha256": "8bc14dacf6307f7652929b3d0334f53ffd68901b8b3edb8c92893137df5a67ea",
     "review_report": "/home/kxu/boltops-gemm-mr-scan-20261118/review-report.json",
     "note": "Published measurements and source hashes describe the historical measured entry. Current review validation and compilation comparisons are reported separately; historical timings are not overwritten."
+  },
+  "current_toolchain_validation": {
+    "driver": "node60 PMD",
+    "interface": "public auto",
+    "runtime": {
+      "libtriton_sha256": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+      "clang_sha256": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe"
+    },
+    "aggregation": "median of three independent warm-mean regression runs",
+    "kernel_us": 14.541951666666666,
+    "full_grid_TGs": 64,
+    "runs": [
+      {
+        "kernel_us": 14.429415,
+        "samples_kernel_us": [
+          16.377725,
+          14.44898,
+          14.4326,
+          14.406665
+        ],
+        "stats_sha256": [
+          "8cb65c6cc897cb4d201982283ea588b4bad50cbbf70876b85ac04b130fdc9811",
+          "2a833b5e37670401166808e184946dd4c71f5d595e26e6b514e2dbe6abdc3f52",
+          "40e9a743e0ed680abe136ffb1f63c2872a5a1035da7a7537ec7409bb3cff062a",
+          "d2bd61099b3bb808b5ef2774b9d5ebc45c809b512c413eefb940174726be474f"
+        ]
+      },
+      {
+        "kernel_us": 14.541951666666666,
+        "samples_kernel_us": [
+          16.666195,
+          14.560455,
+          14.50267,
+          14.56273
+        ],
+        "stats_sha256": [
+          "80ac826a49377e0837824823d9197ff6c7f6aee36b2c8fc62d9c89aa4a0e642e",
+          "b5aa3983b604c97d545b8fff94b5fcf2313f748dc104bd31ba94a7ab12b1972e",
+          "15c8c35333e23e6d8acc3efad36b4c79925921ccb6599b226aa0d38cfbf3c4b8",
+          "e844b3e1a9a7a8e6f879848803b80dc370fab827f4e40db9fb61c28c669d1a81"
+        ]
+      },
+      {
+        "kernel_us": 14.605348333333334,
+        "samples_kernel_us": [
+          16.6075,
+          14.58639,
+          14.56546,
+          14.664195
+        ],
+        "stats_sha256": [
+          "402ec16cbbecb2843ef10a43b02af3d09ebfba1fd5358ff6d620be820f812405",
+          "8295e199c239649f6e998923b2a9a892b3482eec25c64a8a6fc7786ac144b257",
+          "b524d16296d77bc0ef70c31a325fe38c0f3cdb866ed6c2151658974b7e4aea2b",
+          "7b74abe08dc5dc26331b2d9eafa3174b9731463b0349ed8d51d81b8cb0b7e9d3"
+        ]
+      }
+    ],
+    "report_location": "node60:/tmp/pr45-r005-ci.JAFgfX/fp8-gemm-options/r005/2die/tn/mmac_cluster_2"
   }
 }
