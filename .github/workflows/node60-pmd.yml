@@ -10,7 +10,7 @@ on:
         required: true
         type: number
       mode:
-        description: PMD grid size
+        description: sbx2 case coverage (both modes run full shapes and grids)
         required: true
         type: choice
         options: [quick, full]
@@ -41,5 +41,6 @@ jobs:
             .head.repo.full_name == $repo and .draft == false' >/dev/null
         {
           echo "Queued PMD request for PR #$PR (BF16 and FP8, $MODE)."
+          echo "Both modes use full shapes and grids on sbx2. Quick uses a smaller case set."
           echo "The node60 dispatcher reports execution and results as a commit status on the PR."
         } >> "$GITHUB_STEP_SUMMARY"
