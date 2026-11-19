@@ -153,8 +153,8 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r003/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r003/1die/tt/record.json">10.565 / 63.52 / 14.70%<br>读写带宽：1.048 TB/s（逻辑 A/B 读、C 写）</a></td>
-      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json">config</a> / <a href="tuning/r003/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r003/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r003/1die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r003/1die/tt/record.json">10.565 / 63.52 / 14.70%<br>读写带宽：1.048 TB/s（逻辑 A/B 读、C 写）</a><br>当前 CI 公开接口复测：10.571 µs</td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json">config</a> / <a href="tuning/r003/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r003/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r003/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r003/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
       <td>—</td>
