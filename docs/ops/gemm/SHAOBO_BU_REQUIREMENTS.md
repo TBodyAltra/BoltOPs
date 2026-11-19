@@ -416,10 +416,10 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r012/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r012/2die/tn/record.json">233.743 / 1074.92 / 62.19%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/aebac284ff2763ec71b8eb94bfc92dc71e1900e8/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L430">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/aebac284ff2763ec71b8eb94bfc92dc71e1900e8/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r012/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r012/2die/tn/benchmark.py">测试代码</a> / <a href="tuning/r012/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r012/2die/tn/single_tg.perf">PERF</a></td>
     </tr>
     <tr>
       <td><a href="#r013">R013</a><a name="r013"></a></td>
@@ -444,10 +444,10 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r013/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r013/2die/tn/record.json">312.454 / 1072.18 / 62.03%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/aebac284ff2763ec71b8eb94bfc92dc71e1900e8/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L430">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/aebac284ff2763ec71b8eb94bfc92dc71e1900e8/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r013/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r013/2die/tn/benchmark.py">测试代码</a> / <a href="tuning/r013/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r013/2die/tn/single_tg.perf">PERF</a></td>
     </tr>
   </tbody>
 </table>

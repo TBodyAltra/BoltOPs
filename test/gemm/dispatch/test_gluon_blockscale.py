@@ -52,16 +52,17 @@ def test_48tg_config_is_exact_and_cu_specific():
 
 
 @pytest.mark.parametrize(
-    "m,scale_dtype,expected_backend",
+    "m,scale_dtype,expected_backend,strided_out",
     [
-        (768, torch.float32, "gluon"),
-        (640, torch.float32, "triton"),
-        (768, torch.float16, "triton"),
+        (768, torch.float32, "gluon", False),
+        (640, torch.float32, "triton", False),
+        (768, torch.float16, "triton", False),
+        (768, torch.float32, "gluon", True),
     ],
 )
 @pytest.mark.parametrize("a_column_major", [False, True])
 def test_auto_selects_only_the_recorded_gluon_shape(
-    monkeypatch, m, scale_dtype, expected_backend, a_column_major
+    monkeypatch, m, scale_dtype, expected_backend, a_column_major, strided_out
 ):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
@@ -99,8 +100,18 @@ def test_auto_selects_only_the_recorded_gluon_shape(
     b = torch.empty((2048, 6144), dtype=a.dtype, device=a.device)
     sa = torch.empty((m, 48), dtype=scale_dtype, device=a.device)
     sb = torch.empty((16, 48), dtype=torch.float32, device=a.device)
-    out = gemm_a8w8_blockscale(a, b, sa, sb)
-    assert out.shape == (m, 2048) and out.dtype == torch.bfloat16
+    out = None
+    if strided_out:
+        out = torch.empty((2048, m), dtype=torch.bfloat16, device=a.device).T
+    if strided_out and expected_backend == "gluon":
+        with pytest.raises(ValueError, match="output must be contiguous"):
+            gemm_a8w8_blockscale(a, b, sa, sb, out=out)
+        assert not calls
+        return
+    result = gemm_a8w8_blockscale(a, b, sa, sb, out=out)
+    if strided_out:
+        assert result is out
+    assert result.shape == (m, 2048) and result.dtype == torch.bfloat16
     assert len(calls) == 1 and calls[0][0] == expected_backend
     if expected_backend == "gluon":
         assert calls[0][1] == (6, 8)
@@ -160,7 +171,7 @@ def test_native_gluon_blockscale_small():
     torch.testing.assert_close(out.cpu(), golden.bfloat16(), atol=0, rtol=0)
 
 
-def test_gluon_kernel_and_tile_come_from_config(monkeypatch):
+def test_gluon_kernel_and_tile_come_from_config(monkeypatch, override_gemm_config):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     seen = {}
@@ -188,7 +199,8 @@ def test_gluon_kernel_and_tile_come_from_config(monkeypatch):
     b = torch.empty((256, 256), dtype=a.dtype, device=a.device)
     sa = torch.empty((128, 2), dtype=torch.float32, device=a.device)
     sb = torch.empty((2, 2), dtype=torch.float32, device=a.device)
-    gemm_a8w8_blockscale(a, b, sa, sb, backend="gluon", config=config)
+    override_gemm_config("GEMM-A8W8_BLOCKSCALE", config, backend="gluon")
+    gemm_a8w8_blockscale(a, b, sa, sb, backend="gluon")
     assert config == before
     assert seen["grid"] == (2, 2)
     assert tuple(seen["params"]["BLOCK_SIZE_" + dim] for dim in ("M", "N", "K")) == (
@@ -248,7 +260,7 @@ def test_fp32_scale_64x64_config_is_shape_specific():
 
 
 @pytest.mark.parametrize("k", [128, 256, 384])
-def test_native_gluon_fp32_scales_64x64(k):
+def test_native_gluon_fp32_scales_64x64(override_gemm_config, k):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU")
     from boltops.utility.arch_info import get_device_info
@@ -270,8 +282,9 @@ def test_native_gluon_fp32_scales_64x64(k):
         start, end = group * 128, (group + 1) * 128
         golden += (x[:, start:end].float() @ w[:, start:end].float().T) * (
             sa[:, group, None] * sb[:, group].float().repeat_interleave(128)[:n][None, :])
+    override_gemm_config("GEMM-A8W8_BLOCKSCALE", config, backend="gluon")
     out = gemm_a8w8_blockscale(x.cuda(), w.cuda(), sa.cuda(), sb.cuda(),
-                              backend="gluon", config=config)
+                              backend="gluon")
     torch.testing.assert_close(out.cpu(), golden.bfloat16(), atol=0, rtol=0)
 
 
@@ -324,7 +337,7 @@ def test_qwen_recorded_pipeline_grid(monkeypatch, m, n, k, tgs):
         ((2560, 2048, 4096), (256, 768, 4096), 4),
     ],
 )
-def test_qwen_native_scale_pipelines(record_shape, shape, tgs):
+def test_qwen_native_scale_pipelines(override_gemm_config, record_shape, shape, tgs):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU")
     from boltops.utility.arch_info import get_device_info
@@ -353,9 +366,10 @@ def test_qwen_native_scale_pipelines(record_shape, shape, tgs):
         )
     storage = torch.full((m * n + 512,), -4096., dtype=torch.bfloat16, device="cuda")
     output = storage[256:-256].view(m, n)
+    override_gemm_config("GEMM-A8W8_BLOCKSCALE", config, backend="gluon")
     result = gemm_a8w8_blockscale(
         a.cuda(), b.cuda(), sa.cuda(), sb.cuda(), out=output,
-        backend="gluon", config=config,
+        backend="gluon",
     )
     assert result is output
     torch.testing.assert_close(result.cpu(), golden.bfloat16(), atol=0, rtol=0)
@@ -363,7 +377,7 @@ def test_qwen_native_scale_pipelines(record_shape, shape, tgs):
     assert bool((storage[-256:].cpu() == -4096).all())
 
 
-def test_chunked_scale_pipeline_rejects_partial_chunks():
+def test_chunked_scale_pipeline_rejects_partial_chunks(override_gemm_config):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     from boltops.utility.arch_info import get_device_info
@@ -381,8 +395,9 @@ def test_chunked_scale_pipeline_rejects_partial_chunks():
     b = torch.empty((256, 3072), dtype=a.dtype, device=a.device)
     sa = torch.empty((128, 24), dtype=torch.float32, device=a.device)
     sb = torch.empty((2, 24), dtype=torch.float32, device=a.device)
+    override_gemm_config("GEMM-A8W8_BLOCKSCALE", config, backend="gluon")
     with pytest.raises(CompilationError, match="complete 16-group chunks"):
-        gemm_a8w8_blockscale(a, b, sa, sb, backend="gluon", config=config)
+        gemm_a8w8_blockscale(a, b, sa, sb, backend="gluon")
 
 
 @pytest.mark.parametrize("shape,cu_count,layout", [
@@ -520,7 +535,7 @@ def test_64x32_config_is_shape_and_cu_specific():
 
 
 @pytest.mark.parametrize("m,n,k", [(64, 96, 128), (64, 192, 256), (128, 160, 384)])
-def test_64x32_scale_groups_and_output_guards(m, n, k):
+def test_64x32_scale_groups_and_output_guards(override_gemm_config, m, n, k):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU")
     from boltops.utility.arch_info import get_device_info
@@ -544,9 +559,9 @@ def test_64x32_scale_groups_and_output_guards(m, n, k):
         golden += (a[:, tile].float() @ b[:, tile].float().T) * sa[:, i, None] * sb[:, i].repeat_interleave(128)[:n][None, :]
     storage = torch.full((m * n + 512,), 123., device="cuda", dtype=torch.bfloat16)
     out = storage[256:-256].view(m, n)
+    override_gemm_config("GEMM-A8W8_BLOCKSCALE", cfg, backend="gluon")
     result = gemm_a8w8_blockscale(
-        a.cuda(), b.cuda(), sa.cuda(), sb.cuda(), out=out,
-        backend="gluon", config=cfg,
+        a.cuda(), b.cuda(), sa.cuda(), sb.cuda(), out=out, backend="gluon",
     )
     assert result is out and cfg == original
     torch.testing.assert_close(result.cpu(), golden.bfloat16(), atol=0, rtol=0)
