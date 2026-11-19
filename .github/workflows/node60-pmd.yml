@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
 name: BoltOPs node60 PMD
-run-name: "PMD PR #${{ inputs.pr }} ${{ inputs.mode }} ${{ inputs.record_1 || 'none' }} ${{ inputs.record_2 || 'none' }} ${{ inputs.record_3 || 'none' }} ${{ inputs.record_4 || 'none' }}"
+run-name: "PMD PR #${{ inputs.pr }}"
 on:
   workflow_dispatch:
     inputs:
@@ -9,93 +9,11 @@ on:
         description: Pull request number (target gemm)
         required: true
         type: number
-      mode:
-        description: Choose records manually or run the full dual-DIE suite
-        required: true
-        type: choice
-        options: [selected, full]
-        default: selected
-      record_1:
-        description: Optional record 1 (requirement / DIE / layout)
-        type: choice
-        default: none
-        options: &pmd_records
-          - none
-          - r001/1die/tn
-          - r001/1die/tt
-          - r002/1die/tt
-          - r002/2die/tt
-          - r003/1die/tt
-          - r004/1die/tt
-          - r004/2die/tn
-          - r004/2die/tt
-          - r005/1die/tn
-          - r006/1die/tn
-          - r007/1die/tn
-          - r008/1die/tn
-          - r008/2die/tn
-          - r009/1die/tn
-          - r009/2die/tn
-          - r010/1die/tn
-          - r010/2die/tn
-          - r010/2die/tt
-          - r011/1die/tn
-          - r011/2die/tn
-          - r012/1die/tn
-          - r013/1die/tn
-          - r020/2die/tt
-          - r021/1die/tt
-          - r021/2die/tt
-          - r022/1die/tt
-          - r022/2die/tt
-          - r024/1die/tt
-          - r024/2die/tt
-          - r025/1die/tt
-          - r025/2die/tt
-          - r026/1die/tt
-          - r026/2die/tt
-          - r029/1die/tt
-          - r029/2die/tt
-          - r030/1die/tt
-          - r030/2die/tt
-          - r031/1die/tt
-          - r031/2die/tt
-          - r033/1die/tt
-          - r033/2die/tt
-          - r034/1die/tt
-          - r034/2die/tt
-          - r035/1die/tt
-          - r035/2die/tt
-          - r036/1die/tt
-          - r036/2die/tt
-          - r037/1die/tt
-          - r037/2die/tt
-          - r038/1die/tt
-          - r038/2die/tt
-          - r039/1die/tt
-          - r039/2die/tt
-          - r040/1die/tt
-          - r040/2die/tt
-      record_2:
-        description: Optional record 2 (requirement / DIE / layout)
-        type: choice
-        default: none
-        options: *pmd_records
-      record_3:
-        description: Optional record 3 (requirement / DIE / layout)
-        type: choice
-        default: none
-        options: *pmd_records
-      record_4:
-        description: Optional record 4 (requirement / DIE / layout)
-        type: choice
-        default: none
-        options: *pmd_records
 permissions:
   pull-requests: read
 jobs:
   request:
-    name: Queue node60 PMD
+    name: Queue unified node60 PMD regression
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -103,43 +21,14 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         PR: ${{ inputs.pr }}
-        MODE: ${{ inputs.mode }}
-        RECORD_1: ${{ inputs.record_1 || 'none' }}
-        RECORD_2: ${{ inputs.record_2 || 'none' }}
-        RECORD_3: ${{ inputs.record_3 || 'none' }}
-        RECORD_4: ${{ inputs.record_4 || 'none' }}
       run: |
         set -euo pipefail
         [[ "$PR" =~ ^[1-9][0-9]*$ ]]
-        case "$MODE" in
-          selected|full) ;;
-          *) exit 1 ;;
-        esac
-        selected=()
-        for record in "$RECORD_1" "$RECORD_2" "$RECORD_3" "$RECORD_4"; do
-          if [[ "$record" != none ]]; then
-            [[ "$record" =~ ^r[0-9]{3}/[12]die/(tn|tt)$ ]]
-            selected+=("$record")
-          fi
-        done
-        if [[ "$MODE" == selected ]] && (( ! ${#selected[@]} )); then
-          echo "Select at least one record for the selected mode." >&2
-          exit 1
-        fi
-        if [[ "$MODE" == full ]] && (( ${#selected[@]} )); then
-          echo "Clear the record selections for the full suite." >&2
-          exit 1
-        fi
         gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" |
           jq -e --arg repo "$GITHUB_REPOSITORY" '
             .state == "open" and .base.ref == "gemm" and
             .head.repo.full_name == $repo and .draft == false' >/dev/null
         {
-          if (( ${#selected[@]} )); then
-            echo "Queued PMD request for PR #$PR with selected records: ${selected[*]}."
-          else
-            echo "Queued PMD request for PR #$PR (BF16 and FP8, dual DIE $MODE preset)."
-          fi
-          echo "All cases run with their complete shape and grid."
-          echo "The node60 dispatcher reports execution and results as a commit status on the PR."
+          echo "Queued unified BF16 and FP8 PMD regression for PR #$PR."
+          echo "Follow the node60-pmd/gemm check on the PR for results."
         } >> "$GITHUB_STEP_SUMMARY"
