@@ -109,8 +109,11 @@ def gemm_a16w16(
             BF16 also has a 256x128x64 Stream-K entry with one TG per CU.
             It requires 16-byte-aligned tensor pointers, at least one tile
             per CU, M divisible by 4 and N divisible by 128. K must be
-            divisible by 64 for TN and by 16 for TT. Auto uses Triton for unaligned pointers.
-            FP16 can reuse the 256x256 persistent BF16 launch geometry. TileLang is not
+            divisible by 64 for TN and by 16 for TT. Auto uses Triton when a
+            Gluon configuration requires 16-byte alignment and a pointer is unaligned.
+            On gfx946 with 96 CU, the Triton fallback can also select shape- and
+            layout-specific BF16 TN/TT configurations. FP16 can reuse the
+            256x256 persistent BF16 launch geometry on 48 CU. TileLang is not
             implemented for nonempty computation. After Gluon selection, exact experimental BF16
             TT profiles may select WASP/MLS on gfx946/48 CU without bias or activation.
             BF16 MLS requires complete M/N/K tiles, BF16 output, and the recorded
@@ -221,7 +224,10 @@ def gemm_a16w16(
                     pass
                 else:
                     if tuned and (
-                        gluon_config.get("kernel") != _BF16_TT_STREAMK_KERNEL
+                        not (
+                            gluon_config.get("requires_16_byte_alignment", False)
+                            or gluon_config.get("kernel") == _BF16_TT_STREAMK_KERNEL
+                        )
                         or all(t.data_ptr() % 16 == 0 for t in (a, b, out))
                     ):
                         backend = "gluon"
@@ -240,19 +246,17 @@ def gemm_a16w16(
                 )
                 config = None
                 if (
-                    device.arch == "gfx946"
-                    and device.cu_count == 48
+                    gluon_inputs_supported
                     and a.dtype == out_dtype == torch.bfloat16
-                    and bias is None
-                    and activation is None
-                    and a.stride() == (k, 1)
-                    and b.stride() == (1, n)
+                    and (device.cu_count == 96 or (device.cu_count == 48 and b.stride() == (1, n)))
                 ):
+                    single_die = device.cu_count == 48
                     try:
                         candidate, tuned = get_gemm_config(
-                            "GEMM-A16W16", m, n, k, backend="triton", layout="TT",
-                            profile=_BF16_MLS_PROFILE, arch=device.arch,
-                            cu_num=device.cu_count,
+                            "GEMM-A16W16", m, n, k, backend="triton",
+                            layout="TT" if single_die else gluon_layout,
+                            profile=_BF16_MLS_PROFILE if single_die else gluon_profile,
+                            arch=device.arch, cu_num=device.cu_count,
                         )
                     except (FileNotFoundError, KeyError):
                         pass
@@ -435,6 +439,10 @@ def gemm_a16w16(
             import triton
             from .gluon import gemm_a16w16 as kernels
 
+            if config.pop("requires_16_byte_alignment", False) and any(
+                t.data_ptr() % 16 for t in (a, b, out)
+            ):
+                raise ValueError("Gluon configuration requires 16-byte-aligned tensor pointers")
             selector = config.pop("kernel", None)
             if not isinstance(selector, str) or not hasattr(kernels, selector):
                 raise ValueError("Gluon config requires a valid kernel selector")

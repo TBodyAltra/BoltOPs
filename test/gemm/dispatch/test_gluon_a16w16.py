@@ -24,13 +24,13 @@ def config_for(m=64, n=64, k=2048, profile=PROFILE, layout="TN", cu=48):
                            layout=layout, backend="gluon", arch="gfx946", cu_num=cu)
 
 
-def require_device():
+def require_device(cu_count=48):
     if not torch.cuda.is_available():
         pytest.skip("requires GPU allocations")
     from boltops.utility.arch_info import get_device_info
     device = get_device_info()
-    if device.arch != "gfx946" or device.cu_count != 48:
-        pytest.skip("requires gfx946 with 48 CU")
+    if device.arch != "gfx946" or device.cu_count != cu_count:
+        pytest.skip(f"requires gfx946 with {cu_count} CU")
     pytest.importorskip("triton.experimental.gluon.language.amd.hcu")
 
 
@@ -57,8 +57,8 @@ class Capture:
         return run
 
 
-def install_captures(monkeypatch):
-    require_device()
+def install_captures(monkeypatch, cu_count=48):
+    require_device(cu_count)
     calls = []
     gluon = import_module("boltops.gemm.gluon.gemm_a16w16")
     triton = import_module("boltops.gemm.triton.gemm_a16w16")
@@ -481,6 +481,26 @@ def test_narrow_tt_public_dispatch(monkeypatch, m):
     assert params["wasp_partition_warps"] == (1, 4)
     assert (params["CHUNKS"], params["SLOTS"]) == (2, 3)
     assert params["B_K_CONTIGUOUS"] is False
+
+
+@pytest.mark.parametrize("unaligned", ["x", "w", "out"])
+def test_dual_die_narrow_tt_alignment(monkeypatch, unaligned):
+    calls = install_captures(monkeypatch, cu_count=96)
+    gluon = import_module("boltops.gemm.gluon.gemm_a16w16")
+    monkeypatch.setattr(gluon, NARROW_TT_KERNEL, Capture("narrow_tt", calls))
+
+    def tensor(name, shape):
+        offset = int(name == unaligned)
+        storage = torch.empty(shape[0] * shape[1] + offset, dtype=torch.bfloat16, device="cuda")
+        return storage[offset:].view(shape)
+
+    x = tensor("x", (2048, 2048))
+    w = tensor("w", (2048, 64)).T
+    out = tensor("out", (2048, 64))
+    assert gemm_a16w16(x, w, out=out) is out
+    assert [call[0] for call in calls] == ["triton"]
+    with pytest.raises(ValueError, match="16-byte-aligned tensor pointers"):
+        gemm_a16w16(x, w, out=out, backend="gluon")
 
 
 @pytest.mark.parametrize("case", ["tail", "layout", "dtype", "output"])
