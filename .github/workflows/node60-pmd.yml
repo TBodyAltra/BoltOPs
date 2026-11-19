@@ -1,0 +1,52 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: MIT
+name: BoltOPs node60 PMD
+run-name: "PMD PR #${{ inputs.pr }} ${{ inputs.precision }} ${{ inputs.mode }}"
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number (target gemm)
+        required: true
+        type: number
+      precision:
+        description: GEMM precision
+        required: true
+        type: choice
+        options: [bf16, fp8]
+        default: bf16
+      mode:
+        description: PMD grid size
+        required: true
+        type: choice
+        options: [quick, full]
+        default: quick
+permissions:
+  pull-requests: read
+jobs:
+  request:
+    name: Queue node60 PMD
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validate request
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR: ${{ inputs.pr }}
+        PRECISION: ${{ inputs.precision }}
+        MODE: ${{ inputs.mode }}
+      run: |
+        set -euo pipefail
+        [[ "$PR" =~ ^[1-9][0-9]*$ ]]
+        case "$PRECISION:$MODE" in
+          bf16:quick|bf16:full|fp8:quick|fp8:full) ;;
+          *) exit 1 ;;
+        esac
+        gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" |
+          jq -e --arg repo "$GITHUB_REPOSITORY" '
+            .state == "open" and .base.ref == "gemm" and
+            .head.repo.full_name == $repo and .draft == false' >/dev/null
+        {
+          echo "Queued PMD request for PR #$PR ($PRECISION, $MODE)."
+          echo "The node60 dispatcher reports execution and results as a commit status on the PR."
+        } >> "$GITHUB_STEP_SUMMARY"
