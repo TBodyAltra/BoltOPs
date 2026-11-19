@@ -186,7 +186,10 @@ class GemmRegressionTest(unittest.TestCase):
         model = fp8.discover_cases()
         bf16 = linear.discover_cases()
         has = lambda r: (linear.REPO / f'docs/ops/gemm/tuning/{r}/record.json').is_file()
-        self.assertEqual(len(model), 22 + has('r001/2die/tn') + has('r003/2die/tn') + has('r005/2die/tn'))
+        self.assertEqual(sum(not linear.is_linear_record(c.record) for c in model),
+                         16 + has('r005/2die/tn'))
+        self.assertTrue({'R004/2die/tn', 'R004/2die/tt'}.issubset(
+            c.key for c in model if linear.is_linear_record(c.record)))
         self.assertEqual(len(bf16), 25 + has('r001/2die/tn') + has('r003/2die/tn'))
         self.assertTrue(all(c.dtype == 'bf16' for c in bf16))
         self.assertEqual({c.key for c in model if c.record.get('public_api', {}).get('path') == linear.OPERATOR},

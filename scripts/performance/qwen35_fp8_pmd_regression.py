@@ -120,7 +120,7 @@ class Case:
         return self.key.lower()
 
 
-def discover_cases(repo=REPO):
+def discover_cases(repo=REPO, *, include_linear=True):
     repo = Path(repo)
     document = repo / DOCUMENT
     text = document.read_text()
@@ -141,6 +141,8 @@ def discover_cases(repo=REPO):
                 and not record.get('regression', {}).get('operator') == linear.OPERATOR):
             continue
         record = normalize_record(record, path)
+        if not include_linear and linear.is_linear_record(record):
+            continue
         positive(record['performance']['kernel_us'], 'baseline kernel_us')
         positive(record['performance']['launched_TGs'], 'baseline launched_TGs')
         if record['environment']['type'] != 'PMD':
