@@ -111,9 +111,17 @@ def measure(output, record, variant, repeats, perf, repo, automatic=False):
                 module = importlib.import_module(mod)
                 setattr(module, attr, CaptureKernel(getattr(module, attr), artifact))
 
-        def launch():
-            options = {} if family == 'public' or automatic else dict(backend='triton', config=config)
-            assert public.gemm_a16w16(a, w, out=c, **options) is c
+        if family == 'public' or automatic:
+            def launch():
+                assert public.gemm_a16w16(a, w, out=c) is c
+        else:
+            from boltops.gemm.triton.gemm_a16w16 import gemm_a16w16 as triton_gemm
+            from boltops.utility.arch_info import get_device_info
+
+            device = get_device_info(a.device)
+
+            def launch():
+                triton_gemm(a, w, c, bias=None, activation=None, device=device, config=config)
     else:
         block_m, block_n, _ = (config['BLOCK_SIZE_' + d] for d in 'MNK')
         tiles = triton.cdiv(m, block_m) * triton.cdiv(n, block_n)
