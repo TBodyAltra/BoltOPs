@@ -15,3 +15,7 @@ Use `--dry-run` to inspect the launch. Use `--compile-only` to save the freshly 
 The main table retains the existing TT records and their original sampling protocols. Cross-layout and cross-toolchain comparisons are descriptive.
 
 R042 TN and R045 TN retain their measured HSACO. Recompiling the same source reproduced resource usage and produced a different instruction sequence. For these two records, `--compile-only` reports the fresh instruction mismatch without loading the archived binary. Full replay loads the archived HSACO after verifying that its target, kernel argument layout, segment sizes, and workgroup requirements match the fresh launcher. The ABI check uses MessagePack metadata from both ELF files.
+
+Use `--current-toolchain` with a sourced PMD environment to time freshly
+compiled code with the recorded source, inputs and launch. The result reports
+the actual toolchain and whether the executable sections match the archive.

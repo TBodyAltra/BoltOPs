@@ -48,10 +48,13 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--compile-only', action='store_true')
+    parser.add_argument('--current-toolchain', action='store_true',
+                        help='measure freshly compiled code using the sourced PMD toolchain')
     args = parser.parse_args()
     record = json.loads(args.record.read_text())
     job = dict(record['replay_job'], expected_toolchain=record['environment']['toolchain'],
-               expected_executable_sections=record['assembly']['executable_sections'])
+               expected_executable_sections=record['assembly']['executable_sections'],
+               current_toolchain=args.current_toolchain)
     if args.compile_only:
         job['compile_only'] = True
     source = record['source']
@@ -63,7 +66,8 @@ def main():
         print(json.dumps(dict(record=record['record_key'], shape=job['shape'],
                               grid=[record['full_grid_TGs']], strides=record['config']['strides'],
                               options=record['config']['parameters'], source_sha256=source['sha256'],
-                              dispatches=job['dispatches'], seed=job['seed'], timed_seed=job['timed_seed']), indent=2))
+                              dispatches=job['dispatches'], seed=job['seed'], timed_seed=job['timed_seed'],
+                              current_toolchain=args.current_toolchain), indent=2))
         return
     if args.output is None:
         parser.error('--output is required for replay')
@@ -78,7 +82,8 @@ def main():
             path = (overlay / item['path']).resolve()
             assert path.is_relative_to(overlay)
             path.write_bytes(data)
-    if archived := record['assembly'].get('archived_code_object'):
+    archived = record['assembly'].get('archived_code_object')
+    if archived and not args.current_toolchain:
         record_dir = args.record.resolve().parent
         job.update(archived_code_object=str(record_dir/archived),
                    archived_code_sha256=record['assembly']['hsaco_sha256'],
@@ -102,9 +107,10 @@ def main():
     compiled = json.loads((out/'compile.json').read_text())
     assert compiled['source_sha256'] == source['sha256']
     assert compiled['grid'] == record['full_grid_TGs'] and compiled['strides'] == record['config']['strides']
-    assert compiled['resources'] == record['resources']
+    if not args.current_toolchain:
+        assert compiled['resources'] == record['resources']
     sections = executable_sections((out/'kernel.hsaco').read_bytes())
-    if args.compile_only:
+    if args.compile_only or args.current_toolchain:
         assert compiled['code_origin'] == 'fresh'
         assert sections == compiled['fresh_executable_sections']
         print(json.dumps(dict(code_origin='fresh',

@@ -106,9 +106,15 @@ def main():
                      libtriton_sha256=sha(Path(lib.__file__).read_bytes()),
                      clang_sha256=sha(Path(os.environ['TRITON_HIP_CLANG_PATH']).read_bytes()))
     expected_toolchain = job['expected_toolchain']
-    for key, expected in expected_toolchain.items():
-        if toolchain.get(key) != expected:
-            raise ValueError(f'replay toolchain differs for {key}: expected {expected}, got {toolchain.get(key)}')
+    toolchain_differences = {
+        key: dict(measured=expected, current=toolchain.get(key))
+        for key, expected in expected_toolchain.items() if toolchain.get(key) != expected
+    }
+    current_toolchain = job.get('current_toolchain', False)
+    if toolchain_differences and not current_toolchain:
+        raise ValueError(f'replay toolchain differs: {toolchain_differences}')
+    if current_toolchain and 'archived_code_object' in job:
+        raise ValueError('current-toolchain comparison requires fresh compiled code')
 
     assert os.environ['GPU_CHIP'] == 'sbx2'
     assert triton.runtime.driver.active.get_current_target().arch == 'gfx946'
@@ -195,7 +201,7 @@ def main():
             handle.asm['hsaco'] = binary
             handle.asm['amdgcn'] = assembly.decode()
             code_origin = 'archived'
-    elif not fresh_matches_measured:
+    elif not fresh_matches_measured and not current_toolchain:
         raise ValueError('fresh executable sections differ from the measured code object')
     handle._init_handles()
     resources = dict(VGPR=handle.n_regs, spills=handle.n_spills, LDS_bytes=handle.metadata.shared)
@@ -203,7 +209,8 @@ def main():
     Path('kernel.hsaco').write_bytes(handle.asm['hsaco'])
     write_json('compile.json', dict(job=job, grid=grid, logical_tiles=tiles, strides=dict(A=a.stride(), B=b.stride(), C=c.stride()),
                symbol=symbol, options=options, resources=resources, source_sha256=sha(Path(module.__file__).read_bytes()),
-               toolchain=toolchain, code_origin=code_origin, archived_abi_verified=archived_abi_verified,
+               toolchain=toolchain, toolchain_differences=toolchain_differences,
+               code_origin=code_origin, archived_abi_verified=archived_abi_verified,
                fresh_hsaco_sha256=sha(fresh_binary), fresh_executable_sections=fresh_sections,
                fresh_matches_measured=fresh_matches_measured, hsaco_sha256=sha(handle.asm['hsaco'])))
     assert resources['spills'] == 0 or (family == 'baseline' and not job.get('fallback_baseline')), resources
@@ -275,6 +282,8 @@ def main():
     measured = samples[1:] if len(samples) > 1 else samples
     us = statistics.median(s['us'] for s in measured)
     write_json('result.json', dict(status='PASS', job=job, samples=samples, kernel_us=us,
+                                  matches_measured_executable=fresh_matches_measured,
+                                  code_origin=code_origin, toolchain=toolchain,
                                   tops=2*m*n*k/(us*1e6), logical_gbs=2*(m*k+n*k+m*n)/(us*1e3),
                                   benchmark_sha256=sha(Path(__file__).read_bytes())))
 
