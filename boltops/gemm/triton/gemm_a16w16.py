@@ -254,18 +254,22 @@ def gemm_a16w16(
             and b.stride() in ((k, 1), (1, n))
         ):
             layout = "TN" if b.stride() == (k, 1) else "TT"
-            if device.cu_count == 96 or (device.cu_count == 48 and layout == "TT"):
+            profiles = ()
+            if device.cu_count == 48 and layout == "TT":
+                profiles = (_BF16_MLS_PROFILE,)
+            elif device.cu_count == 96:
+                profiles = (_BF16_MLS_PROFILE, _BF16_PROFILE) if layout == "TT" else (_BF16_PROFILE,)
+            for profile in profiles:
                 try:
                     candidate, tuned = get_gemm_config(
                         "GEMM-A16W16", m, n, k, backend="triton", layout=layout,
-                        profile=_BF16_MLS_PROFILE if device.cu_count == 48 else _BF16_PROFILE,
-                        arch=device.arch, cu_num=device.cu_count,
+                        profile=profile, arch=device.arch, cu_num=device.cu_count,
                     )
                 except (FileNotFoundError, KeyError):
-                    pass
-                else:
-                    if tuned:
-                        config = candidate
+                    continue
+                if tuned:
+                    config = candidate
+                    break
         if config is None:
             config, _ = get_gemm_config(
                 "GEMM-A16W16",
@@ -285,7 +289,7 @@ def gemm_a16w16(
             device.arch != "gfx946"
             or a.dtype != out_dtype
             or (a.dtype != torch.float16 and not bf16_mls)
-            or (bf16_mls and (device.cu_count != 48 or not config["use_mls"]))
+            or (bf16_mls and (device.cu_count not in (48, 96) or not config["use_mls"]))
             or (bias is not None)
             or activation is not None
             or (a.stride() != (k, 1))
@@ -294,7 +298,7 @@ def gemm_a16w16(
             raise ValueError(
                 "recorded pipeline requires gfx946, same-precision FP16 or "
                 "BF16 output and TT operands without bias or activation; "
-                "BF16 requires MLS and 48 CU"
+                "BF16 requires MLS and 48 or 96 CU"
             )
         if bf16_mls:
             for dim, size in zip("MNK", (m, n, k)):
