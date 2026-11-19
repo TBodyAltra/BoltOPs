@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
-"""BF16 TT Stream-K kernels, task scheduling, and dynamic LDS launch."""
+"""BF16 TN/TT Stream-K kernels, task scheduling, and dynamic LDS launch."""
 
 from collections import defaultdict
 from functools import lru_cache
@@ -14,7 +14,7 @@ from triton.experimental.gluon._runtime import GluonASTSource
 from triton.runtime.driver import driver
 
 
-# BF16 TT Stream-K kernels
+# BF16 TN/TT Stream-K kernels
 
 # Two-producer/two-consumer Stream-K pipeline. The host launcher reserves
 # 96 KiB dynamic LDS for the explicitly addressed, double-buffered MLS ring.
@@ -25,7 +25,7 @@ def _streamk_accumulator_registers():
 
 
 @triton.constexpr_function
-def _streamk_k64_asm():
+def _streamk_k64_asm(B_K_CONTIGUOUS):
     # pack=64: outputs 0..63, tied accumulator inputs 64..127, then seven
     # scalar arguments with 64 repeated operands each. Only the first scalar
     # operand of each group is referenced by the assembly.
@@ -37,10 +37,19 @@ def _streamk_k64_asm():
                      f'$128 offset:{offset} element:2 row:2 col:1')
     # Issue B while the A LDS reads are outstanding.
     lines.append('s_abarrier_try_wait s86, $448, $512')
-    for slot, offset in enumerate((0, 1024, 4096, 5120, 2048, 3072, 6144, 7168)):
+    if B_K_CONTIGUOUS:
+        # K-contiguous weights use the transposed LDS read to feed the same
+        # LIT registers. The K halves are 4096 bytes apart and N panels 2048.
+        b_offsets = (0, 32, 2048, 2080, 4096, 4128, 6144, 6176)
+        b_read = 'ds_read_matrix_trans_format'
+        b_format = 'element:2 row:1 col:2'
+    else:
+        b_offsets = (0, 1024, 4096, 5120, 2048, 3072, 6144, 7168)
+        b_read = 'ds_read_matrix_format'
+        b_format = 'element:2 row:2 col:1'
+    for slot, offset in enumerate(b_offsets):
         base = 100 + 4 * slot
-        lines.append(f'ds_read_matrix_format v[{base}:{base+3}], '
-                     f'$192 offset:{offset} element:2 row:2 col:1')
+        lines.append(f'{b_read} v[{base}:{base+3}], $192 offset:{offset} {b_format}')
     # A reads precede B reads. Release each ring slot only after its reads
     # complete. Keep the measured wait sequence, including lgkmcnt(4).
     lines += ['s_waitcnt lgkmcnt(8)', 's_abarrier_arrive s86, $256, 1',
@@ -72,9 +81,9 @@ def _streamk_k64_constraints():
 
 
 @g.jit
-def _streamk_consume_k64(acc, a_address, b_address, a_empty, a_ready, b_empty, b_ready, phase):
+def _streamk_consume_k64(acc, a_address, b_address, a_empty, a_ready, b_empty, b_ready, phase, B_K_CONTIGUOUS: gl.constexpr):
     return gl.inline_asm_elementwise(
-        _streamk_k64_asm(), _streamk_k64_constraints(),
+        _streamk_k64_asm(B_K_CONTIGUOUS), _streamk_k64_constraints(),
         [acc, a_address, b_address, a_empty, a_ready, b_empty, b_ready, phase],
         dtype=gl.float32, is_pure=False, pack=64)
 
@@ -122,18 +131,19 @@ def _streamk_wait_barrier(barrier, phase):
 
 
 @triton.constexpr_function
-def _streamk_matrix_asm(priority):
+def _streamk_matrix_asm(priority, b_k_contiguous):
     lines = ['s_mov_b64 s[80:81], $1', 's_and_b32 s81, s81, 0xffff',
              's_mov_b32 s82, $4', 's_mov_b32 s83, 0x10000',
              's_add_i32 s84, $2, 1024', 's_add_i32 s85, $2, 2048',
              's_add_i32 s86, $2, 3072']
     if priority:
         lines.append('s_setprio 1')
+    layout = 'r' if priority and b_k_contiguous else 't'
     lines += ['s_abarrier_seq $3',
-              'matrix_load_64x16_b16 s[80:83] $2 t bps lds',
-              'matrix_load_64x16_b16 s[80:83] s84 moffset:16 t bps lds',
-              'matrix_load_64x16_b16 s[80:83] s85 moffset:32 t bps lds',
-              'matrix_load_64x16_b16 s[80:83] s86 moffset:48 t bps lds',
+              f'matrix_load_64x16_b16 s[80:83] $2 {layout} bps lds',
+              f'matrix_load_64x16_b16 s[80:83] s84 moffset:16 {layout} bps lds',
+              f'matrix_load_64x16_b16 s[80:83] s85 moffset:32 {layout} bps lds',
+              f'matrix_load_64x16_b16 s[80:83] s86 moffset:48 {layout} bps lds',
               's_abarrier_arrive $0, $3, 1']
     if priority:
         lines.append('s_setprio 0')
@@ -141,9 +151,9 @@ def _streamk_matrix_asm(priority):
 
 
 @g.jit
-def _streamk_matrix_to_lds(pointer, address, ready, STRIDE: gl.constexpr, IS_B: gl.constexpr):
+def _streamk_matrix_to_lds(pointer, address, ready, STRIDE: gl.constexpr, IS_B: gl.constexpr, B_K_CONTIGUOUS: gl.constexpr = False):
     gl.inline_asm_elementwise(
-        _streamk_matrix_asm(IS_B),
+        _streamk_matrix_asm(IS_B, B_K_CONTIGUOUS),
         '=s,s,s,s,s,~{s80},~{s81},~{s82},~{s83},~{s84},~{s85},~{s86},~{scc},~{memory}',
         [pointer, address, ready, STRIDE], dtype=gl.int32, is_pure=False, pack=1)
 
@@ -271,7 +281,7 @@ def _streamk_finish_edge_task(acc, output, peer, flag, epoch, tag, limit, local_
 
 @g.jit
 def _streamk_producer(A, B, EdgeM, EdgeKA, EdgeKB, Schedule, M: gl.constexpr, N: gl.constexpr,
-             K: gl.constexpr, RECORDS: gl.constexpr, GROUP: gl.constexpr):
+             K: gl.constexpr, RECORDS: gl.constexpr, GROUP: gl.constexpr, B_K_CONTIGUOUS: gl.constexpr):
     _streamk_initialize(GROUP)
     wid = _streamk_wave_id() - GROUP * 2
     task = 0
@@ -284,7 +294,10 @@ def _streamk_producer(A, B, EdgeM, EdgeKA, EdgeKB, Schedule, M: gl.constexpr, N:
         if M % 256:
             if tile // (N // 128) == M // 256:
                 ap = EdgeM + (GROUP * 128 + wid * 64) * K + start
-        bp = B + start * N + col + wid * 64
+        if B_K_CONTIGUOUS:
+            bp = B + (col + wid * 64) * K + start
+        else:
+            bp = B + start * N + col + wid * 64
         for step in range(length // 64):
             stage = counter & 1
             phase = (counter >> 1) & 1
@@ -292,7 +305,11 @@ def _streamk_producer(A, B, EdgeM, EdgeKA, EdgeKB, Schedule, M: gl.constexpr, N:
             # _streamk_producer partition supplies A only, as in the measured kernel.
             if GROUP == 0:
                 _streamk_wait_barrier(8 + stage * 2, phase)
-                if K % 64:
+                if B_K_CONTIGUOUS:
+                    _streamk_matrix_to_lds(bp + step * 64,
+                                  65536 + stage * 16384 + wid * 8192,
+                                  9 + stage * 2, K, True, True)
+                elif K % 64:
                     if start + step * 64 >= K // 64 * 64:
                         _streamk_matrix_to_lds(EdgeKB + col + wid * 64,
                                       65536 + stage * 16384 + wid * 8192,
@@ -328,7 +345,7 @@ def _streamk_producer(A, B, EdgeM, EdgeKA, EdgeKB, Schedule, M: gl.constexpr, N:
 
 @g.jit
 def _streamk_consumer(C, Schedule, Workspace, Flags, Epoch, M: gl.constexpr, N: gl.constexpr,
-             RECORDS: gl.constexpr, GROUP: gl.constexpr):
+             RECORDS: gl.constexpr, GROUP: gl.constexpr, B_K_CONTIGUOUS: gl.constexpr):
     _streamk_initialize(2 + GROUP)
     wid = _streamk_wave_id() - 4 - GROUP * 4
     mma: gl.constexpr = gl.amd.AMDMFMALayout(
@@ -348,7 +365,7 @@ def _streamk_consumer(C, Schedule, Workspace, Flags, Epoch, M: gl.constexpr, N: 
             acc = _streamk_consume_k64(
                 acc, GROUP * 32768 + stage * 16384 + (wid >> 1) * 8192,
                 65536 + stage * 16384 + (wid & 1) * 8192,
-                _streamk_empty, _streamk_empty + 1, 8 + stage * 2, 9 + stage * 2, phase)
+                _streamk_empty, _streamk_empty + 1, 8 + stage * 2, 9 + stage * 2, phase, B_K_CONTIGUOUS)
             counter += 1
         local = rm[:, None] * 128 + rn[None, :]
         offsets = rm[:, None] * N + rn[None, :]
@@ -375,15 +392,16 @@ def _streamk_empty():
 
 @g.jit
 def _gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel(A, B, C, Schedule, Workspace, Flags, EdgeM, EdgeKA, EdgeKB, Epoch,
-                    M: gl.constexpr, N: gl.constexpr, K: gl.constexpr, RECORDS: gl.constexpr):
+                    M: gl.constexpr, N: gl.constexpr, K: gl.constexpr, RECORDS: gl.constexpr, B_K_CONTIGUOUS: gl.constexpr = False):
     gl.static_assert(A.dtype.element_ty == gl.bfloat16 and C.dtype.element_ty == gl.bfloat16)
     gl.static_assert(M > 0 and N > 0 and K > 0 and M % 4 == 0 and N % 128 == 0 and K % 16 == 0)
+    gl.static_assert(not B_K_CONTIGUOUS or K % 64 == 0)
     gl.warp_specialize([
         (_streamk_empty, ()),
-        (_streamk_producer, (A, B, EdgeM, EdgeKA, EdgeKB, Schedule, M, N, K, RECORDS, 0)),
-        (_streamk_producer, (A, B, EdgeM, EdgeKA, EdgeKB, Schedule, M, N, K, RECORDS, 1)),
-        (_streamk_consumer, (C, Schedule, Workspace, Flags, Epoch, M, N, RECORDS, 0)),
-        (_streamk_consumer, (C, Schedule, Workspace, Flags, Epoch, M, N, RECORDS, 1)),
+        (_streamk_producer, (A, B, EdgeM, EdgeKA, EdgeKB, Schedule, M, N, K, RECORDS, 0, B_K_CONTIGUOUS)),
+        (_streamk_producer, (A, B, EdgeM, EdgeKA, EdgeKB, Schedule, M, N, K, RECORDS, 1, B_K_CONTIGUOUS)),
+        (_streamk_consumer, (C, Schedule, Workspace, Flags, Epoch, M, N, RECORDS, 0, B_K_CONTIGUOUS)),
+        (_streamk_consumer, (C, Schedule, Workspace, Flags, Epoch, M, N, RECORDS, 1, B_K_CONTIGUOUS)),
     ], [2, 2, 4, 4], [48, 48, 144, 144])
 
 
@@ -465,22 +483,23 @@ def _device_schedule(m, n, k, cu_count, device, stream):
     return torch.tensor(table, dtype=torch.int32, device=device), records, slots
 
 
-def _compile_kernel(kernel, m, n, k, records, options, target):
+def _compile_kernel(kernel, m, n, k, records, options, target, *, b_k_contiguous=False):
     return _compile_kernel_for_device(
-        kernel, m, n, k, records, options, target, torch.cuda.current_device(),
+        kernel, m, n, k, records, options, target, torch.cuda.current_device(), b_k_contiguous,
     )
 
 
 @lru_cache(maxsize=128)
-def _compile_kernel_for_device(kernel, m, n, k, records, options, target, device_index):
+def _compile_kernel_for_device(kernel, m, n, k, records, options, target, device_index, b_k_contiguous):
     # CompiledKernel retains HIP function handles from its first launch device.
     # Include the device index even when both GPUs have the same target ISA.
+    constexprs = dict(M=m, N=n, K=k, RECORDS=records, B_K_CONTIGUOUS=b_k_contiguous)
     source = GluonASTSource(
         kernel,
         signature=dict(A="*bf16", B="*bf16", C="*bf16", Schedule="*i32",
                        Workspace="*fp32", Flags="*i32", EdgeM="*bf16",
                        EdgeKA="*bf16", EdgeKB="*bf16", Epoch="i32"),
-        constexprs=dict(M=m, N=n, K=k, RECORDS=records),
+        constexprs=constexprs,
         attrs={(i,): [("tt.divisibility", 16)] for i in range(9)},
     )
     return triton.compile(source, target=target, options=dict(options))
@@ -497,8 +516,11 @@ def _launch_gemm_a16w16_streamk(kernel, a, b, out, *, cu_count, config, layout):
     n = b.shape[0]
     if a.dtype != torch.bfloat16 or out.dtype != torch.bfloat16:
         raise ValueError("Stream-K Gluon requires BF16 input and output")
-    if a.stride() != (k, 1) or layout != "TT" or b.stride() != (1, n):
-        raise ValueError("Stream-K Gluon requires K-contiguous x and N-contiguous w (TT)")
+    b_k_contiguous = layout == "TN"
+    if a.stride() != (k, 1) or b.stride() != ((k, 1) if b_k_contiguous else (1, n)):
+        raise ValueError("Stream-K Gluon requires K-contiguous x and TN or TT w")
+    if b_k_contiguous and k % 64:
+        raise ValueError("Stream-K Gluon requires K divisible by 64 for TN")
     tile = tuple(config.get(key) for key in ("BLOCK_SIZE_M", "BLOCK_SIZE_N", "BLOCK_SIZE_K"))
     if tile != (256, 128, 64):
         raise ValueError("Stream-K Gluon requires a 256x128x64 tile")
@@ -520,8 +542,9 @@ def _launch_gemm_a16w16_streamk(kernel, a, b, out, *, cu_count, config, layout):
                   triton.cdiv(m, 256) * 256 * 64 if k % 64 else 0,
                   64 * n if k % 64 else 0)
     edges = [torch.empty(max(size, 1), dtype=a.dtype, device=a.device) for size in edge_sizes]
+    layout_options = {"b_k_contiguous": True} if b_k_contiguous else {}
     compiled = _compile_kernel(kernel, m, n, k, records, tuple(sorted(options.items())),
-                               driver.active.get_current_target())
+                               driver.active.get_current_target(), **layout_options)
     # Initialize Triton's launcher before retrieving the module function.
     run = compiled.run
     if any(edge_sizes):

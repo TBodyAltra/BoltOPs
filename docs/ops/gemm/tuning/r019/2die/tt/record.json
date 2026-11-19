@@ -1,0 +1,219 @@
+{
+  "requirement": "R019",
+  "record_key": "R019_2DIE_TT",
+  "status": "PMD_PASS",
+  "shape": [
+    2048,
+    64,
+    2048
+  ],
+  "layout": "TT",
+  "seed": 19,
+  "dtype": {
+    "A": "BF16",
+    "W": "BF16",
+    "output": "BF16",
+    "accumulator": "FP32"
+  },
+  "operand_strides": [
+    [
+      2048,
+      1
+    ],
+    [
+      1,
+      64
+    ]
+  ],
+  "environment": {
+    "host": "node60",
+    "chip": "sbx2",
+    "arch": "gfx946",
+    "dies": 2,
+    "cu_count": 96,
+    "clock_period_ps": 455,
+    "runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "compiler": {
+        "libtriton": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+        "clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+      }
+    },
+    "bootstrap": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/env.sh",
+    "environment_variables": {
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+      "GPU_ARGS": "['--abs-max-tick=10000000000']",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+      "TRITON_BUILD_PROTON": "OFF",
+      "GPU_DFLAGS": "['StatLog']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "GPU_CHIP": "sbx2",
+      "TRITON_BUILD_DIR": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/build",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "AMDGCN_USE_BUFFER_OPS": "1"
+    }
+  },
+  "source": {
+    "path": "boltops/gemm/gluon/gemm_a16w16_tt.py",
+    "symbol": "gemm_a16w16_tt_kernel",
+    "line": 136,
+    "sha256": "72a1b9f53d7fa82721b2473ed5a0ddd4d5302da643c8d7fbd9436bb53d173e77",
+    "measurement_base_commit": "0c532e6aab2f1dedcf083258983a285be0097fd8"
+  },
+  "config": {
+    "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json",
+    "bucket": "M_EQ_2048",
+    "options": {
+      "BLOCK_SIZE_M": 16,
+      "BLOCK_SIZE_N": 32,
+      "BLOCK_SIZE_K": 128,
+      "CHUNKS": 1,
+      "SLOTS": 2,
+      "PW": 1,
+      "CW": 1,
+      "LTS": true,
+      "num_warps": 1,
+      "num_stages": 2,
+      "wasp_partition_warps": [
+        1,
+        1
+      ],
+      "wasp_wdra": false,
+      "mmac_layout_force": 2,
+      "enable_v_mmac_cluster": 2,
+      "hcu_use_gfx946_sched_model_v2": true,
+      "PREFETCH": true,
+      "kernel": "_gemm_a16w16_tt_kernel",
+      "requires_16_byte_alignment": true
+    }
+  },
+  "benchmark": {
+    "script": "../../../bf16_2die_small_mn/benchmark.py",
+    "sha256": "3175ddc858f83f17c6ea7e38571d8ffdbe09dd285da8a6fc988a3d434af48c71",
+    "repeats": 1
+  },
+  "variants": {
+    "winner": {
+      "family": "gluon",
+      "module": "boltops.gemm.gluon.gemm_a16w16_tt",
+      "symbol": "gemm_a16w16_tt_kernel",
+      "config": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 32,
+        "BLOCK_SIZE_K": 128,
+        "CHUNKS": 1,
+        "SLOTS": 2,
+        "PW": 1,
+        "CW": 1,
+        "LTS": true,
+        "num_warps": 1,
+        "num_stages": 2,
+        "wasp_partition_warps": [
+          1,
+          1
+        ],
+        "wasp_wdra": false,
+        "mmac_layout_force": 2,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "PREFETCH": true
+      }
+    }
+  },
+  "performance": {
+    "kernel_us": 13.092625,
+    "kernel_tops": 41.00559757878958,
+    "mmac_util_percent": 4.744859542426874,
+    "logical_bandwidth_tb_s": 0.680756991054124,
+    "bandwidth_scope": "Logical BF16 reads of A/W and writes of C, divided by aggregate dispatch time. Excludes split-K scratch traffic.",
+    "aggregation": "One cold full-grid trial. Split-K includes reduction.",
+    "baseline_kernel_us": 98.42014,
+    "baseline_status": "PASS",
+    "improvement_percent": 86.69720953455257
+  },
+  "samples": [
+    {
+      "us": 13.092625,
+      "dispatches": [
+        {
+          "cycles": 28775,
+          "TGs_per_die": {
+            "system.shaders0": 128,
+            "system.shaders1": 128
+          },
+          "stats": "model/0/0/stats.txt",
+          "sha256": "4f3d7e4b923b796ea83d6680fc3d36f1fd821784a35ac29202e4dc22b74214e7"
+        }
+      ],
+      "max_abs": 0.03125,
+      "mismatches": 0,
+      "validated_elements": 131072
+    }
+  ],
+  "resources": {
+    "VGPR": 105,
+    "spills": 0,
+    "LDS_bytes": 24576
+  },
+  "validation": {
+    "output_elements": 131072,
+    "rtol": 0.01,
+    "atol": 0.001,
+    "guard_and_input_check": true
+  },
+  "public_api_validation": {
+    "mode": "full_grid",
+    "kernel_us": 13.102635,
+    "validated_elements": 131072,
+    "executable_sections": {
+      ".rodata": "01cf00e2e88f98858d3105d176ee410994001b8e7e4d73b575129bd2d93ec678",
+      ".text": "fdc3615e83d57fffa85cd0689ff17a54e600d59d4bf6f812c44850f5fd706b54"
+    },
+    "result_sha256": "ec14c475495d4ea6777b2c7d192be48a6105e2e256f820c8ff6d9ee730d0f900"
+  },
+  "single_tg_perf": {
+    "path": "single_tg.perf",
+    "sha256": "009c8874246f518d7672a5d9971469393170f99152a3984b9ce719faacdd5fc2",
+    "sample": {
+      "us": 6.239415,
+      "dispatches": [
+        {
+          "cycles": 13713,
+          "TGs_per_die": {
+            "system.shaders0": 1,
+            "system.shaders1": 0
+          },
+          "stats": "model/0/2/stats.txt",
+          "sha256": "b7f864448e56fe55b575fca65406096488bd131a19856f3d1ff2520b37671293"
+        }
+      ],
+      "max_abs": 0.0,
+      "mismatches": 0,
+      "validated_elements": 512,
+      "perf": "model/0/2/860661_python3.10.perf"
+    },
+    "scope": "Isolated TG0 with original dimensions and launch configuration",
+    "selection": "faster of repeats 1 and 2"
+  },
+  "evidence": {
+    "pmd_host_root": "node60:/xukang/q35dd19",
+    "full_grid": "confirm/r019-tt/ring_16x32x128",
+    "single_tg": "perf/r019-tt/ring_16x32x128",
+    "public_replay": "public/r019-tt/ring_16x32x128",
+    "baseline": "screen/r019-tt/baseline",
+    "full_grid_result_sha256": "38ee307594f31cfa3302477ed2688bc9d3834ea5bb8342ffd0566f1738dab430"
+  },
+  "assembly": {
+    "path": "kernel.amdgcn",
+    "sha256": "73f7afaf2d8ad050fac40ac9c7f03b2b5c3b66461950cae569dcb00427494cb5",
+    "raw_sha256": "95214937bc2046d45d4ea642695cce7042e5171501e5d77032572fe9bf128be7",
+    "normalization": "Strip trailing horizontal whitespace only",
+    "hsaco_sha256": "f0a581df7b713bd00c8b1725d874d50e20fab4633d8e049a43e8f29b19005fef",
+    "executable_sections": {
+      ".rodata": "01cf00e2e88f98858d3105d176ee410994001b8e7e4d73b575129bd2d93ec678",
+      ".text": "fdc3615e83d57fffa85cd0689ff17a54e600d59d4bf6f812c44850f5fd706b54"
+    }
+  }
+}
