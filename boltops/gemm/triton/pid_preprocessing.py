@@ -13,15 +13,14 @@ def remap_xcd_chunked(
     # Compute current XCD and local PID
     xcd = pid % NUM_XCDS
     # distribute the modulo pids in round robin
-    if pid > (GRID_MN // (NUM_XCDS * CHUNK_SIZE)) * (NUM_XCDS * CHUNK_SIZE):
-        return pid
+    full_chunks = (GRID_MN // (NUM_XCDS * CHUNK_SIZE)) * (NUM_XCDS * CHUNK_SIZE)
     local_pid = pid // NUM_XCDS
     # Calculate chunk index and position within chunk
     chunk_idx = local_pid // CHUNK_SIZE
     pos_in_chunk = local_pid % CHUNK_SIZE
     # Calculate new PID
     new_pid = chunk_idx * NUM_XCDS * CHUNK_SIZE + xcd * CHUNK_SIZE + pos_in_chunk
-    return new_pid
+    return tl.where(pid > full_chunks, pid, new_pid)
 
 
 @triton.jit

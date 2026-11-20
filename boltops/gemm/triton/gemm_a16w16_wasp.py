@@ -46,6 +46,8 @@ import triton.language as tl
 
 from boltops.utility import arch_info
 
+from .pid_preprocessing import remap_xcd_chunked
+
 # WASP / WDRA are opt-in only on gfx946 (HCU).
 _WASP_WDRA_ARCHS = frozenset({"gfx946"})
 
@@ -385,6 +387,7 @@ def _gemm_fp16_mls_kernel(
     USE_MATRIX_STORE: tl.constexpr,
     MASK_M: tl.constexpr = False,
     MASK_N: tl.constexpr = False,
+    XCD_REMAP_CHUNK: tl.constexpr = 0,
 ):
     tl.assume(stride_am > 0)
     tl.assume(stride_ak > 0)
@@ -398,6 +401,8 @@ def _gemm_fp16_mls_kernel(
     pid = tl.program_id(axis=0)
     num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
     num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
+    if XCD_REMAP_CHUNK:
+        pid = remap_xcd_chunked(pid, num_pid_m * num_pid_n, CHUNK_SIZE=XCD_REMAP_CHUNK)
     num_pid_in_group = GROUP_SIZE_M * num_pid_n
     group_id = pid // num_pid_in_group
     first_pid_m = group_id * GROUP_SIZE_M
