@@ -221,8 +221,10 @@ def main():
         assert kernel[(grid,)](*positional, **options) is handle
 
     if public_api:
-        assert family == 'persistent' and code_origin == 'fresh' and current_toolchain
+        assert family in ('persistent', 'wasp') and not job.get('masked_mls')
+        assert code_origin == 'fresh' and current_toolchain
         public = importlib.import_module('boltops.gemm.gemm_a16w16')
+        public_operands = (a, b.T, c) if family == 'persistent' else positional
         calls = 0
 
         class ObserveLaunch:
@@ -231,8 +233,13 @@ def main():
                     nonlocal calls
                     actual_grid = launch_grid(kwargs) if callable(launch_grid) else launch_grid
                     assert tuple(actual_grid) == (grid,)
-                    assert all(actual.data_ptr() == expected.data_ptr()
-                               for actual, expected in zip(values, positional, strict=True))
+                    for actual, expected in zip(values, public_operands, strict=True):
+                        if isinstance(expected, torch.Tensor):
+                            assert actual.data_ptr() == expected.data_ptr()
+                            assert actual.stride() == expected.stride()
+                        else:
+                            assert actual == expected
+                    assert dict(options, **kwargs) == options
                     if job.get('compile_only'):
                         launched = kernel.warmup(*values, grid=actual_grid, **kwargs)
                     else:
@@ -246,8 +253,8 @@ def main():
 
         def dispatch():
             before = calls
-            assert public.gemm_a16w16(a, b.T, out=c) is c
-            assert calls == before + 1, 'public API did not dispatch the configured persistent kernel'
+            assert public.gemm_a16w16(a, b.T, out=c, backend=job['public_backend']) is c
+            assert calls == before + 1, 'public API did not dispatch the configured kernel'
 
     if job.get('compile_only'):
         if public_api:

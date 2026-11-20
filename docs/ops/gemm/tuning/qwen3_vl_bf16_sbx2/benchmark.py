@@ -51,7 +51,7 @@ def main():
     parser.add_argument('--current-toolchain', action='store_true',
                         help='measure freshly compiled code using the sourced PMD toolchain')
     parser.add_argument('--public-api', action='store_true',
-                        help='replay a configured persistent kernel through gemm_a16w16')
+                        help='replay a configured persistent or WASP/MLS kernel through gemm_a16w16')
     args = parser.parse_args()
     record = json.loads(args.record.read_text())
     job = dict(record['replay_job'], expected_toolchain=record['environment']['toolchain'],
@@ -60,9 +60,12 @@ def main():
     if args.compile_only:
         job['compile_only'] = True
     if args.public_api:
-        if not args.current_toolchain or job['family'] != 'persistent':
-            parser.error('--public-api requires --current-toolchain and a persistent record')
+        if not args.current_toolchain or job['family'] not in ('persistent', 'wasp') or job.get('masked_mls'):
+            parser.error('--public-api requires --current-toolchain and a persistent or unmasked WASP/MLS record')
         job['public_api'] = True
+        job['public_backend'] = 'triton' if job['family'] == 'wasp' else 'auto'
+        validation = record.get('current_toolchain_validation', {})
+        job['options'] = job['options'] | validation.get('launch_overrides', {})
     source = record['source']
     assert record['environment']['chip'] == 'sbx2'
     assert record['layout'] == job.get('layout', 'TN')
@@ -75,7 +78,8 @@ def main():
                               dispatches=job['dispatches'], seed=job['seed'], timed_seed=job['timed_seed'],
                               current_toolchain=args.current_toolchain)
         if args.public_api:
-            plan['public_api'] = True
+            plan.update(public_api=True, public_backend=job['public_backend'])
+            plan['options'] = plan['options'] | validation.get('launch_overrides', {})
         print(json.dumps(plan, indent=2))
         return
     if args.output is None:

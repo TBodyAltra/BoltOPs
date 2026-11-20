@@ -980,8 +980,8 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r028/2die/tt/record.json">config</a> / <a href="tuning/r027/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r028/2die/tt/record.json">记录</a></td>
       <td>—</td>
       <td><a href="tuning/r028/2die/tn/record.json">sbx2 / 96 CU</a></td>
-      <td><a href="tuning/r028/2die/tn/record.json">116.199 / 443.55 / 51.32%</a></td>
-      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r028/2die/tn/record.json">config</a> / <a href="tuning/r027/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r028/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r028/2die/tn/record.json">116.199 / 443.55 / 51.32%</a><br>当前 CI 公开接口复测：115.759 µs</td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=4096-K=12288-TN.json">当前 config</a> / <a href="tuning/r028/2die/tn/record.json">归档 config</a> / <a href="tuning/r027/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r028/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>

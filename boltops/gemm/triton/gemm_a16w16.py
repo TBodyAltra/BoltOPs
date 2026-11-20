@@ -259,7 +259,7 @@ def gemm_a16w16(
             if device.cu_count == 48 and layout == "TT":
                 profiles = (_BF16_MLS_PROFILE,)
             elif device.cu_count == 96:
-                profiles = (_BF16_MLS_PROFILE, _BF16_PROFILE) if layout == "TT" else (_BF16_PROFILE,)
+                profiles = (_BF16_MLS_PROFILE, _BF16_PROFILE)
             for profile in profiles:
                 try:
                     candidate, tuned = get_gemm_config(
@@ -289,6 +289,7 @@ def gemm_a16w16(
         from . import gemm_a16w16_wasp as kernels
 
         bf16_mls = a.dtype == out_dtype == torch.bfloat16
+        weight_strides = ((1, n), (k, 1)) if bf16_mls and device.cu_count == 96 else ((1, n),)
         if (
             device.arch != "gfx946"
             or a.dtype != out_dtype
@@ -297,12 +298,12 @@ def gemm_a16w16(
             or (bias is not None)
             or activation is not None
             or (a.stride() != (k, 1))
-            or (b.stride() != (1, n))
+            or (b.stride() not in weight_strides)
         ):
             raise ValueError(
-                "recorded pipeline requires gfx946, same-precision FP16 or "
-                "BF16 output and TT operands without bias or activation; "
-                "BF16 requires MLS and 48 or 96 CU"
+                "WASP/MLS requires gfx946, matching input/output precision, "
+                "and supported operand strides without bias or activation. "
+                "TN requires BF16 MLS on 96 CUs."
             )
         if bf16_mls:
             for dim, size in zip("MNK", (m, n, k)):
