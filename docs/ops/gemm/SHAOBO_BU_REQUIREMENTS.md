@@ -854,7 +854,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r026/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r026/1die/tt/record.json">879.944 / 380.71 / 88.11%</a></td>
+      <td><a href="tuning/r026/1die/tt/record.json">879.944 / 380.71 / 88.11%</a><br>当前 CI 公开入口复测：873.296 µs，−0.76%</td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=12288-K=2048-TT.json">config</a> / <a href="tuning/r026/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/bf16_1die_tt/benchmark.py">测试代码</a> / <a href="tuning/r026/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r026/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
