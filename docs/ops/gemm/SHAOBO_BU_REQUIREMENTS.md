@@ -153,7 +153,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td><a href="../../../boltops/gemm/gemm_a16w16.py">gemm_a16w16</a></td>
       <td><a href="tuning/r003/1die/tt/record.json">flags / env</a></td>
-      <td><a href="tuning/r003/1die/tt/record.json">10.565 / 63.52 / 14.70%<br>读写带宽：1.048 TB/s（逻辑 A/B 读、C 写）</a><br>当前 CI 公开接口复测：10.571 µs</td>
+      <td><a href="tuning/r003/1die/tt/record.json">10.565 / 63.52 / 14.70%<br>读写带宽：1.048 TB/s（逻辑 A/B 读、C 写）</a><br>此前三轮中位数：10.571 µs<br>独立发布版复测：10.744 µs，超过 1% 门槛</td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json">config</a> / <a href="tuning/r003/1die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r003/1die/tt/benchmark.py">测试代码</a> / <a href="tuning/r003/1die/tt/record.json">记录</a></td>
       <td><a href="tuning/r003/1die/tt/single_tg.perf">PERF</a></td>
       <td>—</td>
@@ -1260,8 +1260,8 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/gluon/gemm_a16w16_persistent.py#L316">当前源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=4096-TT.json">config</a> / <a href="tuning/r038/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/bf16_2die_tt/benchmark.py">测试代码</a> / <a href="tuning/r038/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r038/2die/tt/single_tg.perf">PERF</a></td>
       <td><a href="tuning/r038/2die/tn/record.json">sbx2 / 96 CU</a></td>
-      <td><a href="tuning/r038/2die/tn/record.json">317.361 / 703.74 / 81.43%</a></td>
-      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r038/2die/tn/record.json">config</a> / <a href="tuning/r038/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r038/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/r038/2die/tn/record.json">317.361 / 703.74 / 81.43%</a><br>当前 CI 公开接口复测：317.374 µs</td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=4096-TN.json">当前 config</a> / <a href="tuning/r038/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r038/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
