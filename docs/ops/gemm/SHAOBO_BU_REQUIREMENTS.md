@@ -104,9 +104,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r001/1die/tn/record.json">5.324 / 3.15 / 0.73%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/0a079d11a0174e289ff65fbb38323c1b5f35e187/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json">config</a> / <a href="tuning/r001/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r001/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r001/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r001/1die/tn/full_grid.perf">完整 grid PERF</a> / <a href="tuning/r001/1die/tn/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r001/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r001/2die/tt/record.json">5.755 / 2.92 / 0.34%<br>读写带宽：92.52 GB/s</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/gluon/gemm_a16w16_mls.py">源码</a> / <a href="tuning/r001/2die/tt/record.json">config</a> / <a href="tuning/r001/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r001/2die/tt/record.json">记录</a></td>
       <td>—</td>
       <td><a href="tuning/r001/2die/tn/record.json">flags / env</a></td>
       <td><a href="tuning/r001/2die/tn/record.json">5.290 / 3.17 / 0.37%<br>读写带宽：100.66 GB/s</a></td>
@@ -136,9 +136,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r002/2die/tt/record.json">310.224 / 209.83 / 24.28%<br>读写带宽：3.382 TB/s</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=248320-K=2048-TT.json">config</a> / <a href="tuning/r002/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r002/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r002/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r002/2die/tt/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r002/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r002/2die/tn/record.json">334.364 / 194.68 / 22.53%<br>读写带宽：3.138 TB/s</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/triton/gemm_a16w16.py">源码</a> / <a href="tuning/r002/2die/tn/record.json">config</a> / <a href="tuning/r002/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r002/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -160,9 +160,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r003/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r003/2die/tt/record.json">9.446 / 71.04 / 8.22%<br>读写带宽：1.172 TB/s</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/gluon/gemm_a16w16_mls.py">源码</a> / <a href="tuning/r003/2die/tt/record.json">config</a> / <a href="tuning/r003/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r003/2die/tt/record.json">记录</a></td>
       <td>—</td>
       <td><a href="tuning/r003/2die/tn/record.json">flags / env</a></td>
       <td><a href="tuning/r003/2die/tn/record.json">8.639 / 77.68 / 8.99%</a></td>
@@ -216,9 +216,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r005/1die/tn/record.json">15.709 / 68.35 / 7.91%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/904b796c7c1b199ebdd0c14b1f50f019b5b4c610/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L476">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/904b796c7c1b199ebdd0c14b1f50f019b5b4c610/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json">config</a> / <a href="tuning/r005/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r005/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r005/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r005/1die/tn/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r005/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r005/2die/tt/record.json">26.785 / 40.09 / 2.32%<br>读写带宽：332.75 GB/s</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/triton/gemm_a8w8_blockscale_fp8.py">源码</a> / <a href="tuning/qwen35_fp8_2die/README.md">测量补丁</a> / <a href="tuning/r005/2die/tt/record.json">config</a> / <a href="tuning/r005/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r005/2die/tt/record.json">记录</a></td>
       <td>—</td>
       <td><a href="tuning/r005/2die/tn/record.json">flags / env</a></td>
       <td><a href="tuning/r005/2die/tn/record.json">14.565 / 73.72 / 4.27%</a><br>读写带宽 0.613 TB/s（逻辑 A/B+C+FP32 scales）</td>
@@ -244,13 +244,13 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r006/1die/tn/record.json">18.880 / 127.96 / 14.81%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L478">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r006/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r006/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r006/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r006/1die/tn/single_tg.perf">PERF</a></td>
+      <td><a href="tuning/r006/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r006/2die/tt/record.json">26.113 / 92.52 / 5.35%<br>读写带宽：772.99 GB/s</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/triton/gemm_a8w8_blockscale_fp8.py">源码</a> / <a href="tuning/qwen35_fp8_2die/README.md">测量补丁</a> / <a href="tuning/r006/2die/tt/record.json">config</a> / <a href="tuning/r006/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r006/2die/tt/record.json">记录</a></td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r006/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r006/2die/tn/record.json">13.038 / 185.30 / 10.72%<br>读写带宽：1.548 TB/s</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/gluon/gemm_a8w8_blockscale.py">源码</a> / <a href="tuning/qwen35_fp8_2die/README.md">测量补丁</a> / <a href="tuning/r006/2die/tn/record.json">config</a> / <a href="tuning/r006/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r006/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -272,13 +272,13 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r007/1die/tn/record.json">23.584 / 136.59 / 15.80%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L593">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/345e68710e34416b6f8fc5a0af9b77cfae66ee04/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r007/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r007/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r007/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r007/1die/tn/single_tg.perf">PERF</a></td>
+      <td><a href="tuning/r007/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r007/2die/tt/record.json">26.056 / 123.63 / 7.15%<br>读写带宽：1.031 TB/s</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/triton/gemm_a8w8_blockscale_fp8.py">源码</a> / <a href="tuning/qwen35_fp8_2die/README.md">测量补丁</a> / <a href="tuning/r007/2die/tt/record.json">config</a> / <a href="tuning/r007/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r007/2die/tt/record.json">记录</a></td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r007/2die/tn/record.json">flags / env</a></td>
+      <td><a href="tuning/r007/2die/tn/record.json">14.163 / 227.44 / 13.16%<br>读写带宽：1.897 TB/s</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/gluon/gemm_a8w8_blockscale.py">源码</a> / <a href="tuning/qwen35_fp8_2die/README.md">测量补丁</a> / <a href="tuning/r007/2die/tn/record.json">config</a> / <a href="tuning/r007/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r007/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
@@ -300,9 +300,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r008/1die/tn/record.json">97.909 / 438.67 / 50.76%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/1119a5fa81722505a846c11760709770c2129ae6/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L768">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/1119a5fa81722505a846c11760709770c2129ae6/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json">config</a> / <a href="tuning/r008/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r008/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r008/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r008/1die/tn/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r008/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r008/2die/tt/record.json">58.893 / 729.28 / 42.19%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py">源码</a> / <a href="tuning/qwen35_fp8_2die/README.md">测量补丁</a> / <a href="tuning/r008/2die/tt/record.json">config</a> / <a href="tuning/r008/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r008/2die/tt/record.json">记录</a></td>
       <td>—</td>
       <td><a href="tuning/r008/2die/tn/record.json">flags / env</a></td>
       <td><a href="tuning/r008/2die/tn/record.json">55.155 / 778.71 / 45.06%</a></td>
@@ -328,9 +328,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r009/1die/tn/record.json">183.864 / 525.59 / 60.82%</a><br><a href="tuning/r009/1die/tn/compiler-test/record.json">编译器对照：189.014 μs（回退 2.80%，不作为基线）</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/40c5ad2d3adb9348bead8a68cb58f03550891220/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py#L396">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/40c5ad2d3adb9348bead8a68cb58f03550891220/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r009/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r009/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r009/1die/tn/record.json">记录</a></td>
       <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r009/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r009/2die/tt/record.json">120.787 / 800.06 / 46.29%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py">源码</a> / <a href="tuning/qwen35_fp8_2die/README.md">测量补丁</a> / <a href="tuning/r009/2die/tt/record.json">config</a> / <a href="tuning/r009/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r009/2die/tt/record.json">记录</a></td>
       <td>—</td>
       <td><a href="tuning/r009/2die/tn/record.json">flags / env</a></td>
       <td><a href="tuning/r009/2die/tn/record.json">109.225 / 884.75 / 51.19%</a></td>
@@ -384,9 +384,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r011/1die/tn/record.json">250.435 / 445.90 / 51.60%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/64dbaea9fad7a4f510cb02d6eba78bfed8865b5c/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/bb60e65d027f85d2f6aa2e6e85ef4576e68ee31b/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json">config</a> / <a href="tuning/r011/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r011/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r011/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r011/1die/tn/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r011/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r011/2die/tt/record.json">132.548 / 842.48 / 48.74%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py">源码</a> / <a href="tuning/qwen35_fp8_2die/README.md">测量补丁</a> / <a href="tuning/r011/2die/tt/record.json">config</a> / <a href="tuning/r011/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r011/2die/tt/record.json">记录</a></td>
       <td>—</td>
       <td><a href="tuning/r011/2die/tn/record.json">flags / env</a></td>
       <td><a href="tuning/r011/2die/tn/record.json">128.180 / 871.19 / 50.40%</a></td>
@@ -412,9 +412,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r012/1die/tn/record.json">599.711 / 418.96 / 48.48%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/f615d17e64032102cab49a82c7fd717e63f46e0b/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=9216-K=2048.json">config</a> / <a href="tuning/r012/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r012/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r012/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r012/1die/tn/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r012/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r012/2die/tt/record.json">279.625 / 898.55 / 51.99%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py">源码</a> / <a href="tuning/qwen35_fp8_2die/README.md">测量补丁</a> / <a href="tuning/r012/2die/tt/record.json">config</a> / <a href="tuning/r012/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r012/2die/tt/record.json">记录</a></td>
       <td>—</td>
       <td><a href="tuning/r012/2die/tn/record.json">flags / env</a></td>
       <td><a href="tuning/r012/2die/tn/record.json">233.743 / 1074.92 / 62.19%</a></td>
@@ -440,9 +440,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r013/1die/tn/record.json">777.029 / 431.14 / 49.89%</a></td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/6c4f4b537a7e99915a2b110c271cdd2b65e31ba8/boltops/gemm/gluon/gemm_a8w8_blockscale.py#L328">源码</a> / <a href="https://github.com/TBodyAltra/BoltOPs/blob/35bda3a379adb99cac6ad53279969c41e64e0a62/boltops/gemm/configs/gfx946/48cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=12288-K=2048.json">config</a> / <a href="tuning/r013/1die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/r013/1die/tn/benchmark.py">测试代码</a> / <a href="tuning/r013/1die/tn/record.json">记录</a></td>
       <td><a href="tuning/r013/1die/tn/single_tg.perf">PERF</a></td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
+      <td><a href="tuning/r013/2die/tt/record.json">flags / env</a></td>
+      <td><a href="tuning/r013/2die/tt/record.json">321.412 / 1042.30 / 60.30%</a></td>
+      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8494cee97bd3abd88dd3525b3489de7441b4861e/boltops/gemm/gluon/gemm_a8w8_blockscale_persistent.py">源码</a> / <a href="tuning/qwen35_fp8_2die/README.md">测量补丁</a> / <a href="tuning/r013/2die/tt/record.json">config</a> / <a href="tuning/r013/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen35_fp8_2die/benchmark.py">测试代码</a> / <a href="tuning/r013/2die/tt/record.json">记录</a></td>
       <td>—</td>
       <td><a href="tuning/r013/2die/tn/record.json">flags / env</a></td>
       <td><a href="tuning/r013/2die/tn/record.json">312.454 / 1072.18 / 62.03%</a></td>

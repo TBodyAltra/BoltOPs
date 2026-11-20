@@ -1,0 +1,299 @@
+{
+  "requirement": "R007",
+  "layout": "TT",
+  "shape": [
+    64,
+    12288,
+    2048
+  ],
+  "status": "PMD_PASS",
+  "data_kind": "experimental_candidate",
+  "environment": {
+    "type": "PMD",
+    "model": "CoreArch1703",
+    "arch": "gfx946",
+    "dies": 2,
+    "cu_count": 96,
+    "triton": {
+      "branch": "release/3.6.x",
+      "commit": "f8cbbee1849806f96337e85685e1ba031b63f096",
+      "libtriton_sha256": "6cbab0d6f24186d876868340bb215ec62e2529353a7f70b5b4582a94a6ca0b11",
+      "build_llvm_commit": "02cd0a4ddec90de4c0691e40e50ad2d2c1d9d8a2"
+    },
+    "clang": {
+      "repository": "ssh://git@10.16.1.204:10022/dcu-aicc/llvm-project.git",
+      "branch": "dtk-llvm-7.2.1",
+      "commit": "264542e7e37f15dd13ab063d59522652268cf7d9",
+      "sha256": "e9b384d42aea5caac01aaf25cfcd1d187e13559aa016ee8df7c237c1fbd0c565",
+      "lld_sha256": "fd737133caeaf686ec816e3a3e2db386fd6713fc892b4884b8731deb571dc6e1",
+      "local_patches": [
+        {
+          "path": "../../../r009/2die/tn/mmac-c-no-sink.patch",
+          "sha256": "4cdd471d821fcd800b3899051f392a6d6fee347b30520c12d1411916f84dfec0"
+        }
+      ],
+      "ds_read2": "upstream in 264542e7e3",
+      "test_patch_applied": false
+    },
+    "clock_period_ps": {
+      "cache": 455,
+      "system": 1000,
+      "umc": 2276,
+      "gc": 455
+    },
+    "frequency_ghz": {
+      "cache": 2.197802197802198,
+      "system": 1.0,
+      "umc": 0.43936731107205623,
+      "gc": 2.197802197802198
+    },
+    "environment_variables": {
+      "GPU_CHIP": "sbx2",
+      "GPU_GFLAGS": null,
+      "GPU_DFLAGS": "['StatLog']",
+      "GPU_ARGS": "['--abs-max-tick=10000000000']",
+      "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+      "HSA_TOOLS_LIB": null,
+      "HIP_VISIBLE_DEVICES": null,
+      "ROCR_VISIBLE_DEVICES": null,
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/r009-264542-patch-comparison/bin/clang-22",
+      "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/r009-264542-patch-comparison/bin/ld.lld",
+      "TRITON_OFFLINE_BUILD": "1",
+      "TRITON_BACKENDS_IN_TREE": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_HCU_MATRIX_STORE_INSN": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
+      "HCU_PIPELINE_ENV_REV": null,
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119:/xukang/code/pmd-triton-sessions/r009-matrix-store-latest/runtime",
+      "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
+      "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm",
+      "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119/r007/tt/triton-64x64/cache",
+      "TRITON_HOME": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119/r007/tt/triton-64x64/triton-home",
+      "BOLTOPS_GEMM_CONFIG_DIR": null
+    },
+    "pmd_revision": null,
+    "container_image": {
+      "image_id": "sha256:10e8c15e4d2aa363cd71fe11702111c9e0021f66c26b6f30a86407bfacb29364",
+      "repo_tags": [
+        "10.65.42.71:9092/perf-model-env:8569"
+      ],
+      "repo_digests": [
+        "10.65.42.71:9092/perf-model-env@sha256:dc5a9d4be8aeffbcc5a950f0ffdf85921c9dd0159c55d26a4adcac3c205f6bd2"
+      ],
+      "image_created": "2026-10-12T20:20:10.804529356Z",
+      "architecture": "amd64",
+      "os": "linux",
+      "container_name": "kxu_pmd_8569_fp8_20261017",
+      "container_id": "740cf5c897145f09f404fca1a14b936deaba587f32bb7549ad25664d52aa41b5",
+      "version": "8569",
+      "capture_source": "docker inspect during this run; immutable Image ID matches the recorded image"
+    },
+    "die_topology": [
+      {
+        "die": 0,
+        "shader_path": "system.shaders0",
+        "cu_count": 48
+      },
+      {
+        "die": 1,
+        "shader_path": "system.shaders1",
+        "cu_count": 48
+      }
+    ],
+    "host": "node60"
+  },
+  "source": {
+    "commit": "8494cee97bd3abd88dd3525b3489de7441b4861e",
+    "path": "boltops/gemm/triton/gemm_a8w8_blockscale_fp8.py",
+    "symbol": "_w8a8_triton_block_scaled_mm",
+    "patches": [
+      "gemm_a8w8_blockscale.patch",
+      "gemm_a8w8_blockscale_persistent.patch"
+    ]
+  },
+  "config": {
+    "BLOCK_SIZE_M": 64,
+    "BLOCK_SIZE_N": 64,
+    "BLOCK_SIZE_K": 128,
+    "GROUP_SIZE_M": 32,
+    "num_warps": 4,
+    "num_stages": 2
+  },
+  "replay": {
+    "worker": "fp8",
+    "input": {
+      "case": "r007",
+      "layout": "tt",
+      "variant": "triton-64x64",
+      "backend": "triton",
+      "shape": [
+        64,
+        12288,
+        2048
+      ],
+      "config": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 32,
+        "num_warps": 4,
+        "num_stages": 2
+      },
+      "repeats": 5,
+      "seed": 21
+    }
+  },
+  "backend": "triton",
+  "launch_path": "explicit_backend_config",
+  "measurement": {
+    "kernel_us": 26.0558025,
+    "kernel_tops": 123.62795089500698,
+    "mmac_util_percent": 7.152648627882407,
+    "sample_mode": "warm_median",
+    "logical_ab_read_c_write_bytes": 26869760,
+    "logical_ab_read_c_write_gbps": 1031.2390109650241,
+    "samples": [
+      {
+        "kernel_cycles": 64533.0,
+        "kernel_us": 29.362515,
+        "active_CUs": 96,
+        "completed_TGs_per_die": {
+          "0": 96,
+          "1": 96
+        },
+        "stats_path": "m5out/0/0/stats.txt",
+        "repeat": 0,
+        "host_wall_seconds": 391.58441621018574,
+        "accuracy": {
+          "elements": 786432,
+          "max_abs": 0.001953125,
+          "mismatch": 62,
+          "nonfinite": 0,
+          "outside_tolerance": 0,
+          "canary_ok": true
+        },
+        "stats_sha256": "a111f65b6f15df7fe1095b15af4cfa256a74d84cf075b5451b5ea73a1a4de4ed"
+      },
+      {
+        "kernel_cycles": 57992.0,
+        "kernel_us": 26.38636,
+        "active_CUs": 96,
+        "completed_TGs_per_die": {
+          "0": 96,
+          "1": 96
+        },
+        "stats_path": "m5out/0/1/stats.txt",
+        "repeat": 1,
+        "host_wall_seconds": 366.7332661738619,
+        "accuracy": {
+          "elements": 786432,
+          "max_abs": 0.001953125,
+          "mismatch": 62,
+          "nonfinite": 0,
+          "outside_tolerance": 0,
+          "canary_ok": true
+        },
+        "stats_sha256": "5a5c1ee8f1e79e4defcaf74341dcb96cfe630e55313dea2566948f4d633d9373"
+      },
+      {
+        "kernel_cycles": 57190.0,
+        "kernel_us": 26.02145,
+        "active_CUs": 96,
+        "completed_TGs_per_die": {
+          "0": 96,
+          "1": 96
+        },
+        "stats_path": "m5out/0/2/stats.txt",
+        "repeat": 2,
+        "host_wall_seconds": 366.39979293802753,
+        "accuracy": {
+          "elements": 786432,
+          "max_abs": 0.001953125,
+          "mismatch": 62,
+          "nonfinite": 0,
+          "outside_tolerance": 0,
+          "canary_ok": true
+        },
+        "stats_sha256": "8c7d34636b9fbbfef8696dcec065336a3155c3d1e0080cd86530c9d543759b4b"
+      },
+      {
+        "kernel_cycles": 57008.0,
+        "kernel_us": 25.93864,
+        "active_CUs": 96,
+        "completed_TGs_per_die": {
+          "0": 96,
+          "1": 96
+        },
+        "stats_path": "m5out/0/3/stats.txt",
+        "repeat": 3,
+        "host_wall_seconds": 379.08084999118,
+        "accuracy": {
+          "elements": 786432,
+          "max_abs": 0.001953125,
+          "mismatch": 62,
+          "nonfinite": 0,
+          "outside_tolerance": 0,
+          "canary_ok": true
+        },
+        "stats_sha256": "c965409f782b505859f06b2616322bd504a248ceac3dffce351dc8bf544a2469"
+      },
+      {
+        "kernel_cycles": 57341.0,
+        "kernel_us": 26.090155,
+        "active_CUs": 96,
+        "completed_TGs_per_die": {
+          "0": 96,
+          "1": 96
+        },
+        "stats_path": "m5out/0/4/stats.txt",
+        "repeat": 4,
+        "host_wall_seconds": 419.38822599779814,
+        "accuracy": {
+          "elements": 786432,
+          "max_abs": 0.001953125,
+          "mismatch": 62,
+          "nonfinite": 0,
+          "outside_tolerance": 0,
+          "canary_ok": true
+        },
+        "stats_sha256": "9b3d700a2daf90ac5c02ae3f1b1d8654e9e9d8160b22407283ee6f817fda6b41"
+      }
+    ],
+    "operand_strides": {
+      "x": [
+        2048,
+        1
+      ],
+      "w": [
+        1,
+        12288
+      ],
+      "x_scale": [
+        16,
+        1
+      ],
+      "w_scale": [
+        16,
+        1
+      ]
+    }
+  },
+  "artifacts": {
+    "kernel.amdgcn": {
+      "sha256": "2b22c88595f6e2ae6214a080dc8ae4f6a6a12f8c77a364fd79705f4446f502c5"
+    },
+    "measured_hsaco_sha256": "8c30681be7e5326caae21596c273faea8c4ef5711e324cce91846be9718d3c39",
+    "raw_result_sha256": "9c8bd366404f7e273e9e7b8333eadc82549920589b5a0ce085c4068e74e0a024",
+    "raw_run": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119/r007/tt/triton-64x64"
+  },
+  "baseline_comparison": {
+    "kernel_us": 26.6541275,
+    "variant": "baseline",
+    "same_batch": true,
+    "raw_run": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119/r007/tt/baseline"
+  }
+}

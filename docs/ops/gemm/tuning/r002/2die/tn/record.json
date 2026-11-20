@@ -1,0 +1,127 @@
+{
+  "requirement": "R002",
+  "layout": "TN",
+  "shape": [
+    64,
+    248320,
+    2048
+  ],
+  "status": "PMD_PASS",
+  "data_kind": "baseline",
+  "environment": {
+    "TRITON_OFFLINE_BUILD": "1",
+    "TRITON_HIP_CLANG_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/clang",
+    "GPU_ARGS": "['--abs-max-tick=10000000000']",
+    "TRITON_HIP_LLD_PATH": "/xukang/code/pmd-triton-sessions/llvm-dtk-6.3.3/build/bin/ld.lld",
+    "TRITON_BUILD_PROTON": "OFF",
+    "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/q35-fp8-bf16-gaps-20261119/full/r002-tn/baseline/cache",
+    "GPU_DFLAGS": "['StatLog']",
+    "PMD_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd",
+    "GPU_CHIP": "sbx2",
+    "TRITON_BUILD_DIR": "/xukang/code/pmd-triton-sessions/mr565-rocdl-20261116/build",
+    "TRITON_BACKENDS_IN_TREE": "1",
+    "AMDGCN_USE_BUFFER_OPS": "1",
+    "TRITON_HOME": "/xukang/code/pmd-triton-sessions/q35-fp8-bf16-gaps-20261119/full/r002-tn/baseline/triton-home",
+    "GPU_OUT": "/xukang/code/pmd-triton-sessions/q35-fp8-bf16-gaps-20261119/full/r002-tn/baseline/model",
+    "runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "compiler": {
+        "libtriton": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+        "clang": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+      }
+    }
+  },
+  "source": {
+    "commit": "8494cee97bd3abd88dd3525b3489de7441b4861e",
+    "path": "boltops/gemm/triton/gemm_a16w16.py",
+    "symbol": "_gemm_a16_w16_kernel_BLOCK_SIZE_M_64_BLOCK_SIZE_N_128_BLOCK_SIZE_K_128_GROUP_SIZE_M_1_NUM_KSPLIT_1_SPLITK_BLOCK_SIZE_2048_EVEN_K_1_EVEN_MN_1_cache_modifier_CG_activation_NONE_use_activation_0_ADD_BIAS_0_SKIP_REDUCE_0",
+    "patches": []
+  },
+  "config": {
+    "BLOCK_SIZE_M": 64,
+    "BLOCK_SIZE_N": 128,
+    "BLOCK_SIZE_K": 128,
+    "GROUP_SIZE_M": 1,
+    "num_warps": 4,
+    "num_stages": 2,
+    "waves_per_eu": 2,
+    "matrix_instr_nonkdim": 16,
+    "cache_modifier": ".cg",
+    "NUM_KSPLIT": 1,
+    "kpack": 1,
+    "SPLITK_BLOCK_SIZE": 2048
+  },
+  "replay": {
+    "worker": "bf16",
+    "variant": "baseline",
+    "repeats": 1,
+    "input": {
+      "shape": [
+        64,
+        248320,
+        2048
+      ],
+      "layout": "TN",
+      "seed": 59,
+      "variants": {
+        "baseline": {
+          "family": "public"
+        }
+      }
+    }
+  },
+  "backend": "triton",
+  "launch_path": "public_auto",
+  "measurement": {
+    "kernel_us": 334.36403,
+    "kernel_tops": 194.6848112818834,
+    "mmac_util_percent": 22.52746305675683,
+    "sample_mode": "cold_single",
+    "logical_ab_read_c_write_bytes": 1049165824,
+    "logical_ab_read_c_write_gbps": 3137.7951270655517,
+    "samples": [
+      {
+        "us": 334.36403,
+        "dispatches": [
+          {
+            "cycles": 734866,
+            "TGs_per_die": {
+              "system.shaders0": 970,
+              "system.shaders1": 970
+            },
+            "stats": "model/0/0/stats.txt",
+            "sha256": "15a92212eaa5228147eccefbc3c59b73ae6238923340cec11119e80aa21413be"
+          }
+        ],
+        "max_abs": 0.0625,
+        "mismatches": 0,
+        "validated_elements": 15892480
+      }
+    ],
+    "operand_strides": [
+      [
+        2048,
+        1
+      ],
+      [
+        2048,
+        1
+      ]
+    ]
+  },
+  "artifacts": {
+    "kernel.amdgcn": {
+      "sha256": "1e3bce692a13ddff635cafafafbba3f42cf4476fd1ef95860f654d21af91e1d4"
+    },
+    "measured_hsaco_sha256": "706a43e887ac41c16068b5f492382366b28feb5a246bd5a70b38c445def448ba",
+    "raw_result_sha256": "5ccbd7792b402852e6de162049c08f3d3e93822ae3c80c922000a2b80afd810f",
+    "raw_run": "/xukang/code/pmd-triton-sessions/q35-fp8-bf16-gaps-20261119/full/r002-tn/baseline"
+  },
+  "baseline_comparison": {
+    "kernel_us": 334.36403,
+    "variant": "baseline",
+    "same_batch": true,
+    "raw_run": "/xukang/code/pmd-triton-sessions/q35-fp8-bf16-gaps-20261119/full/r002-tn/baseline"
+  }
+}

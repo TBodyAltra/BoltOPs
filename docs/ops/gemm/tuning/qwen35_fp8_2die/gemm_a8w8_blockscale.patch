@@ -1,0 +1,49 @@
+--- a/boltops/gemm/gluon/gemm_a8w8_blockscale.py
++++ b/boltops/gemm/gluon/gemm_a8w8_blockscale.py
+@@ -411,7 +411,7 @@
+ @g.jit
+ def _produce_fp32_a_scale_tiles(A, B, AS, a0, a1, b0, b1, scales,
+               M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+-              BN: gl.constexpr, P: gl.constexpr, C: gl.constexpr):
++              BN: gl.constexpr, P: gl.constexpr, C: gl.constexpr, B_K_CONTIGUOUS: gl.constexpr):
+     ebarrier_sync(14, P + C)
+     layout: gl.constexpr = gl.BlockedLayout([1, 4], [4, 16], [1, P], [1, 0])
+     rows = gl.program_id(0) * 64 + gl.arange(0, 64, layout=gl.SliceLayout(1, layout))
+@@ -435,7 +435,7 @@
+             bb = b1
+         abarrier_seq(slot)
+         matrix_load(aa, A, (M, K), (K, 1), (tile_m, i * 128), warps=(1, P))
+-        matrix_load(bb, B, (K, N), (1, K), (i * 128, tile_n), warps=(1, P))
++        matrix_load(bb, B, (K, N), (1, K) if B_K_CONTIGUOUS else (N, 1), (i * 128, tile_n), warps=(1, P))
+         abarrier_arrive(slot)
+ 
+ 
+@@ -485,7 +485,7 @@
+         M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,
+         GROUP_N: gl.constexpr, GROUP_K: gl.constexpr,
+         BLOCK_SIZE_M: gl.constexpr, BLOCK_SIZE_N: gl.constexpr,
+-        BLOCK_SIZE_K: gl.constexpr):
++        BLOCK_SIZE_K: gl.constexpr, B_K_CONTIGUOUS: gl.constexpr = True):
+     gl.static_assert(BLOCK_SIZE_M == 64 and BLOCK_SIZE_K == 128)
+     gl.static_assert(BLOCK_SIZE_N == 32 or BLOCK_SIZE_N == 64)
+     gl.static_assert(GROUP_N == 128 and GROUP_K == 128)
+@@ -500,7 +500,9 @@
+     PR: gl.constexpr = 32
+     CR: gl.constexpr = 128
+     a_layout: gl.constexpr = MlsSharedLayout(0, (64, 128))
+-    b_layout: gl.constexpr = MlsSharedLayout(1, (128, BN), alt=1, order=(0, 1))
++    b_layout: gl.constexpr = MlsSharedLayout(
++        1, (128, BN) if B_K_CONTIGUOUS else (BN, 128),
++        alt=1 if B_K_CONTIGUOUS else 0, order=(0, 1) if B_K_CONTIGUOUS else (1, 0))
+     a0 = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), a_layout)
+     a1 = gl.allocate_shared_memory(gl.float8e4nv, (64, 128), a_layout)
+     b0 = gl.allocate_shared_memory(gl.float8e4nv, (128, BN), b_layout)
+@@ -514,7 +516,7 @@
+     abarrier_init(4, P)
+     gl.warp_specialize([
+         (_idle_default_partition, ()),
+-        (_produce_fp32_a_scale_tiles, (A, B, AS, a0, a1, b0, b1, scales, M, N, K, BN, P, C)),
++        (_produce_fp32_a_scale_tiles, (A, B, AS, a0, a1, b0, b1, scales, M, N, K, BN, P, C, B_K_CONTIGUOUS)),
+         (_accumulate_fp32_block_scale_tiles, (BS, Out, a0, a1, b0, b1, scales, M, N, K, BN, P, C, WM)),
+     ], [P, C], [PR, CR])
+ 
