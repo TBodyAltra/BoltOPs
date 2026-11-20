@@ -191,22 +191,23 @@ _BF16_PROFILE = "DTYPE=bfloat16-OUT=bfloat16"
 _BF16_MLS_PROFILE = "DTYPE=bfloat16-OUT=bfloat16-WASP-MLS-EXPERIMENTAL"
 
 
-def _validate_bf16_mls_environment(config):
+def _bf16_mls_environment_error(config):
     for key, expected in _BF16_MLS_REQUIRED_ENV.items():
         if os.environ.get(key) != expected or _BF16_MLS_IMPORT_ENV[key] != expected:
-            raise ValueError(
+            return (
                 f"BF16 MLS requires {key}={expected} before importing boltops; "
                 "start a fresh process with the recorded environment and a compatible "
                 "Triton cache; changing compiler environment during calls is unsupported"
             )
     if config.get("buffer_cache_swizzle") is not True:
-        raise ValueError("BF16 MLS requires buffer_cache_swizzle=True")
+        return "BF16 MLS requires buffer_cache_swizzle=True"
     # Python knob overrides can disagree with os.environ. Reject those rather
     # than silently compiling a different pipeline or mutating global knobs.
     from triton import knobs
 
     if not knobs.amd.use_buffer_ops or not knobs.amd.buffer_cache_swizzle:
-        raise ValueError("BF16 MLS requires active Triton buffer-ops and BCS knobs")
+        return "BF16 MLS requires active Triton buffer-ops and BCS knobs"
+    return None
 
 
 def _resolve_activation(activation):
@@ -267,9 +268,12 @@ def gemm_a16w16(
                     )
                 except (FileNotFoundError, KeyError):
                     continue
-                if tuned:
-                    config = candidate
-                    break
+                if not tuned:
+                    continue
+                if profile == _BF16_MLS_PROFILE and _bf16_mls_environment_error(candidate):
+                    continue
+                config = candidate
+                break
         if config is None:
             config, _ = get_gemm_config(
                 "GEMM-A16W16",
@@ -308,7 +312,8 @@ def gemm_a16w16(
                         "BF16 MLS requires M/N/K divisible by positive "
                         "BLOCK_SIZE_M/N/K (unmasked matrix-load tails are unsafe)"
                     )
-            _validate_bf16_mls_environment(config)
+            if error := _bf16_mls_environment_error(config):
+                raise ValueError(error)
         wasp, wdra, use_mls, use_matrix_store = (
             config.pop(key)
             for key in ("wasp", "wdra", "use_mls", "use_matrix_store")
