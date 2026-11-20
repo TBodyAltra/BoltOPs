@@ -100,11 +100,17 @@ def main():
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--current-source', action='store_true',
                         help='check current kernel against recorded executable sections')
+    parser.add_argument('--public-api', action='store_true',
+                        help='confirm the recorded configuration through the public GEMM entrypoint')
     parser.add_argument('--current-toolchain', action='store_true',
                         help='measure the compiled full grid and report differences from the archived executable')
     args = parser.parse_args()
     if args.current_toolchain and args.single_tg_perf:
         parser.error('--current-toolchain is for full-grid comparison')
+    if args.public_api and (not args.current_toolchain or args.single_tg_perf):
+        parser.error('--public-api requires a complete current-toolchain replay')
+    if args.public_api:
+        args.current_source = True
     record_path = args.record.resolve()
     record = json.loads(record_path.read_text())
     args.chip = 'sbx2'
@@ -137,6 +143,8 @@ def main():
                 current_toolchain=args.current_toolchain, launch='repository JIT with archived tile/warp/stage configuration; persistent grid/NUM_SMS follow device CUs')
     plan.update(single_tg=args.single_tg_perf, full_grid=[full_grid],
                 selected_tile_ids=tile_ids if args.single_tg_perf else None)
+    if args.public_api:
+        plan['launch'] = 'public gemm_a16w16 with archived full-grid launch options'
     if args.single_tg_perf:
         plan.update(protocol='single_tg_perf', correctness_dispatches=0,
                     each_dispatch_validated=True, execution_warmups=1,
@@ -228,6 +236,45 @@ def main():
         assert binary_matches, 'compiled kernel differs from measured binary'
         assert resources_match, 'launch resources differ'
 
+    def dispatch():
+        assert fn[(grid,)](*positional, **params) is handle
+
+    if args.public_api:
+        backend = 'triton' if mls else 'gluon'
+        public = importlib.import_module('boltops.gemm.gemm_a16w16')
+        backend_module = importlib.import_module(
+            'boltops.gemm.triton.gemm_a16w16_wasp' if mls else 'boltops.gemm.gluon.gemm_a16w16'
+        )
+        calls = []
+
+        class ObserveLaunch:
+            def __getitem__(self, actual_grid):
+                def checked_launch(*values, **options):
+                    expected_options = dict(params)
+                    if not mls:
+                        options.setdefault('FORCE_MASKED_STORE', False)
+                        expected_options.setdefault('FORCE_MASKED_STORE', False)
+                    assert options == expected_options, (options, expected_options)
+                    assert (actual_grid(options) if callable(actual_grid) else actual_grid) == (grid,)
+                    assert len(values) == len(positional)
+                    for actual, expected in zip(values, positional):
+                        if isinstance(expected, torch.Tensor):
+                            assert actual.data_ptr() == expected.data_ptr() and actual.dtype == expected.dtype
+                        else:
+                            assert actual == expected
+                    result = fn[actual_grid](*values, **options)
+                    assert result is handle, 'public API compiled a different binary'
+                    calls.append(result)
+                    return result
+                return checked_launch
+
+        setattr(backend_module, symbol, ObserveLaunch())
+
+        def dispatch():
+            before = len(calls)
+            assert public.gemm_a16w16(a, b.T, out=c, backend=backend) is c
+            assert len(calls) == before + 1, 'public API did not launch the archived kernel'
+
     def prepare(seed, kind):
         generator = torch.Generator().manual_seed(seed)
         def make(shape):
@@ -249,7 +296,7 @@ def main():
         cr.copy_(ci)
         torch.cuda.synchronize()
         before = set((output / 'g').glob('*/*/stats.txt'))
-        assert fn[(grid,)](*positional, **params) is handle
+        dispatch()
         torch.cuda.synchronize()
         paths = set((output / 'g').glob('*/*/stats.txt')) - before
         assert len(paths) == 1, paths
@@ -381,6 +428,9 @@ def main():
                   runtime=dict(torch=torch.__version__, triton=triton.__version__, triton_path=triton.__file__,
                       libtriton_sha256=digest(lib.__file__),
                       clang_sha256=digest(clang) if clang else None))
+    if args.public_api:
+        result['public_api_verified'] = True
+        result['public_api_backend'] = backend
     if protocol != 'cold' and not small:
         result['timing_input'] = dict(seed=seed, input_kind='normal_random')
     save(output / 'result.json', result)
