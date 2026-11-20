@@ -61,8 +61,8 @@
       59
     ],
     "invocation": "direct JIT",
-    "replay_sha256": "5a8e273bb917d40d8f95ea556ca33ef195d980b1d1693a2c0bd18f5bfb4cb7eb",
-    "worker_sha256": "544a8d5d227652db92f66ab04da23e446645a3ca187a5531e2c09756a06c7300",
+    "replay_sha256": "240bca8c0fcd08dd4287daa662f43f57b368bef28d2207342d4e79aab8b329eb",
+    "worker_sha256": "75863a3b8baef8e28924533f551f46e80a7afd061b6d20b934d10bc9b20ec3f1",
     "previous_replay_sha256": "147a4cb540690eebe66a9fbc673bb0711b724e2a417b09fad4dc12b05f2728f3",
     "previous_worker_sha256": "0345e595347668f39cf4cb6bff087014658e2b2126aed48f62814bc32f50cc07"
   },
@@ -283,5 +283,56 @@
       "a7a8f8d6b595080bb1e4293d9c43987fb9716842df38921f277cd1e65c3bf32f",
       "c9c579f068da5b173835c98fde2d328d69f22f97de71df8c2ec94f88227d08af"
     ]
+  },
+  "current_toolchain_validation": {
+    "status": "PASS",
+    "base_commit": "d4bd3df664c88aad6a1ee8f72b0b6bcf30da0451",
+    "invocation": "gemm_a16w16(a, b.T, out=c, backend=\"triton\")",
+    "config": {
+      "path": "boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=4096-K=4608-TN.json",
+      "sha256": "2f0883963c7015b49f11ad4114728378a5faa1445d299a4b3837b3ead1197cf9",
+      "profile": "DTYPE=bfloat16-OUT=bfloat16-WASP-MLS-EXPERIMENTAL",
+      "bucket": "M_EQ_5684"
+    },
+    "aggregation": "median of repeats 1 and 2 after one warmup; all dispatches validated",
+    "kernel_us": 414.468145,
+    "original_limit_us": 416.903989775,
+    "launched_TGs": 736,
+    "full_output_elements": 23281664,
+    "stats_sha256": [
+      "0c7b02109b675c2188db2a68a59161146c26f32e32d32c516e74cbfb8fe47d21",
+      "90308fa685da4ff107d7ad62233a3994c88165764f787aef16bdf82e2b5ee6b9",
+      "9f3395ddcb928658fc996e8935bf87a14e440e51dce082598155e7f6abff0b8d"
+    ],
+    "samples_kernel_us": [
+      418.67007,
+      414.41673,
+      414.51956
+    ],
+    "executable_sections": {
+      ".rodata": "a828f9d103695d786b9e18c23c2a9a98dabeceda4e70ded341e06519ec5d54b3",
+      ".text": "f47a9f5326ce10c1fa96ccf9b96818960c4d3fcdd1fdcd154c8e18f639be0d23"
+    },
+    "resources": {
+      "VGPR": 168,
+      "spills": 0,
+      "LDS_bytes": 131072
+    },
+    "runtime": {
+      "triton": "3.6.0",
+      "torch": "2.6.0+d8c4c7c",
+      "libtriton_sha256": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+      "clang_sha256": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe"
+    },
+    "source_fingerprints": {
+      "boltops/gemm/gemm_a16w16.py": "cf01a0278ca57dcae7ad335eeb205385c30070604b427a716bec9cea77b23ad5",
+      "boltops/gemm/triton/gemm_a16w16.py": "2442435dd77be1137718fa10d4b7171f4e7aa9760c42a0ae635bcac63d557a27",
+      "boltops/gemm/triton/gemm_a16w16_wasp.py": "256cd705a11342ff85a5a2cad53bad3d7c3a7b66b4f37bc8bfc17530f35ab458",
+      "docs/ops/gemm/tuning/qwen3_vl_bf16_sbx2/benchmark.py": "240bca8c0fcd08dd4287daa662f43f57b368bef28d2207342d4e79aab8b329eb",
+      "docs/ops/gemm/tuning/qwen3_vl_bf16_sbx2/replay_worker.py": "75863a3b8baef8e28924533f551f46e80a7afd061b6d20b934d10bc9b20ec3f1"
+    },
+    "compile_evidence": "node60:/tmp/pr45-r036-staged.Zkhug9EF/r036-public/compile.json",
+    "report_location": "node60:/tmp/pr45-r036-masked-mls.ptxDwd/r036-full/result.json",
+    "report_sha256": "decec578b5a8060ff41394124d68cabc512fd52ad2d3114926d1f76a56c34949"
   }
 }

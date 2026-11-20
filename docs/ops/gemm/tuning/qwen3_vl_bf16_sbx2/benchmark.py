@@ -60,8 +60,8 @@ def main():
     if args.compile_only:
         job['compile_only'] = True
     if args.public_api:
-        if not args.current_toolchain or job['family'] not in ('persistent', 'wasp') or job.get('masked_mls'):
-            parser.error('--public-api requires --current-toolchain and a persistent or unmasked WASP/MLS record')
+        if not args.current_toolchain or job['family'] not in ('persistent', 'wasp'):
+            parser.error('--public-api requires --current-toolchain and a persistent or WASP/MLS record')
         job['public_api'] = True
         job['public_backend'] = 'triton' if job['family'] == 'wasp' else 'auto'
         validation = record.get('current_toolchain_validation', {})

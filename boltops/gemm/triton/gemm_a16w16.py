@@ -308,11 +308,12 @@ def gemm_a16w16(
         if bf16_mls:
             for dim, size in zip("MNK", (m, n, k)):
                 block = config.get(f"BLOCK_SIZE_{dim}")
-                if type(block) is not int or block <= 0 or size % block:
-                    raise ValueError(
-                        "BF16 MLS requires M/N/K divisible by positive "
-                        "BLOCK_SIZE_M/N/K (unmasked matrix-load tails are unsafe)"
-                    )
+                if type(block) is not int or block <= 0:
+                    raise ValueError("BF16 MLS requires positive integer tile sizes")
+                if size % block:
+                    if dim == "K" or config["use_matrix_store"]:
+                        raise ValueError("BF16 MLS requires complete K and matrix-store tiles")
+                    config[f"MASK_{dim}"] = True
             if error := _bf16_mls_environment_error(config):
                 raise ValueError(error)
         wasp, wdra, use_mls, use_matrix_store = (

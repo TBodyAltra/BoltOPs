@@ -142,14 +142,17 @@ def main():
     module_name, symbol = paths[family]
     module = importlib.import_module('boltops.gemm.' + module_name)
     if job.get('masked_mls'):
-        module = importlib.import_module('wasp_edges')
-        symbol = 'gemm_mls_masked'
         options.update(MASK_M=m % options['BLOCK_SIZE_M'] != 0,
                        MASK_N=n % options['BLOCK_SIZE_N'] != 0)
-        if 'MASK_K' in module.gemm_mls_masked.arg_names:
-            options['MASK_K'] = k % options['BLOCK_SIZE_K'] != 0
+        if job.get('public_api'):
+            assert k % options['BLOCK_SIZE_K'] == 0 and not options['USE_MATRIX_STORE']
         else:
-            assert k % options['BLOCK_SIZE_K'] == 0
+            module = importlib.import_module('wasp_edges')
+            symbol = 'gemm_mls_masked'
+            if 'MASK_K' in module.gemm_mls_masked.arg_names:
+                options['MASK_K'] = k % options['BLOCK_SIZE_K'] != 0
+            else:
+                assert k % options['BLOCK_SIZE_K'] == 0
     kernel = getattr(module, symbol)
     tiles = math.ceil(m/options['BLOCK_SIZE_M'])*math.ceil(n/options['BLOCK_SIZE_N'])
     grid = min(tiles, options.get('NUM_SMS', tiles))
@@ -221,7 +224,7 @@ def main():
         assert kernel[(grid,)](*positional, **options) is handle
 
     if public_api:
-        assert family in ('persistent', 'wasp') and not job.get('masked_mls')
+        assert family in ('persistent', 'wasp')
         assert code_origin == 'fresh' and current_toolchain
         public = importlib.import_module('boltops.gemm.gemm_a16w16')
         public_operands = (a, b.T, c) if family == 'persistent' else positional

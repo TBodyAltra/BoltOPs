@@ -383,6 +383,8 @@ def _gemm_fp16_mls_kernel(
     WARP_SPECIALIZE: tl.constexpr,
     HAS_BIAS: tl.constexpr,
     USE_MATRIX_STORE: tl.constexpr,
+    MASK_M: tl.constexpr = False,
+    MASK_N: tl.constexpr = False,
 ):
     tl.assume(stride_am > 0)
     tl.assume(stride_ak > 0)
@@ -414,6 +416,7 @@ def _gemm_fp16_mls_kernel(
             strides=[stride_am, stride_ak],
             block_shape=[BLOCK_SIZE_M, BLOCK_SIZE_K],
             offsets=[mls_offs_am, mls_offs_k],
+            boundary_check=(0, 1) if MASK_M else (),
         )
         b = tl.matrix_load(
             b_ptr,
@@ -421,6 +424,7 @@ def _gemm_fp16_mls_kernel(
             strides=[stride_bk, stride_bn],
             block_shape=[BLOCK_SIZE_K, BLOCK_SIZE_N],
             offsets=[mls_offs_k, mls_offs_bn],
+            boundary_check=(0, 1) if MASK_N else (),
         )
         accumulator = tl.dot(a, b, accumulator)
 
