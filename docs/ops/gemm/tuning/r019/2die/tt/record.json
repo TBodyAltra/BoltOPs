@@ -56,11 +56,11 @@
     }
   },
   "source": {
-    "path": "boltops/gemm/gluon/gemm_a16w16_tt.py",
-    "symbol": "gemm_a16w16_tt_kernel",
-    "line": 136,
-    "sha256": "72a1b9f53d7fa82721b2473ed5a0ddd4d5302da643c8d7fbd9436bb53d173e77",
-    "measurement_base_commit": "0c532e6aab2f1dedcf083258983a285be0097fd8"
+    "path": "boltops/gemm/gluon/gemm_a16w16_mls.py",
+    "symbol": "_gemm_a16w16_kernel",
+    "line": 398,
+    "sha256": "5b0518fbcac620e269c000836ecca0904f76395e632e5380867f0638316715da",
+    "measurement_base_commit": "8494cee97bd3abd88dd3525b3489de7441b4861e"
   },
   "config": {
     "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json",
@@ -70,7 +70,7 @@
       "BLOCK_SIZE_N": 32,
       "BLOCK_SIZE_K": 128,
       "CHUNKS": 1,
-      "SLOTS": 2,
+      "SLOTS": 3,
       "PW": 1,
       "CW": 1,
       "LTS": true,
@@ -84,27 +84,27 @@
       "mmac_layout_force": 2,
       "enable_v_mmac_cluster": 2,
       "hcu_use_gfx946_sched_model_v2": true,
-      "PREFETCH": true,
-      "kernel": "_gemm_a16w16_tt_kernel",
+      "PREFETCH": false,
+      "kernel": "_gemm_a16w16_kernel",
       "requires_16_byte_alignment": true
     }
   },
   "benchmark": {
     "script": "../../../bf16_2die_small_mn/benchmark.py",
-    "sha256": "3175ddc858f83f17c6ea7e38571d8ffdbe09dd285da8a6fc988a3d434af48c71",
+    "sha256": "b54f5540b9de397be6850fe50803a6696377df1d4b57728d1f3b18b6291d69bf",
     "repeats": 1
   },
   "variants": {
     "winner": {
       "family": "gluon",
-      "module": "boltops.gemm.gluon.gemm_a16w16_tt",
-      "symbol": "gemm_a16w16_tt_kernel",
+      "module": "boltops.gemm.gluon.gemm_a16w16_mls",
+      "symbol": "_gemm_a16w16_kernel",
       "config": {
         "BLOCK_SIZE_M": 16,
         "BLOCK_SIZE_N": 32,
         "BLOCK_SIZE_K": 128,
         "CHUNKS": 1,
-        "SLOTS": 2,
+        "SLOTS": 3,
         "PW": 1,
         "CW": 1,
         "LTS": true,
@@ -118,33 +118,36 @@
         "mmac_layout_force": 2,
         "enable_v_mmac_cluster": 2,
         "hcu_use_gfx946_sched_model_v2": true,
-        "PREFETCH": true
-      }
+        "PREFETCH": false
+      },
+      "public_symbol": "_gemm_a16w16_kernel"
     }
   },
   "performance": {
-    "kernel_us": 13.092625,
-    "kernel_tops": 41.00559757878958,
-    "mmac_util_percent": 4.744859542426874,
-    "logical_bandwidth_tb_s": 0.680756991054124,
+    "kernel_us": 12.391015,
+    "kernel_tops": 43.32743621083503,
+    "mmac_util_percent": 5.013525257347091,
+    "logical_bandwidth_tb_s": 0.7193031402189409,
     "bandwidth_scope": "Logical BF16 reads of A/W and writes of C, divided by aggregate dispatch time. Excludes split-K scratch traffic.",
     "aggregation": "One cold full-grid trial. Split-K includes reduction.",
-    "baseline_kernel_us": 98.42014,
+    "baseline_kernel_us": 13.098995,
     "baseline_status": "PASS",
-    "improvement_percent": 86.69720953455257
+    "improvement_percent": 5.40484212720137,
+    "previous_tuned_kernel_us": 13.092625,
+    "improvement_vs_previous_tuned_percent": 5.3588184187662975
   },
   "samples": [
     {
-      "us": 13.092625,
+      "us": 12.391015,
       "dispatches": [
         {
-          "cycles": 28775,
+          "cycles": 27233,
           "TGs_per_die": {
             "system.shaders0": 128,
             "system.shaders1": 128
           },
           "stats": "model/0/0/stats.txt",
-          "sha256": "4f3d7e4b923b796ea83d6680fc3d36f1fd821784a35ac29202e4dc22b74214e7"
+          "sha256": "5527d0429408c4e0154d67025a9545995da6a8fddc730f67715513c5c6b8ca83"
         }
       ],
       "max_abs": 0.03125,
@@ -153,9 +156,9 @@
     }
   ],
   "resources": {
-    "VGPR": 105,
+    "VGPR": 57,
     "spills": 0,
-    "LDS_bytes": 24576
+    "LDS_bytes": 36864
   },
   "validation": {
     "output_elements": 131072,
@@ -165,55 +168,55 @@
   },
   "public_api_validation": {
     "mode": "full_grid",
-    "kernel_us": 13.102635,
+    "kernel_us": 12.391015,
     "validated_elements": 131072,
     "executable_sections": {
-      ".rodata": "01cf00e2e88f98858d3105d176ee410994001b8e7e4d73b575129bd2d93ec678",
-      ".text": "fdc3615e83d57fffa85cd0689ff17a54e600d59d4bf6f812c44850f5fd706b54"
+      ".rodata": "96c4daf4c514ae01faee3b4a9ce87f1ab6326c5214af7d546a1747b0e03eca4d",
+      ".text": "841907efdfed2c69076d76ce7b2457f33f25a5615d08f69eba857bf58e4edceb"
     },
-    "result_sha256": "ec14c475495d4ea6777b2c7d192be48a6105e2e256f820c8ff6d9ee730d0f900"
+    "result_sha256": "1892e733e999236b03e9624332a611ec7c8f08f0bcebddcb18a02d1f8ad51f19"
   },
   "single_tg_perf": {
     "path": "single_tg.perf",
-    "sha256": "009c8874246f518d7672a5d9971469393170f99152a3984b9ce719faacdd5fc2",
+    "sha256": "3586a6daf853d94ce414337d21cf6de5af5bdc6da5a742819d7c1181b22956c2",
     "sample": {
-      "us": 6.239415,
+      "us": 11.01009,
       "dispatches": [
         {
-          "cycles": 13713,
+          "cycles": 24198,
           "TGs_per_die": {
             "system.shaders0": 1,
             "system.shaders1": 0
           },
-          "stats": "model/0/2/stats.txt",
-          "sha256": "b7f864448e56fe55b575fca65406096488bd131a19856f3d1ff2520b37671293"
+          "stats": "model/0/0/stats.txt",
+          "sha256": "5bdaa471fd164c4e67f8b6066f3432befaa9082dfa407e0cdb13c90fc474a5d5"
         }
       ],
       "max_abs": 0.0,
       "mismatches": 0,
       "validated_elements": 512,
-      "perf": "model/0/2/860661_python3.10.perf"
+      "perf": "model/0/0/939551_python3.10.perf"
     },
     "scope": "Isolated TG0 with original dimensions and launch configuration",
     "selection": "faster of repeats 1 and 2"
   },
   "evidence": {
-    "pmd_host_root": "node60:/xukang/q35dd19",
-    "full_grid": "confirm/r019-tt/ring_16x32x128",
-    "single_tg": "perf/r019-tt/ring_16x32x128",
-    "public_replay": "public/r019-tt/ring_16x32x128",
+    "pmd_host_root": "node60:/xukang/q35p3",
+    "full_grid": "public/r019-tt/refined",
+    "single_tg": "perf/r019-tt/refined",
+    "public_replay": "public/r019-tt/refined",
     "baseline": "screen/r019-tt/baseline",
-    "full_grid_result_sha256": "38ee307594f31cfa3302477ed2688bc9d3834ea5bb8342ffd0566f1738dab430"
+    "full_grid_result_sha256": "1892e733e999236b03e9624332a611ec7c8f08f0bcebddcb18a02d1f8ad51f19"
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "73f7afaf2d8ad050fac40ac9c7f03b2b5c3b66461950cae569dcb00427494cb5",
-    "raw_sha256": "95214937bc2046d45d4ea642695cce7042e5171501e5d77032572fe9bf128be7",
+    "sha256": "c37122c17afe443a1fc245810c0bd8d7d054567d28b930a8ad9fce0e74ca18fe",
+    "raw_sha256": "05ad999d4cfbab88d25349414af356da8344fb81d308300c76e2b03a2bcc4653",
     "normalization": "Strip trailing horizontal whitespace only",
-    "hsaco_sha256": "f0a581df7b713bd00c8b1725d874d50e20fab4633d8e049a43e8f29b19005fef",
+    "hsaco_sha256": "83e4fb877da43a6dfe5fc29f9436a59c245e5a2dfe2d6228cccb89778dfd86f4",
     "executable_sections": {
-      ".rodata": "01cf00e2e88f98858d3105d176ee410994001b8e7e4d73b575129bd2d93ec678",
-      ".text": "fdc3615e83d57fffa85cd0689ff17a54e600d59d4bf6f812c44850f5fd706b54"
+      ".rodata": "96c4daf4c514ae01faee3b4a9ce87f1ab6326c5214af7d546a1747b0e03eca4d",
+      ".text": "841907efdfed2c69076d76ce7b2457f33f25a5615d08f69eba857bf58e4edceb"
     }
   }
 }

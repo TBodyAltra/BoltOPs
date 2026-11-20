@@ -58,21 +58,20 @@
   "source": {
     "path": "boltops/gemm/triton/gemm_a16w16.py",
     "symbol": "_gemm_a16_w16_kernel",
-    "line": 44,
-    "sha256": "2b9178db8077b4c0c875119eec68cd69c2d9b0af404b0f46ee6167bac2d5fb86",
-    "measurement_base_commit": "0c532e6aab2f1dedcf083258983a285be0097fd8"
+    "line": 52,
+    "sha256": "0ed29b0c25dc5611e81716b62119fbe310694944cbac0aa944a1492835ece21d",
+    "measurement_base_commit": "8494cee97bd3abd88dd3525b3489de7441b4861e"
   },
   "config": {
-    "path": "boltops/gemm/configs/gfx946/triton/gemm_a16w16/GEMM-A16W16-N=2048-K=4096-TN.json",
+    "path": "boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=2048-K=4096-TN.json",
     "bucket": "M_EQ_12",
     "options": {
       "BLOCK_SIZE_M": 16,
-      "BLOCK_SIZE_N": 32,
+      "BLOCK_SIZE_N": 16,
       "BLOCK_SIZE_K": 128,
-      "GROUP_SIZE_M": 1,
-      "num_warps": 4,
+      "num_warps": 1,
       "num_stages": 2,
-      "waves_per_eu": 2,
+      "GROUP_SIZE_M": 1,
       "matrix_instr_nonkdim": 16,
       "cache_modifier": null,
       "NUM_KSPLIT": 4,
@@ -81,62 +80,63 @@
   },
   "benchmark": {
     "script": "../../../bf16_2die_small_mn/benchmark.py",
-    "sha256": "3175ddc858f83f17c6ea7e38571d8ffdbe09dd285da8a6fc988a3d434af48c71",
+    "sha256": "b54f5540b9de397be6850fe50803a6696377df1d4b57728d1f3b18b6291d69bf",
     "repeats": 1
   },
   "variants": {
     "winner": {
       "family": "split",
+      "module": "boltops.gemm.triton.gemm_a16w16",
+      "symbol": "_gemm_a16_w16_kernel",
       "config": {
         "BLOCK_SIZE_M": 16,
-        "BLOCK_SIZE_N": 32,
+        "BLOCK_SIZE_N": 16,
         "BLOCK_SIZE_K": 128,
-        "GROUP_SIZE_M": 1,
-        "num_warps": 4,
+        "num_warps": 1,
         "num_stages": 2,
-        "waves_per_eu": 2,
+        "GROUP_SIZE_M": 1,
         "matrix_instr_nonkdim": 16,
         "cache_modifier": null,
         "NUM_KSPLIT": 4,
         "kpack": 1,
         "SPLITK_BLOCK_SIZE": 1024
-      },
-      "module": "boltops.gemm.triton.gemm_a16w16",
-      "symbol": "_gemm_a16_w16_kernel"
+      }
     }
   },
   "performance": {
-    "kernel_us": 20.06732,
-    "kernel_tops": 10.032560003029802,
-    "mmac_util_percent": 1.160892436060221,
-    "logical_bandwidth_tb_s": 0.8433947333276193,
+    "kernel_us": 19.07815,
+    "kernel_tops": 10.552731370704182,
+    "mmac_util_percent": 1.221082756975912,
+    "logical_bandwidth_tb_s": 0.8871233321889177,
     "bandwidth_scope": "Logical BF16 reads of A/W and writes of C, divided by aggregate dispatch time. Excludes split-K scratch traffic.",
     "aggregation": "One cold full-grid trial. Split-K includes reduction.",
-    "baseline_kernel_us": 48.963005,
+    "baseline_kernel_us": 19.59503,
     "baseline_status": "PASS",
-    "improvement_percent": 59.015342297720494
+    "improvement_percent": 2.6378117308317517,
+    "previous_tuned_kernel_us": 20.06732,
+    "improvement_vs_previous_tuned_percent": 4.929258117177571
   },
   "samples": [
     {
-      "us": 20.06732,
+      "us": 19.07815,
       "dispatches": [
         {
-          "cycles": 32004,
+          "cycles": 30197,
           "TGs_per_die": {
-            "system.shaders0": 128,
-            "system.shaders1": 128
+            "system.shaders0": 256,
+            "system.shaders1": 256
           },
           "stats": "model/0/0/stats.txt",
-          "sha256": "4037666c1e049ed515132f8b7792a969569003fdb1072cf51316ea71cf6a3106"
+          "sha256": "5f5f7ec493a6e3d2d911fba86c45eecf530de134b4fdf4c39ca7e24d3e31a30b"
         },
         {
-          "cycles": 12100,
+          "cycles": 11733,
           "TGs_per_die": {
             "system.shaders0": 32,
             "system.shaders1": 32
           },
           "stats": "model/0/1/stats.txt",
-          "sha256": "e7ebfa622c1dec2e63878aa67f14e0a55cf642a23a3508b5deab108852cb1f37"
+          "sha256": "5184517130f5a7edc8a8b5b81e470b97572894da9c64d78b3b91d025b0b1c60f"
         }
       ],
       "max_abs": 0.03125,
@@ -145,9 +145,9 @@
     }
   ],
   "resources": {
-    "VGPR": 81,
+    "VGPR": 75,
     "spills": 0,
-    "LDS_bytes": 12288,
+    "LDS_bytes": 8192,
     "reduction": {
       "VGPR": 18,
       "spills": 0,
@@ -161,72 +161,73 @@
     "guard_and_input_check": true
   },
   "public_api_validation": {
-    "kernel_us": 19.586385,
+    "mode": "full_grid",
+    "kernel_us": 19.07815,
     "validated_elements": 24576,
     "executable_sections": {
-      ".rodata": "c1054d31b19531fc6ede18a8d7e083b577839abadf62a1e18e390f856d10d76c",
-      ".text": "3d77c04807a13926ad02ffaa07302d453509533d83ee434a9580b66ae85773b7"
+      ".rodata": "f123615d353a15057899c188d7246bade53b262a32e8d4b1e6f40b2a081575f0",
+      ".text": "1f1e4a3c294ed173b7239bd43b159d908817a980b82782f39fda360e1422f9b9"
     },
-    "result_sha256": "084c4586b9e3ba2c20902ca4ce3505c5f7c9001e267373e1987857f205ceb23b"
+    "result_sha256": "fc1c71fa232c0cea11d0e52e8daf129d81b7bb8f264e072c7f97577e3daf4993"
   },
   "single_tg_perf": {
     "path": "single_tg.perf",
-    "sha256": "8b013b3e39bd31f88ade8bca4bb9ac848b01a09acf7376a824df4facc64b5c98",
+    "sha256": "3f386026a4145744ea825e37440582cb287d52fdf5a7f051d3b1e71891e52354",
     "sample": {
-      "us": 17.14804,
+      "us": 18.99716,
       "dispatches": [
         {
-          "cycles": 27346,
+          "cycles": 30019,
           "TGs_per_die": {
-            "system.shaders0": 128,
-            "system.shaders1": 128
+            "system.shaders0": 256,
+            "system.shaders1": 256
           },
-          "stats": "model/0/2/stats.txt",
-          "sha256": "cc7ee9377dec879d4a588767221bd1f10d67c6b62097b42827e987416c3b2b58"
+          "stats": "model/0/0/stats.txt",
+          "sha256": "19b8167b94afd80a95f10a98063ea82ae749fce9336deb3d54f4229dbf1bf27a"
         },
         {
-          "cycles": 10342,
+          "cycles": 11733,
           "TGs_per_die": {
             "system.shaders0": 32,
             "system.shaders1": 32
           },
-          "stats": "model/0/3/stats.txt",
-          "sha256": "c2b7b51f146a2567dfe2806e0251a5d1f2209265877e86f9fc2b08cba90cecf0"
+          "stats": "model/0/1/stats.txt",
+          "sha256": "74f8191f4293af1bc7a382e60e485e9c58337968c1d51b933e683e33931d75dc"
         }
       ],
       "max_abs": 0.03125,
       "mismatches": 0,
       "validated_elements": 24576,
-      "perf": "model/0/2/859403_python3.10.perf"
+      "perf": "model/0/0/939549_python3.10.perf"
     },
     "scope": "TG0 trace from full Split-K compute launch",
     "selection": "faster of repeats 1 and 2"
   },
   "evidence": {
-    "pmd_host_root": "node60:/xukang/q35dd19",
-    "full_grid": "confirm/r015-tn/split_4",
-    "single_tg": "perf/r015-tn/split_4",
-    "public_replay": "public/r015-tn/split_4",
+    "pmd_host_root": "node60:/xukang/q35p3",
+    "full_grid": "public/r015-tn/refined",
+    "single_tg": "perf/r015-tn/refined",
+    "public_replay": "public/r015-tn/refined",
     "baseline": "screen/r015-tn/baseline",
-    "full_grid_result_sha256": "e58358c73f5ac6abba510e7bbc7475c1e3885609317b398f1987132127021faf"
+    "full_grid_result_sha256": "fc1c71fa232c0cea11d0e52e8daf129d81b7bb8f264e072c7f97577e3daf4993"
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "06f1ab5ddc4c1c035be3cff58be54ca3c36ae206a1ba1fb607be9e2b9ac5ba1b",
-    "raw_sha256": "22746831f037dfcb02cc3ffe8034fe65c10bc00f9982db063825f9c7a73ed0f3",
+    "sha256": "ad6dcb27916c69e1498111e015a942f7c21f88d6a5d3d03ed81fd156b9331c64",
+    "raw_sha256": "015d2f2dbb50d2f742733fb2d77f3ed6d8f1c03acf9761f0943cc332901f7549",
     "normalization": "Strip trailing horizontal whitespace only",
-    "hsaco_sha256": "c9bf4c49f8a53b26a084b213e2ec81192bfa42739a3b2ef0408b4c202bbe9395",
+    "hsaco_sha256": "e21868fad526f403dc9bed4a866d9761d678748c808c01b507d8492cf9d52bb7",
     "executable_sections": {
-      ".rodata": "c1054d31b19531fc6ede18a8d7e083b577839abadf62a1e18e390f856d10d76c",
-      ".text": "3d77c04807a13926ad02ffaa07302d453509533d83ee434a9580b66ae85773b7"
+      ".rodata": "f123615d353a15057899c188d7246bade53b262a32e8d4b1e6f40b2a081575f0",
+      ".text": "1f1e4a3c294ed173b7239bd43b159d908817a980b82782f39fda360e1422f9b9"
     }
   },
   "reduction_assembly": {
     "path": "reduction.amdgcn",
-    "sha256": "4537e03e27d14057a128d9a08f4339dccbf828049203a60871629ba12358e3d5",
-    "raw_sha256": "c5f3299674855085650d8d98d9a86fe563bbd98b9a19e7b61c9c3c244b890ad8",
+    "sha256": "1d6ca7c80cf9e0d35231f82418c8e155a3301018aff71cce9f313dfa969fa937",
+    "raw_sha256": "38e83c6101dbf5bd6d05794935b20abf3005e01b420ec677d250a1f129b51d28",
     "normalization": "Strip trailing horizontal whitespace only",
-    "hsaco_sha256": "8a2a08d1d7404ab002e58f53d8e1ef6a38561e4e4983b18a10e560d4c6e96ee8",
+    "hsaco_sha256": "1373b1ff6efb8dd957d0d2c6f46a6e7137f5bb0966e9aba0471b63b23307023f",
     "executable_sections": {
       ".rodata": "373b8d072476572476f25de94d0fcbd5acbd6dc623d4b0258acd3049a6e2bcf3",
       ".text": "b1b9cf22cea268854c882c76a6afa6ec1232cf811ccef6a8e298a7be28814e65"

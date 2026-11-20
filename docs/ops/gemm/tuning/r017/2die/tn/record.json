@@ -58,30 +58,30 @@
   "source": {
     "path": "boltops/gemm/triton/gemm_a16w16.py",
     "symbol": "_gemm_a16_w16_kernel",
-    "line": 44,
-    "sha256": "2b9178db8077b4c0c875119eec68cd69c2d9b0af404b0f46ee6167bac2d5fb86",
-    "measurement_base_commit": "0c532e6aab2f1dedcf083258983a285be0097fd8"
+    "line": 52,
+    "sha256": "0ed29b0c25dc5611e81716b62119fbe310694944cbac0aa944a1492835ece21d",
+    "measurement_base_commit": "8494cee97bd3abd88dd3525b3489de7441b4861e"
   },
   "config": {
-    "path": "boltops/gemm/configs/gfx946/triton/gemm_a16w16/GEMM-A16W16-N=12288-K=2048-TN.json",
+    "path": "boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=12288-K=2048-TN.json",
     "bucket": "M_EQ_12",
     "options": {
       "BLOCK_SIZE_M": 16,
       "BLOCK_SIZE_N": 64,
       "BLOCK_SIZE_K": 128,
-      "GROUP_SIZE_M": 1,
       "num_warps": 4,
       "num_stages": 2,
+      "GROUP_SIZE_M": 1,
       "waves_per_eu": 2,
       "matrix_instr_nonkdim": 16,
       "cache_modifier": null,
       "NUM_KSPLIT": 1,
-      "kpack": 1
+      "kpack": 2
     }
   },
   "benchmark": {
     "script": "../../../bf16_2die_small_mn/benchmark.py",
-    "sha256": "3175ddc858f83f17c6ea7e38571d8ffdbe09dd285da8a6fc988a3d434af48c71",
+    "sha256": "b54f5540b9de397be6850fe50803a6696377df1d4b57728d1f3b18b6291d69bf",
     "repeats": 1
   },
   "variants": {
@@ -93,41 +93,43 @@
         "BLOCK_SIZE_M": 16,
         "BLOCK_SIZE_N": 64,
         "BLOCK_SIZE_K": 128,
-        "GROUP_SIZE_M": 1,
         "num_warps": 4,
         "num_stages": 2,
+        "GROUP_SIZE_M": 1,
         "waves_per_eu": 2,
         "matrix_instr_nonkdim": 16,
         "cache_modifier": null,
         "NUM_KSPLIT": 1,
-        "kpack": 1,
+        "kpack": 2,
         "SPLITK_BLOCK_SIZE": 2048
       }
     }
   },
   "performance": {
-    "kernel_us": 23.887955,
-    "kernel_tops": 25.283862766821187,
-    "mmac_util_percent": 2.9256585588845923,
-    "logical_bandwidth_tb_s": 2.121391806037813,
+    "kernel_us": 22.456525,
+    "kernel_tops": 26.895513709267128,
+    "mmac_util_percent": 3.1121466923310703,
+    "logical_bandwidth_tb_s": 2.256614146667839,
     "bandwidth_scope": "Logical BF16 reads of A/W and writes of C, divided by aggregate dispatch time. Excludes split-K scratch traffic.",
     "aggregation": "One cold full-grid trial. Split-K includes reduction.",
-    "baseline_kernel_us": 31.80268,
+    "baseline_kernel_us": 23.95666,
     "baseline_status": "PASS",
-    "improvement_percent": 24.886974934187933
+    "improvement_percent": 6.261870394287017,
+    "previous_tuned_kernel_us": 23.887955,
+    "improvement_vs_previous_tuned_percent": 5.992266813965463
   },
   "samples": [
     {
-      "us": 23.887955,
+      "us": 22.456525,
       "dispatches": [
         {
-          "cycles": 52501,
+          "cycles": 49355,
           "TGs_per_die": {
             "system.shaders0": 96,
             "system.shaders1": 96
           },
           "stats": "model/0/0/stats.txt",
-          "sha256": "164c434d41012df2cc62fa3b9b380aa3e1a7ccebb59652cef7f00649ca3ce46e"
+          "sha256": "469e0237a19b4d4bdf0d5f7f88f499bef0cc9203f465eef0252cacb12f6f05b8"
         }
       ],
       "max_abs": 0.03125,
@@ -136,7 +138,7 @@
     }
   ],
   "resources": {
-    "VGPR": 88,
+    "VGPR": 52,
     "spills": 0,
     "LDS_bytes": 20480
   },
@@ -148,55 +150,55 @@
   },
   "public_api_validation": {
     "mode": "full_grid",
-    "kernel_us": 23.801505,
+    "kernel_us": 22.456525,
     "validated_elements": 147456,
     "executable_sections": {
-      ".rodata": "f2627760205d822aaf288e70f041606c0a7f04d1b5140947698ea98992115124",
-      ".text": "db694d7f9843f4c4310ec22f976365f69b4d607d46cd1eab0ff8529160ce0aa4"
+      ".rodata": "7795e8a45cc60983013c388e828710eb948548618f2a224c25fd4716af311ed2",
+      ".text": "d154bb7940ac9231d51483fcd33f2f1f6218f628698095497f8361962c18f673"
     },
-    "result_sha256": "04f9cf11fe4170c5c1c27521d0eb031659b328a79e2bd80439bd85a6852cab63"
+    "result_sha256": "d8ca4f7bb9bfccb5c6add1c9089360d87d370861f26371296540270faa9bd77e"
   },
   "single_tg_perf": {
     "path": "single_tg.perf",
-    "sha256": "cdd1137dd5f6092ef53644039eef45faadef8f32c276df48ee3f73e1845e7996",
+    "sha256": "570fc1be5cbf5b6c28b646f59435b55a2abb263ca43644b1e6826f72fa0b0c15",
     "sample": {
-      "us": 12.75638,
+      "us": 20.23385,
       "dispatches": [
         {
-          "cycles": 28036,
+          "cycles": 44470,
           "TGs_per_die": {
             "system.shaders0": 1,
             "system.shaders1": 0
           },
-          "stats": "model/0/2/stats.txt",
-          "sha256": "baa30c9b6390ade1f0aad73711f9793538a408deb22f9cba564ceaea83d9f5e2"
+          "stats": "model/0/0/stats.txt",
+          "sha256": "6caf50c99275fc4862f5a7b858026250a3dbe420035c0b51b3d555582617bda1"
         }
       ],
       "max_abs": 0.0,
       "mismatches": 0,
       "validated_elements": 768,
-      "perf": "model/0/2/862729_python3.10.perf"
+      "perf": "model/0/0/939550_python3.10.perf"
     },
     "scope": "Isolated TG0 with original dimensions and launch configuration",
     "selection": "faster of repeats 1 and 2"
   },
   "evidence": {
-    "pmd_host_root": "node60:/xukang/q35dd19",
-    "full_grid": "screen/r017-tn/triton_16x64x128",
-    "single_tg": "perf/r017-tn/triton_16x64x128",
-    "public_replay": "public/r017-tn/triton_16x64x128",
+    "pmd_host_root": "node60:/xukang/q35p3",
+    "full_grid": "public/r017-tn/refined",
+    "single_tg": "perf/r017-tn/refined",
+    "public_replay": "public/r017-tn/refined",
     "baseline": "screen/r017-tn/baseline",
-    "full_grid_result_sha256": "42f76c09be9d07f18f1cc9b05ded547369a362cc687d0d769e6e893565c9fb54"
+    "full_grid_result_sha256": "d8ca4f7bb9bfccb5c6add1c9089360d87d370861f26371296540270faa9bd77e"
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "0d1ee08ebcdfa94d547e2ce8b3b4f799bbdd4498dfe639a3c44f05f2f5f39e72",
-    "raw_sha256": "2332e1d9aedea8b6aebef4ff390ef419fd601d13783cd06fc300c932b837c04b",
+    "sha256": "d3674a737f743c65648ab172429b090fdfa985b8a55cd451b41a599ee3d78475",
+    "raw_sha256": "d6bf616834f05a259645706e1d73b031443e65c34958b8a3763fd081c6632552",
     "normalization": "Strip trailing horizontal whitespace only",
-    "hsaco_sha256": "30a40818b42ece4e87557e2b246eba8b40a6379ca9622b0b7c67f4d9951088bc",
+    "hsaco_sha256": "820c07527e7574efca056c06f39deab72704879a1d611e52c9abd77827b0b74c",
     "executable_sections": {
-      ".rodata": "f2627760205d822aaf288e70f041606c0a7f04d1b5140947698ea98992115124",
-      ".text": "db694d7f9843f4c4310ec22f976365f69b4d607d46cd1eab0ff8529160ce0aa4"
+      ".rodata": "7795e8a45cc60983013c388e828710eb948548618f2a224c25fd4716af311ed2",
+      ".text": "d154bb7940ac9231d51483fcd33f2f1f6218f628698095497f8361962c18f673"
     }
   }
 }

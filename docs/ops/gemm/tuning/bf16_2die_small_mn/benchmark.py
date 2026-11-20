@@ -102,7 +102,10 @@ def measure(output, record, variant, repeats, perf, repo, automatic=False):
                     return run
 
             if family == 'gluon':
-                kernels = [('boltops.gemm.gluon.gemm_a16w16', '_gemm_a16w16_tt_kernel', 'kernel')]
+                module = importlib.import_module('boltops.gemm.gluon.gemm_a16w16')
+                default = ('_gemm_a16w16_kernel' if hasattr(module, '_gemm_a16w16_kernel')
+                           else '_gemm_a16w16_tt_kernel')
+                kernels = [(module.__name__, variant.get('public_symbol', default), 'kernel')]
             else:
                 kernels = [('boltops.gemm.triton.gemm_a16w16', '_gemm_a16_w16_kernel', 'kernel')]
                 if family == 'split':
