@@ -56,27 +56,38 @@
     }
   },
   "source": {
-    "path": "boltops/gemm/triton/gemm_a16w16.py",
-    "symbol": "_gemm_a16_w16_kernel",
-    "line": 44,
-    "sha256": "2b9178db8077b4c0c875119eec68cd69c2d9b0af404b0f46ee6167bac2d5fb86",
-    "measurement_base_commit": "0c532e6aab2f1dedcf083258983a285be0097fd8"
+    "path": "boltops/gemm/gluon/gemm_a16w16_mls.py",
+    "symbol": "_gemm_a16w16_kernel",
+    "line": 398,
+    "sha256": "5b0518fbcac620e269c000836ecca0904f76395e632e5380867f0638316715da",
+    "measurement_base_commit": "5524b7c5cc3a533fd2749b437a1bc1c0c2bb7d08"
   },
   "config": {
-    "path": "boltops/gemm/configs/gfx946/triton/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json",
+    "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TN.json",
     "bucket": "M_EQ_6656",
     "options": {
-      "BLOCK_SIZE_M": 64,
+      "BLOCK_SIZE_M": 32,
       "BLOCK_SIZE_N": 64,
-      "BLOCK_SIZE_K": 128,
-      "GROUP_SIZE_M": 1,
-      "num_warps": 4,
+      "BLOCK_SIZE_K": 64,
+      "CHUNKS": 1,
+      "SLOTS": 3,
+      "PW": 1,
+      "CW": 8,
+      "LTS": true,
+      "PREFETCH": false,
+      "DEFER_RELEASE": false,
+      "num_warps": 1,
       "num_stages": 2,
-      "waves_per_eu": 2,
-      "matrix_instr_nonkdim": 16,
-      "cache_modifier": null,
-      "NUM_KSPLIT": 1,
-      "kpack": 1
+      "wasp_partition_warps": [
+        1,
+        8
+      ],
+      "wasp_wdra": false,
+      "mmac_layout_force": 2,
+      "enable_v_mmac_cluster": 2,
+      "hcu_use_gfx946_sched_model_v2": true,
+      "kernel": "_gemm_a16w16_kernel",
+      "requires_16_byte_alignment": true
     }
   },
   "benchmark": {
@@ -86,48 +97,60 @@
   },
   "variants": {
     "winner": {
-      "family": "triton",
-      "module": "boltops.gemm.triton.gemm_a16w16",
-      "symbol": "_gemm_a16_w16_kernel",
+      "family": "gluon",
       "config": {
-        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_M": 32,
         "BLOCK_SIZE_N": 64,
-        "BLOCK_SIZE_K": 128,
-        "GROUP_SIZE_M": 1,
-        "num_warps": 4,
+        "BLOCK_SIZE_K": 64,
+        "CHUNKS": 1,
+        "SLOTS": 3,
+        "PW": 1,
+        "CW": 8,
+        "LTS": true,
+        "PREFETCH": false,
+        "DEFER_RELEASE": false,
+        "num_warps": 1,
         "num_stages": 2,
-        "waves_per_eu": 2,
-        "matrix_instr_nonkdim": 16,
-        "cache_modifier": null,
-        "NUM_KSPLIT": 1,
-        "kpack": 1,
-        "SPLITK_BLOCK_SIZE": 2048
-      }
+        "wasp_partition_warps": [
+          1,
+          8
+        ],
+        "wasp_wdra": false,
+        "mmac_layout_force": 2,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true
+      },
+      "module": "boltops.gemm.gluon.gemm_a16w16_mls",
+      "symbol": "_gemm_a16w16_kernel",
+      "public_symbol": "_gemm_a16w16_kernel",
+      "public_supported": true
     }
   },
   "performance": {
-    "kernel_us": 23.73007,
-    "kernel_tops": 73.52824766214343,
-    "mmac_util_percent": 8.508136160856948,
-    "logical_bandwidth_tb_s": 1.1958282466086279,
+    "kernel_us": 17.4538,
+    "kernel_tops": 99.96851482198718,
+    "mmac_util_percent": 11.567605144247478,
+    "logical_bandwidth_tb_s": 1.6258401035877574,
     "bandwidth_scope": "Logical BF16 reads of A/W and writes of C, divided by aggregate dispatch time. Excludes split-K scratch traffic.",
     "aggregation": "One cold full-grid trial. Split-K includes reduction.",
-    "baseline_kernel_us": 80.74339,
+    "baseline_kernel_us": 23.915255,
     "baseline_status": "PASS",
-    "improvement_percent": 70.61051065604256
+    "improvement_percent": 27.018131314092187,
+    "previous_tuned_kernel_us": 23.73007,
+    "improvement_vs_previous_tuned_percent": 26.448594546918734
   },
   "samples": [
     {
-      "us": 23.73007,
+      "us": 17.4538,
       "dispatches": [
         {
-          "cycles": 52154,
+          "cycles": 38360,
           "TGs_per_die": {
-            "system.shaders0": 52,
-            "system.shaders1": 52
+            "system.shaders0": 104,
+            "system.shaders1": 104
           },
           "stats": "model/0/0/stats.txt",
-          "sha256": "ef8d7f30bd655068f0ce85eab3c3f98b52da92fb4dd7723ec02fb5a3cf79a276"
+          "sha256": "0b376688ed637d70dbcc9e8cc3a4e4762715087a7f7aee95209d56a7dc93d3ee"
         }
       ],
       "max_abs": 0.03125,
@@ -136,9 +159,9 @@
     }
   ],
   "resources": {
-    "VGPR": 134,
+    "VGPR": 23,
     "spills": 0,
-    "LDS_bytes": 32768
+    "LDS_bytes": 36864
   },
   "validation": {
     "output_elements": 425984,
@@ -148,55 +171,77 @@
   },
   "public_api_validation": {
     "mode": "full_grid",
-    "kernel_us": 24.47627,
+    "kernel_us": 17.4538,
     "validated_elements": 425984,
     "executable_sections": {
-      ".rodata": "6d381d73fe78a8e33ba23c797330fe348b2b45ce03d01c127d6cd01cc98ee6fe",
-      ".text": "5490689e7bf35c06f2de045199610f3b93483bac3c8fadf1eb3111cd4249c89f"
+      ".rodata": "a87e4e4b318fa49f3451145b2cfc2238bd45a7e7de580bb9b93413bec2b3a9c0",
+      ".text": "fed020d83fe6fe370fb063fd911721d4bd32e915ffdc295e8abde87ef2bf3613"
     },
-    "result_sha256": "2e41e9ed43e040ee3fb4fe2986265541f3ed23e8e6a88242c0f0d49b495c283a"
+    "result_sha256": "610f0a54913b9f1ba416ac2fb74d23cc5003eb03a06bb39fa646facc73f174ba"
   },
   "single_tg_perf": {
     "path": "single_tg.perf",
-    "sha256": "9359f2a51e63150d5ad5e8cf31402d76adf99294134d0c40ef853039e44b57d2",
+    "sha256": "efc4278432028d94ff73b83a96b1a26611f4535e2f60215c9cca3646f2132cbe",
     "sample": {
-      "us": 14.387555,
+      "us": 14.88305,
       "dispatches": [
         {
-          "cycles": 31621,
+          "cycles": 32710,
           "TGs_per_die": {
             "system.shaders0": 1,
             "system.shaders1": 0
           },
-          "stats": "model/0/2/stats.txt",
-          "sha256": "ad53df1827ef60e1cf94f026a66de5f655ae3e891722ecf9f3250d8ce31c2223"
+          "stats": "model/0/0/stats.txt",
+          "sha256": "3f9eb0cd01fab3c7cd00eed1b80bd51b5bab2cc789e70c7414f3e95063482543"
         }
       ],
-      "max_abs": 0.001953125,
+      "max_abs": 0.0,
       "mismatches": 0,
-      "validated_elements": 4096,
-      "perf": "model/0/2/866805_python3.10.perf"
+      "validated_elements": 2048,
+      "perf": "model/0/0/1044935_python3.10.perf"
     },
     "scope": "Isolated TG0 with original dimensions and launch configuration",
     "selection": "faster of repeats 1 and 2"
   },
   "evidence": {
-    "pmd_host_root": "node60:/xukang/q35dd19",
-    "full_grid": "narrow/r023-tn/narrow_64x64x128_w4_s2",
-    "single_tg": "perf/r023-tn/narrow_64x64x128_w4_s2",
-    "public_replay": "public/r023-tn/narrow_64x64x128_w4_s2",
+    "pmd_host_root": "node60:/xukang/q35p4",
+    "full_grid": "public/r023-tn/m32n64k64w1c8s3h1p0d0",
+    "single_tg": "perf/r023-tn/m32n64k64w1c8s3h1p0d0",
+    "public_replay": "public/r023-tn/m32n64k64w1c8s3h1p0d0",
     "baseline": "screen/r023-tn/baseline",
-    "full_grid_result_sha256": "dae1fc417496cf86346990c296bcb61fdf9f6f0a9d8eb35c270d7f37885d1001"
+    "full_grid_result_sha256": "610f0a54913b9f1ba416ac2fb74d23cc5003eb03a06bb39fa646facc73f174ba"
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "1ca4d759d6bddf68b4a747012dd7d095f251dde6196d0a7dfbde06a363dab7d0",
-    "raw_sha256": "0fe1784d13fd4d5436534e9f7667586dbdb64e7ccfc327b508095c6167b0ccf0",
+    "sha256": "307f47df1bfd5c5192c7b92072f641ba2577f57e6990e07e2f5c32b57c7a04e6",
+    "raw_sha256": "26a7e682a08e4bad6bccefb23f5562f4e6fe9e562c45a709506061ea50c55df6",
     "normalization": "Strip trailing horizontal whitespace only",
-    "hsaco_sha256": "8845c5be35abc96c627a9fdb8ec531d7c0f1545519bdc0ae702ae9f4873de3b8",
+    "hsaco_sha256": "f84ecd8bf40caeb8bb0664285539e60c2a90c5b68147703b2b3af275dab2d696",
     "executable_sections": {
-      ".rodata": "6d381d73fe78a8e33ba23c797330fe348b2b45ce03d01c127d6cd01cc98ee6fe",
-      ".text": "5490689e7bf35c06f2de045199610f3b93483bac3c8fadf1eb3111cd4249c89f"
+      ".rodata": "a87e4e4b318fa49f3451145b2cfc2238bd45a7e7de580bb9b93413bec2b3a9c0",
+      ".text": "fed020d83fe6fe370fb063fd911721d4bd32e915ffdc295e8abde87ef2bf3613"
+    }
+  },
+  "paired_validation": {
+    "baseline": {
+      "samples_us": [
+        24.45625,
+        21.767655,
+        22.33231
+      ],
+      "representative_us": 22.0499825,
+      "result_sha256": "b45f819c6b7df63e67dcf6ee4e536ed6b4a64d955645293832917d9a3046267d",
+      "path": "verify/r023-tn/base/result.json"
+    },
+    "winner": {
+      "samples_us": [
+        17.891965,
+        16.27444,
+        16.258515
+      ],
+      "representative_us": 16.2664775,
+      "result_sha256": "e1cd25c2a1b9b7c3064ddd495ff01e82824d2b2d8dae71d89be18cbcdbc6fa09",
+      "path": "verify/r023-tn/m32n64k64w1c8s3h1p0d0/result.json"
     }
   }
 }
