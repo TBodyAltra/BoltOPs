@@ -20,6 +20,7 @@ _KERNEL_MODULES = {
     "_gemm_a16w16_bf16_tt_bm16_bn32_bk128_kernel": ".gemm_a16w16_mls",
     "_gemm_a16w16_kernel": ".gemm_a16w16_mls",
     "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel": ".gemm_a16w16_persistent",
+    "_gemm_a16w16_balanced_tail_kernel": ".gemm_a16w16_persistent",
     "_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel": ".gemm_a16w16_streamk",
     "_gemm_a16w16_bf16_tt_prepare_edges_kernel": ".gemm_a16w16_streamk",
 }
@@ -59,6 +60,14 @@ def _launch_persistent(kernel, a, b, out, *, cu_count, config, layout):
     _launch_tiles(kernel, a, b, out, cu_count=cu_count, config=config, layout=layout)
 
 
+def _launch_balanced_tail(kernel, a, b, out, *, cu_count, config, layout):
+    from .gemm_a16w16_persistent import _launch_gemm_a16w16_balanced_tail
+
+    _launch_gemm_a16w16_balanced_tail(
+        kernel, a, b, out, cu_count=cu_count, config=config, layout=layout,
+    )
+
+
 def _launch_streamk(kernel, a, b, out, *, cu_count, config, layout):
     from .gemm_a16w16_streamk import _launch_gemm_a16w16_streamk
 
@@ -69,6 +78,7 @@ def _launch_streamk(kernel, a, b, out, *, cu_count, config, layout):
 
 _SPECIAL_LAUNCHERS = {
     "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel": _launch_persistent,
+    "_gemm_a16w16_balanced_tail_kernel": _launch_balanced_tail,
     "_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel": _launch_streamk,
 }
 
@@ -81,6 +91,11 @@ def _supports_fp16_config(config):
 
 def _launch_configured(a, b, out, *, config, cu_count, layout):
     """Resolve the configured entry and invoke its launch policy."""
+    graph_fallback = config.pop("graph_fallback", None)
+    # Stream-K may need a blocking host-to-device schedule upload on a new
+    # stream. During capture use the schedule-free Gluon kernel instead.
+    if graph_fallback is not None and torch.cuda.is_current_stream_capturing():
+        config = dict(graph_fallback)
     selector = config.pop("kernel", None)
     kernel = getattr(sys.modules[__name__], selector, None) if isinstance(selector, str) else None
     if not hasattr(kernel, "__getitem__") or not callable(kernel.__getitem__):
@@ -145,7 +160,25 @@ def resolve_backend(
         ) from None
     if automatic and not tuned:
         return None
-    if config.get("requires_16_byte_alignment") and any(t.data_ptr() % 16 for t in (a, b, out)):
+    selector = config.get("kernel")
+    launcher = _SPECIAL_LAUNCHERS.get(selector) if isinstance(selector, str) else None
+    supported = True
+    if launcher is _launch_streamk:
+        from .gemm_a16w16_streamk import _streamk_supports_shape
+
+        supported = _streamk_supports_shape(m, n, k, layout)
+    elif launcher is _launch_balanced_tail:
+        from .gemm_a16w16_persistent import _balanced_tail_supports_shape
+
+        supported = _balanced_tail_supports_shape(m, n, k, layout)
+    if not supported:
+        if automatic:
+            return None
+        raise NotImplementedError("requested shape or layout is outside the Gluon kernel's native bounds")
+    needs_alignment = config.get("requires_16_byte_alignment") or launcher in (
+        _launch_balanced_tail, _launch_streamk,
+    )
+    if needs_alignment and any(t.data_ptr() % 16 for t in (a, b, out)):
         if automatic:
             return None
         raise ValueError("Gluon configuration requires 16-byte-aligned tensor pointers")

@@ -6,6 +6,7 @@ import hashlib
 import json
 import io
 from pathlib import Path
+from runpy import run_path
 import statistics
 import subprocess
 import sys
@@ -340,6 +341,20 @@ class GemmRegressionTest(unittest.TestCase):
                 child = subprocess.run(command, capture_output=True, text=True)
                 self.assertEqual(child.returncode, 0, child.stdout + child.stderr)
                 self.assertEqual(linear.load(output / 'report.json')['status'], 'PASS')
+
+    def test_selected_tt_replay_rejects_binary_or_resource_changes(self):
+        tuning = linear.REPO / 'docs/ops/gemm/tuning'
+        runner = tuning / 'r024/2die/tt/benchmark.py'
+        verify_assembly = run_path(str(runner))['verify_assembly']
+        for req, roles in [('r024', ('main', 'reduce')), ('r028', ('main',))]:
+            record = linear.load(tuning / req / '2die/tt/record.json')
+            for role in roles:
+                actual = deepcopy(record['assembly' if role == 'main' else 'reduce_assembly'])
+                verify_assembly(role, actual, record)
+                for key in ('executable_sections', 'n_regs', 'n_spills', 'compiler_shared_bytes', 'num_warps'):
+                    with self.subTest(requirement=req, role=role, field=key):
+                        with self.assertRaisesRegex(ValueError, key):
+                            verify_assembly(role, dict(actual, **{key: None}), record)
 
     def test_invalid_raw_stats_cannot_pass(self):
         changes = [lambda text: text.replace('End Simulation Statistics', 'incomplete'),

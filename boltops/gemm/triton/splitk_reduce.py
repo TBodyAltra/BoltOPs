@@ -22,6 +22,10 @@ _gemm_splitk_reduce_repr = make_kernel_repr(
 )
 
 
+@triton.heuristics(
+    {"EVEN_MN": lambda args: args["M"] % args["BLOCK_SIZE_M"] == 0
+     and args["N"] % args["BLOCK_SIZE_N"] == 0}
+)
 @triton.jit(repr=_gemm_splitk_reduce_repr)
 def _gemm_splitk_reduce_kernel(
     c_in_ptr,
@@ -41,6 +45,7 @@ def _gemm_splitk_reduce_kernel(
     ADD_BIAS: tl.constexpr,
     activation: tl.constexpr,
     use_activation: tl.constexpr,
+    EVEN_MN: tl.constexpr,
     KERNEL_NAME: tl.constexpr = "_gemm_splitk_reduce_kernel",
 ):
     tl.assume(stride_c_in_k > 0)
@@ -57,8 +62,10 @@ def _gemm_splitk_reduce_kernel(
     tl.assume(pid_m >= 0)
     tl.assume(pid_n >= 0)
 
-    offs_m = (pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)) % M
-    offs_n = (pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)) % N
+    rows = pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)
+    cols = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
+    offs_m = rows % M
+    offs_n = cols % N
     offs_k = tl.arange(0, MAX_KSPLIT)
     c_in_ptrs = (
         c_in_ptr
@@ -90,7 +97,11 @@ def _gemm_splitk_reduce_kernel(
         + (offs_n[None, :] * stride_c_out_n)
     )
 
-    tl.store(c_out_ptrs, c)
+    if EVEN_MN:
+        tl.store(c_out_ptrs, c)
+    else:
+        # Wrapped lanes can read in bounds but must not write a second time.
+        tl.store(c_out_ptrs, c, (rows[:, None] < M) & (cols[None, :] < N))
 
 
 _batched_gemm_splitk_reduce_repr = make_kernel_repr(

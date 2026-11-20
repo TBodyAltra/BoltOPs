@@ -96,8 +96,11 @@ def gemm_a16w16(
     a, b, out_dtype = (x, w, x.dtype if dtype is None else dtype)
     backend = "auto" if backend is None else backend
     _validate_operands(a, b, bias)
+    output_shape = (a.shape[0], b.shape[0])
     if out is None:
-        out = torch.empty((a.shape[0], b.shape[0]), dtype=out_dtype, device=a.device)
+        out = torch.empty(output_shape, dtype=out_dtype, device=a.device)
+    elif out.shape != output_shape or out.device != a.device:
+        raise ValueError("dense output must have shape [M,N] on the input device")
 
     with torch.cuda.device(a.device):
         device = get_device_info(a.device)

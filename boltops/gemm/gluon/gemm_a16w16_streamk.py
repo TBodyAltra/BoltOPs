@@ -438,24 +438,59 @@ def _gemm_a16w16_bf16_tt_prepare_edges_kernel(A, B, EdgeM, EdgeKA, EdgeKB, M: gl
 # Stream-K host scheduling and launch
 
 _STREAMK_SHARED_BYTES = 96 * 1024
+_STREAMK_I32_MAX = (1 << 31) - 1
+
+
+def _streamk_supports_shape(m, n, k, layout):
+    """Whether the native BF16 kernel can encode the shape (independent of CU count)."""
+    if (layout not in ("TT", "TN") or min(m, n, k) <= 0 or m % 4 or n % 128
+            or k % 16 or (layout == "TN" and k % 64)):
+        return False
+    padded_m, padded_k = triton.cdiv(m, 256) * 256, triton.cdiv(k, 64) * 64
+    # Producer and edge-prep pointer arithmetic uses i32 element offsets,
+    # including padded extents. The epilogue uses i32 byte offsets and, for
+    # partial M tiles, clamps a signed i32 byte bound for the buffer descriptor.
+    return max(padded_m * k, padded_k * n, 2 * padded_m * n) <= _STREAMK_I32_MAX
+
+
+def _active_tg_count(tiles, steps, cu_count):
+    # No empty TGs, and no more than two owners per tile. Two interior
+    # boundaries in the same tile would need a third owner; tile-aligned
+    # boundaries don't split anything. Keep the original CU count when safe.
+    work = tiles * steps
+    for count in range(min(cu_count, work, 2 * tiles), tiles, -1):
+        last_split_tile = -1
+        for pid in range(1, count):
+            tile, offset = divmod(pid * work // count, steps)
+            if offset:
+                if tile == last_split_tile:
+                    break
+                last_split_tile = tile
+        else:
+            return count
+    # At most one TG per tile always admits the balanced contiguous partition.
+    return min(cu_count, tiles)
 
 
 @lru_cache(maxsize=128)
-def _make_schedule(m, n, k, cu_count):
-    if min(m, n, k, cu_count) <= 0 or m % 4 or n % 128 or k % 16:
-        raise ValueError("Stream-K Gluon requires M % 4 = N % 128 = K % 16 = 0")
+def _make_schedule(m, n, k, cu_count, *, schedule_group_m=4, compact_schedule=False):
+    if not _streamk_supports_shape(m, n, k, "TT") or cu_count <= 0:
+        raise ValueError("unsupported Stream-K Gluon shape or CU count")
+    if type(schedule_group_m) is not int or schedule_group_m <= 0:
+        raise ValueError("Stream-K Gluon requires a positive integer schedule_group_m")
+    if type(compact_schedule) is not bool:
+        raise ValueError("Stream-K Gluon requires a boolean compact_schedule")
     rows, cols, steps = triton.cdiv(m, 256), n // 128, triton.cdiv(k, 64)
     tiles = rows * cols
-    if tiles < cu_count:
-        raise ValueError("Stream-K Gluon requires at least one output tile per CU")
-    # Traverse groups of four M tiles to reuse the B panels.
-    physical = [row * cols + col for first in range(0, rows, 4)
-                for col in range(cols) for row in range(first, min(first + 4, rows))]
-    tasks = [[] for _ in range(cu_count)]
+    active_tgs = _active_tg_count(tiles, steps, cu_count)
+    # Traverse groups of M tiles to reuse the B panels; group size 1 is row-major.
+    physical = [row * cols + col for first in range(0, rows, schedule_group_m)
+                for col in range(cols) for row in range(first, min(first + schedule_group_m, rows))]
+    tasks = [[] for _ in range(active_tgs)]
     by_tile = defaultdict(list)
     work = tiles * steps
-    for pid in range(cu_count):
-        cursor, end = pid * work // cu_count, (pid + 1) * work // cu_count
+    for pid in range(active_tgs):
+        cursor, end = pid * work // active_tgs, (pid + 1) * work // active_tgs
         while cursor < end:
             tile, start = divmod(cursor, steps)
             stop = min(end, (tile + 1) * steps)
@@ -465,21 +500,28 @@ def _make_schedule(m, n, k, cu_count):
             cursor = stop
     slots = 0
     for _, fragments in sorted(by_tile.items()):
+        if len(fragments) > 2:
+            raise RuntimeError("Stream-K Gluon cannot encode more than two fragments per tile")
         if len(fragments) == 2:
             # The higher-K owner publishes; the lower-K owner merges and stores.
             fragments[0][3], fragments[1][3] = -(slots + 1), slots + 1
             slots += 1
     # Include a zero-length sentinel for every TG, as in the source schedule.
-    records = tiles + 1
+    records = max(map(len, tasks)) + 1 if compact_schedule else tiles + 1
+    # Table and scratch pointers are indexed with signed i32 element offsets.
+    if max(active_tgs * records * 4, slots * 32768) > _STREAMK_I32_MAX:
+        raise ValueError("Stream-K Gluon schedule exceeds its i32 offset bounds")
     table = tuple(tuple(record) for tg in tasks
                   for record in tg + [[0, 0, 0, 0]] * (records - len(tg)))
     return table, records, slots
 
 
 @lru_cache(maxsize=128)
-def _device_schedule(m, n, k, cu_count, device, stream):
+def _device_schedule(m, n, k, cu_count, device, stream, *, schedule_group_m=4, compact_schedule=False):
     # Key by stream so the asynchronous schedule upload never crosses streams.
-    table, records, slots = _make_schedule(m, n, k, cu_count)
+    table, records, slots = _make_schedule(
+        m, n, k, cu_count, schedule_group_m=schedule_group_m, compact_schedule=compact_schedule,
+    )
     return torch.tensor(table, dtype=torch.int32, device=device), records, slots
 
 
@@ -506,7 +548,7 @@ def _compile_kernel_for_device(kernel, m, n, k, records, options, target, device
 
 
 def _launch_gemm_a16w16_streamk(kernel, a, b, out, *, cu_count, config, layout):
-    """Launch one TG per CU, reserving LDS used by the kernel's inline MLS ops.
+    """Launch at most one TG per CU, reserving LDS for the inline MLS ops.
 
     The immutable task table is cached per stream. Scratch and zeroed flags
     belong to each invocation, so concurrent streams and CUDA graph replays
@@ -514,25 +556,38 @@ def _launch_gemm_a16w16_streamk(kernel, a, b, out, *, cu_count, config, layout):
     """
     m, k = a.shape
     n = b.shape[0]
-    if a.dtype != torch.bfloat16 or out.dtype != torch.bfloat16:
+    if not _streamk_supports_shape(m, n, k, layout):
+        raise ValueError("unsupported Stream-K Gluon shape or layout")
+    if any(t.dtype != torch.bfloat16 for t in (a, b, out)):
         raise ValueError("Stream-K Gluon requires BF16 input and output")
     b_k_contiguous = layout == "TN"
-    if a.stride() != (k, 1) or b.stride() != ((k, 1) if b_k_contiguous else (1, n)):
-        raise ValueError("Stream-K Gluon requires K-contiguous x and TN or TT w")
-    if b_k_contiguous and k % 64:
-        raise ValueError("Stream-K Gluon requires K divisible by 64 for TN")
+    if (b.shape != (n, k) or out.shape != (m, n) or not out.is_contiguous()
+            or a.stride() != (k, 1) or b.stride() != ((k, 1) if b_k_contiguous else (1, n))):
+        raise ValueError("Stream-K Gluon requires dense K-contiguous x, TN or TT w, and contiguous output")
+    for tensor in (a, b, out):
+        address = tensor.data_ptr()
+        if address % 16:
+            raise ValueError("Stream-K Gluon requires 16-byte-aligned tensor pointers")
+        # Inline MLS and buffer descriptors store only the low 48 address bits.
+        if address + tensor.numel() * 2 > 1 << 48:
+            raise ValueError("Stream-K Gluon tensor exceeds its 48-bit descriptor address range")
     tile = tuple(config.get(key) for key in ("BLOCK_SIZE_M", "BLOCK_SIZE_N", "BLOCK_SIZE_K"))
     if tile != (256, 128, 64):
         raise ValueError("Stream-K Gluon requires a 256x128x64 tile")
     options = {key: tuple(value) if isinstance(value, list) else value
                for key, value in config.items()
-               if key not in ("BLOCK_SIZE_M", "BLOCK_SIZE_N", "BLOCK_SIZE_K", "NUM_SMS")}
+               if key not in ("BLOCK_SIZE_M", "BLOCK_SIZE_N", "BLOCK_SIZE_K", "NUM_SMS",
+                              "schedule_group_m", "compact_schedule")}
     if (options.get("num_warps") != 2
             or options.get("wasp_partition_warps") != (2, 2, 4, 4)
             or options.get("wasp_wdra") is not False):
         raise ValueError("Stream-K Gluon requires num_warps=2 and partitions (2,2,4,4) without WDRA")
     stream = torch.cuda.current_stream(a.device)
-    schedule, records, slots = _device_schedule(m, n, k, cu_count, a.device, stream.cuda_stream)
+    schedule, records, slots = _device_schedule(
+        m, n, k, cu_count, a.device, stream.cuda_stream,
+        schedule_group_m=config.get("schedule_group_m", 4),
+        compact_schedule=config.get("compact_schedule", False),
+    )
     schedule.record_stream(stream)
     workspace = torch.empty(max(slots * 256 * 128, 1), dtype=torch.float32, device=a.device)
     # Reset on the GPU each invocation: using a host epoch alone would reuse a
@@ -553,7 +608,7 @@ def _launch_gemm_a16w16_streamk(kernel, a, b, out, *, cu_count, config, layout):
             a, b, *edges, M=m, N=n, K=k, BLOCK=1024, num_warps=4, num_stages=1,
         )
     args = (a, b, out, schedule, workspace, flags, *edges, 1)
-    grid = (cu_count, 1, 1)
+    grid = (schedule.shape[0] // records, 1, 1)
     # These LDS addresses are expressed in inline assembly and are invisible to
     # Triton's allocator. Override only the launch's dynamic-LDS reservation;
     # keep the compiled kernel and its cached metadata unchanged.

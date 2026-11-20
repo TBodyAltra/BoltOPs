@@ -806,9 +806,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r024/2die/tt/record.json">sbx2 / 96 CU</a></td>
-      <td><a href="tuning/r024/2die/tt/record.json">197.343 / 565.86 / 65.48%</a></td>
-      <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=2048-K=4096-TT.json">config</a> / <a href="tuning/r024/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r024/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r024/2die/tt/record.json">记录</a></td>
-      <td><a href="tuning/r024/2die/tt/single_tg.perf">PERF</a></td>
+      <td><a href="tuning/r024/2die/tt/record.json">174.062 / 641.55 / 74.24%</a><br>含 reduce dispatch</td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_persistent.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=2048-K=4096-TT.json">config</a> / <a href="tuning/r024/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r024/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r024/2die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r024/2die/tt/single_tg.perf">GEMM PERF</a><br><a href="tuning/r024/2die/tt/reduce_single_tg.perf">reduce PERF</a></td>
       <td><a href="tuning/r024/2die/tn/record.json">sbx2 / 96 CU</a></td>
       <td><a href="tuning/r024/2die/tn/record.json">196.631 / 567.91 / 65.71%</a></td>
       <td><a href="../../../boltops/gemm/gluon/gemm_a16w16.py#L586">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=2048-K=4096-TN.json">config</a> / <a href="tuning/r024/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/bf16_2die_tn/benchmark.py">测试代码</a> / <a href="tuning/r024/2die/tn/record.json">记录</a></td>
@@ -974,9 +974,9 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r028/2die/tt/record.json">sbx2 / 96 CU</a></td>
-      <td><a href="tuning/r028/2die/tt/record.json">114.543 / 449.96 / 52.06%</a></td>
-      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r028/2die/tt/record.json">config</a> / <a href="tuning/r028/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r028/2die/tt/record.json">记录</a></td>
-      <td>—</td>
+      <td><a href="tuning/r028/2die/tt/record.json">93.295 / 552.43 / 63.92%</a><br>含 flag reset dispatch</td>
+      <td><a href="../../../boltops/gemm/gluon/gemm_a16w16_streamk.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=12288-TT.json">config</a> / <a href="tuning/r028/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/r028/2die/tt/benchmark.py">测试代码</a> / <a href="tuning/r028/2die/tt/record.json">记录</a></td>
+      <td><a href="tuning/r028/2die/tt/single_tg.perf">GEMM PERF</a><br><a href="tuning/r028/2die/tt/flag_reset_single_tg.perf">flag reset PERF</a></td>
       <td><a href="tuning/r028/2die/tn/record.json">sbx2 / 96 CU</a></td>
       <td><a href="tuning/r028/2die/tn/record.json">116.199 / 443.55 / 51.32%</a></td>
       <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Triton 源码</a> / <a href="tuning/r028/2die/tn/record.json">config</a> / <a href="tuning/r028/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r028/2die/tn/record.json">记录</a></td>

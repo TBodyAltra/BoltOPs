@@ -1,6 +1,9 @@
 # Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 # SPDX-License-Identifier: MIT
 """Dense Gluon dispatch uses the public GEMM contract and precision profile."""
+import hashlib
+import json
+import os
 from copy import deepcopy
 from importlib import import_module
 from types import SimpleNamespace
@@ -247,25 +250,42 @@ def test_streamk_recorded_config_matches_shape_reuse_compiler(m, n, k, cu):
     assert tuned and fp16_cfg["kernel"] == PERSISTENT_KERNEL
 
 
-@pytest.mark.parametrize("cu", [48, 96])
-def test_streamk_schedule_covers_each_tile_and_k_interval_once(cu):
+@pytest.mark.parametrize("shape,cu,compact,active_tgs", [
+    pytest.param((2048, 2048, 4096), 48, False, 48, id="R020-48cu"),
+    pytest.param((2048, 2048, 4096), 96, False, 96, id="R020-96cu"),
+    pytest.param((512, 4096, 12288), 96, True, 96, id="R028-96cu"),
+    pytest.param((256, 384, 320), 5, True, 4, id="avoid-three-owners"),
+    pytest.param((4, 128, 16), 96, True, 1, id="padded-k-and-one-tile"),
+])
+def test_streamk_schedule_covers_each_tile_and_k_interval_once(shape, cu, compact, active_tgs):
     runtime = import_module("boltops.gemm.gluon.gemm_a16w16_streamk")
-    m, n, k = 2048, 2048, 4096
-    table, records, slots = runtime._make_schedule(m, n, k, cu)
+    m, n, k = shape
+    table, records, slots = runtime._make_schedule(
+        m, n, k, cu, schedule_group_m=1 if compact else 4, compact_schedule=compact,
+    )
+    if shape == (512, 4096, 12288):
+        assert (records, slots) == (3, 64)
+        assert hashlib.sha256(json.dumps(table, separators=(",", ":")).encode()).hexdigest() == (
+            "5b9f5564b154c1a425f1433dc940d47bce5c4ca369c2b04d0937a428b22c45d5"
+        )
     tiles = ((m + 255) // 256) * (n // 128)
-    assert len(table) // records == cu
-    coverage, workload = {}, []
+    assert len(table) == active_tgs * records
+    coverage, workload, task_counts = {}, [], []
     for start in range(0, len(table), records):
-        tasks = [item for item in table[start:start + records] if item[2]]
-        assert tasks and table[start + len(tasks)] == (0, 0, 0, 0)
+        row = table[start:start + records]
+        tasks = [item for item in row if item[2]]
+        assert 0 < len(tasks) < records
+        assert row[len(tasks):] == ((0, 0, 0, 0),) * (records - len(tasks))
+        task_counts.append(len(tasks))
         workload.append(sum(item[2] for item in tasks))
         for tile, offset, length, tag in tasks:
             coverage.setdefault(tile, []).append((offset, offset + length, tag))
     assert set(coverage) == set(range(tiles))
+    assert records == (max(task_counts) if compact else tiles) + 1
     split_slots = []
     for intervals in coverage.values():
         intervals.sort()
-        assert intervals[0][0] == 0 and intervals[-1][1] == k
+        assert intervals[0][0] == 0 and intervals[-1][1] == ((k + 63) // 64) * 64
         assert all(left[1] == right[0] for left, right in zip(intervals, intervals[1:]))
         if len(intervals) == 1:
             assert intervals[0][2] == 0
@@ -275,6 +295,78 @@ def test_streamk_schedule_covers_each_tile_and_k_interval_once(cu):
             split_slots.append(intervals[1][2])
     assert sorted(split_slots) == list(range(1, slots + 1))
     assert max(workload) - min(workload) <= 64
+
+
+@pytest.mark.parametrize("capturing", [False, True])
+def test_r028_graph_capture_dispatch(monkeypatch, capturing):
+    module = import_module("boltops.gemm.gluon.gemm_a16w16")
+    call_log = []
+    config, tuned = config_for(512, 4096, 12288, layout="TT", cu=96)
+    assert tuned and config["kernel"] == STREAMK_KERNEL
+    assert config["graph_fallback"]["kernel"] == PERSISTENT_KERNEL
+    monkeypatch.setattr(torch.cuda, "is_current_stream_capturing", lambda: capturing)
+    streamk, persistent = Capture("streamk", call_log), Capture("persistent", call_log)
+    monkeypatch.setattr(module, STREAMK_KERNEL, streamk)
+    monkeypatch.setattr(module, PERSISTENT_KERNEL, persistent)
+
+    def launch(kernel, a, b, out, *, cu_count, config, layout):
+        assert kernel is streamk and not capturing
+        assert config["compact_schedule"] and config["schedule_group_m"] == 1
+        assert "graph_fallback" not in config
+        call_log.append(("streamk", None, None, config))
+
+    monkeypatch.setitem(module._SPECIAL_LAUNCHERS, STREAMK_KERNEL, launch)
+    a = SimpleNamespace(shape=(512, 12288), dtype=torch.bfloat16)
+    b = SimpleNamespace(shape=(4096, 12288))
+    out = SimpleNamespace(dtype=torch.bfloat16)
+    module._launch_configured(a, b, out, config=config, cu_count=96, layout="TT")
+    [(label, grid, _, options)] = call_log
+    assert label == ("persistent" if capturing else "streamk")
+    if capturing:
+        assert grid == (32,) and options["NUM_SMS"] == 96
+        assert "compact_schedule" not in options and options["B_K_CONTIGUOUS"] is False
+
+
+@pytest.mark.parametrize("real_graph", [False, True], ids=["fallback", "capture-replay"])
+def test_r028_graph_path_on_a_new_stream(monkeypatch, real_graph):
+    if real_graph and os.environ.get("PMD_PATH") and os.environ.get("GPU_CHIP"):
+        pytest.skip("requires physical GPU; sbx2 PMD cannot finish HIP Graph capture")
+    require_device(96)
+    runtime = import_module("boltops.gemm.gluon.gemm_a16w16_streamk")
+    config, _ = config_for(512, 4096, 12288, layout="TT", cu=96)
+    provide_gluon_config(monkeypatch, config)
+    # Use the R028 policy on a smaller aligned shape to keep the test short.
+    m, n, k = 256, 256, 192
+    a = torch.randn(m, k, dtype=torch.bfloat16, device="cuda")
+    b = torch.randn(k, n, dtype=a.dtype, device=a.device)
+    c = torch.empty(m, n, dtype=a.dtype, device=a.device)
+    w = b.T
+    assert gemm_a16w16(a, w, out=c) is c
+    torch.cuda.synchronize()
+
+    def no_upload(*args, **kwargs):
+        pytest.fail("Stream-K must not upload a schedule during capture")
+
+    monkeypatch.setattr(runtime, "_device_schedule", no_upload)
+    capture_stream = torch.cuda.Stream()
+    if real_graph:
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph, stream=capture_stream):
+            gemm_a16w16(a, w, out=c)
+    else:
+        monkeypatch.setattr(torch.cuda, "is_current_stream_capturing", lambda: True)
+    rhs = b.cpu().float()
+    for _ in range(2):
+        a.normal_()
+        if real_graph:
+            graph.replay()
+        else:
+            capture_stream.wait_stream(torch.cuda.current_stream())
+            with torch.cuda.stream(capture_stream):
+                gemm_a16w16(a, w, out=c)
+            torch.cuda.current_stream().wait_stream(capture_stream)
+        expected = (a.cpu().float() @ rhs).bfloat16()
+        torch.testing.assert_close(c.cpu(), expected, atol=.02, rtol=.01)
 
 
 def test_streamk_compiled_kernel_cache_is_device_and_layout_specific(monkeypatch):
