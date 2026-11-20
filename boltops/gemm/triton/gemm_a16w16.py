@@ -15,7 +15,7 @@ from ..config import get_gemm_config
 from . import _BF16_MLS_IMPORT_ENV, _BF16_MLS_REQUIRED_ENV
 
 from boltops.gemm.triton.kernel_repr import make_kernel_repr
-from boltops.gemm.triton.pid_preprocessing import pid_grid, remap_xcd
+from boltops.gemm.triton.pid_preprocessing import pid_grid, remap_xcd, remap_xcd_chunked
 
 _gemm_a16w16_repr = make_kernel_repr(
     "_gemm_a16_w16_kernel",
@@ -78,6 +78,7 @@ def _gemm_a16_w16_kernel(
     use_activation: tl.constexpr,
     ADD_BIAS: tl.constexpr,
     SKIP_REDUCE: tl.constexpr,
+    XCD_REMAP_CHUNK: tl.constexpr = 0,
 ):
     """Kernel for computing the matmul C = A x B.
     A has shape (M, K), B has shape (K, N) and C has shape (M, N)
@@ -97,7 +98,13 @@ def _gemm_a16_w16_kernel(
     pid_unified = tl.program_id(axis=0)
     num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
     num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
-    pid_unified = remap_xcd(pid_unified, num_pid_m * num_pid_n * NUM_KSPLIT, NUM_XCDS=8)
+    if XCD_REMAP_CHUNK:
+        pid_unified = remap_xcd_chunked(
+            pid_unified, num_pid_m * num_pid_n * NUM_KSPLIT,
+            CHUNK_SIZE=XCD_REMAP_CHUNK, ROTATE_XCD=True,
+        )
+    else:
+        pid_unified = remap_xcd(pid_unified, num_pid_m * num_pid_n * NUM_KSPLIT, NUM_XCDS=8)
     pid_k = pid_unified % NUM_KSPLIT
     pid = pid_unified // NUM_KSPLIT
 
