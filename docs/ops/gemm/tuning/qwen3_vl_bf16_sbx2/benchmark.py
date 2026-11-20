@@ -50,6 +50,8 @@ def main():
     parser.add_argument('--compile-only', action='store_true')
     parser.add_argument('--current-toolchain', action='store_true',
                         help='measure freshly compiled code using the sourced PMD toolchain')
+    parser.add_argument('--public-api', action='store_true',
+                        help='replay a configured persistent kernel through gemm_a16w16')
     args = parser.parse_args()
     record = json.loads(args.record.read_text())
     job = dict(record['replay_job'], expected_toolchain=record['environment']['toolchain'],
@@ -57,31 +59,39 @@ def main():
                current_toolchain=args.current_toolchain)
     if args.compile_only:
         job['compile_only'] = True
+    if args.public_api:
+        if not args.current_toolchain or job['family'] != 'persistent':
+            parser.error('--public-api requires --current-toolchain and a persistent record')
+        job['public_api'] = True
     source = record['source']
     assert record['environment']['chip'] == 'sbx2'
     assert record['layout'] == job.get('layout', 'TN')
     assert record['shape'] == job['shape']
     source_archive = (args.record.parent / source['archive']).resolve()
     if args.dry_run:
-        print(json.dumps(dict(record=record['record_key'], shape=job['shape'],
+        plan = dict(record=record['record_key'], shape=job['shape'],
                               grid=[record['full_grid_TGs']], strides=record['config']['strides'],
                               options=record['config']['parameters'], source_sha256=source['sha256'],
                               dispatches=job['dispatches'], seed=job['seed'], timed_seed=job['timed_seed'],
-                              current_toolchain=args.current_toolchain), indent=2))
+                              current_toolchain=args.current_toolchain)
+        if args.public_api:
+            plan['public_api'] = True
+        print(json.dumps(plan, indent=2))
         return
     if args.output is None:
         parser.error('--output is required for replay')
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=False)
-    overlay = out/'source'
-    shutil.copytree(REPO/'boltops', overlay/'boltops')
-    with tarfile.open(source_archive, 'r:gz') as archive:
-        for item in [source, *source.get('dependencies', [])]:
-            data = archive.extractfile(item['member']).read()
-            assert sha(data) == item['sha256'], item['member']
-            path = (overlay / item['path']).resolve()
-            assert path.is_relative_to(overlay)
-            path.write_bytes(data)
+    source_root = REPO if args.public_api else out/'source'
+    if not args.public_api:
+        shutil.copytree(REPO/'boltops', source_root/'boltops')
+        with tarfile.open(source_archive, 'r:gz') as archive:
+            for item in [source, *source.get('dependencies', [])]:
+                data = archive.extractfile(item['member']).read()
+                assert sha(data) == item['sha256'], item['member']
+                path = (source_root / item['path']).resolve()
+                assert path.is_relative_to(source_root)
+                path.write_bytes(data)
     archived = record['assembly'].get('archived_code_object')
     if archived and not args.current_toolchain:
         record_dir = args.record.resolve().parent
@@ -102,10 +112,13 @@ def main():
         model = Path(directory)/'g'
         model.symlink_to(out/'g', target_is_directory=True)
         env['GPU_OUT'] = str(model)
-        subprocess.run([sys.executable, str(HERE/'replay_worker.py'), str(inputs), '--repo', str(overlay)],
+        subprocess.run([sys.executable, str(HERE/'replay_worker.py'), str(inputs), '--repo', str(source_root)],
                        cwd=out, env=env, check=True)
     compiled = json.loads((out/'compile.json').read_text())
-    assert compiled['source_sha256'] == source['sha256']
+    if args.public_api:
+        assert compiled['public_api_verified']
+    else:
+        assert compiled['source_sha256'] == source['sha256']
     assert compiled['grid'] == record['full_grid_TGs'] and compiled['strides'] == record['config']['strides']
     if not args.current_toolchain:
         assert compiled['resources'] == record['resources']

@@ -207,14 +207,52 @@ def main():
     resources = dict(VGPR=handle.n_regs, spills=handle.n_spills, LDS_bytes=handle.metadata.shared)
     Path('kernel.amdgcn').write_text(handle.asm['amdgcn'])
     Path('kernel.hsaco').write_bytes(handle.asm['hsaco'])
-    write_json('compile.json', dict(job=job, grid=grid, logical_tiles=tiles, strides=dict(A=a.stride(), B=b.stride(), C=c.stride()),
+    compilation = dict(job=job, grid=grid, logical_tiles=tiles, strides=dict(A=a.stride(), B=b.stride(), C=c.stride()),
                symbol=symbol, options=options, resources=resources, source_sha256=sha(Path(module.__file__).read_bytes()),
                toolchain=toolchain, toolchain_differences=toolchain_differences,
                code_origin=code_origin, archived_abi_verified=archived_abi_verified,
                fresh_hsaco_sha256=sha(fresh_binary), fresh_executable_sections=fresh_sections,
-               fresh_matches_measured=fresh_matches_measured, hsaco_sha256=sha(handle.asm['hsaco'])))
+               fresh_matches_measured=fresh_matches_measured, hsaco_sha256=sha(handle.asm['hsaco']))
+    write_json('compile.json', compilation)
     assert resources['spills'] == 0 or (family == 'baseline' and not job.get('fallback_baseline')), resources
+    public_api = job.get('public_api', False)
+
+    def dispatch():
+        assert kernel[(grid,)](*positional, **options) is handle
+
+    if public_api:
+        assert family == 'persistent' and code_origin == 'fresh' and current_toolchain
+        public = importlib.import_module('boltops.gemm.gemm_a16w16')
+        calls = 0
+
+        class ObserveLaunch:
+            def __getitem__(self, launch_grid):
+                def run(*values, **kwargs):
+                    nonlocal calls
+                    actual_grid = launch_grid(kwargs) if callable(launch_grid) else launch_grid
+                    assert tuple(actual_grid) == (grid,)
+                    assert all(actual.data_ptr() == expected.data_ptr()
+                               for actual, expected in zip(values, positional, strict=True))
+                    if job.get('compile_only'):
+                        launched = kernel.warmup(*values, grid=actual_grid, **kwargs)
+                    else:
+                        launched = kernel[launch_grid](*values, **kwargs)
+                    assert executable_sections(launched.asm['hsaco']) == fresh_sections
+                    calls += 1
+                    return launched
+                return run
+
+        setattr(module, symbol, ObserveLaunch())
+
+        def dispatch():
+            before = calls
+            assert public.gemm_a16w16(a, b.T, out=c) is c
+            assert calls == before + 1, 'public API did not dispatch the configured persistent kernel'
+
     if job.get('compile_only'):
+        if public_api:
+            dispatch()
+            write_json('compile.json', dict(compilation, public_api_verified=True))
         return
     assert resources['LDS_bytes'] <= 128*1024, f'gfx946 LDS limit exceeded: {resources}'
     def prepare(seed, kind):
@@ -246,7 +284,7 @@ def main():
         cr.copy_(ci)
         torch.cuda.synchronize()
         before = set(Path('g').glob('*/*/stats.txt'))
-        assert kernel[(grid,)](*positional, **options) is handle
+        dispatch()
         torch.cuda.synchronize()
         files = set(Path('g').glob('*/*/stats.txt')) - before
         assert len(files) == 1, files
@@ -281,6 +319,8 @@ def main():
         samples.append(sample)
     measured = samples[1:] if len(samples) > 1 else samples
     us = statistics.median(s['us'] for s in measured)
+    if public_api:
+        write_json('compile.json', dict(compilation, public_api_verified=True))
     write_json('result.json', dict(status='PASS', job=job, samples=samples, kernel_us=us,
                                   matches_measured_executable=fresh_matches_measured,
                                   code_origin=code_origin, toolchain=toolchain,
