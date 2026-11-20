@@ -1121,7 +1121,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td><a href="tuning/r033/2die/tt/single_tg.perf">PERF</a></td>
       <td><a href="tuning/r033/2die/tn/record.json">sbx2 / 96 CU</a></td>
       <td><a href="tuning/r033/2die/tn/record.json">375.008 / 687.18 / 79.51%</a></td>
-      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="tuning/r033/2die/tn/record.json">config</a> / <a href="tuning/r033/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r033/2die/tn/record.json">记录</a></td>
+      <td><a href="tuning/qwen3_vl_bf16_sbx2/source.tar.gz">Gluon 源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=12288-TN.json">当前 config</a> / <a href="tuning/r033/2die/tn/record.json">归档 config</a> / <a href="tuning/r033/2die/tn/kernel.amdgcn">汇编</a><br><a href="tuning/qwen3_vl_bf16_sbx2/benchmark.py">测试代码</a> / <a href="tuning/r033/2die/tn/record.json">记录</a></td>
       <td>—</td>
     </tr>
     <tr>
