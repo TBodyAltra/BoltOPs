@@ -68,11 +68,11 @@
       "OMP_NUM_THREADS": "1",
       "MKL_NUM_THREADS": "1",
       "OPENBLAS_NUM_THREADS": "1",
-      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119:/xukang/code/pmd-triton-sessions/r009-matrix-store-latest/runtime",
+      "PYTHONPATH": "/xukang/code/pmd-triton-sessions/q35-fp8-20261120-refine-config:/xukang/code/pmd-triton-sessions/r009-matrix-store-latest/runtime",
       "LD_LIBRARY_PATH": "/xukang/code/pmd-triton-sessions/fp16-map-20261020/deps/pmd:/opt/rocm/lib:/opt/hyhal/lib",
       "LLVM_SYSPATH": "/xukang/code/pmd-triton-sessions/r008-single-tg-20261110/llvm",
-      "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119/r005/tt/triton-64x32/cache",
-      "TRITON_HOME": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119/r005/tt/triton-64x32/triton-home",
+      "TRITON_CACHE_DIR": "/xukang/code/pmd-triton-sessions/q35-fp8-20261120-refine-config/r005/tt/triton-32x64x128-w4-s3/cache",
+      "TRITON_HOME": "/xukang/code/pmd-triton-sessions/q35-fp8-20261120-refine-config/r005/tt/triton-32x64x128-w4-s3/triton-home",
       "BOLTOPS_GEMM_CONFIG_DIR": null
     },
     "pmd_revision": null,
@@ -116,19 +116,19 @@
     ]
   },
   "config": {
-    "BLOCK_SIZE_M": 64,
-    "BLOCK_SIZE_N": 32,
+    "BLOCK_SIZE_M": 32,
+    "BLOCK_SIZE_N": 64,
     "BLOCK_SIZE_K": 128,
     "GROUP_SIZE_M": 32,
     "num_warps": 4,
-    "num_stages": 2
+    "num_stages": 3
   },
   "replay": {
     "worker": "fp8",
     "input": {
       "case": "r005",
       "layout": "tt",
-      "variant": "triton-64x32",
+      "variant": "triton-32x64x128-w4-s3",
       "backend": "triton",
       "shape": [
         64,
@@ -136,12 +136,12 @@
         4096
       ],
       "config": {
-        "BLOCK_SIZE_M": 64,
-        "BLOCK_SIZE_N": 32,
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
         "BLOCK_SIZE_K": 128,
         "GROUP_SIZE_M": 32,
         "num_warps": 4,
-        "num_stages": 2
+        "num_stages": 3
       },
       "repeats": 5,
       "seed": 21
@@ -150,16 +150,16 @@
   "backend": "triton",
   "launch_path": "explicit_backend_config",
   "measurement": {
-    "kernel_us": 28.37835,
-    "kernel_tops": 37.83665449189259,
-    "mmac_util_percent": 2.1890866335310775,
+    "kernel_us": 26.7851675,
+    "kernel_tops": 40.08717974229581,
+    "mmac_util_percent": 2.3192935667348977,
     "sample_mode": "warm_median",
     "logical_ab_read_c_write_bytes": 8912896,
-    "logical_ab_read_c_write_gbps": 314.07379216903024,
+    "logical_ab_read_c_write_gbps": 332.7549099702289,
     "samples": [
       {
-        "kernel_cycles": 71889.0,
-        "kernel_us": 32.709495000000004,
+        "kernel_cycles": 69406.0,
+        "kernel_us": 31.57973,
         "active_CUs": 64,
         "completed_TGs_per_die": {
           "0": 32,
@@ -167,7 +167,7 @@
         },
         "stats_path": "m5out/0/0/stats.txt",
         "repeat": 0,
-        "host_wall_seconds": 261.4246504716575,
+        "host_wall_seconds": 93.61711487406865,
         "accuracy": {
           "elements": 131072,
           "max_abs": 0.0009765625,
@@ -176,11 +176,11 @@
           "outside_tolerance": 0,
           "canary_ok": true
         },
-        "stats_sha256": "373dd2d9e032b7e43de5d30db3011c2fadc1736917988c8880e8160e9461fe63"
+        "stats_sha256": "e2587d932eee79ac4567b9645bee84878c3126701ef9c6e5ab3187aefb80e4dc"
       },
       {
-        "kernel_cycles": 62459.0,
-        "kernel_us": 28.418845,
+        "kernel_cycles": 58920.0,
+        "kernel_us": 26.8086,
         "active_CUs": 64,
         "completed_TGs_per_die": {
           "0": 32,
@@ -188,7 +188,7 @@
         },
         "stats_path": "m5out/0/1/stats.txt",
         "repeat": 1,
-        "host_wall_seconds": 226.79201418720186,
+        "host_wall_seconds": 85.83482481399551,
         "accuracy": {
           "elements": 131072,
           "max_abs": 0.0009765625,
@@ -197,11 +197,11 @@
           "outside_tolerance": 0,
           "canary_ok": true
         },
-        "stats_sha256": "6bc4ed6498de3b252934304426f4b1e1f4f32343eef04c197902372da7b8c68b"
+        "stats_sha256": "ffe008b3c8114458f1f6dc5c3fbcdfac692cb0deb1b250e9c51fee51a2dcf722"
       },
       {
-        "kernel_cycles": 62371.0,
-        "kernel_us": 28.378805,
+        "kernel_cycles": 58817.0,
+        "kernel_us": 26.761735,
         "active_CUs": 64,
         "completed_TGs_per_die": {
           "0": 32,
@@ -209,7 +209,7 @@
         },
         "stats_path": "m5out/0/2/stats.txt",
         "repeat": 2,
-        "host_wall_seconds": 218.61693956097588,
+        "host_wall_seconds": 88.24907305603847,
         "accuracy": {
           "elements": 131072,
           "max_abs": 0.0009765625,
@@ -218,11 +218,11 @@
           "outside_tolerance": 0,
           "canary_ok": true
         },
-        "stats_sha256": "2b1fa09d50640953b29c0bba475e981b5573b045e01430cc635cb12212028f14"
+        "stats_sha256": "cd2401fc2a21f5ae699c06d206f1a55ae71541386d37fd545f55747007ab4643"
       },
       {
-        "kernel_cycles": 62369.0,
-        "kernel_us": 28.377895000000002,
+        "kernel_cycles": 58976.0,
+        "kernel_us": 26.83408,
         "active_CUs": 64,
         "completed_TGs_per_die": {
           "0": 32,
@@ -230,7 +230,7 @@
         },
         "stats_path": "m5out/0/3/stats.txt",
         "repeat": 3,
-        "host_wall_seconds": 263.88141145417467,
+        "host_wall_seconds": 92.30297051928937,
         "accuracy": {
           "elements": 131072,
           "max_abs": 0.0009765625,
@@ -239,11 +239,11 @@
           "outside_tolerance": 0,
           "canary_ok": true
         },
-        "stats_sha256": "3f43b20e056d6f9871d2794563dadc636f0c72c858ffbf25d1cb180e830e5fbc"
+        "stats_sha256": "518892c8740f0f099c5fdd5a0b843bd94fc9ddc96e69dfa506cf6150ae50db25"
       },
       {
-        "kernel_cycles": 62366.0,
-        "kernel_us": 28.37653,
+        "kernel_cycles": 58763.0,
+        "kernel_us": 26.737165,
         "active_CUs": 64,
         "completed_TGs_per_die": {
           "0": 32,
@@ -251,7 +251,7 @@
         },
         "stats_path": "m5out/0/4/stats.txt",
         "repeat": 4,
-        "host_wall_seconds": 182.98419162910432,
+        "host_wall_seconds": 112.56427581422031,
         "accuracy": {
           "elements": 131072,
           "max_abs": 0.0009765625,
@@ -260,7 +260,7 @@
           "outside_tolerance": 0,
           "canary_ok": true
         },
-        "stats_sha256": "75c6606a3201040c6b969cd5bde86824ef68b58c1734bc166b9d87172e9e9b2c"
+        "stats_sha256": "9215524e09bd5ae892b352336004a2c33776303928ec46f1b5dc7ecf3afceedb"
       }
     ],
     "operand_strides": {
@@ -284,16 +284,23 @@
   },
   "artifacts": {
     "kernel.amdgcn": {
-      "sha256": "c82396e8f949a682b269eaf5e87cb2fdaed4b6f4b250d2d43a2e3103596d4ded"
+      "sha256": "07774db11494c4067ee8f3bb22cedbd0ad20d66bb53122f38619f6445abd0479"
     },
-    "measured_hsaco_sha256": "2096b106ff84e4cfe3ff9d49942b904235feecc5b126fcf60040709eb67c1b6b",
-    "raw_result_sha256": "efbfd51a02af4064ac3853e136bfba2a883abfb6ed91718b2af94b80ae4c1693",
-    "raw_run": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119/r005/tt/triton-64x32"
+    "measured_hsaco_sha256": "5956cfad162ffb8c9970ce20c5b65a4ecedec83f5ab72a28f389012fcbd72638",
+    "raw_result_sha256": "51bbeb0a577b8d17ee5f0edb9a0af6295e43a8069bd2f85369d848a0e7a72eff",
+    "raw_run": "/xukang/code/pmd-triton-sessions/q35-fp8-20261120-refine-config/r005/tt/triton-32x64x128-w4-s3"
   },
   "baseline_comparison": {
     "kernel_us": 42.72723,
     "variant": "baseline",
-    "same_batch": true,
+    "same_batch": false,
     "raw_run": "/xukang/code/pmd-triton-sessions/q35-fp8-gaps-current-20261119/r005/tt/baseline"
+  },
+  "refinement_comparison": {
+    "previous_us": 28.37835,
+    "same_round_reference_us": 28.396095,
+    "candidate_us": 26.7851675,
+    "confirmation_us": null,
+    "reference_run": "/xukang/code/pmd-triton-sessions/q35-fp8-20261120-refine-config/r005/tt/reference"
   }
 }
