@@ -685,5 +685,58 @@
     "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r030/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r030/2die/tt/record.json --output /tmp/r030-sbx2-single-tg-new --single-tg-perf",
     "raw_result_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r030/result.json",
     "raw_result_sha256": "183fceec9f69fd12088d3021b2e7ff93b931ee1e5479a229df6fb8f42875288d"
+  },
+  "current_toolchain_validation": {
+    "status": "PASS",
+    "base_commit": "2c2fa363a5ae29b51f2eee94eb8afe83ff5d1a95",
+    "invocation": "gemm_a16w16(a, w, out=c, backend='triton')",
+    "config": {
+      "path": "boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=24576-K=4096-TT.json",
+      "sha256": "4356a6b4c4f73c90e76d861cf08f5eb2940e4b28a94618f170c699a42a3f17fd",
+      "profile": "DTYPE=bfloat16-OUT=bfloat16-WASP-MLS-EXPERIMENTAL",
+      "bucket": "M_EQ_512"
+    },
+    "kernel_us": 140.84116767570512,
+    "original_limit_us": 142.09195368827588,
+    "aggregation": "first timed repeat 1; repeat 0 excluded; no minimum or median",
+    "launched_TGs": 192,
+    "full_output_elements": 12582912,
+    "stats_sha256": [
+      "68e5026c1cf9c03f86f5a2c399a1c11e91c40866361b1474200c7d236ede3fbd",
+      "67c447acd5362ecde3b9c065b34dfb6382cc62d774ed1a20283091dd3f8d078b",
+      "36b206211321971cbb09990e4d0953df9957d071450a28d518ec3f3d4b96ae1d",
+      "05a6d4327725c321be7cc908122240aaf10cd8eba9337c9b2a27847e7d353d11",
+      "6f6fe51321a87cb93e5a7f9764967aa07bc8b04589a80eec842dd66bf979b9e7"
+    ],
+    "executable_sections": {
+      ".rodata": {
+        "size": 64,
+        "sha256": "a828f9d103695d786b9e18c23c2a9a98dabeceda4e70ded341e06519ec5d54b3"
+      },
+      ".text": {
+        "size": 8456,
+        "sha256": "334fe9fd5be0817e3ec08aee70fe2b5991d244e5c53bcf31989f67257a84400e"
+      }
+    },
+    "resources": {
+      "VGPR": 168,
+      "spills": 0,
+      "LDS_bytes": 131072
+    },
+    "runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "triton_path": "/xukang/code/pmd-triton-sessions/fp8-peak-pmd-20261119/runtime/triton/__init__.py",
+      "libtriton_sha256": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+      "clang_sha256": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe",
+      "compiler": {
+        "/xukang/code/pmd-triton-sessions/fp8-peak-pmd-20261119/runtime/triton/_C/libtriton.so": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+        "/xukang/code/pmd-triton-sessions/r010-clang-2aaa-20261118/bin/clang": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe",
+        "/xukang/code/pmd-triton-sessions/r010-clang-2aaa-20261118/bin/ld.lld": "45bdaf1f59f5b498c4b77a29dda52cc67801c27bb2e572d097c94629203abe1a"
+      }
+    },
+    "benchmark_sha256": "e291992f350ca23af4d7eeb9ba8ef608e36c7fc04d49461a1795fd3cb9f13ec6",
+    "report_location": "node60:/tmp/pr45-recovery.SboHZl/tt-public/r030/2die/tt/replay/result.json",
+    "report_sha256": "b256e7c71f41f9a6ec9bc3b2d0adef0335e1f89d1b64f23b1318816a9c397be4"
   }
 }

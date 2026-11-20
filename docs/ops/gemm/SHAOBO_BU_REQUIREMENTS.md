@@ -1032,7 +1032,7 @@ CU 数和 GC 频率取对应 `record.json` 的实测环境；例如 48 CU、GC �
       <td>—</td>
       <td>—</td>
       <td><a href="tuning/r030/2die/tt/record.json">sbx2 / 96 CU</a></td>
-      <td><a href="tuning/r030/2die/tt/record.json">140.685 / 732.69 / 84.78%</a></td>
+      <td><a href="tuning/r030/2die/tt/record.json">140.685 / 732.69 / 84.78%</a><br>当前 CI 公开入口复测：140.841 µs，+0.11%</td>
       <td><a href="https://github.com/TBodyAltra/BoltOPs/blob/06f522c50fb2a16fa76edbe63b9d6ff118c34941/boltops/gemm/triton/gemm_a16w16_wasp.py">源码</a> / <a href="../../../boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=24576-K=4096-TT.json">config</a> / <a href="tuning/r030/2die/tt/kernel.amdgcn">汇编</a><br><a href="tuning/bf16_2die_tt/benchmark.py">测试代码</a> / <a href="tuning/r030/2die/tt/record.json">记录</a></td>
       <td><a href="tuning/r030/2die/tt/single_tg.perf">PERF</a></td>
       <td><a href="tuning/r030/2die/tn/record.json">sbx2 / 96 CU</a></td>
