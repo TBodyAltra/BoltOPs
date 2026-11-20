@@ -302,5 +302,53 @@
     "test_sha256": "0432f0b3a7d2565c8508e1e32d421b03b68d0ad9437b3dbe6ac2b4e56cdf1d10",
     "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && taskset -c 18 /usr/bin/python /public/home/duyubo/bolt/new/github/BoltOPs/docs/ops/gemm/tuning/bf16_1die_tt/benchmark.py --record /public/home/duyubo/bolt/new/github/BoltOPs/tmp/1114/a16w16_triton36_replay_20261114/full/r035/bf16/1die/tt/replay-record.json --output /public/home/duyubo/bolt/new/github/BoltOPs/tmp/1114/a16w16_triton36_replay_20261114/full/r035/bf16/1die/tt/measurement --triton-build /public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10",
     "scope": "Public API selects the recorded Gluon persistent kernel/config. Full CPU FP32 reference from BF16 inputs, rounded to BF16, atol=0.001, rtol=0.01. Output canaries, input bytes and 65536-element NaN input guards preserved; CU0 PERF captured in the same full dispatch. Independent grid=(1,) TG0 timing and correctness are recorded in single_tg_perf."
+  },
+  "current_toolchain_validation": {
+    "status": "PASS",
+    "base_commit": "0a3ccd23e5e663cd81da0bf9ec4e43bacad4e00e",
+    "report_location": "node60:/tmp/pr45-1die-tt.CwntyH/retry/r035/1die/tt/replay/result.json",
+    "report_sha256": "397b496d048c402058c78c3fdc71aa8a59638bf51d924ad68b779d83c925370a",
+    "kernel_us": 1283.3740255036626,
+    "original_limit_us": 1298.7660808389473,
+    "validation": {
+      "status": "PASS",
+      "elements": 62914560,
+      "atol": 0.001,
+      "rtol": 0.01,
+      "outside_tolerance": 0,
+      "nonfinite": 0,
+      "mismatch": 24283,
+      "max_abs": 0.25,
+      "canary_ok": true,
+      "inputs_byte_identical": true
+    },
+    "full_grid": 48,
+    "executable_sections": {
+      ".rodata": "8f2bb74b3d75e7de7e7e06a23ee59c8bbaa7d99d8da0b5596b7a3d6582d0092e",
+      ".text": "38e4d0ca22612102eff51c3941f1b360f484bdef93774093804b86d5d027262f"
+    },
+    "stats_sha256": "2acacd87f8c70a211d785b26c92e3527ccac8e85ab976784ad31767e1903835f",
+    "kernel_amdgcn_sha256": "4817329250552ab8e83bb00b20db4aa42a08cc91077033f1b5e3b06c4f7e63e0",
+    "perf_sha256": "e4fe28419519ad34b94810ed598a8cb678a74747d9478e4ee6284ffe756e8d83",
+    "runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "libtriton_sha256": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+      "compiler": {
+        "/xukang/code/pmd-triton-sessions/fp8-peak-pmd-20261119/runtime/triton/_C/libtriton.so": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+        "/xukang/code/pmd-triton-sessions/r010-clang-2aaa-20261118/bin/clang": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe",
+        "/xukang/code/pmd-triton-sessions/r010-clang-2aaa-20261118/bin/ld.lld": "45bdaf1f59f5b498c4b77a29dda52cc67801c27bb2e572d097c94629203abe1a"
+      }
+    },
+    "source_fingerprints": {
+      "boltops/gemm/gluon/gemm_a16w16.py": "dcca0b3c82f5c51053b97de5126ed63ea0db054bcdc6854fa2cc63a9bda3bfe3",
+      "boltops/gemm/gemm_a16w16.py": "cf01a0278ca57dcae7ad335eeb205385c30070604b427a716bec9cea77b23ad5",
+      "boltops/gemm/configs/gfx946/48cu/gluon/gemm_a16w16/GEMM-A16W16-N=24576-K=4096-TT.json": "6c49c56f2870fcab2b626af7f009cd00de5237069105c51b676e5fbea01212bb",
+      "docs/ops/gemm/tuning/bf16_1die_tt/benchmark.py": "20eecba69afd626fbc2be4f71194cf1e4b949b7d09c4ff100dc7ce5490c46e9f",
+      "boltops/gemm/gluon/gemm_a16w16_persistent.py": "d92a05ed2fca218b28c085ff5beb326d6cd1e3e219d2bfe37bc7a95140172ac5",
+      "boltops/gemm/gluon/common.py": "92a56bcbc5a30ccc835ef941e0ba2a1c62f78b326ce3d97cc8a1cda8627c3bb2"
+    },
+    "invocation": "gemm_a16w16(a, w, out=c, backend=\"auto\")",
+    "aggregation": "single cold full-grid dispatch with complete output validation"
   }
 }
