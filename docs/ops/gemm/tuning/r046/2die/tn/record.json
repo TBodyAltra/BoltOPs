@@ -1,0 +1,288 @@
+{
+  "requirement": "R046",
+  "record_key": {
+    "requirement": "R046",
+    "dies": 2,
+    "layout": "TN"
+  },
+  "status": "PASS",
+  "layout": "TN",
+  "shape": [
+    22736,
+    4304,
+    1152
+  ],
+  "dtype": {
+    "A": "BF16",
+    "W": "BF16",
+    "output": "BF16",
+    "accumulator": "FP32"
+  },
+  "environment": {
+    "type": "PMD",
+    "arch": "gfx946",
+    "chip": "sbx2",
+    "dies": 2,
+    "cu_count": 96,
+    "time_per_gc_cycle_ps": 455,
+    "toolchain": {
+      "triton": "3.6.0",
+      "torch": "2.6.0+d8c4c7c",
+      "libtriton_sha256": "eaea830bcdbf1c71867451011d56fbaa3c88418fd07b5a11f92607d1c7f33b07",
+      "clang_sha256": "39c94110aa5a65052e9e997710be2191cb9cc4c19f2304d85f5ba625a6f46738"
+    },
+    "gpu_configuration": {
+      "device_id": "26295",
+      "num_chip": "2",
+      "num_cu": "48",
+      "gpu_clock": "455",
+      "lds_size": "131072",
+      "mem_size": "68719476736",
+      "parallel": "false",
+      "skip_cal": "false",
+      "skip_kernel_exec": "false"
+    },
+    "environment_variables": {
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": "1",
+      "TRITON_MLS_B_INTERLEAVE": "2",
+      "GPU_CHIP": "sbx2",
+      "GPU_DFLAGS": "['StatLog']"
+    }
+  },
+  "benchmark": {
+    "path": "../../../qwen3_vl_bf16_sbx2/benchmark.py",
+    "repeats": 3,
+    "validation_count": 3,
+    "measurement_script_sha256": "c20a7cf5d9f8423a4452067b98ec3cdee13947a15801d296132ab5482a4868f9",
+    "seed_sequence": [
+      2059,
+      59,
+      59
+    ],
+    "invocation": "direct JIT",
+    "replay_sha256": "82e79e3ad0242c15e44ed632a9687432a1e77cdc8d081cc34c88124d2c8761b9",
+    "worker_sha256": "aa5c41c04e502a280d64fdffe4ce144841a322df79a519a9e276ac66aa2593bf"
+  },
+  "replay_job": {
+    "record": "R046",
+    "shape": [
+      22736,
+      4304,
+      1152
+    ],
+    "family": "persistent",
+    "name": "r046-persistent-axes",
+    "options": {
+      "BLOCK_SIZE_M": 256,
+      "BLOCK_SIZE_N": 256,
+      "BLOCK_SIZE_K": 64,
+      "num_warps": 4,
+      "num_stages": 2,
+      "NUM_SMS": 96,
+      "wasp_partition_warps": [
+        4,
+        4,
+        4
+      ],
+      "wasp_partition_regs": [
+        16,
+        244,
+        244
+      ],
+      "wasp_wdra": true,
+      "enable_v_mmac_cluster": 2,
+      "hcu_use_gfx946_sched_model_v2": true,
+      "mmac_layout_force": 2,
+      "FORCE_MASKED_STORE": false
+    },
+    "archived_tt_us": null,
+    "repo_variant": "repo-tail-axes",
+    "dispatches": 3,
+    "seed": 2059,
+    "input": "random",
+    "clang22": false,
+    "timed_seed": 59
+  },
+  "source": {
+    "path": "boltops/gemm/gluon/gemm_a16w16.py",
+    "member": "persistent_axes.py",
+    "sha256": "a2d00f66a1a9ad13547ab5eb5a6afbf4848a47c9efbcc7d10946591abc10c8cc",
+    "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+    "dependencies": [
+      {
+        "path": "boltops/gemm/gluon/gemm_a16w16_tn.py",
+        "member": "legacy_helper.py",
+        "sha256": "822c101c315fcf71d4080f0c37e36b462b5abe52f417db2674b30e4984524483"
+      }
+    ],
+    "archive": "../../../qwen3_vl_bf16_sbx2/source.tar.gz",
+    "measured_tree": "9a34b7c780ebbf06604d178e8fca651bcce5a8ee",
+    "archive_sha256": "46a83e216bc41457f4b780dea52317e10373318cded5d360541482e0b5817d8b"
+  },
+  "config": {
+    "parameters": {
+      "BLOCK_SIZE_M": 256,
+      "BLOCK_SIZE_N": 256,
+      "BLOCK_SIZE_K": 64,
+      "num_warps": 4,
+      "num_stages": 2,
+      "NUM_SMS": 96,
+      "wasp_partition_warps": [
+        4,
+        4,
+        4
+      ],
+      "wasp_partition_regs": [
+        16,
+        244,
+        244
+      ],
+      "wasp_wdra": true,
+      "enable_v_mmac_cluster": 2,
+      "hcu_use_gfx946_sched_model_v2": true,
+      "mmac_layout_force": 2,
+      "FORCE_MASKED_STORE": false,
+      "M": 22736,
+      "N": 4304,
+      "K": 1152,
+      "B_K_CONTIGUOUS": true
+    },
+    "strides": {
+      "A": [
+        1152,
+        1
+      ],
+      "B": [
+        1,
+        1152
+      ],
+      "C": [
+        4304,
+        1
+      ]
+    }
+  },
+  "full_grid_TGs": 96,
+  "resources": {
+    "VGPR": 168,
+    "spills": 0,
+    "LDS_bytes": 131072
+  },
+  "samples": [
+    {
+      "cycles": 803821,
+      "us": 365.738555,
+      "completed_TGs": {
+        "system.shaders0": 48,
+        "system.shaders1": 48
+      },
+      "active_CUs": {
+        "system.shaders0": 48,
+        "system.shaders1": 48
+      },
+      "mmop_instructions": 27887616,
+      "stats_sha256": "205e6d671561d2c0201bc4164f44fc972dfe10d41c1a62aba0568e2d01c55d02",
+      "seed": 2059,
+      "input_kind": "random",
+      "validation": {
+        "elements": 97855744,
+        "mismatch": 0,
+        "nonfinite": 0,
+        "max_abs": 0.25,
+        "atol": 0.02,
+        "rtol": 0.01,
+        "output_canaries": true,
+        "inputs_unchanged": true,
+        "mean_abs_vs_fp32": 0.009538200113246756,
+        "rounding_floor": 0.009538199763735296
+      }
+    },
+    {
+      "cycles": 784762,
+      "us": 357.06671,
+      "completed_TGs": {
+        "system.shaders0": 48,
+        "system.shaders1": 48
+      },
+      "active_CUs": {
+        "system.shaders0": 48,
+        "system.shaders1": 48
+      },
+      "mmop_instructions": 27887616,
+      "stats_sha256": "fd50e202f8ad5d4e1f89dad2f2b07d6b3ec1fc8d16d1fd748694625d5ef26c6f",
+      "seed": 59,
+      "input_kind": "random",
+      "validation": {
+        "elements": 97855744,
+        "mismatch": 0,
+        "nonfinite": 0,
+        "max_abs": 0.25,
+        "atol": 0.02,
+        "rtol": 0.01,
+        "output_canaries": true,
+        "inputs_unchanged": true,
+        "mean_abs_vs_fp32": 0.009531647316339917,
+        "rounding_floor": 0.009531646975505037
+      }
+    },
+    {
+      "cycles": 784225,
+      "us": 356.822375,
+      "completed_TGs": {
+        "system.shaders0": 48,
+        "system.shaders1": 48
+      },
+      "active_CUs": {
+        "system.shaders0": 48,
+        "system.shaders1": 48
+      },
+      "mmop_instructions": 27887616,
+      "stats_sha256": "2c6a7416a26c2b3736f4ba1d5da47f1bb9dc933d59b14a7a3259e441dc100ef0",
+      "seed": 59,
+      "input_kind": "random",
+      "validation": {
+        "elements": 97855744,
+        "mismatch": 0,
+        "nonfinite": 0,
+        "max_abs": 0.25,
+        "atol": 0.02,
+        "rtol": 0.01,
+        "output_canaries": true,
+        "inputs_unchanged": true,
+        "mean_abs_vs_fp32": 0.009531647316339917,
+        "rounding_floor": 0.009531646975505037
+      }
+    }
+  ],
+  "performance": {
+    "kernel_cycles": 784493.5,
+    "kernel_us": 356.9445425,
+    "kernel_tops": 631.6377121132199,
+    "logical_GBs": 722.8339903810127,
+    "aggregation": "median of repeats 1 and 2 after one warmup; all dispatches validated",
+    "launched_TGs": 96,
+    "samples": 2,
+    "time_domain": "complete dispatch system.gcSimCycles * 455 ps"
+  },
+  "assembly": {
+    "path": "kernel.amdgcn",
+    "sha256": "40bfdb68b46dd8b8df0032cd3edbdf6ab7bc0714db0c55d5b35d6d3da9f72541",
+    "hsaco_sha256": "a99dc1221e8d908a7ede99b3fd72cf19c18855cf0eea9505c4c1a6cacc17a726",
+    "executable_sections": {
+      ".rodata": "8f2bb74b3d75e7de7e7e06a23ee59c8bbaa7d99d8da0b5596b7a3d6582d0092e",
+      ".text": "02cf05fb2afb5dcfed758317ae9c07c229200a439f146670ddc161871f5f8456"
+    },
+    "archived_code_object": "measured.hsaco",
+    "replay_note": "Fresh compilation can change the instruction sequence. Replay loads the measured code object."
+  },
+  "evidence": {
+    "run": "complete-warm-r046-persistent-axes",
+    "measurement_sha256": "8049034b2a698cb48b2711f71ffbb2539287be07261385ab1e9ec9754ed1e4b7",
+    "raw_samples": [
+      "205e6d671561d2c0201bc4164f44fc972dfe10d41c1a62aba0568e2d01c55d02",
+      "fd50e202f8ad5d4e1f89dad2f2b07d6b3ec1fc8d16d1fd748694625d5ef26c6f",
+      "2c6a7416a26c2b3736f4ba1d5da47f1bb9dc933d59b14a7a3259e441dc100ef0"
+    ]
+  }
+}

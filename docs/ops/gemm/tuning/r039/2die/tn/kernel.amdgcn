@@ -1,0 +1,2591 @@
+	.text
+	.amdgcn_target "amdgcn-amd-amdhsa--gfx946:xnack-"
+	.globl	_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel ; -- Begin function _gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel
+	.p2align	8
+	.type	_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel,@function
+_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel: ; @_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel
+.Lfunc_begin0:
+	.file	1 "/xukang/code/pmd-triton-sessions/qwen3-vl-bf16-sbx2-tn-20261118/repo/boltops/gemm/gluon" "gemm_a16w16.py"
+	.loc	1 639 0                         ; gemm_a16w16.py:639:0
+	.cfi_sections .debug_frame
+	.cfi_startproc
+; %bb.0:
+	;;#ASMSTART
+	; wdra init
+  ; s_trap 0xff
+  s_getreg_b32 s16, hwreg(HW_REG_HW_ID1, 0, 5)
+	s_mul_i32 s17, s16, 256
+	s_mov_b32 m0, s17
+	s_waitcnt lgkmcnt(0)
+	ds_write_addtid_b32 v0
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_cmp_lt_i32 s16, 4
+	s_cbranch_scc0 1f
+	s_set_vgpr_size 16
+	s_mov_b32 m0, s17
+	s_waitcnt lgkmcnt(0)
+	ds_read_addtid_b32 v0
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_waitcnt lgkmcnt(0)
+  s_branch 4f
+1:
+	s_cmp_lt_i32 s16, 8
+	s_cbranch_scc0 2f
+	s_set_vgpr_size 244
+	s_mov_b32 m0, s17
+	s_waitcnt lgkmcnt(0)
+	ds_read_addtid_b32 v0
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_waitcnt lgkmcnt(0)
+	s_branch 4f
+2:
+	s_cmp_lt_i32 s16, 12
+	s_cbranch_scc0 3f
+	s_set_vgpr_size 244
+	s_mov_b32 m0, s17
+	s_waitcnt lgkmcnt(0)
+	ds_read_addtid_b32 v0
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_waitcnt lgkmcnt(0)
+	s_branch 4f
+3:
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_nop 0 ; padding
+	s_waitcnt lgkmcnt(0)
+4:
+  ; s_setpc_b64 vcc
+	;;#ASMEND
+	.cfi_escape 0x0f, 0x04, 0x30, 0x36, 0xe9, 0x02 ; 
+	.cfi_undefined 16
+.Ltmp0:
+	.loc	1 639 0 prologue_end            ; gemm_a16w16.py:639:0
+	s_getreg_b32 s7, hwreg(HW_REG_HW_ID1, 0, 5)
+; %bb.1:                                ; %NodeBlock1202
+	s_load_dwordx4 s[0:3], s[4:5], 0x0
+	s_load_dwordx2 s[12:13], s[4:5], 0x10
+	s_mov_b64 s[8:9], -1
+	s_mov_b64 s[4:5], 0
+	s_cmp_lt_i32 s7, 4
+	s_mov_b64 s[14:15], 0
+	s_cbranch_scc1 .LBB0_3
+; %bb.2:                                ; %NodeBlock
+	.loc	1 0 0 is_stmt 0                 ; gemm_a16w16.py:0:0
+	s_cmp_gt_i32 s7, 7
+	s_cbranch_scc1 .LBB0_4
+	s_branch .LBB0_32
+.LBB0_3:                                ; %Flow1211
+	s_and_b64 vcc, exec, s[8:9]
+	s_cbranch_vccnz .LBB0_5
+	s_branch .LBB0_7
+.LBB0_4:                                ; %LeafBlock1200
+	s_cmp_lt_i32 s7, 12
+	s_mov_b64 s[14:15], -1
+	s_cbranch_scc1 .LBB0_33
+	s_branch .LBB0_38
+.LBB0_5:                                ; %LeafBlock
+	s_cmp_lt_i32 s7, 0
+	s_mov_b64 s[4:5], -1
+	s_cselect_b64 s[14:15], -1, 0
+	s_branch .LBB0_7
+.LBB0_6:                                ; %common.ret
+	.loc	1 639 0                         ; gemm_a16w16.py:639:0
+	s_endpgm
+.LBB0_7:                                ; %Flow1215
+	.loc	1 0 0                           ; gemm_a16w16.py:0:0
+	s_and_b64 s[8:9], s[14:15], exec
+	s_cbranch_scc0 .LBB0_9
+; %bb.8:
+	s_mov_b64 s[4:5], 0
+	.loc	1 639 0                         ; gemm_a16w16.py:639:0
+	s_waitcnt lgkmcnt(0)
+	s_ebarrier_sync  0, 0
+	s_ebarrier_sync  3, 0
+	s_ebarrier_sync  5, 0
+.LBB0_9:                                ; %Flow1216
+	.loc	1 0 0                           ; gemm_a16w16.py:0:0
+	s_and_b64 s[4:5], s[4:5], exec
+	s_cbranch_scc0 .LBB0_6
+; %bb.10:
+	.loc	1 639 0                         ; gemm_a16w16.py:639:0
+	; wdra branch body with #vgpr =  16
+	;;#ASMSTART
+	; wdra placeholder
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+	s_mov_b32 s30, 0
+.Ltmp1:
+	.loc	1 480 53 is_stmt 1              ; gemm_a16w16.py:480:53
+	v_readfirstlane_b32 s4, v0
+.Ltmp2:
+	.loc	1 639 0                         ; gemm_a16w16.py:639:0
+	s_waitcnt lgkmcnt(0)
+	s_ebarrier_sync  0, 0
+	; sched_barrier mask(0x00000000)
+.Ltmp3:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 15, 0
+	s_mov_b32 s5, 0
+	;;#ASMEND
+.Ltmp4:
+	; sched_barrier mask(0x00000000)
+	.loc	1 467 61                        ; gemm_a16w16.py:467:61
+	s_cmpk_gt_i32 s6, 0x19f
+	s_cbranch_scc1 .LBB0_15
+; %bb.11:                               ; %.lr.ph30
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	s_bfe_u32 s4, s4, 0x20006
+	s_lshl_b32 s5, s4, 12
+	.loc	1 467 61                        ; gemm_a16w16.py:467:61
+	s_mul_i32 s25, s4, 0x180000
+	.loc	1 470 28                        ; gemm_a16w16.py:470:28
+	s_add_u32 s7, s2, s25
+	s_addc_u32 s20, s3, 0
+	.loc	1 467 61                        ; gemm_a16w16.py:467:61
+	s_mul_i32 s3, s6, 0x600000
+	s_add_i32 s3, s3, s25
+	s_lshl_b32 s21, s6, 8
+	s_add_i32 s22, s3, s2
+	.loc	1 470 28                        ; gemm_a16w16.py:470:28
+	s_add_u32 s23, s0, s25
+	s_addc_u32 s24, s1, 0
+	s_add_i32 s25, s25, s0
+	s_add_i32 s26, 0, 0x8000
+	s_lshl_b32 s27, s5, 1
+	s_mov_b32 s3, 0x10000
+	s_add_i32 s28, 0, 0x18000
+	s_movk_i32 s2, 0x3000
+	s_add_i32 s29, 0, 0x10000
+	s_mov_b32 s0, 0
+.LBB0_12:                               ; =>This Loop Header: Depth=1
+                                        ;     Child Loop BB0_13 Depth 2
+	.loc	1 468 33                        ; gemm_a16w16.py:468:33
+	s_ashr_i32 s1, s6, 31
+	s_lshr_b32 s1, s1, 28
+	s_add_i32 s1, s6, s1
+	s_ashr_i32 s1, s1, 4
+	.loc	1 469 47                        ; gemm_a16w16.py:469:47
+	s_lshl_b32 s5, s1, 12
+	.loc	1 470 28                        ; gemm_a16w16.py:470:28
+	s_sub_i32 s5, s21, s5
+	.loc	1 468 48                        ; gemm_a16w16.py:468:48
+	s_lshl_b32 s4, s1, 8
+	.loc	1 470 28                        ; gemm_a16w16.py:470:28
+	s_mul_hi_u32 s9, s5, 0x6000
+	s_mulk_i32 s5, 0x6000
+	s_mul_i32 s8, s1, 0x600000
+	s_add_u32 s31, s7, s5
+	s_mul_i32 s1, s1, 0x6000000
+	s_addc_u32 s33, s20, s9
+	s_sub_i32 s34, s22, s1
+	s_mul_hi_u32 s4, s4, 0x6000
+	s_add_u32 s35, s23, s8
+	s_addc_u32 s36, s24, s4
+	s_add_i32 s37, s25, s8
+	s_mov_b64 s[4:5], 0
+.LBB0_13:                               ;   Parent Loop BB0_12 Depth=1
+                                        ; =>  This Inner Loop Header: Depth=2
+	.loc	1 472 63                        ; gemm_a16w16.py:472:63
+	s_lshl_b32 s39, s0, 1
+	.loc	1 472 48 is_stmt 0              ; gemm_a16w16.py:472:48
+	s_or_b32 s40, s39, 1
+	.loc	1 473 46 is_stmt 1              ; gemm_a16w16.py:473:46
+	s_add_i32 s41, s39, 2
+	.loc	1 476 50                        ; gemm_a16w16.py:476:50
+	s_add_u32 s42, s35, s4
+	s_mov_b32 s38, s0
+	.loc	1 472 66                        ; gemm_a16w16.py:472:66
+	s_abarrier_try_wait  s0, s40, s30
+	.loc	1 476 50                        ; gemm_a16w16.py:476:50
+	s_addc_u32 s43, s36, s5
+	s_add_i32 s0, s37, s4
+	s_and_b32 s1, s43, 0xffff
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	s_mov_b64 s[10:11], s[2:3]
+	.loc	1 474 31                        ; gemm_a16w16.py:474:31
+	s_cmp_eq_u32 s38, 0
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	s_mov_b64 s[8:9], s[0:1]
+	.loc	1 474 15                        ; gemm_a16w16.py:474:15
+	s_cselect_b32 s8, 0, s26
+	s_cselect_b32 s9, s29, s28
+	.loc	1 476 50                        ; gemm_a16w16.py:476:50
+	s_add_i32 s44, s8, s27
+	s_add_i32 s45, s44, 0x400
+	s_add_i32 s46, s44, 0x800
+	s_add_i32 s47, s44, 0xc00
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	s_mov_b64 s[14:15], s[2:3]
+	.loc	1 476 50                        ; gemm_a16w16.py:476:50
+	s_mov_b64 s[18:19], s[2:3]
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	s_add_u32 s48, s31, s4
+	s_mov_b64 s[12:13], s[0:1]
+	.loc	1 476 50                        ; gemm_a16w16.py:476:50
+	s_mov_b64 s[16:17], s[0:1]
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	s_addc_u32 s49, s33, s5
+	s_add_i32 s50, s34, s4
+	s_add_i32 s51, s9, s27
+	.loc	1 472 63                        ; gemm_a16w16.py:472:63
+	s_xor_b32 s8, s39, 2
+	.loc	1 473 25                        ; gemm_a16w16.py:473:25
+	s_abarrier_seq s41
+	.loc	1 476 50                        ; gemm_a16w16.py:476:50
+	matrix_load_64x16_b16 s[0:3] s44  t  bps lds
+	matrix_load_64x16_b16 s[0:3] s45  moffset:16 t  bps lds
+	matrix_load_64x16_b16 s[0:3] s46  moffset:32 t  bps lds
+	matrix_load_64x16_b16 s[0:3] s47  moffset:48 t  bps lds
+.Ltmp5:
+	.loc	1 440 42                        ; gemm_a16w16.py:440:42
+	s_xor_b32 s1, s38, s30
+.Ltmp6:
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	s_and_b32 s13, s49, 0xffff
+	s_mov_b32 s12, s50
+	s_add_i32 s39, s51, 0x400
+	s_add_i32 s52, s51, 0x800
+	s_add_i32 s53, s51, 0xc00
+	.loc	1 472 48                        ; gemm_a16w16.py:472:48
+	s_or_b32 s16, s8, 1
+	.loc	1 473 46                        ; gemm_a16w16.py:473:46
+	s_add_i32 s54, s8, 2
+	.loc	1 476 50                        ; gemm_a16w16.py:476:50
+	s_add_u32 s8, s42, 0x80
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	matrix_load_64x16_b16 s[12:15] s51  r  bps lds
+	matrix_load_64x16_b16 s[12:15] s39  moffset:16 r  bps lds
+	matrix_load_64x16_b16 s[12:15] s52  moffset:32 r  bps lds
+	matrix_load_64x16_b16 s[12:15] s53  moffset:48 r  bps lds
+	.loc	1 492 28                        ; gemm_a16w16.py:492:28
+	s_abarrier_arrive  s8, s41, 1
+	.loc	1 472 66                        ; gemm_a16w16.py:472:66
+	s_abarrier_try_wait  s1, s16, s1
+	.loc	1 476 50                        ; gemm_a16w16.py:476:50
+	s_addc_u32 s1, s43, 0
+	s_add_i32 s16, s0, 0x80
+	s_and_b32 s17, s1, 0xffff
+	.loc	1 474 31                        ; gemm_a16w16.py:474:31
+	s_cmp_eq_u32 s38, 1
+	.loc	1 474 15 is_stmt 0              ; gemm_a16w16.py:474:15
+	s_cselect_b32 s1, 0, s26
+	s_cselect_b32 s8, s29, s28
+	.loc	1 476 50 is_stmt 1              ; gemm_a16w16.py:476:50
+	s_add_i32 s1, s1, s27
+	.loc	1 473 25                        ; gemm_a16w16.py:473:25
+	s_abarrier_seq s54
+	.loc	1 476 50                        ; gemm_a16w16.py:476:50
+	matrix_load_64x16_b16 s[16:19] s1  t  bps lds
+	s_add_i32 s9, s1, 0x400
+	s_add_i32 s12, s1, 0x800
+	s_addk_i32 s1, 0xc00
+	matrix_load_64x16_b16 s[16:19] s9  moffset:16 t  bps lds
+	matrix_load_64x16_b16 s[16:19] s12  moffset:32 t  bps lds
+	matrix_load_64x16_b16 s[16:19] s1  moffset:48 t  bps lds
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	s_add_u32 s1, s48, 0x80
+	s_addc_u32 s1, s49, 0
+	s_add_i32 s9, s50, 0x80
+	s_add_i32 s12, s8, s27
+	s_and_b32 s1, s1, 0xffff
+.Ltmp7:
+	.loc	1 440 42                        ; gemm_a16w16.py:440:42
+	s_xor_b32 s13, s30, 1
+.Ltmp8:
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	s_mov_b32 s8, s9
+	s_add_i32 s14, s12, 0x400
+	s_add_i32 s15, s12, 0x800
+	s_add_i32 s16, s12, 0xc00
+	s_mov_b32 s9, s1
+	.loc	1 476 50                        ; gemm_a16w16.py:476:50
+	s_add_u32 s1, s42, 0x100
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	matrix_load_64x16_b16 s[8:11] s12  r  bps lds
+	matrix_load_64x16_b16 s[8:11] s14  moffset:16 r  bps lds
+	matrix_load_64x16_b16 s[8:11] s15  moffset:32 r  bps lds
+	matrix_load_64x16_b16 s[8:11] s16  moffset:48 r  bps lds
+	.loc	1 492 28                        ; gemm_a16w16.py:492:28
+	s_abarrier_arrive  s1, s54, 1
+	.loc	1 472 66                        ; gemm_a16w16.py:472:66
+	s_abarrier_try_wait  s1, s40, s13
+	.loc	1 476 50                        ; gemm_a16w16.py:476:50
+	s_addc_u32 s1, s43, 0
+	s_addk_i32 s0, 0x100
+	s_and_b32 s1, s1, 0xffff
+	.loc	1 473 25                        ; gemm_a16w16.py:473:25
+	s_abarrier_seq s41
+	.loc	1 476 50                        ; gemm_a16w16.py:476:50
+	matrix_load_64x16_b16 s[0:3] s44  t  bps lds
+	matrix_load_64x16_b16 s[0:3] s45  moffset:16 t  bps lds
+	matrix_load_64x16_b16 s[0:3] s46  moffset:32 t  bps lds
+	matrix_load_64x16_b16 s[0:3] s47  moffset:48 t  bps lds
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	s_add_u32 s0, s48, 0x100
+	s_addc_u32 s1, s49, 0
+	s_add_i32 s0, s50, 0x100
+	s_and_b32 s1, s1, 0xffff
+.Ltmp9:
+	.loc	1 440 42                        ; gemm_a16w16.py:440:42
+	s_xor_b32 s30, s13, s38
+.Ltmp10:
+	.loc	1 480 53                        ; gemm_a16w16.py:480:53
+	matrix_load_64x16_b16 s[0:3] s51  r  bps lds
+	matrix_load_64x16_b16 s[0:3] s39  moffset:16 r  bps lds
+	matrix_load_64x16_b16 s[0:3] s52  moffset:32 r  bps lds
+	matrix_load_64x16_b16 s[0:3] s53  moffset:48 r  bps lds
+	.loc	1 492 28                        ; gemm_a16w16.py:492:28
+	s_abarrier_arrive  s0, s41, 1
+.Ltmp11:
+	.loc	1 439 40                        ; gemm_a16w16.py:439:40
+	s_xor_b32 s0, s38, 1
+.Ltmp12:
+	.loc	1 470 28                        ; gemm_a16w16.py:470:28
+	s_add_u32 s4, s4, 0x180
+	s_addc_u32 s5, s5, 0
+	s_cmpk_lg_i32 s4, 0x6000
+	s_cbranch_scc1 .LBB0_13
+; %bb.14:                               ;   in Loop: Header=BB0_12 Depth=1
+	.loc	1 467 61                        ; gemm_a16w16.py:467:61
+	s_add_i32 s1, s6, 0x60
+	s_addk_i32 s21, 0x6000
+	s_add_i32 s22, s22, 0x24000000
+	s_cmpk_lt_i32 s6, 0x140
+	s_mov_b32 s6, s1
+	s_cbranch_scc1 .LBB0_12
+.LBB0_15:                               ; %._crit_edge31
+	; sched_barrier mask(0x00000000)
+.Ltmp13:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 15, 0
+	s_mov_b32 s0, 0
+	;;#ASMEND
+.Ltmp14:
+	; sched_barrier mask(0x00000000)
+	.loc	1 639 0                         ; gemm_a16w16.py:639:0
+	s_ebarrier_sync  5, 0
+	s_nop 0
+	s_endpgm
+.LBB0_16:
+	; wdra branch body with #vgpr = 244
+	;;#ASMSTART
+	; wdra placeholder
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+.Ltmp15:
+	.loc	1 391 8                         ; gemm_a16w16.py:391:8
+	;;#ASMSTART
+	s_getreg_b32 s11, hwreg(HW_REG_HW_ID1, 0, 5)
+	;;#ASMEND
+.Ltmp16:
+	.loc	1 404 18                        ; gemm_a16w16.py:404:18
+	s_cmp_lg_u32 s11, 4
+	s_cselect_b64 s[16:17], -1, 0
+.Ltmp17:
+	.loc	1 617 36                        ; gemm_a16w16.py:617:36
+	v_readfirstlane_b32 s10, v0
+	s_mov_b64 s[8:9], -1
+.Ltmp18:
+	.loc	1 404 7                         ; gemm_a16w16.py:404:7
+	s_and_b64 vcc, exec, s[16:17]
+.Ltmp19:
+	.loc	1 639 0                         ; gemm_a16w16.py:639:0
+	s_waitcnt lgkmcnt(0)
+	s_ebarrier_sync  0, 0
+.Ltmp20:
+	.loc	1 404 7                         ; gemm_a16w16.py:404:7
+	s_cbranch_vccnz .LBB0_19
+.LBB0_17:                               ; %Flow1208
+	s_and_b64 s[8:9], s[8:9], exec
+	s_cbranch_scc0 .LBB0_21
+; %bb.18:
+	; sched_barrier mask(0x00000000)
+.Ltmp21:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_abarrier_init 1, 8
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp22:
+	; sched_barrier mask(0x00000000)
+	.loc	1 383 8 is_stmt 0               ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 4, 4
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp23:
+	; sched_barrier mask(0x00000000)
+	.loc	1 410 12 is_stmt 1              ; gemm_a16w16.py:410:12
+	;;#ASMSTART
+	s_abarrier_arrive s8, 1, 2
+	;;#ASMEND
+.Ltmp24:
+	; sched_barrier mask(0x00000000)
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_abarrier_init 2, 4
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp25:
+	; sched_barrier mask(0x00000000)
+	.loc	1 404 7                         ; gemm_a16w16.py:404:7
+	s_branch .LBB0_21
+.Ltmp26:
+.LBB0_19:                               ; %.critedge
+	; sched_barrier mask(0x00000000)
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 4, 4
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp27:
+	; sched_barrier mask(0x00000000)
+	.loc	1 410 12                        ; gemm_a16w16.py:410:12
+	;;#ASMSTART
+	s_abarrier_arrive s8, 1, 2
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+	s_mov_b64 s[8:9], 0
+.Ltmp28:
+	.loc	1 404 7                         ; gemm_a16w16.py:404:7
+	s_branch .LBB0_17
+.LBB0_20:                               ; %Flow1214
+	.loc	1 0 7 is_stmt 0                 ; gemm_a16w16.py:0:7
+	s_mov_b64 s[8:9], 0
+	s_branch .LBB0_3
+.LBB0_21:
+	; sched_barrier mask(0x00000000)
+.Ltmp29:
+	.loc	1 383 8 is_stmt 1               ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 4, 4
+	s_mov_b32 s8, 0
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+	s_mov_b64 s[8:9], -1
+.Ltmp30:
+	.loc	1 404 7                         ; gemm_a16w16.py:404:7
+	s_mov_b64 vcc, vcc
+	s_cbranch_vccnz .LBB0_24
+.LBB0_22:                               ; %Flow1207
+	s_and_b64 s[8:9], s[8:9], exec
+	s_cbranch_scc0 .LBB0_25
+; %bb.23:
+	; sched_barrier mask(0x00000000)
+.Ltmp31:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_abarrier_init 3, 8
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp32:
+	; sched_barrier mask(0x00000000)
+	.loc	1 383 8 is_stmt 0               ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 4, 4
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp33:
+	; sched_barrier mask(0x00000000)
+	.loc	1 410 12 is_stmt 1              ; gemm_a16w16.py:410:12
+	;;#ASMSTART
+	s_abarrier_arrive s8, 3, 2
+	;;#ASMEND
+.Ltmp34:
+	; sched_barrier mask(0x00000000)
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_abarrier_init 4, 4
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp35:
+	; sched_barrier mask(0x00000000)
+	.loc	1 404 7                         ; gemm_a16w16.py:404:7
+	s_branch .LBB0_25
+.Ltmp36:
+.LBB0_24:                               ; %.critedge4
+	; sched_barrier mask(0x00000000)
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 4, 4
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp37:
+	; sched_barrier mask(0x00000000)
+	.loc	1 410 12                        ; gemm_a16w16.py:410:12
+	;;#ASMSTART
+	s_abarrier_arrive s8, 3, 2
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+	s_mov_b64 s[8:9], 0
+.Ltmp38:
+	.loc	1 404 7                         ; gemm_a16w16.py:404:7
+	s_branch .LBB0_22
+.LBB0_25:
+	; sched_barrier mask(0x00000000)
+.Ltmp39:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 4, 4
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp40:
+	; sched_barrier mask(0x00000000)
+	.loc	1 383 8 is_stmt 0               ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 15, 0
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp41:
+	; sched_barrier mask(0x00000000)
+	.loc	1 563 61 is_stmt 1              ; gemm_a16w16.py:563:61
+	s_cmpk_gt_i32 s6, 0x19f
+	s_cbranch_scc1 .LBB0_31
+; %bb.26:                               ; %.preheader.lr.ph
+	.loc	1 0 61 is_stmt 0                ; gemm_a16w16.py:0:61
+	s_lshl_b32 s8, s10, 6
+	s_and_b32 s18, s8, 0x2000
+	s_lshl_b32 s8, s10, 7
+	s_and_b32 s19, s8, 0x2000
+	s_lshl_b32 s8, s10, 11
+	s_and_b32 s8, s8, 0x40000
+	s_and_b32 s9, s10, 64
+	s_or_b32 s8, s8, s9
+	s_mov_b32 s17, 0
+	s_add_i32 s20, 0, 0x8000
+	s_mov_b32 s11, 0x10000
+	s_add_i32 s21, 0, 0x10000
+	s_add_i32 s22, 0, 0x18000
+	s_lshl_b32 s23, s8, 1
+	s_movk_i32 s10, 0x1000
+	s_mov_b32 s24, 0
+	s_mov_b32 s26, 0
+	s_mov_b32 s25, s6
+.LBB0_27:                               ; %.preheader
+                                        ; =>This Loop Header: Depth=1
+                                        ;     Child Loop BB0_28 Depth 2
+	v_mov_b32_e32 v0, 0
+	s_movk_i32 s8, 0xc0
+	v_mov_b32_e32 v1, v0
+	v_mov_b32_e32 v2, v0
+	v_mov_b32_e32 v3, v0
+	v_mov_b32_e32 v8, v0
+	v_mov_b32_e32 v9, v0
+	v_mov_b32_e32 v10, v0
+	v_mov_b32_e32 v11, v0
+	v_mov_b32_e32 v4, v0
+	v_mov_b32_e32 v5, v0
+	v_mov_b32_e32 v6, v0
+	v_mov_b32_e32 v7, v0
+	v_mov_b32_e32 v16, v0
+	v_mov_b32_e32 v17, v0
+	v_mov_b32_e32 v18, v0
+	v_mov_b32_e32 v19, v0
+	v_mov_b32_e32 v12, v0
+	v_mov_b32_e32 v13, v0
+	v_mov_b32_e32 v14, v0
+	v_mov_b32_e32 v15, v0
+	v_mov_b32_e32 v24, v0
+	v_mov_b32_e32 v25, v0
+	v_mov_b32_e32 v26, v0
+	v_mov_b32_e32 v27, v0
+	v_mov_b32_e32 v20, v0
+	v_mov_b32_e32 v21, v0
+	v_mov_b32_e32 v22, v0
+	v_mov_b32_e32 v23, v0
+	v_mov_b32_e32 v32, v0
+	v_mov_b32_e32 v33, v0
+	v_mov_b32_e32 v34, v0
+	v_mov_b32_e32 v35, v0
+	v_mov_b32_e32 v28, v0
+	v_mov_b32_e32 v29, v0
+	v_mov_b32_e32 v30, v0
+	v_mov_b32_e32 v31, v0
+	v_mov_b32_e32 v40, v0
+	v_mov_b32_e32 v41, v0
+	v_mov_b32_e32 v42, v0
+	v_mov_b32_e32 v43, v0
+	v_mov_b32_e32 v36, v0
+	v_mov_b32_e32 v37, v0
+	v_mov_b32_e32 v38, v0
+	v_mov_b32_e32 v39, v0
+	v_mov_b32_e32 v48, v0
+	v_mov_b32_e32 v49, v0
+	v_mov_b32_e32 v50, v0
+	v_mov_b32_e32 v51, v0
+	v_mov_b32_e32 v44, v0
+	v_mov_b32_e32 v45, v0
+	v_mov_b32_e32 v46, v0
+	v_mov_b32_e32 v47, v0
+	v_mov_b32_e32 v56, v0
+	v_mov_b32_e32 v57, v0
+	v_mov_b32_e32 v58, v0
+	v_mov_b32_e32 v59, v0
+	v_mov_b32_e32 v52, v0
+	v_mov_b32_e32 v53, v0
+	v_mov_b32_e32 v54, v0
+	v_mov_b32_e32 v55, v0
+	v_mov_b32_e32 v60, v0
+	v_mov_b32_e32 v61, v0
+	v_mov_b32_e32 v62, v0
+	v_mov_b32_e32 v63, v0
+	v_mov_b32_e32 v64, v0
+	v_mov_b32_e32 v65, v0
+	v_mov_b32_e32 v66, v0
+	v_mov_b32_e32 v67, v0
+	v_mov_b32_e32 v72, v0
+	v_mov_b32_e32 v73, v0
+	v_mov_b32_e32 v74, v0
+	v_mov_b32_e32 v75, v0
+	v_mov_b32_e32 v68, v0
+	v_mov_b32_e32 v69, v0
+	v_mov_b32_e32 v70, v0
+	v_mov_b32_e32 v71, v0
+	v_mov_b32_e32 v80, v0
+	v_mov_b32_e32 v81, v0
+	v_mov_b32_e32 v82, v0
+	v_mov_b32_e32 v83, v0
+	v_mov_b32_e32 v76, v0
+	v_mov_b32_e32 v77, v0
+	v_mov_b32_e32 v78, v0
+	v_mov_b32_e32 v79, v0
+	v_mov_b32_e32 v88, v0
+	v_mov_b32_e32 v89, v0
+	v_mov_b32_e32 v90, v0
+	v_mov_b32_e32 v91, v0
+	v_mov_b32_e32 v84, v0
+	v_mov_b32_e32 v85, v0
+	v_mov_b32_e32 v86, v0
+	v_mov_b32_e32 v87, v0
+	v_mov_b32_e32 v96, v0
+	v_mov_b32_e32 v97, v0
+	v_mov_b32_e32 v98, v0
+	v_mov_b32_e32 v99, v0
+	v_mov_b32_e32 v92, v0
+	v_mov_b32_e32 v93, v0
+	v_mov_b32_e32 v94, v0
+	v_mov_b32_e32 v95, v0
+	v_mov_b32_e32 v104, v0
+	v_mov_b32_e32 v105, v0
+	v_mov_b32_e32 v106, v0
+	v_mov_b32_e32 v107, v0
+	v_mov_b32_e32 v100, v0
+	v_mov_b32_e32 v101, v0
+	v_mov_b32_e32 v102, v0
+	v_mov_b32_e32 v103, v0
+	v_mov_b32_e32 v112, v0
+	v_mov_b32_e32 v113, v0
+	v_mov_b32_e32 v114, v0
+	v_mov_b32_e32 v115, v0
+	v_mov_b32_e32 v108, v0
+	v_mov_b32_e32 v109, v0
+	v_mov_b32_e32 v110, v0
+	v_mov_b32_e32 v111, v0
+	v_mov_b32_e32 v120, v0
+	v_mov_b32_e32 v121, v0
+	v_mov_b32_e32 v122, v0
+	v_mov_b32_e32 v123, v0
+	v_mov_b32_e32 v116, v0
+	v_mov_b32_e32 v117, v0
+	v_mov_b32_e32 v118, v0
+	v_mov_b32_e32 v119, v0
+	v_mov_b32_e32 v124, v0
+	v_mov_b32_e32 v125, v0
+	v_mov_b32_e32 v126, v0
+	v_mov_b32_e32 v127, v0
+.LBB0_28:                               ;   Parent Loop BB0_27 Depth=1
+                                        ; =>  This Inner Loop Header: Depth=2
+	.loc	1 574 62 is_stmt 1              ; gemm_a16w16.py:574:62
+	s_lshl_b32 s16, s26, 1
+	s_mov_b32 s9, s26
+	.loc	1 574 47 is_stmt 0              ; gemm_a16w16.py:574:47
+	s_add_i32 s26, s16, 2
+	.loc	1 574 65                        ; gemm_a16w16.py:574:65
+	s_abarrier_try_wait  s26, s26, s24
+	.loc	1 575 31 is_stmt 1              ; gemm_a16w16.py:575:31
+	s_cmp_eq_u32 s9, 0
+	.loc	1 575 15 is_stmt 0              ; gemm_a16w16.py:575:15
+	s_cselect_b32 s26, 0, s20
+	s_cselect_b32 s27, s21, s22
+	.loc	1 576 68 is_stmt 1              ; gemm_a16w16.py:576:68
+	s_add_i32 s26, s26, s18
+	s_nop 0
+	ds_read_matrix_trans_format v[204:207], s26 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[144:147], s26 offset:4096 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[200:203], s26 offset:1024 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[136:139], s26 offset:5120 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[196:199], s26 offset:2048 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[132:135], s26 offset:6144 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[176:179], s26 offset:3072 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[128:131], s26 offset:7168 element:2 row:2 col:1
+	.loc	1 578 38                        ; gemm_a16w16.py:578:38
+	s_add_i32 s26, s27, s19
+	s_nop 0
+	ds_read_matrix_trans_format v[208:211], s26 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[212:215], s26 offset:32 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[172:175], s26 offset:4096 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[168:171], s26 offset:4128 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[216:219], s26 offset:2048 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[220:223], s26 offset:2080 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[164:167], s26 offset:6144 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[160:163], s26 offset:6176 element:2 row:1 col:2 alt:1
+	.loc	1 581 38                        ; gemm_a16w16.py:581:38
+	s_addk_i32 s26, 0x4000
+	s_nop 0
+	ds_read_matrix_trans_format v[192:195], s26 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[188:191], s26 offset:32 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[156:159], s26 offset:4096 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[148:151], s26 offset:4128 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[184:187], s26 offset:2048 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[180:183], s26 offset:2080 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[152:155], s26 offset:6144 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[140:143], s26 offset:6176 element:2 row:1 col:2 alt:1
+	; sched_barrier mask(0x00000000)
+.Ltmp42:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_waitcnt lgkmcnt(0)
+	s_mov_b32 s26, 0
+	;;#ASMEND
+.Ltmp43:
+	; sched_barrier mask(0x00000000)
+	.loc	1 593 50                        ; gemm_a16w16.py:593:50
+	s_or_b32 s16, s16, 1
+	.loc	1 593 28 is_stmt 0              ; gemm_a16w16.py:593:28
+	s_waitcnt lgkmcnt(0)
+	s_abarrier_arrive  s16, s16, 1
+	; sched_barrier mask(0x00000000)
+.Ltmp44:
+	.loc	1 383 8 is_stmt 1               ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 1, 8
+	s_setprio 1
+	s_mov_b32 s16, 0
+	;;#ASMEND
+.Ltmp45:
+	; sched_barrier mask(0x00000000)
+	.loc	1 596 66                        ; gemm_a16w16.py:596:66
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[204:205], v[208:209], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[204:205], v[210:211], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[200:201], v[208:209], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[200:201], v[210:211], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[196:197], v[208:209], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[196:197], v[210:211], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[176:177], v[208:209], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[176:177], v[210:211], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[204:205], v[216:217], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[204:205], v[218:219], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[200:201], v[216:217], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[200:201], v[218:219], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[196:197], v[216:217], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[196:197], v[218:219], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[176:177], v[216:217], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[176:177], v[218:219], v[124:127]   lts
+	.loc	1 597 66                        ; gemm_a16w16.py:597:66
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[204:205], v[192:193], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[204:205], v[194:195], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[204:205], v[184:185], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[204:205], v[186:187], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[200:201], v[192:193], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[200:201], v[194:195], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[200:201], v[184:185], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[200:201], v[186:187], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[196:197], v[192:193], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[196:197], v[194:195], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[196:197], v[184:185], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[196:197], v[186:187], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[176:177], v[192:193], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[176:177], v[194:195], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[176:177], v[184:185], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[176:177], v[186:187], v[60:63]   lts
+	.loc	1 596 66                        ; gemm_a16w16.py:596:66
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[206:207], v[212:213], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[206:207], v[214:215], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[202:203], v[212:213], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[202:203], v[214:215], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[198:199], v[212:213], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[198:199], v[214:215], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[178:179], v[212:213], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[178:179], v[214:215], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[206:207], v[220:221], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[206:207], v[222:223], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[202:203], v[220:221], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[202:203], v[222:223], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[198:199], v[220:221], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[198:199], v[222:223], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[178:179], v[220:221], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[178:179], v[222:223], v[124:127]   lts
+	.loc	1 597 66                        ; gemm_a16w16.py:597:66
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[206:207], v[188:189], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[206:207], v[190:191], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[206:207], v[180:181], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[206:207], v[182:183], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[202:203], v[188:189], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[202:203], v[190:191], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[202:203], v[180:181], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[202:203], v[182:183], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[198:199], v[188:189], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[198:199], v[190:191], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[198:199], v[180:181], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[198:199], v[182:183], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[178:179], v[188:189], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[178:179], v[190:191], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[178:179], v[180:181], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[178:179], v[182:183], v[60:63]   lts
+	.loc	1 596 66                        ; gemm_a16w16.py:596:66
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[144:145], v[172:173], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[144:145], v[174:175], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[136:137], v[172:173], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[136:137], v[174:175], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[132:133], v[172:173], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[132:133], v[174:175], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[128:129], v[172:173], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[128:129], v[174:175], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[144:145], v[164:165], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[144:145], v[166:167], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[136:137], v[164:165], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[136:137], v[166:167], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[132:133], v[164:165], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[132:133], v[166:167], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[128:129], v[164:165], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[128:129], v[166:167], v[124:127]   lts
+	.loc	1 597 66                        ; gemm_a16w16.py:597:66
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[144:145], v[156:157], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[144:145], v[158:159], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[144:145], v[152:153], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[144:145], v[154:155], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[136:137], v[156:157], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[136:137], v[158:159], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[136:137], v[152:153], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[136:137], v[154:155], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[132:133], v[156:157], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[132:133], v[158:159], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[132:133], v[152:153], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[132:133], v[154:155], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[128:129], v[156:157], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[128:129], v[158:159], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[128:129], v[152:153], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[128:129], v[154:155], v[60:63]   lts
+	.loc	1 596 66                        ; gemm_a16w16.py:596:66
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[146:147], v[168:169], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[146:147], v[170:171], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[138:139], v[168:169], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[138:139], v[170:171], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[134:135], v[168:169], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[134:135], v[170:171], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[130:131], v[168:169], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[130:131], v[170:171], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[146:147], v[160:161], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[146:147], v[162:163], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[138:139], v[160:161], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[138:139], v[162:163], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[134:135], v[160:161], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[134:135], v[162:163], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[130:131], v[160:161], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[130:131], v[162:163], v[124:127]   lts
+	.loc	1 597 66                        ; gemm_a16w16.py:597:66
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[146:147], v[148:149], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[146:147], v[150:151], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[146:147], v[140:141], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[146:147], v[142:143], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[138:139], v[148:149], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[138:139], v[150:151], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[138:139], v[140:141], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[138:139], v[142:143], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[134:135], v[148:149], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[134:135], v[150:151], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[134:135], v[140:141], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[134:135], v[142:143], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[130:131], v[148:149], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[130:131], v[150:151], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[130:131], v[140:141], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[130:131], v[142:143], v[60:63]   lts
+	; sched_barrier mask(0x00000000)
+.Ltmp46:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_setprio 0
+	s_ebarrier_sync 1, 8
+	s_mov_b32 s16, 0
+	;;#ASMEND
+.Ltmp47:
+	; sched_barrier mask(0x00000000)
+	.loc	1 439 40                        ; gemm_a16w16.py:439:40
+	s_xor_b32 s26, s9, 1
+	.loc	1 440 42                        ; gemm_a16w16.py:440:42
+	s_xor_b32 s24, s9, s24
+.Ltmp48:
+	.loc	1 573 28                        ; gemm_a16w16.py:573:28
+	s_add_i32 s8, s8, -1
+	s_cmp_lg_u32 s8, 0
+	s_cbranch_scc1 .LBB0_28
+; %bb.29:                               ;   in Loop: Header=BB0_27 Depth=1
+	.loc	1 609 33                        ; gemm_a16w16.py:609:33
+	s_ashr_i32 s8, s25, 31
+	s_lshr_b32 s8, s8, 28
+	s_add_i32 s8, s25, s8
+	s_ashr_i32 s8, s8, 4
+	.loc	1 609 48 is_stmt 0              ; gemm_a16w16.py:609:48
+	s_lshl_b32 s16, s8, 8
+	.loc	1 610 47 is_stmt 1              ; gemm_a16w16.py:610:47
+	s_lshl_b32 s8, s8, 12
+	s_lshl_b32 s9, s25, 8
+	s_sub_i32 s8, s9, s8
+	.loc	1 617 36                        ; gemm_a16w16.py:617:36
+	s_lshl_b64 s[28:29], s[16:17], 13
+	s_mov_b32 s9, s17
+	s_add_u32 s16, s12, s28
+	s_addc_u32 s27, s13, s29
+	s_lshl_b64 s[8:9], s[8:9], 1
+	s_add_u32 s8, s16, s8
+	s_addc_u32 s9, s27, s9
+	s_add_u32 s8, s8, s23
+	s_addc_u32 s16, s9, 0
+	s_and_b32 s9, s16, 0xffff
+	s_add_u32 s27, s8, 0x40000
+	s_addc_u32 s28, s16, 0
+.Ltmp49:
+	.loc	1 520 61                        ; gemm_a16w16.py:520:61
+	v_cvt_pk_bf16_f32 v64, v64, v72
+	v_cvt_pk_bf16_f32 v65, v65, v73
+	v_cvt_pk_bf16_f32 v66, v66, v74
+	v_cvt_pk_bf16_f32 v67, v67, v75
+	v_cvt_pk_bf16_f32 v72, v68, v80
+	v_cvt_pk_bf16_f32 v73, v69, v81
+	v_cvt_pk_bf16_f32 v74, v70, v82
+	v_cvt_pk_bf16_f32 v75, v71, v83
+	v_cvt_pk_bf16_f32 v68, v76, v88
+	v_cvt_pk_bf16_f32 v69, v77, v89
+	v_cvt_pk_bf16_f32 v70, v78, v90
+	v_cvt_pk_bf16_f32 v71, v79, v91
+	v_cvt_pk_bf16_f32 v76, v84, v96
+	v_cvt_pk_bf16_f32 v77, v85, v97
+	v_cvt_pk_bf16_f32 v78, v86, v98
+	v_cvt_pk_bf16_f32 v79, v87, v99
+.Ltmp50:
+	.loc	1 617 36                        ; gemm_a16w16.py:617:36
+	s_and_b32 s33, s28, 0xffff
+	s_mov_b64 s[30:31], s[10:11]
+	s_mov_b64 s[28:29], s[8:9]
+	matrix_store_32x32_b16 v[64:71] s[8:11]  t r 
+	matrix_store_32x32_b16 v[72:79] s[8:11]  moffset:32 t r 
+	s_add_u32 s9, s8, 0x100
+.Ltmp51:
+	.loc	1 520 61                        ; gemm_a16w16.py:520:61
+	v_cvt_pk_bf16_f32 v80, v92, v104
+	v_cvt_pk_bf16_f32 v81, v93, v105
+	v_cvt_pk_bf16_f32 v82, v94, v106
+	v_cvt_pk_bf16_f32 v83, v95, v107
+	v_cvt_pk_bf16_f32 v88, v100, v112
+	v_cvt_pk_bf16_f32 v89, v101, v113
+	v_cvt_pk_bf16_f32 v90, v102, v114
+	v_cvt_pk_bf16_f32 v91, v103, v115
+	v_cvt_pk_bf16_f32 v84, v108, v120
+	v_cvt_pk_bf16_f32 v85, v109, v121
+	v_cvt_pk_bf16_f32 v86, v110, v122
+	v_cvt_pk_bf16_f32 v87, v111, v123
+	v_cvt_pk_bf16_f32 v92, v116, v124
+	v_cvt_pk_bf16_f32 v93, v117, v125
+	v_cvt_pk_bf16_f32 v94, v118, v126
+	v_cvt_pk_bf16_f32 v95, v119, v127
+.Ltmp52:
+	.loc	1 617 36                        ; gemm_a16w16.py:617:36
+	s_mov_b32 s28, s27
+	s_mov_b32 s29, s33
+	s_addc_u32 s27, s16, 0
+	matrix_store_32x32_b16 v[80:87] s[28:31]  t r 
+	matrix_store_32x32_b16 v[88:95] s[28:31]  moffset:32 t r 
+	s_and_b32 s27, s27, 0xffff
+	s_mov_b64 s[30:31], s[10:11]
+	s_mov_b64 s[28:29], s[8:9]
+	s_add_u32 s8, s8, 0x40100
+	s_mov_b32 s28, s9
+	s_addc_u32 s9, s16, 0
+.Ltmp53:
+	.loc	1 520 61                        ; gemm_a16w16.py:520:61
+	v_cvt_pk_bf16_f32 v0, v0, v8
+	v_cvt_pk_bf16_f32 v1, v1, v9
+	v_cvt_pk_bf16_f32 v2, v2, v10
+	v_cvt_pk_bf16_f32 v3, v3, v11
+	v_cvt_pk_bf16_f32 v8, v4, v16
+	v_cvt_pk_bf16_f32 v9, v5, v17
+	v_cvt_pk_bf16_f32 v10, v6, v18
+	v_cvt_pk_bf16_f32 v11, v7, v19
+	v_cvt_pk_bf16_f32 v4, v12, v24
+	v_cvt_pk_bf16_f32 v5, v13, v25
+	v_cvt_pk_bf16_f32 v6, v14, v26
+	v_cvt_pk_bf16_f32 v7, v15, v27
+	v_cvt_pk_bf16_f32 v12, v20, v32
+	v_cvt_pk_bf16_f32 v13, v21, v33
+	v_cvt_pk_bf16_f32 v14, v22, v34
+	v_cvt_pk_bf16_f32 v15, v23, v35
+	v_cvt_pk_bf16_f32 v16, v28, v40
+	v_cvt_pk_bf16_f32 v17, v29, v41
+	v_cvt_pk_bf16_f32 v18, v30, v42
+	v_cvt_pk_bf16_f32 v19, v31, v43
+	v_cvt_pk_bf16_f32 v24, v36, v48
+	v_cvt_pk_bf16_f32 v25, v37, v49
+	v_cvt_pk_bf16_f32 v26, v38, v50
+	v_cvt_pk_bf16_f32 v27, v39, v51
+	v_cvt_pk_bf16_f32 v20, v44, v56
+	v_cvt_pk_bf16_f32 v21, v45, v57
+	v_cvt_pk_bf16_f32 v22, v46, v58
+	v_cvt_pk_bf16_f32 v23, v47, v59
+	v_cvt_pk_bf16_f32 v28, v52, v60
+	v_cvt_pk_bf16_f32 v29, v53, v61
+	v_cvt_pk_bf16_f32 v30, v54, v62
+	v_cvt_pk_bf16_f32 v31, v55, v63
+.Ltmp54:
+	.loc	1 617 36                        ; gemm_a16w16.py:617:36
+	s_mov_b32 s29, s27
+	s_and_b32 s9, s9, 0xffff
+	matrix_store_32x32_b16 v[0:7] s[28:31]  t r 
+	matrix_store_32x32_b16 v[8:15] s[28:31]  moffset:32 t r 
+	matrix_store_32x32_b16 v[16:23] s[8:11]  t r 
+	matrix_store_32x32_b16 v[24:31] s[8:11]  moffset:32 t r 
+	.loc	1 563 61                        ; gemm_a16w16.py:563:61
+	s_add_i32 s8, s25, 0x60
+	s_cmpk_lt_i32 s25, 0x140
+	s_mov_b32 s25, s8
+	s_cbranch_scc1 .LBB0_27
+; %bb.30:                               ; %Flow1205
+.LBB0_31:                               ; %._crit_edge26
+	; sched_barrier mask(0x00000000)
+.Ltmp55:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 15, 0
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp56:
+	; sched_barrier mask(0x00000000)
+	.loc	1 383 8 is_stmt 0               ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_abarrier_inv 1
+	s_abarrier_inv 2
+	s_abarrier_inv 3
+	s_abarrier_inv 4
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp57:
+	; sched_barrier mask(0x00000000)
+	.loc	1 639 0 is_stmt 1               ; gemm_a16w16.py:639:0
+	s_ebarrier_sync  5, 0
+	;;#ASMSTART
+	; mma_epilogue_partition_1
+	;;#ASMEND
+	s_mov_b64 s[8:9], 0
+	s_branch .LBB0_3
+.LBB0_32:                               ; %Flow1212
+	.loc	1 0 0 is_stmt 0                 ; gemm_a16w16.py:0:0
+	s_and_b64 vcc, exec, s[8:9]
+	s_cbranch_vccnz .LBB0_16
+	s_branch .LBB0_20
+.LBB0_33:
+	.loc	1 639 0                         ; gemm_a16w16.py:639:0
+	; wdra branch body with #vgpr = 244
+	;;#ASMSTART
+	; wdra placeholder
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+	s_mov_b32 s15, 0
+.Ltmp58:
+	.loc	1 617 36 is_stmt 1              ; gemm_a16w16.py:617:36
+	v_readfirstlane_b32 s8, v0
+.Ltmp59:
+	.loc	1 639 0                         ; gemm_a16w16.py:639:0
+	s_waitcnt lgkmcnt(0)
+	s_ebarrier_sync  0, 0
+	; sched_barrier mask(0x00000000)
+.Ltmp60:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 15, 0
+	s_mov_b32 s9, 0
+	;;#ASMEND
+.Ltmp61:
+	; sched_barrier mask(0x00000000)
+	.loc	1 563 61                        ; gemm_a16w16.py:563:61
+	s_cmpk_gt_i32 s6, 0x19f
+	s_cbranch_scc1 .LBB0_39
+; %bb.34:                               ; %.lr.ph
+	.loc	1 0 61 is_stmt 0                ; gemm_a16w16.py:0:61
+	s_lshl_b32 s9, s8, 6
+	s_and_b32 s16, s9, 0x2000
+	s_lshl_b32 s9, s8, 7
+	s_and_b32 s17, s9, 0x2000
+	s_lshl_b32 s9, s8, 11
+	s_and_b32 s9, s9, 0x40000
+	s_and_b32 s8, s8, 64
+	s_or_b32 s8, s9, s8
+	s_add_i32 s18, 0, 0x8000
+	s_mov_b32 s11, 0x10000
+	s_add_i32 s19, 0, 0x10000
+	s_add_i32 s20, 0, 0x18000
+	s_lshl_b32 s21, s8, 1
+	s_movk_i32 s10, 0x1000
+	s_mov_b32 s24, 0
+	s_mov_b32 s23, 0
+	s_mov_b32 s22, s6
+.LBB0_35:                               ; =>This Loop Header: Depth=1
+                                        ;     Child Loop BB0_36 Depth 2
+	; sched_barrier mask(0x00000000)
+.Ltmp62:
+	.loc	1 383 8 is_stmt 1               ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 1, 8
+	s_mov_b32 s8, 0
+	;;#ASMEND
+	; sched_barrier mask(0x00000000)
+	v_mov_b32_e32 v0, 0
+	s_movk_i32 s9, 0xbf
+	v_mov_b32_e32 v1, v0
+	v_mov_b32_e32 v2, v0
+	v_mov_b32_e32 v3, v0
+	v_mov_b32_e32 v8, v0
+	v_mov_b32_e32 v9, v0
+	v_mov_b32_e32 v10, v0
+	v_mov_b32_e32 v11, v0
+	v_mov_b32_e32 v4, v0
+	v_mov_b32_e32 v5, v0
+	v_mov_b32_e32 v6, v0
+	v_mov_b32_e32 v7, v0
+	v_mov_b32_e32 v16, v0
+	v_mov_b32_e32 v17, v0
+	v_mov_b32_e32 v18, v0
+	v_mov_b32_e32 v19, v0
+	v_mov_b32_e32 v12, v0
+	v_mov_b32_e32 v13, v0
+	v_mov_b32_e32 v14, v0
+	v_mov_b32_e32 v15, v0
+	v_mov_b32_e32 v24, v0
+	v_mov_b32_e32 v25, v0
+	v_mov_b32_e32 v26, v0
+	v_mov_b32_e32 v27, v0
+	v_mov_b32_e32 v20, v0
+	v_mov_b32_e32 v21, v0
+	v_mov_b32_e32 v22, v0
+	v_mov_b32_e32 v23, v0
+	v_mov_b32_e32 v32, v0
+	v_mov_b32_e32 v33, v0
+	v_mov_b32_e32 v34, v0
+	v_mov_b32_e32 v35, v0
+	v_mov_b32_e32 v28, v0
+	v_mov_b32_e32 v29, v0
+	v_mov_b32_e32 v30, v0
+	v_mov_b32_e32 v31, v0
+	v_mov_b32_e32 v40, v0
+	v_mov_b32_e32 v41, v0
+	v_mov_b32_e32 v42, v0
+	v_mov_b32_e32 v43, v0
+	v_mov_b32_e32 v36, v0
+	v_mov_b32_e32 v37, v0
+	v_mov_b32_e32 v38, v0
+	v_mov_b32_e32 v39, v0
+	v_mov_b32_e32 v48, v0
+	v_mov_b32_e32 v49, v0
+	v_mov_b32_e32 v50, v0
+	v_mov_b32_e32 v51, v0
+	v_mov_b32_e32 v44, v0
+	v_mov_b32_e32 v45, v0
+	v_mov_b32_e32 v46, v0
+	v_mov_b32_e32 v47, v0
+	v_mov_b32_e32 v56, v0
+	v_mov_b32_e32 v57, v0
+	v_mov_b32_e32 v58, v0
+	v_mov_b32_e32 v59, v0
+	v_mov_b32_e32 v52, v0
+	v_mov_b32_e32 v53, v0
+	v_mov_b32_e32 v54, v0
+	v_mov_b32_e32 v55, v0
+	v_mov_b32_e32 v60, v0
+	v_mov_b32_e32 v61, v0
+	v_mov_b32_e32 v62, v0
+	v_mov_b32_e32 v63, v0
+	v_mov_b32_e32 v64, v0
+	v_mov_b32_e32 v65, v0
+	v_mov_b32_e32 v66, v0
+	v_mov_b32_e32 v67, v0
+	v_mov_b32_e32 v72, v0
+	v_mov_b32_e32 v73, v0
+	v_mov_b32_e32 v74, v0
+	v_mov_b32_e32 v75, v0
+	v_mov_b32_e32 v68, v0
+	v_mov_b32_e32 v69, v0
+	v_mov_b32_e32 v70, v0
+	v_mov_b32_e32 v71, v0
+	v_mov_b32_e32 v80, v0
+	v_mov_b32_e32 v81, v0
+	v_mov_b32_e32 v82, v0
+	v_mov_b32_e32 v83, v0
+	v_mov_b32_e32 v76, v0
+	v_mov_b32_e32 v77, v0
+	v_mov_b32_e32 v78, v0
+	v_mov_b32_e32 v79, v0
+	v_mov_b32_e32 v88, v0
+	v_mov_b32_e32 v89, v0
+	v_mov_b32_e32 v90, v0
+	v_mov_b32_e32 v91, v0
+	v_mov_b32_e32 v84, v0
+	v_mov_b32_e32 v85, v0
+	v_mov_b32_e32 v86, v0
+	v_mov_b32_e32 v87, v0
+	v_mov_b32_e32 v96, v0
+	v_mov_b32_e32 v97, v0
+	v_mov_b32_e32 v98, v0
+	v_mov_b32_e32 v99, v0
+	v_mov_b32_e32 v92, v0
+	v_mov_b32_e32 v93, v0
+	v_mov_b32_e32 v94, v0
+	v_mov_b32_e32 v95, v0
+	v_mov_b32_e32 v104, v0
+	v_mov_b32_e32 v105, v0
+	v_mov_b32_e32 v106, v0
+	v_mov_b32_e32 v107, v0
+	v_mov_b32_e32 v100, v0
+	v_mov_b32_e32 v101, v0
+	v_mov_b32_e32 v102, v0
+	v_mov_b32_e32 v103, v0
+	v_mov_b32_e32 v112, v0
+	v_mov_b32_e32 v113, v0
+	v_mov_b32_e32 v114, v0
+	v_mov_b32_e32 v115, v0
+	v_mov_b32_e32 v108, v0
+	v_mov_b32_e32 v109, v0
+	v_mov_b32_e32 v110, v0
+	v_mov_b32_e32 v111, v0
+	v_mov_b32_e32 v120, v0
+	v_mov_b32_e32 v121, v0
+	v_mov_b32_e32 v122, v0
+	v_mov_b32_e32 v123, v0
+	v_mov_b32_e32 v116, v0
+	v_mov_b32_e32 v117, v0
+	v_mov_b32_e32 v118, v0
+	v_mov_b32_e32 v119, v0
+	v_mov_b32_e32 v124, v0
+	v_mov_b32_e32 v125, v0
+	v_mov_b32_e32 v126, v0
+	v_mov_b32_e32 v127, v0
+	s_mov_b32 s14, s23
+.Ltmp63:
+.LBB0_36:                               ;   Parent Loop BB0_35 Depth=1
+                                        ; =>  This Inner Loop Header: Depth=2
+	.loc	1 0 8 is_stmt 0                 ; gemm_a16w16.py:0:8
+	s_mov_b32 s23, s14
+	.loc	1 574 62 is_stmt 1              ; gemm_a16w16.py:574:62
+	s_lshl_b32 s14, s14, 1
+	s_mov_b32 s8, s24
+	.loc	1 574 47 is_stmt 0              ; gemm_a16w16.py:574:47
+	s_add_i32 s24, s14, 2
+	.loc	1 574 65                        ; gemm_a16w16.py:574:65
+	s_abarrier_try_wait  s24, s24, s8
+	.loc	1 575 31 is_stmt 1              ; gemm_a16w16.py:575:31
+	s_cmp_eq_u32 s23, 0
+	.loc	1 575 15 is_stmt 0              ; gemm_a16w16.py:575:15
+	s_cselect_b32 s24, 0, s18
+	s_cselect_b32 s25, s19, s20
+	.loc	1 576 68 is_stmt 1              ; gemm_a16w16.py:576:68
+	s_add_i32 s24, s24, s16
+	s_addk_i32 s24, 0x4000
+	s_nop 0
+	ds_read_matrix_trans_format v[188:191], s24 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[184:187], s24 offset:4096 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[180:183], s24 offset:1024 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[176:179], s24 offset:5120 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[172:175], s24 offset:2048 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[168:171], s24 offset:6144 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[132:135], s24 offset:3072 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[128:131], s24 offset:7168 element:2 row:2 col:1
+	.loc	1 578 38                        ; gemm_a16w16.py:578:38
+	s_add_i32 s24, s25, s17
+	s_nop 0
+	ds_read_matrix_trans_format v[192:195], s24 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[196:199], s24 offset:32 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[200:203], s24 offset:4096 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[204:207], s24 offset:4128 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[208:211], s24 offset:2048 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[212:215], s24 offset:2080 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[216:219], s24 offset:6144 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[220:223], s24 offset:6176 element:2 row:1 col:2 alt:1
+	.loc	1 581 38                        ; gemm_a16w16.py:581:38
+	s_addk_i32 s24, 0x4000
+	s_nop 0
+	ds_read_matrix_trans_format v[164:167], s24 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[160:163], s24 offset:32 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[156:159], s24 offset:4096 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[152:155], s24 offset:4128 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[148:151], s24 offset:2048 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[144:147], s24 offset:2080 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[140:143], s24 offset:6144 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[136:139], s24 offset:6176 element:2 row:1 col:2 alt:1
+	; sched_barrier mask(0x00000000)
+.Ltmp64:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_waitcnt lgkmcnt(0)
+	s_mov_b32 s24, 0
+	;;#ASMEND
+.Ltmp65:
+	; sched_barrier mask(0x00000000)
+	.loc	1 593 50                        ; gemm_a16w16.py:593:50
+	s_or_b32 s14, s14, 1
+	.loc	1 593 28 is_stmt 0              ; gemm_a16w16.py:593:28
+	s_waitcnt lgkmcnt(0)
+	s_abarrier_arrive  s14, s14, 1
+	; sched_barrier mask(0x00000000)
+.Ltmp66:
+	.loc	1 383 8 is_stmt 1               ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 1, 8
+	s_setprio 1
+	s_mov_b32 s14, 0
+	;;#ASMEND
+.Ltmp67:
+	; sched_barrier mask(0x00000000)
+	.loc	1 596 66                        ; gemm_a16w16.py:596:66
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[188:189], v[192:193], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[188:189], v[194:195], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[188:189], v[208:209], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[188:189], v[210:211], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[180:181], v[192:193], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[180:181], v[194:195], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[180:181], v[208:209], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[180:181], v[210:211], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[172:173], v[192:193], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[172:173], v[194:195], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[172:173], v[208:209], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[172:173], v[210:211], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[132:133], v[192:193], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[132:133], v[194:195], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[132:133], v[208:209], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[132:133], v[210:211], v[124:127]   lts
+	.loc	1 597 66                        ; gemm_a16w16.py:597:66
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[188:189], v[164:165], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[188:189], v[166:167], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[188:189], v[148:149], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[188:189], v[150:151], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[180:181], v[164:165], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[180:181], v[166:167], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[180:181], v[148:149], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[180:181], v[150:151], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[172:173], v[164:165], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[172:173], v[166:167], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[172:173], v[148:149], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[172:173], v[150:151], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[132:133], v[164:165], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[132:133], v[166:167], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[132:133], v[148:149], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[132:133], v[150:151], v[60:63]   lts
+	.loc	1 596 66                        ; gemm_a16w16.py:596:66
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[190:191], v[196:197], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[190:191], v[198:199], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[190:191], v[212:213], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[190:191], v[214:215], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[182:183], v[196:197], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[182:183], v[198:199], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[182:183], v[212:213], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[182:183], v[214:215], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[174:175], v[196:197], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[174:175], v[198:199], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[174:175], v[212:213], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[174:175], v[214:215], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[134:135], v[196:197], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[134:135], v[198:199], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[134:135], v[212:213], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[134:135], v[214:215], v[124:127]   lts
+	.loc	1 597 66                        ; gemm_a16w16.py:597:66
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[190:191], v[160:161], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[190:191], v[162:163], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[190:191], v[144:145], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[190:191], v[146:147], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[182:183], v[160:161], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[182:183], v[162:163], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[182:183], v[144:145], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[182:183], v[146:147], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[174:175], v[160:161], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[174:175], v[162:163], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[174:175], v[144:145], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[174:175], v[146:147], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[134:135], v[160:161], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[134:135], v[162:163], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[134:135], v[144:145], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[134:135], v[146:147], v[60:63]   lts
+	.loc	1 596 66                        ; gemm_a16w16.py:596:66
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[184:185], v[200:201], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[184:185], v[202:203], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[184:185], v[216:217], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[184:185], v[218:219], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[176:177], v[200:201], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[176:177], v[202:203], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[176:177], v[216:217], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[176:177], v[218:219], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[168:169], v[200:201], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[168:169], v[202:203], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[168:169], v[216:217], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[168:169], v[218:219], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[128:129], v[200:201], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[128:129], v[202:203], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[128:129], v[216:217], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[128:129], v[218:219], v[124:127]   lts
+	.loc	1 597 66                        ; gemm_a16w16.py:597:66
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[184:185], v[156:157], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[184:185], v[158:159], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[184:185], v[140:141], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[184:185], v[142:143], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[176:177], v[156:157], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[176:177], v[158:159], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[176:177], v[140:141], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[176:177], v[142:143], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[168:169], v[156:157], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[168:169], v[158:159], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[168:169], v[140:141], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[168:169], v[142:143], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[128:129], v[156:157], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[128:129], v[158:159], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[128:129], v[140:141], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[128:129], v[142:143], v[60:63]   lts
+	.loc	1 596 66                        ; gemm_a16w16.py:596:66
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[186:187], v[204:205], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[186:187], v[206:207], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[186:187], v[220:221], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[186:187], v[222:223], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[178:179], v[204:205], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[178:179], v[206:207], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[178:179], v[220:221], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[178:179], v[222:223], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[170:171], v[204:205], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[170:171], v[206:207], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[170:171], v[220:221], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[170:171], v[222:223], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[130:131], v[204:205], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[130:131], v[206:207], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[130:131], v[220:221], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[130:131], v[222:223], v[124:127]   lts
+	.loc	1 597 66                        ; gemm_a16w16.py:597:66
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[186:187], v[152:153], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[186:187], v[154:155], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[186:187], v[136:137], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[186:187], v[138:139], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[178:179], v[152:153], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[178:179], v[154:155], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[178:179], v[136:137], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[178:179], v[138:139], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[170:171], v[152:153], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[170:171], v[154:155], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[170:171], v[136:137], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[170:171], v[138:139], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[130:131], v[152:153], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[130:131], v[154:155], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[130:131], v[136:137], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[130:131], v[138:139], v[60:63]   lts
+	; sched_barrier mask(0x00000000)
+.Ltmp68:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_setprio 0
+	s_ebarrier_sync 1, 8
+	s_mov_b32 s14, 0
+	;;#ASMEND
+.Ltmp69:
+	; sched_barrier mask(0x00000000)
+	.loc	1 439 40                        ; gemm_a16w16.py:439:40
+	s_xor_b32 s14, s23, 1
+	.loc	1 440 42                        ; gemm_a16w16.py:440:42
+	s_xor_b32 s24, s23, s8
+.Ltmp70:
+	.loc	1 573 28                        ; gemm_a16w16.py:573:28
+	s_add_i32 s9, s9, -1
+	s_cmp_lg_u32 s9, 0
+	s_cbranch_scc1 .LBB0_36
+; %bb.37:                               ; %.peel.begin
+                                        ;   in Loop: Header=BB0_35 Depth=1
+	.loc	1 574 62                        ; gemm_a16w16.py:574:62
+	s_lshl_b32 s9, s14, 1
+	.loc	1 574 47 is_stmt 0              ; gemm_a16w16.py:574:47
+	s_add_i32 s14, s9, 2
+	.loc	1 574 65                        ; gemm_a16w16.py:574:65
+	s_abarrier_try_wait  s14, s14, s24
+	.loc	1 575 31 is_stmt 1              ; gemm_a16w16.py:575:31
+	s_cmp_eq_u32 s23, 1
+	.loc	1 575 15 is_stmt 0              ; gemm_a16w16.py:575:15
+	s_cselect_b32 s14, 0, s18
+	s_cselect_b32 s24, s19, s20
+	.loc	1 576 68 is_stmt 1              ; gemm_a16w16.py:576:68
+	s_add_i32 s14, s14, s16
+	s_addk_i32 s14, 0x4000
+	s_nop 0
+	ds_read_matrix_trans_format v[128:131], s14 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[132:135], s14 offset:4096 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[136:139], s14 offset:1024 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[140:143], s14 offset:5120 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[144:147], s14 offset:2048 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[148:151], s14 offset:6144 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[152:155], s14 offset:3072 element:2 row:2 col:1
+	ds_read_matrix_trans_format v[156:159], s14 offset:7168 element:2 row:2 col:1
+	.loc	1 578 38                        ; gemm_a16w16.py:578:38
+	s_add_i32 s14, s24, s17
+	s_nop 0
+	ds_read_matrix_trans_format v[160:163], s14 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[164:167], s14 offset:32 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[168:171], s14 offset:4096 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[172:175], s14 offset:4128 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[176:179], s14 offset:2048 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[180:183], s14 offset:2080 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[184:187], s14 offset:6144 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[188:191], s14 offset:6176 element:2 row:1 col:2 alt:1
+	.loc	1 581 38                        ; gemm_a16w16.py:581:38
+	s_addk_i32 s14, 0x4000
+	s_nop 0
+	ds_read_matrix_trans_format v[192:195], s14 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[196:199], s14 offset:32 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[200:203], s14 offset:4096 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[204:207], s14 offset:4128 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[208:211], s14 offset:2048 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[212:215], s14 offset:2080 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[216:219], s14 offset:6144 element:2 row:1 col:2 alt:1
+	ds_read_matrix_trans_format v[220:223], s14 offset:6176 element:2 row:1 col:2 alt:1
+	; sched_barrier mask(0x00000000)
+.Ltmp71:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_waitcnt lgkmcnt(0)
+	s_mov_b32 s14, 0
+	;;#ASMEND
+.Ltmp72:
+	; sched_barrier mask(0x00000000)
+	.loc	1 593 50                        ; gemm_a16w16.py:593:50
+	s_or_b32 s9, s9, 1
+	.loc	1 593 28 is_stmt 0              ; gemm_a16w16.py:593:28
+	s_waitcnt lgkmcnt(0)
+	s_abarrier_arrive  s9, s9, 1
+	; sched_barrier mask(0x00000000)
+.Ltmp73:
+	.loc	1 383 8 is_stmt 1               ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 1, 8
+	s_setprio 1
+	s_mov_b32 s9, 0
+	;;#ASMEND
+.Ltmp74:
+	; sched_barrier mask(0x00000000)
+	.loc	1 596 66                        ; gemm_a16w16.py:596:66
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[128:129], v[160:161], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[128:129], v[162:163], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[128:129], v[176:177], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[128:129], v[178:179], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[136:137], v[160:161], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[136:137], v[162:163], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[136:137], v[176:177], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[136:137], v[178:179], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[144:145], v[160:161], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[144:145], v[162:163], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[144:145], v[176:177], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[144:145], v[178:179], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[152:153], v[160:161], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[152:153], v[162:163], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[152:153], v[176:177], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[152:153], v[178:179], v[124:127]   lts
+	.loc	1 597 66                        ; gemm_a16w16.py:597:66
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[128:129], v[192:193], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[128:129], v[194:195], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[128:129], v[208:209], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[128:129], v[210:211], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[136:137], v[192:193], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[136:137], v[194:195], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[136:137], v[208:209], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[136:137], v[210:211], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[144:145], v[192:193], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[144:145], v[194:195], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[144:145], v[208:209], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[144:145], v[210:211], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[152:153], v[192:193], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[152:153], v[194:195], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[152:153], v[208:209], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[152:153], v[210:211], v[60:63]   lts
+	.loc	1 596 66                        ; gemm_a16w16.py:596:66
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[130:131], v[164:165], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[130:131], v[166:167], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[130:131], v[180:181], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[130:131], v[182:183], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[138:139], v[164:165], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[138:139], v[166:167], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[138:139], v[180:181], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[138:139], v[182:183], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[146:147], v[164:165], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[146:147], v[166:167], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[146:147], v[180:181], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[146:147], v[182:183], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[154:155], v[164:165], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[154:155], v[166:167], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[154:155], v[180:181], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[154:155], v[182:183], v[124:127]   lts
+	.loc	1 597 66                        ; gemm_a16w16.py:597:66
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[130:131], v[196:197], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[130:131], v[198:199], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[130:131], v[212:213], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[130:131], v[214:215], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[138:139], v[196:197], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[138:139], v[198:199], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[138:139], v[212:213], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[138:139], v[214:215], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[146:147], v[196:197], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[146:147], v[198:199], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[146:147], v[212:213], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[146:147], v[214:215], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[154:155], v[196:197], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[154:155], v[198:199], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[154:155], v[212:213], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[154:155], v[214:215], v[60:63]   lts
+	.loc	1 596 66                        ; gemm_a16w16.py:596:66
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[132:133], v[168:169], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[132:133], v[170:171], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[132:133], v[184:185], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[132:133], v[186:187], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[140:141], v[168:169], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[140:141], v[170:171], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[140:141], v[184:185], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[140:141], v[186:187], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[148:149], v[168:169], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[148:149], v[170:171], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[148:149], v[184:185], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[148:149], v[186:187], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[156:157], v[168:169], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[156:157], v[170:171], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[156:157], v[184:185], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[156:157], v[186:187], v[124:127]   lts
+	.loc	1 597 66                        ; gemm_a16w16.py:597:66
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[132:133], v[200:201], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[132:133], v[202:203], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[132:133], v[216:217], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[132:133], v[218:219], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[140:141], v[200:201], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[140:141], v[202:203], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[140:141], v[216:217], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[140:141], v[218:219], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[148:149], v[200:201], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[148:149], v[202:203], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[148:149], v[216:217], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[148:149], v[218:219], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[156:157], v[200:201], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[156:157], v[202:203], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[156:157], v[216:217], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[156:157], v[218:219], v[60:63]   lts
+	.loc	1 596 66                        ; gemm_a16w16.py:596:66
+	v_mmac_f32_16x16x16_bf16 v[64:67], v[134:135], v[172:173], v[64:67]   lts
+	v_mmac_f32_16x16x16_bf16 v[72:75], v[134:135], v[174:175], v[72:75]   lts
+	v_mmac_f32_16x16x16_bf16 v[68:71], v[134:135], v[188:189], v[68:71]   lts
+	v_mmac_f32_16x16x16_bf16 v[80:83], v[134:135], v[190:191], v[80:83]   lts
+	v_mmac_f32_16x16x16_bf16 v[76:79], v[142:143], v[172:173], v[76:79]   lts
+	v_mmac_f32_16x16x16_bf16 v[88:91], v[142:143], v[174:175], v[88:91]   lts
+	v_mmac_f32_16x16x16_bf16 v[84:87], v[142:143], v[188:189], v[84:87]   lts
+	v_mmac_f32_16x16x16_bf16 v[96:99], v[142:143], v[190:191], v[96:99]   lts
+	v_mmac_f32_16x16x16_bf16 v[92:95], v[150:151], v[172:173], v[92:95]   lts
+	v_mmac_f32_16x16x16_bf16 v[104:107], v[150:151], v[174:175], v[104:107]   lts
+	v_mmac_f32_16x16x16_bf16 v[100:103], v[150:151], v[188:189], v[100:103]   lts
+	v_mmac_f32_16x16x16_bf16 v[112:115], v[150:151], v[190:191], v[112:115]   lts
+	v_mmac_f32_16x16x16_bf16 v[108:111], v[158:159], v[172:173], v[108:111]   lts
+	v_mmac_f32_16x16x16_bf16 v[120:123], v[158:159], v[174:175], v[120:123]   lts
+	v_mmac_f32_16x16x16_bf16 v[116:119], v[158:159], v[188:189], v[116:119]   lts
+	v_mmac_f32_16x16x16_bf16 v[124:127], v[158:159], v[190:191], v[124:127]   lts
+	.loc	1 597 66                        ; gemm_a16w16.py:597:66
+	v_mmac_f32_16x16x16_bf16 v[0:3], v[134:135], v[204:205], v[0:3]   lts
+	v_mmac_f32_16x16x16_bf16 v[8:11], v[134:135], v[206:207], v[8:11]   lts
+	v_mmac_f32_16x16x16_bf16 v[4:7], v[134:135], v[220:221], v[4:7]   lts
+	v_mmac_f32_16x16x16_bf16 v[16:19], v[134:135], v[222:223], v[16:19]   lts
+	v_mmac_f32_16x16x16_bf16 v[12:15], v[142:143], v[204:205], v[12:15]   lts
+	v_mmac_f32_16x16x16_bf16 v[24:27], v[142:143], v[206:207], v[24:27]   lts
+	v_mmac_f32_16x16x16_bf16 v[20:23], v[142:143], v[220:221], v[20:23]   lts
+	v_mmac_f32_16x16x16_bf16 v[32:35], v[142:143], v[222:223], v[32:35]   lts
+	v_mmac_f32_16x16x16_bf16 v[28:31], v[150:151], v[204:205], v[28:31]   lts
+	v_mmac_f32_16x16x16_bf16 v[40:43], v[150:151], v[206:207], v[40:43]   lts
+	v_mmac_f32_16x16x16_bf16 v[36:39], v[150:151], v[220:221], v[36:39]   lts
+	v_mmac_f32_16x16x16_bf16 v[48:51], v[150:151], v[222:223], v[48:51]   lts
+	v_mmac_f32_16x16x16_bf16 v[44:47], v[158:159], v[204:205], v[44:47]   lts
+	v_mmac_f32_16x16x16_bf16 v[56:59], v[158:159], v[206:207], v[56:59]   lts
+	v_mmac_f32_16x16x16_bf16 v[52:55], v[158:159], v[220:221], v[52:55]   lts
+	v_mmac_f32_16x16x16_bf16 v[60:63], v[158:159], v[222:223], v[60:63]   lts
+	; sched_barrier mask(0x00000000)
+.Ltmp75:
+	.loc	1 383 8                         ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_setprio 0
+	s_mov_b32 s9, 0
+	;;#ASMEND
+.Ltmp76:
+	; sched_barrier mask(0x00000000)
+	.loc	1 440 42                        ; gemm_a16w16.py:440:42
+	s_xor_b32 s24, s8, 1
+.Ltmp77:
+	.loc	1 609 33                        ; gemm_a16w16.py:609:33
+	s_ashr_i32 s8, s22, 31
+	s_lshr_b32 s8, s8, 28
+	s_add_i32 s8, s22, s8
+	s_ashr_i32 s8, s8, 4
+	.loc	1 609 48 is_stmt 0              ; gemm_a16w16.py:609:48
+	s_lshl_b32 s9, s8, 8
+	.loc	1 609 54                        ; gemm_a16w16.py:609:54
+	s_or_b32 s14, s9, 0x80
+	.loc	1 610 47 is_stmt 1              ; gemm_a16w16.py:610:47
+	s_lshl_b32 s8, s8, 12
+	s_lshl_b32 s9, s22, 8
+	s_sub_i32 s8, s9, s8
+	.loc	1 617 36                        ; gemm_a16w16.py:617:36
+	s_lshl_b64 s[26:27], s[14:15], 13
+	s_mov_b32 s9, s15
+	s_add_u32 s14, s12, s26
+	s_addc_u32 s25, s13, s27
+	s_lshl_b64 s[8:9], s[8:9], 1
+	s_add_u32 s8, s14, s8
+	s_addc_u32 s9, s25, s9
+	s_add_u32 s8, s8, s21
+	s_addc_u32 s14, s9, 0
+	s_and_b32 s9, s14, 0xffff
+	s_add_u32 s25, s8, 0x40000
+	s_addc_u32 s26, s14, 0
+.Ltmp78:
+	.loc	1 520 61                        ; gemm_a16w16.py:520:61
+	v_cvt_pk_bf16_f32 v64, v64, v72
+	v_cvt_pk_bf16_f32 v65, v65, v73
+	v_cvt_pk_bf16_f32 v66, v66, v74
+	v_cvt_pk_bf16_f32 v67, v67, v75
+	v_cvt_pk_bf16_f32 v72, v68, v80
+	v_cvt_pk_bf16_f32 v73, v69, v81
+	v_cvt_pk_bf16_f32 v74, v70, v82
+	v_cvt_pk_bf16_f32 v75, v71, v83
+	v_cvt_pk_bf16_f32 v68, v76, v88
+	v_cvt_pk_bf16_f32 v69, v77, v89
+	v_cvt_pk_bf16_f32 v70, v78, v90
+	v_cvt_pk_bf16_f32 v71, v79, v91
+	v_cvt_pk_bf16_f32 v76, v84, v96
+	v_cvt_pk_bf16_f32 v77, v85, v97
+	v_cvt_pk_bf16_f32 v78, v86, v98
+	v_cvt_pk_bf16_f32 v79, v87, v99
+.Ltmp79:
+	.loc	1 617 36                        ; gemm_a16w16.py:617:36
+	s_and_b32 s26, s26, 0xffff
+	s_mov_b64 s[30:31], s[10:11]
+	s_mov_b64 s[28:29], s[8:9]
+	matrix_store_32x32_b16 v[64:71] s[8:11]  t r 
+	matrix_store_32x32_b16 v[72:79] s[8:11]  moffset:32 t r 
+	s_add_u32 s9, s8, 0x100
+.Ltmp80:
+	.loc	1 520 61                        ; gemm_a16w16.py:520:61
+	v_cvt_pk_bf16_f32 v80, v92, v104
+	v_cvt_pk_bf16_f32 v81, v93, v105
+	v_cvt_pk_bf16_f32 v82, v94, v106
+	v_cvt_pk_bf16_f32 v83, v95, v107
+	v_cvt_pk_bf16_f32 v88, v100, v112
+	v_cvt_pk_bf16_f32 v89, v101, v113
+	v_cvt_pk_bf16_f32 v90, v102, v114
+	v_cvt_pk_bf16_f32 v91, v103, v115
+	v_cvt_pk_bf16_f32 v84, v108, v120
+	v_cvt_pk_bf16_f32 v85, v109, v121
+	v_cvt_pk_bf16_f32 v86, v110, v122
+	v_cvt_pk_bf16_f32 v87, v111, v123
+	v_cvt_pk_bf16_f32 v92, v116, v124
+	v_cvt_pk_bf16_f32 v93, v117, v125
+	v_cvt_pk_bf16_f32 v94, v118, v126
+	v_cvt_pk_bf16_f32 v95, v119, v127
+.Ltmp81:
+	.loc	1 617 36                        ; gemm_a16w16.py:617:36
+	s_mov_b32 s28, s25
+	s_mov_b32 s29, s26
+	s_addc_u32 s25, s14, 0
+	matrix_store_32x32_b16 v[80:87] s[28:31]  t r 
+	matrix_store_32x32_b16 v[88:95] s[28:31]  moffset:32 t r 
+	s_and_b32 s25, s25, 0xffff
+	s_mov_b64 s[30:31], s[10:11]
+	s_mov_b64 s[28:29], s[8:9]
+	s_add_u32 s8, s8, 0x40100
+	s_mov_b32 s28, s9
+	s_addc_u32 s9, s14, 0
+.Ltmp82:
+	.loc	1 520 61                        ; gemm_a16w16.py:520:61
+	v_cvt_pk_bf16_f32 v0, v0, v8
+	v_cvt_pk_bf16_f32 v1, v1, v9
+	v_cvt_pk_bf16_f32 v2, v2, v10
+	v_cvt_pk_bf16_f32 v3, v3, v11
+	v_cvt_pk_bf16_f32 v8, v4, v16
+	v_cvt_pk_bf16_f32 v9, v5, v17
+	v_cvt_pk_bf16_f32 v10, v6, v18
+	v_cvt_pk_bf16_f32 v11, v7, v19
+	v_cvt_pk_bf16_f32 v4, v12, v24
+	v_cvt_pk_bf16_f32 v5, v13, v25
+	v_cvt_pk_bf16_f32 v6, v14, v26
+	v_cvt_pk_bf16_f32 v7, v15, v27
+	v_cvt_pk_bf16_f32 v12, v20, v32
+	v_cvt_pk_bf16_f32 v13, v21, v33
+	v_cvt_pk_bf16_f32 v14, v22, v34
+	v_cvt_pk_bf16_f32 v15, v23, v35
+	v_cvt_pk_bf16_f32 v16, v28, v40
+	v_cvt_pk_bf16_f32 v17, v29, v41
+	v_cvt_pk_bf16_f32 v18, v30, v42
+	v_cvt_pk_bf16_f32 v19, v31, v43
+	v_cvt_pk_bf16_f32 v24, v36, v48
+	v_cvt_pk_bf16_f32 v25, v37, v49
+	v_cvt_pk_bf16_f32 v26, v38, v50
+	v_cvt_pk_bf16_f32 v27, v39, v51
+	v_cvt_pk_bf16_f32 v20, v44, v56
+	v_cvt_pk_bf16_f32 v21, v45, v57
+	v_cvt_pk_bf16_f32 v22, v46, v58
+	v_cvt_pk_bf16_f32 v23, v47, v59
+	v_cvt_pk_bf16_f32 v28, v52, v60
+	v_cvt_pk_bf16_f32 v29, v53, v61
+	v_cvt_pk_bf16_f32 v30, v54, v62
+	v_cvt_pk_bf16_f32 v31, v55, v63
+.Ltmp83:
+	.loc	1 617 36                        ; gemm_a16w16.py:617:36
+	s_mov_b32 s29, s25
+	s_and_b32 s9, s9, 0xffff
+	matrix_store_32x32_b16 v[0:7] s[28:31]  t r 
+	matrix_store_32x32_b16 v[8:15] s[28:31]  moffset:32 t r 
+	matrix_store_32x32_b16 v[16:23] s[8:11]  t r 
+	matrix_store_32x32_b16 v[24:31] s[8:11]  moffset:32 t r 
+	.loc	1 563 61                        ; gemm_a16w16.py:563:61
+	s_add_i32 s8, s22, 0x60
+	s_cmpk_lt_i32 s22, 0x140
+	s_mov_b32 s22, s8
+	s_cbranch_scc1 .LBB0_35
+	s_branch .LBB0_39
+.LBB0_38:                               ; %Flow1213
+	.loc	1 0 61 is_stmt 0                ; gemm_a16w16.py:0:61
+	s_mov_b64 s[8:9], 0
+	s_branch .LBB0_32
+.LBB0_39:                               ; %._crit_edge
+	; sched_barrier mask(0x00000000)
+.Ltmp84:
+	.loc	1 383 8 is_stmt 1               ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_ebarrier_sync 15, 0
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp85:
+	; sched_barrier mask(0x00000000)
+	.loc	1 383 8 is_stmt 0               ; gemm_a16w16.py:383:8
+	;;#ASMSTART
+	s_abarrier_inv 1
+	s_abarrier_inv 2
+	s_abarrier_inv 3
+	s_abarrier_inv 4
+	s_mov_b32 s8, 0
+	;;#ASMEND
+.Ltmp86:
+	; sched_barrier mask(0x00000000)
+	.loc	1 639 0 is_stmt 1               ; gemm_a16w16.py:639:0
+	s_ebarrier_sync  5, 0
+	;;#ASMSTART
+	; mma_epilogue_partition_2
+	;;#ASMEND
+	s_mov_b64 s[14:15], 0
+	s_mov_b64 s[8:9], 0
+	s_branch .LBB0_32
+.Ltmp87:
+	.section	.rodata,"a",@progbits
+	.p2align	6, 0x0
+	.amdhsa_kernel _gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel
+		.amdhsa_group_segment_fixed_size 0
+		.amdhsa_private_segment_fixed_size 0
+		.amdhsa_kernarg_size 40
+		.amdhsa_user_sgpr_count 6
+		.amdhsa_user_sgpr_private_segment_buffer 1
+		.amdhsa_user_sgpr_dispatch_ptr 0
+		.amdhsa_user_sgpr_queue_ptr 0
+		.amdhsa_user_sgpr_kernarg_segment_ptr 1
+		.amdhsa_user_sgpr_dispatch_id 0
+		.amdhsa_user_sgpr_flat_scratch_init 0
+		.amdhsa_user_sgpr_private_segment_size 0
+		.amdhsa_uses_dynamic_stack 0
+		.amdhsa_system_sgpr_private_segment_wavefront_offset 0
+		.amdhsa_system_sgpr_workgroup_id_x 1
+		.amdhsa_system_sgpr_workgroup_id_y 0
+		.amdhsa_system_sgpr_workgroup_id_z 0
+		.amdhsa_system_sgpr_workgroup_info 0
+		.amdhsa_system_vgpr_workitem_id 0
+		.amdhsa_next_free_vgpr 168
+		.amdhsa_next_free_sgpr 55
+		.amdhsa_reserve_flat_scratch 0
+		.amdhsa_reserve_xnack_mask 0
+		.amdhsa_float_round_mode_32 0
+		.amdhsa_float_round_mode_16_64 0
+		.amdhsa_float_denorm_mode_32 3
+		.amdhsa_float_denorm_mode_16_64 3
+		.amdhsa_dx10_clamp 1
+		.amdhsa_ieee_mode 1
+		.amdhsa_fp16_overflow 0
+		.amdhsa_matrix_excp 0
+		.amdhsa_cancellation_excp 0
+		.amdhsa_vgpr_alloc_mode 1
+		.amdhsa_bf16_overflow 0
+		.amdhsa_bf8_overflow 0
+		.amdhsa_fp8_overflow 0
+		.amdhsa_bf16_denorm_mode 3
+		.amdhsa_scale_buffer_size 0
+		.amdhsa_tf32_overflow 0
+		.amdhsa_tf32_denorm_mode 3
+		.amdhsa_bf16_rounding_mode 0
+		.amdhsa_uc_cc_ack_early_return 1
+		.amdhsa_exception_fp_ieee_invalid_op 0
+		.amdhsa_exception_fp_denorm_src 0
+		.amdhsa_exception_fp_ieee_div_zero 0
+		.amdhsa_exception_fp_ieee_overflow 0
+		.amdhsa_exception_fp_ieee_underflow 0
+		.amdhsa_exception_fp_ieee_inexact 0
+		.amdhsa_exception_int_div_zero 0
+	.end_amdhsa_kernel
+	.text
+.Lfunc_end0:
+	.size	_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel, .Lfunc_end0-_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel
+	.cfi_endproc
+                                        ; -- End function
+	.section	.AMDGPU.csdata,"",@progbits
+; Kernel info:
+; codeLenInByte = 8904
+; NumSgprs: 57
+; NumVgprs: 168
+; BranchSpillInfo: (false, false, false)
+; BranchRealOrSuggestedVgprs: (1, 224, 224)
+; BranchAvailableVgprs: (16, 244, 244)
+; ScratchSize: 0
+; MemoryBound: 0
+; FloatMode: 240
+; IeeeMode: 1
+; LDSByteSize: 0 bytes/workgroup (compile time only)
+; SGPRBlocks: 7
+; VGPRBlocks: 41
+; NumSGPRsForWavesPerEU: 57
+; NumVGPRsForWavesPerEU: 168
+; Occupancy: 3
+; WaveLimiterHint : 0
+; COMPUTE_PGM_RSRC2:SCRATCH_EN: 0
+; COMPUTE_PGM_RSRC2:USER_SGPR: 6
+; COMPUTE_PGM_RSRC2:TRAP_HANDLER: 0
+; COMPUTE_PGM_RSRC2:TGID_X_EN: 1
+; COMPUTE_PGM_RSRC2:TGID_Y_EN: 0
+; COMPUTE_PGM_RSRC2:TGID_Z_EN: 0
+; COMPUTE_PGM_RSRC2:TIDIG_COMP_CNT: 0
+; COMPUTE_PGM_RSRC3_GFX938:BF16_OVFL: 0
+; COMPUTE_PGM_RSRC3_GFX938:BF8_OVFL: 0
+; COMPUTE_PGM_RSRC3_GFX938:FP8_OVFL: 0
+; COMPUTE_PGM_RSRC3_GFX938:BF16_DENORM: 3
+; COMPUTE_PGM_RSRC3_GFX946:SCALE_BUFFER_SIZE: 0
+; COMPUTE_PGM_RSRC3_GFX946:TF32_OVFL: 0
+; COMPUTE_PGM_RSRC3_GFX946:TF32_DENORM: 3
+; COMPUTE_PGM_RSRC3_GFX946:BF16_RMODE: 0
+; COMPUTE_PGM_RSRC3_GFX946:UC_CC_ACK_EARLY_RETURN: 1
+	.section	.debug_abbrev,"",@progbits
+	.byte	1                               ; Abbreviation Code
+	.byte	17                              ; DW_TAG_compile_unit
+	.byte	1                               ; DW_CHILDREN_yes
+	.byte	37                              ; DW_AT_producer
+	.byte	14                              ; DW_FORM_strp
+	.byte	19                              ; DW_AT_language
+	.byte	5                               ; DW_FORM_data2
+	.byte	3                               ; DW_AT_name
+	.byte	14                              ; DW_FORM_strp
+	.byte	16                              ; DW_AT_stmt_list
+	.byte	23                              ; DW_FORM_sec_offset
+	.byte	27                              ; DW_AT_comp_dir
+	.byte	14                              ; DW_FORM_strp
+	.byte	17                              ; DW_AT_low_pc
+	.byte	1                               ; DW_FORM_addr
+	.byte	18                              ; DW_AT_high_pc
+	.byte	6                               ; DW_FORM_data4
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	2                               ; Abbreviation Code
+	.byte	46                              ; DW_TAG_subprogram
+	.byte	0                               ; DW_CHILDREN_no
+	.byte	3                               ; DW_AT_name
+	.byte	14                              ; DW_FORM_strp
+	.byte	32                              ; DW_AT_inline
+	.byte	11                              ; DW_FORM_data1
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	3                               ; Abbreviation Code
+	.byte	46                              ; DW_TAG_subprogram
+	.byte	1                               ; DW_CHILDREN_yes
+	.byte	17                              ; DW_AT_low_pc
+	.byte	1                               ; DW_FORM_addr
+	.byte	18                              ; DW_AT_high_pc
+	.byte	6                               ; DW_FORM_data4
+	.byte	49                              ; DW_AT_abstract_origin
+	.byte	19                              ; DW_FORM_ref4
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	4                               ; Abbreviation Code
+	.byte	29                              ; DW_TAG_inlined_subroutine
+	.byte	1                               ; DW_CHILDREN_yes
+	.byte	49                              ; DW_AT_abstract_origin
+	.byte	19                              ; DW_FORM_ref4
+	.byte	85                              ; DW_AT_ranges
+	.byte	23                              ; DW_FORM_sec_offset
+	.byte	88                              ; DW_AT_call_file
+	.byte	11                              ; DW_FORM_data1
+	.byte	89                              ; DW_AT_call_line
+	.byte	5                               ; DW_FORM_data2
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	5                               ; Abbreviation Code
+	.byte	29                              ; DW_TAG_inlined_subroutine
+	.byte	1                               ; DW_CHILDREN_yes
+	.byte	49                              ; DW_AT_abstract_origin
+	.byte	19                              ; DW_FORM_ref4
+	.byte	17                              ; DW_AT_low_pc
+	.byte	1                               ; DW_FORM_addr
+	.byte	18                              ; DW_AT_high_pc
+	.byte	6                               ; DW_FORM_data4
+	.byte	88                              ; DW_AT_call_file
+	.byte	11                              ; DW_FORM_data1
+	.byte	89                              ; DW_AT_call_line
+	.byte	5                               ; DW_FORM_data2
+	.byte	87                              ; DW_AT_call_column
+	.byte	11                              ; DW_FORM_data1
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	6                               ; Abbreviation Code
+	.byte	29                              ; DW_TAG_inlined_subroutine
+	.byte	0                               ; DW_CHILDREN_no
+	.byte	49                              ; DW_AT_abstract_origin
+	.byte	19                              ; DW_FORM_ref4
+	.byte	17                              ; DW_AT_low_pc
+	.byte	1                               ; DW_FORM_addr
+	.byte	18                              ; DW_AT_high_pc
+	.byte	6                               ; DW_FORM_data4
+	.byte	88                              ; DW_AT_call_file
+	.byte	11                              ; DW_FORM_data1
+	.byte	89                              ; DW_AT_call_line
+	.byte	5                               ; DW_FORM_data2
+	.byte	87                              ; DW_AT_call_column
+	.byte	11                              ; DW_FORM_data1
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	7                               ; Abbreviation Code
+	.byte	29                              ; DW_TAG_inlined_subroutine
+	.byte	0                               ; DW_CHILDREN_no
+	.byte	49                              ; DW_AT_abstract_origin
+	.byte	19                              ; DW_FORM_ref4
+	.byte	85                              ; DW_AT_ranges
+	.byte	23                              ; DW_FORM_sec_offset
+	.byte	88                              ; DW_AT_call_file
+	.byte	11                              ; DW_FORM_data1
+	.byte	89                              ; DW_AT_call_line
+	.byte	5                               ; DW_FORM_data2
+	.byte	87                              ; DW_AT_call_column
+	.byte	11                              ; DW_FORM_data1
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	8                               ; Abbreviation Code
+	.byte	29                              ; DW_TAG_inlined_subroutine
+	.byte	1                               ; DW_CHILDREN_yes
+	.byte	49                              ; DW_AT_abstract_origin
+	.byte	19                              ; DW_FORM_ref4
+	.byte	85                              ; DW_AT_ranges
+	.byte	23                              ; DW_FORM_sec_offset
+	.byte	88                              ; DW_AT_call_file
+	.byte	11                              ; DW_FORM_data1
+	.byte	89                              ; DW_AT_call_line
+	.byte	5                               ; DW_FORM_data2
+	.byte	87                              ; DW_AT_call_column
+	.byte	11                              ; DW_FORM_data1
+	.byte	0                               ; EOM(1)
+	.byte	0                               ; EOM(2)
+	.byte	0                               ; EOM(3)
+	.section	.debug_info,"",@progbits
+.Lcu_begin0:
+	.long	.Ldebug_info_end0-.Ldebug_info_start0 ; Length of Unit
+.Ldebug_info_start0:
+	.short	4                               ; DWARF version number
+	.long	.debug_abbrev                   ; Offset Into Abbrev. Section
+	.byte	8                               ; Address Size (in bytes)
+	.byte	1                               ; Abbrev [1] 0xb:0x258 DW_TAG_compile_unit
+	.long	.Linfo_string0                  ; DW_AT_producer
+	.short	2                               ; DW_AT_language
+	.long	.Linfo_string1                  ; DW_AT_name
+	.long	.Lline_table_start0             ; DW_AT_stmt_list
+	.long	.Linfo_string2                  ; DW_AT_comp_dir
+	.quad	.Lfunc_begin0                   ; DW_AT_low_pc
+	.long	.Lfunc_end0-.Lfunc_begin0       ; DW_AT_high_pc
+	.byte	2                               ; Abbrev [2] 0x2a:0x6 DW_TAG_subprogram
+	.long	.Linfo_string3                  ; DW_AT_name
+	.byte	1                               ; DW_AT_inline
+	.byte	3                               ; Abbrev [3] 0x30:0x232 DW_TAG_subprogram
+	.quad	.Lfunc_begin0                   ; DW_AT_low_pc
+	.long	.Lfunc_end0-.Lfunc_begin0       ; DW_AT_high_pc
+	.long	42                              ; DW_AT_abstract_origin
+	.byte	4                               ; Abbrev [4] 0x41:0x220 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges0                 ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	639                             ; DW_AT_call_line
+	.byte	5                               ; Abbrev [5] 0x4d:0x2b DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp3                          ; DW_AT_low_pc
+	.long	.Ltmp4-.Ltmp3                   ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	457                             ; DW_AT_call_line
+	.byte	34                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x62:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp3                          ; DW_AT_low_pc
+	.long	.Ltmp4-.Ltmp3                   ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	427                             ; DW_AT_call_line
+	.byte	21                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	7                               ; Abbrev [7] 0x78:0xd DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges1                 ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	494                             ; DW_AT_call_line
+	.byte	30                              ; DW_AT_call_column
+	.byte	5                               ; Abbrev [5] 0x85:0x2b DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp13                         ; DW_AT_low_pc
+	.long	.Ltmp14-.Ltmp13                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	496                             ; DW_AT_call_line
+	.byte	32                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x9a:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp13                         ; DW_AT_low_pc
+	.long	.Ltmp14-.Ltmp13                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	432                             ; DW_AT_call_line
+	.byte	21                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	8                               ; Abbrev [8] 0xb0:0x100 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges2                 ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	540                             ; DW_AT_call_line
+	.byte	34                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0xbd:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp15                         ; DW_AT_low_pc
+	.long	.Ltmp16-.Ltmp15                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	418                             ; DW_AT_call_line
+	.byte	18                              ; DW_AT_call_column
+	.byte	8                               ; Abbrev [8] 0xd2:0x30 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges3                 ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	420                             ; DW_AT_call_line
+	.byte	72                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0xdf:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp21                         ; DW_AT_low_pc
+	.long	.Ltmp22-.Ltmp21                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	405                             ; DW_AT_call_line
+	.byte	25                              ; DW_AT_call_column
+	.byte	7                               ; Abbrev [7] 0xf4:0xd DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges4                 ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	406                             ; DW_AT_call_line
+	.byte	21                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	8                               ; Abbrev [8] 0x102:0x38 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges5                 ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	422                             ; DW_AT_call_line
+	.byte	75                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x10f:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp24                         ; DW_AT_low_pc
+	.long	.Ltmp25-.Ltmp24                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	405                             ; DW_AT_call_line
+	.byte	25                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x124:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp29                         ; DW_AT_low_pc
+	.long	.Ltmp30-.Ltmp29                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	406                             ; DW_AT_call_line
+	.byte	21                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	8                               ; Abbrev [8] 0x13a:0x30 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges6                 ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	424                             ; DW_AT_call_line
+	.byte	76                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x147:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp31                         ; DW_AT_low_pc
+	.long	.Ltmp32-.Ltmp31                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	405                             ; DW_AT_call_line
+	.byte	25                              ; DW_AT_call_column
+	.byte	7                               ; Abbrev [7] 0x15c:0xd DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges7                 ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	406                             ; DW_AT_call_line
+	.byte	21                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	8                               ; Abbrev [8] 0x16a:0x38 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges8                 ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	426                             ; DW_AT_call_line
+	.byte	79                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x177:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp34                         ; DW_AT_low_pc
+	.long	.Ltmp35-.Ltmp34                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	405                             ; DW_AT_call_line
+	.byte	25                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x18c:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp39                         ; DW_AT_low_pc
+	.long	.Ltmp40-.Ltmp39                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	406                             ; DW_AT_call_line
+	.byte	21                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	7                               ; Abbrev [7] 0x1a2:0xd DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges9                 ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	427                             ; DW_AT_call_line
+	.byte	21                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	7                               ; Abbrev [7] 0x1b0:0xd DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges10                ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	592                             ; DW_AT_call_line
+	.byte	29                              ; DW_AT_call_column
+	.byte	7                               ; Abbrev [7] 0x1bd:0xd DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges11                ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	595                             ; DW_AT_call_line
+	.byte	29                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x1ca:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp46                         ; DW_AT_low_pc
+	.long	.Ltmp47-.Ltmp46                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	605                             ; DW_AT_call_line
+	.byte	33                              ; DW_AT_call_column
+	.byte	7                               ; Abbrev [7] 0x1df:0xd DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges12                ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	607                             ; DW_AT_call_line
+	.byte	30                              ; DW_AT_call_column
+	.byte	7                               ; Abbrev [7] 0x1ec:0xd DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges13                ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	616                             ; DW_AT_call_line
+	.byte	59                              ; DW_AT_call_column
+	.byte	8                               ; Abbrev [8] 0x1f9:0x28 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges14                ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	630                             ; DW_AT_call_line
+	.byte	32                              ; DW_AT_call_column
+	.byte	7                               ; Abbrev [7] 0x206:0xd DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges15                ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	432                             ; DW_AT_call_line
+	.byte	21                              ; DW_AT_call_column
+	.byte	7                               ; Abbrev [7] 0x213:0xd DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.long	.Ldebug_ranges16                ; DW_AT_ranges
+	.byte	1                               ; DW_AT_call_file
+	.short	434                             ; DW_AT_call_line
+	.byte	25                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	6                               ; Abbrev [6] 0x221:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp62                         ; DW_AT_low_pc
+	.long	.Ltmp63-.Ltmp62                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	572                             ; DW_AT_call_line
+	.byte	29                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x236:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp68                         ; DW_AT_low_pc
+	.long	.Ltmp69-.Ltmp68                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	601                             ; DW_AT_call_line
+	.byte	37                              ; DW_AT_call_column
+	.byte	6                               ; Abbrev [6] 0x24b:0x15 DW_TAG_inlined_subroutine
+	.long	42                              ; DW_AT_abstract_origin
+	.quad	.Ltmp75                         ; DW_AT_low_pc
+	.long	.Ltmp76-.Ltmp75                 ; DW_AT_high_pc
+	.byte	1                               ; DW_AT_call_file
+	.short	603                             ; DW_AT_call_line
+	.byte	37                              ; DW_AT_call_column
+	.byte	0                               ; End Of Children Mark
+	.byte	0                               ; End Of Children Mark
+	.byte	0                               ; End Of Children Mark
+.Ldebug_info_end0:
+	.section	.debug_ranges,"",@progbits
+.Ldebug_ranges0:
+	.quad	.Ltmp1-.Lfunc_begin0
+	.quad	.Ltmp2-.Lfunc_begin0
+	.quad	.Ltmp3-.Lfunc_begin0
+	.quad	.Ltmp14-.Lfunc_begin0
+	.quad	.Ltmp15-.Lfunc_begin0
+	.quad	.Ltmp19-.Lfunc_begin0
+	.quad	.Ltmp20-.Lfunc_begin0
+	.quad	.Ltmp57-.Lfunc_begin0
+	.quad	.Ltmp58-.Lfunc_begin0
+	.quad	.Ltmp59-.Lfunc_begin0
+	.quad	.Ltmp60-.Lfunc_begin0
+	.quad	.Ltmp86-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges1:
+	.quad	.Ltmp5-.Lfunc_begin0
+	.quad	.Ltmp6-.Lfunc_begin0
+	.quad	.Ltmp7-.Lfunc_begin0
+	.quad	.Ltmp8-.Lfunc_begin0
+	.quad	.Ltmp9-.Lfunc_begin0
+	.quad	.Ltmp10-.Lfunc_begin0
+	.quad	.Ltmp11-.Lfunc_begin0
+	.quad	.Ltmp12-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges2:
+	.quad	.Ltmp15-.Lfunc_begin0
+	.quad	.Ltmp17-.Lfunc_begin0
+	.quad	.Ltmp18-.Lfunc_begin0
+	.quad	.Ltmp19-.Lfunc_begin0
+	.quad	.Ltmp20-.Lfunc_begin0
+	.quad	.Ltmp41-.Lfunc_begin0
+	.quad	.Ltmp60-.Lfunc_begin0
+	.quad	.Ltmp61-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges3:
+	.quad	.Ltmp16-.Lfunc_begin0
+	.quad	.Ltmp17-.Lfunc_begin0
+	.quad	.Ltmp18-.Lfunc_begin0
+	.quad	.Ltmp19-.Lfunc_begin0
+	.quad	.Ltmp20-.Lfunc_begin0
+	.quad	.Ltmp24-.Lfunc_begin0
+	.quad	.Ltmp26-.Lfunc_begin0
+	.quad	.Ltmp28-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges4:
+	.quad	.Ltmp22-.Lfunc_begin0
+	.quad	.Ltmp23-.Lfunc_begin0
+	.quad	.Ltmp26-.Lfunc_begin0
+	.quad	.Ltmp27-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges5:
+	.quad	.Ltmp24-.Lfunc_begin0
+	.quad	.Ltmp26-.Lfunc_begin0
+	.quad	.Ltmp28-.Lfunc_begin0
+	.quad	.Ltmp30-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges6:
+	.quad	.Ltmp30-.Lfunc_begin0
+	.quad	.Ltmp34-.Lfunc_begin0
+	.quad	.Ltmp36-.Lfunc_begin0
+	.quad	.Ltmp38-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges7:
+	.quad	.Ltmp32-.Lfunc_begin0
+	.quad	.Ltmp33-.Lfunc_begin0
+	.quad	.Ltmp36-.Lfunc_begin0
+	.quad	.Ltmp37-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges8:
+	.quad	.Ltmp34-.Lfunc_begin0
+	.quad	.Ltmp36-.Lfunc_begin0
+	.quad	.Ltmp38-.Lfunc_begin0
+	.quad	.Ltmp40-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges9:
+	.quad	.Ltmp40-.Lfunc_begin0
+	.quad	.Ltmp41-.Lfunc_begin0
+	.quad	.Ltmp60-.Lfunc_begin0
+	.quad	.Ltmp61-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges10:
+	.quad	.Ltmp42-.Lfunc_begin0
+	.quad	.Ltmp43-.Lfunc_begin0
+	.quad	.Ltmp64-.Lfunc_begin0
+	.quad	.Ltmp65-.Lfunc_begin0
+	.quad	.Ltmp71-.Lfunc_begin0
+	.quad	.Ltmp72-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges11:
+	.quad	.Ltmp44-.Lfunc_begin0
+	.quad	.Ltmp45-.Lfunc_begin0
+	.quad	.Ltmp66-.Lfunc_begin0
+	.quad	.Ltmp67-.Lfunc_begin0
+	.quad	.Ltmp73-.Lfunc_begin0
+	.quad	.Ltmp74-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges12:
+	.quad	.Ltmp47-.Lfunc_begin0
+	.quad	.Ltmp48-.Lfunc_begin0
+	.quad	.Ltmp69-.Lfunc_begin0
+	.quad	.Ltmp70-.Lfunc_begin0
+	.quad	.Ltmp76-.Lfunc_begin0
+	.quad	.Ltmp77-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges13:
+	.quad	.Ltmp49-.Lfunc_begin0
+	.quad	.Ltmp50-.Lfunc_begin0
+	.quad	.Ltmp51-.Lfunc_begin0
+	.quad	.Ltmp52-.Lfunc_begin0
+	.quad	.Ltmp53-.Lfunc_begin0
+	.quad	.Ltmp54-.Lfunc_begin0
+	.quad	.Ltmp78-.Lfunc_begin0
+	.quad	.Ltmp79-.Lfunc_begin0
+	.quad	.Ltmp80-.Lfunc_begin0
+	.quad	.Ltmp81-.Lfunc_begin0
+	.quad	.Ltmp82-.Lfunc_begin0
+	.quad	.Ltmp83-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges14:
+	.quad	.Ltmp55-.Lfunc_begin0
+	.quad	.Ltmp57-.Lfunc_begin0
+	.quad	.Ltmp84-.Lfunc_begin0
+	.quad	.Ltmp86-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges15:
+	.quad	.Ltmp55-.Lfunc_begin0
+	.quad	.Ltmp56-.Lfunc_begin0
+	.quad	.Ltmp84-.Lfunc_begin0
+	.quad	.Ltmp85-.Lfunc_begin0
+	.quad	0
+	.quad	0
+.Ldebug_ranges16:
+	.quad	.Ltmp56-.Lfunc_begin0
+	.quad	.Ltmp57-.Lfunc_begin0
+	.quad	.Ltmp85-.Lfunc_begin0
+	.quad	.Ltmp86-.Lfunc_begin0
+	.quad	0
+	.quad	0
+	.section	.debug_str,"MS",@progbits,1
+.Linfo_string0:
+	.asciz	"triton"                        ; string offset=0
+.Linfo_string1:
+	.asciz	"gemm_a16w16.py"                ; string offset=7
+.Linfo_string2:
+	.asciz	"/xukang/code/pmd-triton-sessions/qwen3-vl-bf16-sbx2-tn-20261118/repo/boltops/gemm/gluon" ; string offset=22
+.Linfo_string3:
+	.asciz	"_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel" ; string offset=110
+	.ident	"clang version 18.0.0 (/buildspace/das-build/staging-pmd-6.3.3/llvm-project/clang d18da61d4bca49003103ad25f881b799f8a373ec)"
+	.section	".note.GNU-stack","",@progbits
+	.addrsig
+	.addrsig_sym global_smem
+	.amdgpu_metadata
+---
+amdhsa.kernels:
+  - .args:
+      - .address_space:  global
+        .offset:         0
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         8
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         16
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         24
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         32
+        .size:           8
+        .value_kind:     global_buffer
+    .group_segment_fixed_size: 0
+    .kernarg_segment_align: 8
+    .kernarg_segment_size: 40
+    .language:       OpenCL C
+    .language_version:
+      - 2
+      - 0
+    .max_flat_workgroup_size: 768
+    .name:           _gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel
+    .private_segment_fixed_size: 0
+    .sgpr_count:     57
+    .sgpr_spill_count: 0
+    .symbol:         _gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.kd
+    .unfolded_args:
+      - .address_space:  global
+        .offset:         0
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         8
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         16
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         24
+        .size:           8
+        .value_kind:     global_buffer
+      - .address_space:  global
+        .offset:         32
+        .size:           8
+        .value_kind:     global_buffer
+    .uniform_work_group_size: 1
+    .uses_dynamic_stack: false
+    .vgpr_count:     168
+    .vgpr_spill_count: 0
+    .wavefront_size: 64
+amdhsa.target:   'amdgcn-amd-amdhsa--gfx946:xnack-'
+amdhsa.version:
+  - 1
+  - 2
+...
+
+	.end_amdgpu_metadata
+	.section	.debug_line,"",@progbits
+.Lline_table_start0:
