@@ -205,6 +205,8 @@ def test_gluon_kernel_and_tile_come_from_config(monkeypatch, override_gemm_confi
     seen = {}
 
     class CaptureKernel:
+        arg_names = ()
+
         def __getitem__(self, grid):
             def launch(*args, **kwargs):
                 seen.update(grid=grid(kwargs), params=kwargs)
@@ -263,7 +265,9 @@ def test_persistent_grid_comes_from_record(monkeypatch, n, tiles):
                 calls.append((grid(kwargs), kwargs))
             return launch
 
-    monkeypatch.setattr(kernels, config["kernel"], CaptureKernel())
+    capture = CaptureKernel()
+    capture.arg_names = getattr(kernels, config["kernel"]).arg_names
+    monkeypatch.setattr(kernels, config["kernel"], capture)
     a = torch.empty((2560, 2048), dtype=torch.float8_e4m3fn, device="cuda")
     b = torch.empty((n, 2048), dtype=a.dtype, device=a.device)
     sa = torch.empty((2560, 16), dtype=torch.float32, device=a.device)
@@ -342,7 +346,9 @@ def test_qwen_recorded_pipeline_grid(monkeypatch, m, n, k, tgs):
             return launch
 
     kernels = import_module(f"boltops.gemm.gluon.{MODULE}")
-    monkeypatch.setattr(kernels, config["kernel"], CaptureKernel())
+    capture = CaptureKernel()
+    capture.arg_names = getattr(kernels, config["kernel"]).arg_names
+    monkeypatch.setattr(kernels, config["kernel"], capture)
     a = torch.empty((m, k), dtype=torch.float8_e4m3fn, device="cuda")
     b = torch.empty((n, k), dtype=a.dtype, device=a.device)
     sa = torch.empty((m, k // 128), dtype=torch.float32, device=a.device)
@@ -525,7 +531,9 @@ def test_sbx2_layout_dispatch(monkeypatch, layout, m, n, k, tiles):
                 calls.append((self.backend, grid(kwargs), kwargs))
             return launch
 
-    monkeypatch.setattr(kernels, config["kernel"], CaptureKernel("gluon"))
+    capture = CaptureKernel("gluon")
+    capture.arg_names = getattr(kernels, config["kernel"]).arg_names
+    monkeypatch.setattr(kernels, config["kernel"], capture)
     monkeypatch.setattr(triton, "_w8a8_triton_block_scaled_mm", CaptureKernel("triton"))
     a = torch.empty((m, k), dtype=torch.float8_e4m3fn, device="cuda")
     if layout == "TT":

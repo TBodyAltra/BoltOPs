@@ -82,6 +82,7 @@
   "benchmark": {
     "script": "../../../bf16_2die_small_mn/benchmark.py",
     "sha256": "3175ddc858f83f17c6ea7e38571d8ffdbe09dd285da8a6fc988a3d434af48c71",
+    "replay_sha256": "ff288871688a5a042427b285fed0f13ffc49577bde7dea01cc92e95d6f04a0cc",
     "repeats": 1
   },
   "variants": {
@@ -231,5 +232,72 @@
       ".rodata": "34ae6aee9e990059e1a091f6d67f51fac3beb188cbc8fe4be2171933cb409773",
       ".text": "e78d1a7f4a6a4d8cacd0919386eb58c5cd671684de51a922677dc1b637780378"
     }
+  },
+  "current_toolchain_validation": {
+    "driver": "node60 PMD",
+    "interface": "public auto",
+    "runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "compiler": {
+        "libtriton": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+        "clang": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe"
+      }
+    },
+    "config": {
+      "path": "boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=64-K=2048-TT.json",
+      "profile": "DTYPE=bfloat16-OUT=bfloat16",
+      "bucket": "M_EQ_12",
+      "BLOCK_SIZE_N": 16,
+      "kpack": 2
+    },
+    "shape": [
+      12,
+      64,
+      2048
+    ],
+    "seed": 14,
+    "resources": {
+      "VGPR": 53,
+      "spills": 0,
+      "LDS_bytes": 8192,
+      "reduction": {
+        "VGPR": 43,
+        "spills": 0,
+        "LDS_bytes": 0
+      }
+    },
+    "aggregation": "median of three independent cold runs, including reduction",
+    "kernel_us": 13.04849,
+    "report_location": "node60:/tmp/pr45-ci-head.gFNXUw/confirm-r014-tile/r014/2die/tt",
+    "samples_kernel_us": [
+      13.40248,
+      13.040755,
+      13.04849
+    ],
+    "sample_stats_sha256": [
+      [
+        "365b23c7fb8c4e5300ae86a8c07de5d6b65514906a64d59dc512e7e252933c04",
+        "4c9aeba3f592e77e55be8f17d5e0826793557a2601c5be39654e2bd6f85dab86"
+      ],
+      [
+        "d4d83ed3ecfbbae8391741e3b8ffe10c26c8ea424a2020d7c4d810ae0804570e",
+        "bd93a5f22a35f20677e449ea46c6c261550eff1b91ca600f1d35dca23c301396"
+      ],
+      [
+        "f36ebe280eafe6aae5889131c49f061a5d5701e7f65667e810fad8f8fd09045e",
+        "6265864f35923cace337ee44237143193069c2451254025a3d2368d80ec991d1"
+      ]
+    ],
+    "dispatch_TGs_per_die": [
+      {
+        "system.shaders0": 32,
+        "system.shaders1": 32
+      },
+      {
+        "system.shaders0": 1,
+        "system.shaders1": 1
+      }
+    ]
   }
 }

@@ -61,8 +61,10 @@
       59
     ],
     "invocation": "direct JIT",
-    "replay_sha256": "82e79e3ad0242c15e44ed632a9687432a1e77cdc8d081cc34c88124d2c8761b9",
-    "worker_sha256": "aa5c41c04e502a280d64fdffe4ce144841a322df79a519a9e276ac66aa2593bf"
+    "replay_sha256": "240bca8c0fcd08dd4287daa662f43f57b368bef28d2207342d4e79aab8b329eb",
+    "worker_sha256": "75863a3b8baef8e28924533f551f46e80a7afd061b6d20b934d10bc9b20ec3f1",
+    "previous_replay_sha256": "147a4cb540690eebe66a9fbc673bb0711b724e2a417b09fad4dc12b05f2728f3",
+    "previous_worker_sha256": "0345e595347668f39cf4cb6bff087014658e2b2126aed48f62814bc32f50cc07"
   },
   "replay_job": {
     "record": "R031",
@@ -261,7 +263,7 @@
     "time_domain": "complete dispatch system.gcSimCycles * 455 ps"
   },
   "assembly": {
-    "path": "kernel.amdgcn",
+    "path": "../../../r027/2die/tn/kernel.amdgcn",
     "sha256": "e89cbc16ea20cf180a807c599686e0cba2764d82a4e7b639c88e9db036f0a51b",
     "hsaco_sha256": "a3d65f525925440ffddd225b991f01237c09699abdf7c47fcf241577671c6dcb",
     "executable_sections": {
@@ -277,5 +279,93 @@
       "eb63972e8459b7987c831ee65e6a31f6fa461b990a54ab9abba1b9668efac7e1",
       "fa15547e5b5b2db54b60c1d62b42a6a4d29b02c910065295e9ad33e9387708b4"
     ]
+  },
+  "current_toolchain_validation": {
+    "status": "PASS",
+    "base_commit": "af338f5901bba6cdef5c35c245a0df2bed2a8da0",
+    "invocation": "gemm_a16w16(a, b.T, out=c, backend=\"triton\")",
+    "config": {
+      "path": "boltops/gemm/configs/gfx946/96cu/triton/gemm_a16w16/GEMM-A16W16-N=151936-K=4096-TN.json",
+      "sha256": "988d8039082995907cef8a056dc8c013de69dbffb4f939bfaa2cca09234d059d",
+      "profile": "DTYPE=bfloat16-OUT=bfloat16-WASP-MLS-EXPERIMENTAL",
+      "bucket": "M_EQ_512",
+      "entry": {
+        "GROUP_SIZE_M": 1,
+        "WARP_SPECIALIZE": true,
+        "wasp_wdra": true,
+        "amdgpu_enable_max_ilp_scheduling_strategy": true,
+        "hcu_use_gfx946_sched_model_v2": false,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          16,
+          244,
+          244
+        ],
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 64,
+        "empty_arrive_after_mmac": false,
+        "enable_v_mmac_cluster": 0,
+        "num_stages": 2,
+        "mmac_layout_force": 3,
+        "buffer_cache_swizzle": true,
+        "wasp": true,
+        "wdra": true,
+        "use_mls": true,
+        "use_matrix_store": true
+      }
+    },
+    "kernel_us": 1036.6203575,
+    "original_limit_us": 1039.65329195,
+    "aggregation": "median of repeats 1 and 2 after one warmup; all dispatches validated",
+    "launched_TGs": 2374,
+    "full_output_elements": 77791232,
+    "samples_kernel_us": [
+      1042.977845,
+      1039.63041,
+      1033.610305
+    ],
+    "stats_sha256": [
+      "4c0f615e20578b24cc52b5243421b3d8b0afe7712a66d9e228648efb82e8cb39",
+      "7d2cc6d8e7cf393a361f3ce507142ce5350e1dc5336e73352a1286200058e6b5",
+      "e122abf74dd7957a51ae454318c4eeea5f157299b55b5ab57e434deecedcb947"
+    ],
+    "executable_sections": {
+      ".rodata": "a828f9d103695d786b9e18c23c2a9a98dabeceda4e70ded341e06519ec5d54b3",
+      ".text": "5c1df99175e32dd4983f61d915f6c4d2488cb8c715b0bac146ad9bde45a92e0e"
+    },
+    "resources": {
+      "VGPR": 168,
+      "spills": 0,
+      "LDS_bytes": 98304
+    },
+    "runtime": {
+      "triton": "3.6.0",
+      "torch": "2.6.0+d8c4c7c",
+      "libtriton_sha256": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+      "clang_sha256": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe",
+      "compiler": {
+        "/xukang/code/pmd-triton-sessions/fp8-peak-pmd-20261119/runtime/triton/_C/libtriton.so": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+        "/xukang/code/pmd-triton-sessions/r010-clang-2aaa-20261118/bin/clang": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe",
+        "/xukang/code/pmd-triton-sessions/r010-clang-2aaa-20261118/bin/ld.lld": "45bdaf1f59f5b498c4b77a29dda52cc67801c27bb2e572d097c94629203abe1a"
+      }
+    },
+    "source_fingerprints": {
+      "boltops/gemm/gemm_a16w16.py": "cf01a0278ca57dcae7ad335eeb205385c30070604b427a716bec9cea77b23ad5",
+      "boltops/gemm/triton/gemm_a16w16.py": "b1436bae04a676a31ac657877e84322c2e6ee36350efbafb2d7378826e88b30d",
+      "boltops/gemm/triton/gemm_a16w16_wasp.py": "6ea5608b8e4101d1e4a01d14e224b317e5b0723b566d1697af38a4906de9e2d8",
+      "boltops/gemm/triton/pid_preprocessing.py": "4cd4d04d40af66240912239829fea85dc026898acc064e480ece5af3e102de8c",
+      "docs/ops/gemm/tuning/qwen3_vl_bf16_sbx2/benchmark.py": "240bca8c0fcd08dd4287daa662f43f57b368bef28d2207342d4e79aab8b329eb",
+      "docs/ops/gemm/tuning/qwen3_vl_bf16_sbx2/replay_worker.py": "75863a3b8baef8e28924533f551f46e80a7afd061b6d20b934d10bc9b20ec3f1"
+    },
+    "measured_worker_sha256": "75863a3b8baef8e28924533f551f46e80a7afd061b6d20b934d10bc9b20ec3f1",
+    "compile_evidence": "node60:/tmp/pr45-r031-after-r018.q5pY0Lky/public/compile.json",
+    "compile_sha256": "d1a4d4c0eeebcfa06295ebca9e887017080f835aebd98d09fe522cadf6ecba64",
+    "report_location": "node60:/tmp/pr45-r031-after-r018.q5pY0Lky/public-full/result.json",
+    "report_sha256": "cb03a84793559f112bc79ce6f3c46b0e3f0b88bf0bd4986d58110c64372c1a30"
   }
 }

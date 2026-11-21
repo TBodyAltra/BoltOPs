@@ -51,6 +51,7 @@ try:
  resources={};module=importlib.import_module('boltops.gemm.gluon.gemm_a8w8_blockscale')
  name=cfg['kernel'];original_fn=getattr(module,name)
  class Capture:
+  arg_names=original_fn.arg_names
   def __getitem__(self,grid):
    def call(*args,**kwargs):
     h=original_fn[grid](*args,**kwargs)

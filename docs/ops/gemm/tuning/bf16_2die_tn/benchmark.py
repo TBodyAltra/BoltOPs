@@ -41,7 +41,8 @@ def sections(code):
     assert '.text' in result
     return result
 
-def measure(output, record, variant, repeats, perf, repo):
+def measure(output, record, variant, repeats, perf, repo, *, regression=False,
+            current_toolchain=False):
     output.mkdir(parents=True, exist_ok=False)
     os.chdir(output)
     original_open = builtins.open
@@ -87,6 +88,8 @@ def measure(output, record, variant, repeats, perf, repo):
               for key, value in variant.get('config', {}).items()}
     resources = None
     grid = None
+    executable = None
+    public_api_verified = False
     if family == 'public':
         def launch():
             assert public.gemm_a16w16(a, w, out=c, **config) is c
@@ -101,7 +104,8 @@ def measure(output, record, variant, repeats, perf, repo):
         def capture(*args, **kwargs):
             handle = original_compile(*args, **kwargs)
             handle._init_handles()
-            assert sections(handle.asm['hsaco']) == record['assembly']['executable_sections']
+            if not regression:
+                assert sections(handle.asm['hsaco']) == record['assembly']['executable_sections']
             resources.update(VGPR=handle.n_regs, spills=handle.n_spills, LDS_bytes=96 * 1024)
             assert not handle.n_spills, resources
             (output / 'kernel.amdgcn').write_text(handle.asm['amdgcn'])
@@ -149,16 +153,48 @@ def measure(output, record, variant, repeats, perf, repo):
         full_grid = grid
         if perf:
             grid = 1
-        handle = kernel.warmup(*args, grid=(grid,), **config)
-        handle._init_handles()
-        assert sections(handle.asm['hsaco']) == record['assembly']['executable_sections']
-        resources = dict(VGPR=handle.n_regs, spills=handle.n_spills, LDS_bytes=handle.metadata.shared)
-        (output / 'kernel.amdgcn').write_text(handle.asm['amdgcn'])
-        (output / 'kernel.hsaco').write_bytes(handle.asm['hsaco'])
-        assert not handle.n_spills, resources
+        def capture(handle):
+            nonlocal resources, executable
+            handle._init_handles()
+            executable = sections(handle.asm['hsaco'])
+            if not current_toolchain:
+                assert executable == record['assembly']['executable_sections']
+            resources = dict(VGPR=handle.n_regs, spills=handle.n_spills,
+                             LDS_bytes=handle.metadata.shared)
+            (output / 'kernel.amdgcn').write_text(handle.asm['amdgcn'])
+            (output / 'kernel.hsaco').write_bytes(handle.asm['hsaco'])
+            assert not handle.n_spills, resources
 
-        def launch():
-            assert kernel[(grid,)](*args, **config) is handle
+        if current_toolchain:
+            class ObserveLaunch:
+                def __getitem__(self, launch_grid):
+                    def run(*values, **options):
+                        nonlocal public_api_verified
+                        # The public launcher uses the kernel's default for
+                        # the optional masked-store flag in aligned records.
+                        checked = dict(options)
+                        checked.setdefault('FORCE_MASKED_STORE', False)
+                        expected = dict(config)
+                        expected.setdefault('FORCE_MASKED_STORE', False)
+                        assert checked == expected, (checked, expected)
+                        handle = kernel[launch_grid](*values, **options)
+                        capture(handle)
+                        public_api_verified = True
+                        return handle
+                    return run
+
+            launcher = importlib.import_module('boltops.gemm.gluon.gemm_a16w16')
+            setattr(launcher, variant['symbol'], ObserveLaunch())
+
+            def launch():
+                assert public.gemm_a16w16(a, w, out=c) is c
+                assert public_api_verified, 'public API did not select the recorded kernel'
+        else:
+            handle = kernel.warmup(*args, grid=(grid,), **config)
+            capture(handle)
+
+            def launch():
+                assert kernel[(grid,)](*args, **config) is handle
 
     stats_root = output / 'model'
     samples = []
@@ -250,6 +286,9 @@ def measure(output, record, variant, repeats, perf, repo):
                       ('GPU_', 'TRITON_', 'AMDGCN_', 'PMD_')) or k == 'HSA_TOOLS_LIB'})
     if resources:
         result.update(assembly_sha256=digest(output/'kernel.amdgcn'), hsaco_sha256=digest(output/'kernel.hsaco'))
+    if current_toolchain:
+        result.update(public_api_verified=public_api_verified, executable_sections=executable,
+                      matches_measured_executable=executable == record['assembly']['executable_sections'])
     (output / 'result.json').write_text(json.dumps(result, indent=2)+'\n')
 
 
@@ -263,6 +302,9 @@ def main():
     p.add_argument('--repeats', type=int)
     p.add_argument('--perf', action='store_true')
     p.add_argument('--dry-run', action='store_true')
+    p.add_argument('--regression', action='store_true', help='check the current public Stream-K path')
+    p.add_argument('--current-toolchain', action='store_true',
+                   help='check the full-grid public Gluon launch with the sourced toolchain')
     args = p.parse_args()
     repeats = args.repeats if args.repeats is not None else (3 if args.perf else 1)
     if repeats < 1:
@@ -270,6 +312,10 @@ def main():
     output = args.output.resolve()
     record = json.loads(args.input.read_text())
     variant = record['variants'][args.variant]
+    if args.regression and (variant['family'] != 'streamk' or args.perf or repeats != 1):
+        p.error('--regression requires one full-grid Stream-K launch')
+    if args.current_toolchain and (variant['family'] != 'gluon' or args.perf):
+        p.error('--current-toolchain requires a full-grid Gluon replay')
     if args.dry_run:
         print(json.dumps(dict(shape=record['shape'], seed=record['seed'], variant=variant,
                               repeats=repeats, single_tg=args.perf, chip='sbx2', cu_count=96), indent=2))
@@ -285,7 +331,8 @@ def main():
     if args.perf:
         assert variant['family'] != 'public'
         os.environ['HSA_TOOLS_LIB'] = '/opt/rocm/lib/xprofiler/libperf_gen_helper.so'
-    measure(output, record, variant, repeats, args.perf, args.repo.resolve())
+    measure(output, record, variant, repeats, args.perf, args.repo.resolve(),
+            regression=args.regression, current_toolchain=args.current_toolchain)
 
 
 if __name__ == '__main__':

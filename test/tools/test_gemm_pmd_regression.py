@@ -190,7 +190,8 @@ class GemmRegressionTest(unittest.TestCase):
                          16 + has('r005/2die/tn'))
         self.assertTrue({'R004/2die/tn', 'R004/2die/tt'}.issubset(
             c.key for c in model if linear.is_linear_record(c.record)))
-        self.assertEqual(len(bf16), 25 + has('r001/2die/tn') + has('r003/2die/tn'))
+        self.assertEqual(len(bf16), 27 + has('r001/2die/tn') + has('r003/2die/tn'))
+        self.assertTrue({'R020/bf16/2die/tn', 'R029/bf16/2die/tt'}.issubset(c.key for c in bf16))
         self.assertTrue(all(c.dtype == 'bf16' for c in bf16))
         self.assertEqual({c.key for c in model if c.record.get('public_api', {}).get('path') == linear.OPERATOR},
                          {'R001/1die/tn', 'R001/1die/tt', 'R002/1die/tt',
@@ -220,7 +221,7 @@ class GemmRegressionTest(unittest.TestCase):
                         folder = self.root / suite.__name__ / case.directory
                         folder.parent.mkdir(parents=True, exist_ok=True)
                         before = linear.digest(case.record_path)
-                        if case.record['benchmark'].get('interface') == 'job_json':
+                        if case.record['benchmark'].get('interface') in ('job_json', 'public_job_json'):
                             runtime = self.root / 'test-runtime'
                             library = runtime / 'triton/_C/libtriton.so'
                             library.parent.mkdir(parents=True, exist_ok=True)
@@ -242,6 +243,21 @@ class GemmRegressionTest(unittest.TestCase):
                             staged = linear.load(folder / 'runner' / case.record['layout'].lower() / 'record.json')
                             self.assertEqual(staged, replay)
                         self.assertEqual(before, linear.digest(case.record_path))
+
+    def test_verify_model_uses_pmd_json_metadata_when_both_formats_exist(self):
+        case = self.case('R005/2die/tn')
+        path = self.evidence(case, [case.record['performance']['kernel_us']])
+        measurement = path.parent
+        ini = measurement / 'm5out/config.ini'
+        config = configparser.RawConfigParser()
+        config.read(ini)
+        fields = {section: dict(config[section], path=section) for section in config.sections()}
+        (ini.parent / 'config.json').write_text(json.dumps(list(fields.values())))
+        for field in ('path', 'cxx_class', 'name'):
+            config.remove_option('gpu_configuration', field)
+        with ini.open('w') as stream:
+            config.write(stream)
+        self.assertEqual(linear.verify_model(case.record, measurement)['cu_count'], 96)
 
     def test_all_validated_warm_samples_contribute_to_median(self):
         case = self.case('R002/2die/tt')
@@ -294,10 +310,44 @@ class GemmRegressionTest(unittest.TestCase):
         self.assertEqual(fp8.evaluate(case, self.root)['kernel_us'], 5.)
 
     def test_bf16_cold_record_keeps_first_dispatch(self):
-        case = next(c for c in linear.discover_cases() if c.record['requirement'] == 'R020')
+        case = next(c for c in linear.discover_cases() if c.key == 'R020/bf16/2die/tt')
         case.record['performance']['kernel_us'] = 5.
         self.evidence(case, [5.])
         self.assertEqual(linear.evaluate(case, self.root)['kernel_us'], 5.)
+
+    def test_streamk_cold_includes_the_verified_flag_reset(self):
+        case = next(c for c in linear.discover_cases() if c.key == 'R020/bf16/2die/tn')
+        record = case.record
+        clock = record['environment']['clock_period_ps']['gc']
+        gemm_cycles, reset_cycles = 140000, 10000
+        gemm_time = gemm_cycles * clock / 1e6
+        total = (gemm_cycles + reset_cycles) * clock / 1e6
+        record['performance']['kernel_us'] = total
+        result_path = self.evidence(case, [gemm_time])
+        gemm_stats = result_path.parent / 'm5out/0/0/stats.txt'
+        reset_stats = result_path.parent / 'm5out/0/1/stats.txt'
+        reset_stats.parent.mkdir()
+        stats = [f'system.gcSimCycles {reset_cycles}']
+        for index in range(96):
+            cu = f'system.shaders{index // 48}.CUs{index % 48}'
+            stats.extend((f'{cu}.completedWGs {int(index == 0)}',
+                          f'{cu}.numInstrTypeExecuted::MMOP 0'))
+        stats.append('---------- End Simulation Statistics ----------')
+        reset_stats.write_text('\n'.join(stats))
+        dispatches = [
+            dict(stats='m5out/0/1/stats.txt', sha256=linear.digest(reset_stats), cycles=reset_cycles),
+            dict(stats='m5out/0/0/stats.txt', sha256=linear.digest(gemm_stats), cycles=gemm_cycles,
+                 TGs_per_die={'system.shaders0': 48, 'system.shaders1': 48}),
+        ]
+        sample = dict(dispatches=dispatches, validated_elements=2048 * 2048, max_abs=0.)
+        result = dict(status='PASS', variant=record['variants'][record['regression']['variant']],
+                      seed=record['seed'], shape=record['shape'], layout='TN', resources={'spills': 0},
+                      samples=[sample], kernel_us=total)
+        result_path.write_text(json.dumps(result))
+        self.assertAlmostEqual(linear.evaluate(case, self.root)['kernel_us'], total)
+        dispatches[0]['cycles'] += 1
+        result_path.write_text(json.dumps(result))
+        self.assertEqual(linear.assess(case, self.root, 1.)['status'], 'INVALID')
 
     def test_existing_bf16_sampling_protocols_are_preserved(self):
         for mode, expected in [('existing_first_timed', 2.), ('legacy_median', 5.)]:
@@ -391,6 +441,7 @@ class GemmRegressionTest(unittest.TestCase):
             variants[name] = dict(status='PASS', family='candidate', config=cfg, grid=grid,
                 resources=dict(SGPR_spills=0, VGPR_spills=0),
                 confirmation=dict(validation=samples[:1], samples=samples[1:]),
+                public_api_verified=name == target and case.record['regression'].get('public_auto') is True,
                 performance=dict(kernel_us=us))
         path = measurement / 'result.json'
         path.write_text(json.dumps(dict(status='COMPLETE', stage='complete',

@@ -15,7 +15,7 @@ from ..config import get_gemm_config
 from . import _BF16_MLS_IMPORT_ENV, _BF16_MLS_REQUIRED_ENV
 
 from boltops.gemm.triton.kernel_repr import make_kernel_repr
-from boltops.gemm.triton.pid_preprocessing import pid_grid, remap_xcd
+from boltops.gemm.triton.pid_preprocessing import pid_grid, remap_xcd, remap_xcd_chunked
 
 _gemm_a16w16_repr = make_kernel_repr(
     "_gemm_a16_w16_kernel",
@@ -78,6 +78,7 @@ def _gemm_a16_w16_kernel(
     use_activation: tl.constexpr,
     ADD_BIAS: tl.constexpr,
     SKIP_REDUCE: tl.constexpr,
+    XCD_REMAP_CHUNK: tl.constexpr = 0,
 ):
     """Kernel for computing the matmul C = A x B.
     A has shape (M, K), B has shape (K, N) and C has shape (M, N)
@@ -97,7 +98,13 @@ def _gemm_a16_w16_kernel(
     pid_unified = tl.program_id(axis=0)
     num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
     num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
-    pid_unified = remap_xcd(pid_unified, num_pid_m * num_pid_n * NUM_KSPLIT, NUM_XCDS=8)
+    if XCD_REMAP_CHUNK:
+        pid_unified = remap_xcd_chunked(
+            pid_unified, num_pid_m * num_pid_n * NUM_KSPLIT,
+            CHUNK_SIZE=XCD_REMAP_CHUNK, ROTATE_XCD=True,
+        )
+    else:
+        pid_unified = remap_xcd(pid_unified, num_pid_m * num_pid_n * NUM_KSPLIT, NUM_XCDS=8)
     pid_k = pid_unified % NUM_KSPLIT
     pid = pid_unified // NUM_KSPLIT
 
@@ -191,22 +198,23 @@ _BF16_PROFILE = "DTYPE=bfloat16-OUT=bfloat16"
 _BF16_MLS_PROFILE = "DTYPE=bfloat16-OUT=bfloat16-WASP-MLS-EXPERIMENTAL"
 
 
-def _validate_bf16_mls_environment(config):
+def _bf16_mls_environment_error(config):
     for key, expected in _BF16_MLS_REQUIRED_ENV.items():
         if os.environ.get(key) != expected or _BF16_MLS_IMPORT_ENV[key] != expected:
-            raise ValueError(
+            return (
                 f"BF16 MLS requires {key}={expected} before importing boltops; "
                 "start a fresh process with the recorded environment and a compatible "
                 "Triton cache; changing compiler environment during calls is unsupported"
             )
     if config.get("buffer_cache_swizzle") is not True:
-        raise ValueError("BF16 MLS requires buffer_cache_swizzle=True")
+        return "BF16 MLS requires buffer_cache_swizzle=True"
     # Python knob overrides can disagree with os.environ. Reject those rather
     # than silently compiling a different pipeline or mutating global knobs.
     from triton import knobs
 
     if not knobs.amd.use_buffer_ops or not knobs.amd.buffer_cache_swizzle:
-        raise ValueError("BF16 MLS requires active Triton buffer-ops and BCS knobs")
+        return "BF16 MLS requires active Triton buffer-ops and BCS knobs"
+    return None
 
 
 def _resolve_activation(activation):
@@ -258,7 +266,7 @@ def gemm_a16w16(
             if device.cu_count == 48 and layout == "TT":
                 profiles = (_BF16_MLS_PROFILE,)
             elif device.cu_count == 96:
-                profiles = (_BF16_MLS_PROFILE, _BF16_PROFILE) if layout == "TT" else (_BF16_PROFILE,)
+                profiles = (_BF16_MLS_PROFILE, _BF16_PROFILE)
             for profile in profiles:
                 try:
                     candidate, tuned = get_gemm_config(
@@ -267,9 +275,12 @@ def gemm_a16w16(
                     )
                 except (FileNotFoundError, KeyError):
                     continue
-                if tuned:
-                    config = candidate
-                    break
+                if not tuned:
+                    continue
+                if profile == _BF16_MLS_PROFILE and _bf16_mls_environment_error(candidate):
+                    continue
+                config = candidate
+                break
         if config is None:
             config, _ = get_gemm_config(
                 "GEMM-A16W16",
@@ -285,6 +296,7 @@ def gemm_a16w16(
         from . import gemm_a16w16_wasp as kernels
 
         bf16_mls = a.dtype == out_dtype == torch.bfloat16
+        weight_strides = ((1, n), (k, 1)) if bf16_mls and device.cu_count == 96 else ((1, n),)
         if (
             device.arch != "gfx946"
             or a.dtype != out_dtype
@@ -293,22 +305,24 @@ def gemm_a16w16(
             or (bias is not None)
             or activation is not None
             or (a.stride() != (k, 1))
-            or (b.stride() != (1, n))
+            or (b.stride() not in weight_strides)
         ):
             raise ValueError(
-                "recorded pipeline requires gfx946, same-precision FP16 or "
-                "BF16 output and TT operands without bias or activation; "
-                "BF16 requires MLS and 48 or 96 CU"
+                "WASP/MLS requires gfx946, matching input/output precision, "
+                "and supported operand strides without bias or activation. "
+                "TN requires BF16 MLS on 96 CUs."
             )
         if bf16_mls:
             for dim, size in zip("MNK", (m, n, k)):
                 block = config.get(f"BLOCK_SIZE_{dim}")
-                if type(block) is not int or block <= 0 or size % block:
-                    raise ValueError(
-                        "BF16 MLS requires M/N/K divisible by positive "
-                        "BLOCK_SIZE_M/N/K (unmasked matrix-load tails are unsafe)"
-                    )
-            _validate_bf16_mls_environment(config)
+                if type(block) is not int or block <= 0:
+                    raise ValueError("BF16 MLS requires positive integer tile sizes")
+                if size % block:
+                    if dim == "K" or config["use_matrix_store"]:
+                        raise ValueError("BF16 MLS requires complete K and matrix-store tiles")
+                    config[f"MASK_{dim}"] = True
+            if error := _bf16_mls_environment_error(config):
+                raise ValueError(error)
         wasp, wdra, use_mls, use_matrix_store = (
             config.pop(key)
             for key in ("wasp", "wdra", "use_mls", "use_matrix_store")

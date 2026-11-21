@@ -1,4 +1,4 @@
-"""Measure a BF16 TN candidate on PMD sbx2. Run each job in its own directory."""
+"""Replay a recorded BF16 GEMM kernel on dual-die PMD."""
 import argparse
 import builtins
 import configparser
@@ -12,7 +12,10 @@ import os
 from pathlib import Path
 import re
 import statistics
+import struct
 import sys
+
+from benchmark import elf_sections, executable_sections
 
 
 def write_json(name, value):
@@ -21,6 +24,34 @@ def write_json(name, value):
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def code_object_abi(data):
+    """Return the AMDHSA kernel ABI that must agree with the fresh launcher."""
+    import msgpack
+
+    for _, section_type, section in elf_sections(data):
+        if section_type != 7:  # SHT_NOTE
+            continue
+        offset = 0
+        while offset + 12 <= len(section):
+            name_size, desc_size, note_type = struct.unpack_from('<III', section, offset)
+            name = section[offset + 12:offset + 12 + name_size].rstrip(b'\x00')
+            start = offset + 12 + ((name_size + 3) & ~3)
+            offset = start + ((desc_size + 3) & ~3)
+            if name != b'AMDGPU' or note_type != 32:  # NT_AMDGPU_METADATA
+                continue
+            metadata = msgpack.unpackb(section[start:start + desc_size], raw=False)
+            keys = ('.name', '.symbol', '.args', '.kernarg_segment_size',
+                    '.kernarg_segment_align', '.group_segment_fixed_size',
+                    '.private_segment_fixed_size', '.wavefront_size',
+                    '.max_flat_workgroup_size', '.reqd_workgroup_size',
+                    '.uniform_work_group_size', '.workgroup_processor_mode')
+            kernels = [{key: kernel.get(key) for key in keys}
+                       for kernel in metadata['amdhsa.kernels']]
+            return (data[7:9], struct.unpack_from('<I', data, 48)[0],
+                    metadata['amdhsa.version'], metadata.get('amdhsa.target'), kernels)
+    raise ValueError('code object has no AMDHSA metadata')
 
 
 def collect_dispatch(stats_path, grid, tiles, options, k):
@@ -71,6 +102,20 @@ def main():
     from boltops.gemm.config import get_gemm_config
     from boltops.gemm.triton.gemm_config_utils import compute_splitk_params
 
+    toolchain = dict(triton=triton.__version__, torch=torch.__version__,
+                     libtriton_sha256=sha(Path(lib.__file__).read_bytes()),
+                     clang_sha256=sha(Path(os.environ['TRITON_HIP_CLANG_PATH']).read_bytes()))
+    expected_toolchain = job['expected_toolchain']
+    toolchain_differences = {
+        key: dict(measured=expected, current=toolchain.get(key))
+        for key, expected in expected_toolchain.items() if toolchain.get(key) != expected
+    }
+    current_toolchain = job.get('current_toolchain', False)
+    if toolchain_differences and not current_toolchain:
+        raise ValueError(f'replay toolchain differs: {toolchain_differences}')
+    if current_toolchain and 'archived_code_object' in job:
+        raise ValueError('current-toolchain comparison requires fresh compiled code')
+
     assert os.environ['GPU_CHIP'] == 'sbx2'
     assert triton.runtime.driver.active.get_current_target().arch == 'gfx946'
     assert torch.cuda.get_device_properties(0).multi_processor_count == 96
@@ -97,14 +142,17 @@ def main():
     module_name, symbol = paths[family]
     module = importlib.import_module('boltops.gemm.' + module_name)
     if job.get('masked_mls'):
-        module = importlib.import_module('wasp_edges')
-        symbol = 'gemm_mls_masked'
         options.update(MASK_M=m % options['BLOCK_SIZE_M'] != 0,
                        MASK_N=n % options['BLOCK_SIZE_N'] != 0)
-        if 'MASK_K' in module.gemm_mls_masked.arg_names:
-            options['MASK_K'] = k % options['BLOCK_SIZE_K'] != 0
+        if job.get('public_api'):
+            assert k % options['BLOCK_SIZE_K'] == 0 and not options['USE_MATRIX_STORE']
         else:
-            assert k % options['BLOCK_SIZE_K'] == 0
+            module = importlib.import_module('wasp_edges')
+            symbol = 'gemm_mls_masked'
+            if 'MASK_K' in module.gemm_mls_masked.arg_names:
+                options['MASK_K'] = k % options['BLOCK_SIZE_K'] != 0
+            else:
+                assert k % options['BLOCK_SIZE_K'] == 0
     kernel = getattr(module, symbol)
     tiles = math.ceil(m/options['BLOCK_SIZE_M'])*math.ceil(n/options['BLOCK_SIZE_N'])
     grid = min(tiles, options.get('NUM_SMS', tiles))
@@ -135,26 +183,86 @@ def main():
         positional = (a, b, None, c, m, n, k, *a.stride(), *b.stride(), m*n, *c.stride())
         options.update(activation="", use_activation=False, ADD_BIAS=False, SKIP_REDUCE=False)
     handle = kernel.warmup(*positional, grid=(grid,), **options)
+    expected_sections = job['expected_executable_sections']
+    fresh_binary = handle.asm['hsaco']
+    fresh_sections = executable_sections(fresh_binary)
+    fresh_matches_measured = fresh_sections == expected_sections
+    code_origin = 'fresh'
+    archived_abi_verified = False
     if 'archived_code_object' in job:
         binary = Path(job['archived_code_object']).read_bytes()
         assembly = Path(job['archived_assembly']).read_bytes()
-        assert sha(binary) == job['archived_code_sha256']
-        assert sha(assembly) == job['archived_assembly_sha256']
-        # Preserve the launch metadata and use the measured instructions.
-        handle.kernel = binary
-        handle.asm['hsaco'] = binary
-        handle.asm['amdgcn'] = assembly.decode()
+        if sha(binary) != job['archived_code_sha256'] or sha(assembly) != job['archived_assembly_sha256']:
+            raise ValueError('archived code object or assembly differs from the record')
+        if executable_sections(binary) != expected_sections:
+            raise ValueError('archived executable sections differ from the record')
+        if code_object_abi(fresh_binary) != code_object_abi(binary):
+            raise ValueError('archived code object is incompatible with the fresh launcher ABI')
+        archived_abi_verified = True
+        if not job.get('compile_only'):
+            handle.kernel = binary
+            handle.asm['hsaco'] = binary
+            handle.asm['amdgcn'] = assembly.decode()
+            code_origin = 'archived'
+    elif not fresh_matches_measured and not current_toolchain:
+        raise ValueError('fresh executable sections differ from the measured code object')
     handle._init_handles()
     resources = dict(VGPR=handle.n_regs, spills=handle.n_spills, LDS_bytes=handle.metadata.shared)
     Path('kernel.amdgcn').write_text(handle.asm['amdgcn'])
     Path('kernel.hsaco').write_bytes(handle.asm['hsaco'])
-    write_json('compile.json', dict(job=job, grid=grid, logical_tiles=tiles, strides=dict(A=a.stride(), B=b.stride(), C=c.stride()),
+    compilation = dict(job=job, grid=grid, logical_tiles=tiles, strides=dict(A=a.stride(), B=b.stride(), C=c.stride()),
                symbol=symbol, options=options, resources=resources, source_sha256=sha(Path(module.__file__).read_bytes()),
-               toolchain=dict(triton=triton.__version__, torch=torch.__version__, libtriton_sha256=sha(Path(lib.__file__).read_bytes()),
-                              clang_sha256=sha(Path(os.environ['TRITON_HIP_CLANG_PATH']).read_bytes())),
-               hsaco_sha256=sha(handle.asm['hsaco'])))
+               toolchain=toolchain, toolchain_differences=toolchain_differences,
+               code_origin=code_origin, archived_abi_verified=archived_abi_verified,
+               fresh_hsaco_sha256=sha(fresh_binary), fresh_executable_sections=fresh_sections,
+               fresh_matches_measured=fresh_matches_measured, hsaco_sha256=sha(handle.asm['hsaco']))
+    write_json('compile.json', compilation)
     assert resources['spills'] == 0 or (family == 'baseline' and not job.get('fallback_baseline')), resources
+    public_api = job.get('public_api', False)
+
+    def dispatch():
+        assert kernel[(grid,)](*positional, **options) is handle
+
+    if public_api:
+        assert family in ('persistent', 'wasp')
+        assert code_origin == 'fresh' and current_toolchain
+        public = importlib.import_module('boltops.gemm.gemm_a16w16')
+        public_operands = (a, b.T, c) if family == 'persistent' else positional
+        calls = 0
+
+        class ObserveLaunch:
+            def __getitem__(self, launch_grid):
+                def run(*values, **kwargs):
+                    nonlocal calls
+                    actual_grid = launch_grid(kwargs) if callable(launch_grid) else launch_grid
+                    assert tuple(actual_grid) == (grid,)
+                    for actual, expected in zip(values, public_operands, strict=True):
+                        if isinstance(expected, torch.Tensor):
+                            assert actual.data_ptr() == expected.data_ptr()
+                            assert actual.stride() == expected.stride()
+                        else:
+                            assert actual == expected
+                    assert dict(options, **kwargs) == options
+                    if job.get('compile_only'):
+                        launched = kernel.warmup(*values, grid=actual_grid, **kwargs)
+                    else:
+                        launched = kernel[launch_grid](*values, **kwargs)
+                    assert executable_sections(launched.asm['hsaco']) == fresh_sections
+                    calls += 1
+                    return launched
+                return run
+
+        setattr(module, symbol, ObserveLaunch())
+
+        def dispatch():
+            before = calls
+            assert public.gemm_a16w16(a, b.T, out=c, backend=job['public_backend']) is c
+            assert calls == before + 1, 'public API did not dispatch the configured kernel'
+
     if job.get('compile_only'):
+        if public_api:
+            dispatch()
+            write_json('compile.json', dict(compilation, public_api_verified=True))
         return
     assert resources['LDS_bytes'] <= 128*1024, f'gfx946 LDS limit exceeded: {resources}'
     def prepare(seed, kind):
@@ -186,7 +294,7 @@ def main():
         cr.copy_(ci)
         torch.cuda.synchronize()
         before = set(Path('g').glob('*/*/stats.txt'))
-        assert kernel[(grid,)](*positional, **options) is handle
+        dispatch()
         torch.cuda.synchronize()
         files = set(Path('g').glob('*/*/stats.txt')) - before
         assert len(files) == 1, files
@@ -221,7 +329,11 @@ def main():
         samples.append(sample)
     measured = samples[1:] if len(samples) > 1 else samples
     us = statistics.median(s['us'] for s in measured)
+    if public_api:
+        write_json('compile.json', dict(compilation, public_api_verified=True))
     write_json('result.json', dict(status='PASS', job=job, samples=samples, kernel_us=us,
+                                  matches_measured_executable=fresh_matches_measured,
+                                  code_origin=code_origin, toolchain=toolchain,
                                   tops=2*m*n*k/(us*1e6), logical_gbs=2*(m*k+n*k+m*n)/(us*1e3),
                                   benchmark_sha256=sha(Path(__file__).read_bytes())))
 

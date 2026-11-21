@@ -21,19 +21,24 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def executable_sections(data):
-    assert data[:5] == b'\x7fELF\x02'
+def elf_sections(data):
+    if data[:6] != b'\x7fELF\x02\x01':
+        raise ValueError('expected a little-endian ELF64 code object')
     offset, = struct.unpack_from('<Q', data, 40)
     size, count, names = struct.unpack_from('<HHH', data, 58)
     entries = [struct.unpack_from('<IIQQQQIIQQ', data, offset + index*size)
                for index in range(count)]
     symbols = data[entries[names][4]:entries[names][4] + entries[names][5]]
-    sections = {}
     for entry in entries:
         name = symbols[entry[0]:].split(b'\x00', 1)[0].decode()
-        if name in ('.text', '.rodata'):
-            sections[name] = sha(data[entry[4]:entry[4]+entry[5]])
-    assert '.text' in sections
+        yield name, entry[1], data[entry[4]:entry[4]+entry[5]]
+
+
+def executable_sections(data):
+    sections = {name: sha(contents) for name, _, contents in elf_sections(data)
+                if name in ('.text', '.rodata')}
+    if '.text' not in sections:
+        raise ValueError('code object has no executable section')
     return sections
 
 
@@ -43,36 +48,56 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--compile-only', action='store_true')
+    parser.add_argument('--current-toolchain', action='store_true',
+                        help='measure freshly compiled code using the sourced PMD toolchain')
+    parser.add_argument('--public-api', action='store_true',
+                        help='replay a configured persistent or WASP/MLS kernel through gemm_a16w16')
     args = parser.parse_args()
     record = json.loads(args.record.read_text())
-    job = dict(record['replay_job'])
+    job = dict(record['replay_job'], expected_toolchain=record['environment']['toolchain'],
+               expected_executable_sections=record['assembly']['executable_sections'],
+               current_toolchain=args.current_toolchain)
     if args.compile_only:
         job['compile_only'] = True
+    if args.public_api:
+        if not args.current_toolchain or job['family'] not in ('persistent', 'wasp'):
+            parser.error('--public-api requires --current-toolchain and a persistent or WASP/MLS record')
+        job['public_api'] = True
+        job['public_backend'] = 'triton' if job['family'] == 'wasp' else 'auto'
+        validation = record.get('current_toolchain_validation', {})
+        job['options'] = job['options'] | validation.get('launch_overrides', {})
     source = record['source']
     assert record['environment']['chip'] == 'sbx2'
     assert record['layout'] == job.get('layout', 'TN')
     assert record['shape'] == job['shape']
     source_archive = (args.record.parent / source['archive']).resolve()
     if args.dry_run:
-        print(json.dumps(dict(record=record['record_key'], shape=job['shape'],
+        plan = dict(record=record['record_key'], shape=job['shape'],
                               grid=[record['full_grid_TGs']], strides=record['config']['strides'],
                               options=record['config']['parameters'], source_sha256=source['sha256'],
-                              dispatches=job['dispatches'], seed=job['seed'], timed_seed=job['timed_seed']), indent=2))
+                              dispatches=job['dispatches'], seed=job['seed'], timed_seed=job['timed_seed'],
+                              current_toolchain=args.current_toolchain)
+        if args.public_api:
+            plan.update(public_api=True, public_backend=job['public_backend'])
+            plan['options'] = plan['options'] | validation.get('launch_overrides', {})
+        print(json.dumps(plan, indent=2))
         return
     if args.output is None:
         parser.error('--output is required for replay')
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=False)
-    overlay = out/'source'
-    shutil.copytree(REPO/'boltops', overlay/'boltops')
-    with tarfile.open(source_archive, 'r:gz') as archive:
-        for item in [source, *source.get('dependencies', [])]:
-            data = archive.extractfile(item['member']).read()
-            assert sha(data) == item['sha256'], item['member']
-            path = (overlay / item['path']).resolve()
-            assert path.is_relative_to(overlay)
-            path.write_bytes(data)
-    if archived := record['assembly'].get('archived_code_object'):
+    source_root = REPO if args.public_api else out/'source'
+    if not args.public_api:
+        shutil.copytree(REPO/'boltops', source_root/'boltops')
+        with tarfile.open(source_archive, 'r:gz') as archive:
+            for item in [source, *source.get('dependencies', [])]:
+                data = archive.extractfile(item['member']).read()
+                assert sha(data) == item['sha256'], item['member']
+                path = (source_root / item['path']).resolve()
+                assert path.is_relative_to(source_root)
+                path.write_bytes(data)
+    archived = record['assembly'].get('archived_code_object')
+    if archived and not args.current_toolchain:
         record_dir = args.record.resolve().parent
         job.update(archived_code_object=str(record_dir/archived),
                    archived_code_sha256=record['assembly']['hsaco_sha256'],
@@ -91,13 +116,25 @@ def main():
         model = Path(directory)/'g'
         model.symlink_to(out/'g', target_is_directory=True)
         env['GPU_OUT'] = str(model)
-        subprocess.run([sys.executable, str(HERE/'replay_worker.py'), str(inputs), '--repo', str(overlay)],
+        subprocess.run([sys.executable, str(HERE/'replay_worker.py'), str(inputs), '--repo', str(source_root)],
                        cwd=out, env=env, check=True)
     compiled = json.loads((out/'compile.json').read_text())
-    assert compiled['source_sha256'] == source['sha256']
+    if args.public_api:
+        assert compiled['public_api_verified']
+    else:
+        assert compiled['source_sha256'] == source['sha256']
     assert compiled['grid'] == record['full_grid_TGs'] and compiled['strides'] == record['config']['strides']
-    assert compiled['resources'] == record['resources']
-    assert executable_sections((out/'kernel.hsaco').read_bytes()) == record['assembly']['executable_sections']
+    if not args.current_toolchain:
+        assert compiled['resources'] == record['resources']
+    sections = executable_sections((out/'kernel.hsaco').read_bytes())
+    if args.compile_only or args.current_toolchain:
+        assert compiled['code_origin'] == 'fresh'
+        assert sections == compiled['fresh_executable_sections']
+        print(json.dumps(dict(code_origin='fresh',
+                              matches_measured=compiled['fresh_matches_measured'],
+                              archived_abi_verified=compiled['archived_abi_verified'])))
+    else:
+        assert sections == record['assembly']['executable_sections']
 
 
 if __name__ == '__main__':

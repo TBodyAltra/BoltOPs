@@ -61,8 +61,10 @@
       59
     ],
     "invocation": "direct JIT",
-    "replay_sha256": "82e79e3ad0242c15e44ed632a9687432a1e77cdc8d081cc34c88124d2c8761b9",
-    "worker_sha256": "aa5c41c04e502a280d64fdffe4ce144841a322df79a519a9e276ac66aa2593bf"
+    "replay_sha256": "240bca8c0fcd08dd4287daa662f43f57b368bef28d2207342d4e79aab8b329eb",
+    "worker_sha256": "75863a3b8baef8e28924533f551f46e80a7afd061b6d20b934d10bc9b20ec3f1",
+    "previous_replay_sha256": "147a4cb540690eebe66a9fbc673bb0711b724e2a417b09fad4dc12b05f2728f3",
+    "previous_worker_sha256": "0345e595347668f39cf4cb6bff087014658e2b2126aed48f62814bc32f50cc07"
   },
   "replay_job": {
     "record": "R033",
@@ -281,5 +283,57 @@
       "3b6af778f9189a7b5630ead420686cf3b0cb6577342acd3084c2c7d8468d2a6c",
       "e523234de61fca47095270f429e62503bf7a3a7e17179e4bcdd3c16dbe783fb2"
     ]
+  },
+  "current_toolchain_validation": {
+    "status": "PASS",
+    "base_commit": "0a3ccd23e5e663cd81da0bf9ec4e43bacad4e00e",
+    "invocation": "gemm_a16w16(a, b.T, out=c, backend=\"auto\")",
+    "config": {
+      "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=12288-TN.json",
+      "sha256": "871e4347324da8cdfd2c355a3f9274184f83cce2fd82b30264ad6731d89f5fea",
+      "profile": "DTYPE=bfloat16-OUT=bfloat16",
+      "bucket": "M_EQ_2560"
+    },
+    "aggregation": "median of repeats 1 and 2 after one warmup; all dispatches validated",
+    "kernel_us": 375.6227475,
+    "original_limit_us": 378.757663375,
+    "launched_TGs": 96,
+    "full_output_elements": 10485760,
+    "stats_sha256": [
+      "e3ab3ecd871f8a7559106da7967e75833ca3a11bda3a49ce3c26656f66259335",
+      "93604a1792650c8f86c2c325273d459b6a02c3a1d0e2ed03744520a56c5f0281",
+      "ac275efe903833490090fe1e9a1b00a462107e5a8cbe6e0905c0694539db12ea"
+    ],
+    "samples_kernel_us": [
+      378.95585,
+      375.994255,
+      375.25124
+    ],
+    "executable_sections": {
+      ".rodata": "bebef381e68179878c8279a31fb76a2759163e5fc8499cff9e743ee03d5c5499",
+      ".text": "fc5dbaaaeafc62b107179f0604cf43dc82adf111b6981d6cc59d6256b0d170bf"
+    },
+    "resources": {
+      "VGPR": 168,
+      "spills": 0,
+      "LDS_bytes": 131072
+    },
+    "runtime": {
+      "triton": "3.6.0",
+      "torch": "2.6.0+d8c4c7c",
+      "libtriton_sha256": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+      "clang_sha256": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe"
+    },
+    "source_fingerprints": {
+      "boltops/gemm/gemm_a16w16.py": "cf01a0278ca57dcae7ad335eeb205385c30070604b427a716bec9cea77b23ad5",
+      "boltops/gemm/gluon/gemm_a16w16.py": "dcca0b3c82f5c51053b97de5126ed63ea0db054bcdc6854fa2cc63a9bda3bfe3",
+      "boltops/gemm/gluon/gemm_a16w16_persistent.py": "d92a05ed2fca218b28c085ff5beb326d6cd1e3e219d2bfe37bc7a95140172ac5",
+      "boltops/gemm/gluon/common.py": "92a56bcbc5a30ccc835ef941e0ba2a1c62f78b326ce3d97cc8a1cda8627c3bb2",
+      "docs/ops/gemm/tuning/qwen3_vl_bf16_sbx2/benchmark.py": "5a8e273bb917d40d8f95ea556ca33ef195d980b1d1693a2c0bd18f5bfb4cb7eb",
+      "docs/ops/gemm/tuning/qwen3_vl_bf16_sbx2/replay_worker.py": "544a8d5d227652db92f66ab04da23e446645a3ca187a5531e2c09756a06c7300"
+    },
+    "measured_worker_sha256": "d4e2ce26c40fe703b4d662f5db32e30df202e1dd09eabd35268f626015bf2d76",
+    "report_location": "node60:/tmp/pr45-recovery.SboHZl/qvl-remaining-public/r033/2die/tn/result.json",
+    "report_sha256": "fa9aaebf9c157a29397407fe7efc227accb078310bcc8e62e85165ffc178d9f8"
   }
 }

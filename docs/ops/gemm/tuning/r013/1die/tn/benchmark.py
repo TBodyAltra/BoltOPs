@@ -176,10 +176,12 @@ def main():
             host = storage.cpu().float()
             actual = host[1:-1, :measured_n]
             error = (actual - golden).abs()
+            atol, rtol = .001, .01
             accuracy = dict(
+                atol=atol, rtol=rtol,
                 max_abs=float(error.max()),
                 mismatch=int((actual != golden).sum()),
-                outside_tolerance=int((error > .001 + .01 * golden.abs()).sum()),
+                outside_tolerance=int((error > atol + rtol * golden.abs()).sum()),
                 nonfinite=int((~actual.isfinite()).sum()), elements=measured_m * measured_n,
                 canary_ok=bool((host[0] == sentinel).all() and (host[-1] == sentinel).all()
                                and (host[1:-1, measured_n:] == sentinel).all()),

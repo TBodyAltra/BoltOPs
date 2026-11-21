@@ -44,3 +44,12 @@ def test_early_public_replay_accepts_perf_metadata_without_path(tmp_path):
     assert replay["benchmark"]["timing_mode"] == "validated_warm_median"
     assert replay["performance"]["kernel_us"] == benchmark.case.record["performance"]["kernel_us"]
     assert replay["environment"]["environment_variables"]["GPU_OUT"] == "m5out"
+
+
+def test_explicit_selection_preserves_both_streamk_layouts_and_fp8_widths():
+    cases = {row.case.key: row for row in regression.select_benchmarks(["R020", "R005", "R029", "R004"])}
+    assert cases["R020/bf16/2die/tn"].kernel == cases["R020/bf16/2die/tt"].kernel
+    assert cases["R005/1die/tn"].kernel == cases["R005/2die/tn"].kernel
+    assert "R029/bf16/2die/tt" in cases
+    assert cases["R004/bf16/2die/tn"].describe()["route"] == "standalone_variant"
+    assert cases["R004/bf16/2die/tt"].case.record["regression"]["public_auto"]

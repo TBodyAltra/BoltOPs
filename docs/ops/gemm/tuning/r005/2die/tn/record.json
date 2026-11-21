@@ -266,7 +266,7 @@
   },
   "config": {
     "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json",
-    "sha256": "ab1b2b0f00c07258a625fee63392f25242976e4e109afed2457e9c37d0b038fd",
+    "sha256": "d9974459817c9c8568534a5ef9a0bfc964376559fc73a5bbb36c3ca6d3cdf0e4",
     "launch_options": {
       "BLOCK_SIZE_M": 64,
       "BLOCK_SIZE_N": 32,
@@ -278,13 +278,13 @@
         2
       ],
       "wasp_wdra": false,
-      "kernel": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bk128_kernel"
+      "kernel": "_gemm_a8w8_blockscale_as_fp32_bs_fp32_recipe_a_1x128_recipe_b_128x128_bm64_bk128_kernel",
+      "enable_v_mmac_cluster": 2,
+      "waves_per_eu": 1
     },
-    "commit": "049e846c549d651307dd95ca3a7c02a57ff7411b",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/049e846c549d651307dd95ca3a7c02a57ff7411b/boltops/gemm/configs/gfx946/96cu/gluon/gemm_a8w8_blockscale/GEMM-A8W8_BLOCKSCALE-N=2048-K=4096.json",
     "measured_commit": "ceae2e40d7f206cc04812fdacae405f9995f0de0",
     "measured_sha256": "b066fe77a6b830efa9bba946bc8a522f3f425c227e5241059fe357cb61b2cb8a",
-    "historical_launch_options_note": "Published executable was measured through the historical selector; the generic selector is checked for executable-section equivalence.",
+    "historical_launch_options_note": "The archived executable used measured_launch_options. launch_options describes the current public replay configuration.",
     "measured_launch_options": {
       "BLOCK_SIZE_M": 64,
       "BLOCK_SIZE_N": 32,
@@ -320,7 +320,7 @@
   },
   "benchmark": {
     "script": "benchmark.py",
-    "sha256": "8cd69d364e6308741c17d3582c9c6e7991719728573659602c099ac9685fb19e",
+    "sha256": "3f8f30227b9974db6a51cc68663dfba68886828f6a9a28a2590105acd8667d8a",
     "seed": 37,
     "repeats": 3,
     "command": "Load the recorded PMD environment, set PYTHONPATH to the checkout and recorded Triton runtime, then run python /path/to/benchmark.py /path/to/record.json in an empty output directory.",
@@ -333,7 +333,8 @@
       "seed": 37,
       "repeats": 3
     },
-    "interface": "public_job_json"
+    "interface": "public_job_json",
+    "measured_script_sha256": "8cd69d364e6308741c17d3582c9c6e7991719728573659602c099ac9685fb19e"
   },
   "performance": {
     "metric": "system.gcSimCycles; full 64-TG dispatch; cold launch excluded; mean of 3 warm launches; not sum of DIE times",
@@ -516,5 +517,83 @@
     "current_kernel_module_sha256": "8bc14dacf6307f7652929b3d0334f53ffd68901b8b3edb8c92893137df5a67ea",
     "review_report": "/home/kxu/boltops-gemm-mr-scan-20261118/review-report.json",
     "note": "Published measurements and source hashes describe the historical measured entry. Current review validation and compilation comparisons are reported separately; historical timings are not overwritten."
+  },
+  "current_toolchain_validation": {
+    "driver": "node60 PMD",
+    "interface": "public auto",
+    "runtime": {
+      "libtriton_sha256": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+      "clang_sha256": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe",
+      "lld_sha256": "45bdaf1f59f5b498c4b77a29dda52cc67801c27bb2e572d097c94629203abe1a"
+    },
+    "aggregation": "median of three independent warm-mean regression runs",
+    "kernel_us": 14.48629,
+    "full_grid_TGs": 64,
+    "runs": [
+      {
+        "kernel_us": 14.426381666666668,
+        "samples_kernel_us": [
+          16.315845,
+          14.41895,
+          14.441245,
+          14.41895
+        ],
+        "stats_sha256": [
+          "548c876f6a65243a532be4b350f5ecca5b1e69e19c8a9608e42563dcacc08aa1",
+          "e16bd3e85f3fc1ed20ad22758a1d21d128b05fc1cc86c566037a7acbfb4debad",
+          "0f2adde9dedb7546cb407584e185ab7631d7ec0d819d85f15711cccb8e416e81",
+          "97a0000ba7588c36d8720a595ca16d15045479fc055dd8dba481d9875b270772"
+        ],
+        "report_location": "node60:/tmp/pr45-targeted.1DHuYB/r005-followup/cluster2-waves1/run/r005/2die/tn/regression.json"
+      },
+      {
+        "kernel_us": 14.567431666666666,
+        "samples_kernel_us": [
+          16.728075,
+          14.53634,
+          14.534065,
+          14.63189
+        ],
+        "stats_sha256": [
+          "6758c9fabb108128df578561fa826feaf5bea5158400fe5e2c7eb1231be6e7d1",
+          "30389b4f674374b57cc1456a668df1a61fcf6d430efb44c98c34b2a9e200a689",
+          "3a1e8f132c1ae05dcd3657ce4a9ebc93fd31b320325e0e2c72ccbf722d686342",
+          "46b86ca48ac8499a0975f1929d4c5b37c2d06a21a69c3cf363205fd5f4e64717"
+        ],
+        "report_location": "node60:/tmp/pr45-targeted.1DHuYB/r005-waves-confirm/waves1-1/run/r005/2die/tn/regression.json"
+      },
+      {
+        "kernel_us": 14.48629,
+        "samples_kernel_us": [
+          16.85684,
+          14.481285,
+          14.504945,
+          14.47264
+        ],
+        "stats_sha256": [
+          "bede36100704354fb6e96a15c420a4d007ad0c215b6ddd064055ed510e5b60cf",
+          "4b1f46d2fada68560dfc4fdd2277a2a9846692ebfa98364a12e1cddc4a9c707d",
+          "13f4cd39fc927784a7390c5d45549f45cb97c747c47058d6a1bafe58d462bca1",
+          "631828a249b2ae32d808cd359a32f56e7f485166a03529acd4c8844478bdd04f"
+        ],
+        "report_location": "node60:/tmp/pr45-targeted.1DHuYB/r005-waves-confirm/waves1-2/run/r005/2die/tn/regression.json"
+      }
+    ],
+    "report_location": "node60:/tmp/pr45-targeted.1DHuYB",
+    "executable_sections": {
+      ".rodata": "39912b057b69170886bd9668d64d310a1b7e42969f922e7126b7d9bef5a81510",
+      ".text": "b2bc433d16071d30ee18428f8f35105bcace96352d6bd1a41743f9bbe69a945d"
+    },
+    "previous_config_retest_us": [
+      14.738815,
+      14.565005,
+      14.8239
+    ],
+    "previous_config_retest_note": "Same executable sections and PMD GPU configuration across passes and over-limit runs.",
+    "resources": {
+      "VGPR": 104,
+      "spills": 0,
+      "LDS_bytes": 32768
+    }
   }
 }

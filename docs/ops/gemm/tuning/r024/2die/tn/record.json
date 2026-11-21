@@ -94,6 +94,7 @@
   "benchmark": {
     "script": "../../../bf16_2die_tn/benchmark.py",
     "sha256": "bdf0f21d696151672b43ff0a17f15529c48739c6a5f4cc4bfababdbee4aea19a",
+    "replay_sha256": "4914c0c3b552d86c10742218e3610772d17a410f1e6913912f83da554bb294cd",
     "repeats": 1,
     "command": "python docs/ops/gemm/tuning/bf16_2die_tn/benchmark.py --input docs/ops/gemm/tuning/r024/2die/tn/record.json --output /tmp/r024-sbx2-tn"
   },
@@ -266,5 +267,41 @@
     },
     "fp16_profile_misses": true,
     "scope": "Public auto dispatch capture and warmup compilation; no kernel dispatch"
+  },
+  "current_toolchain_validation": {
+    "status": "PASS",
+    "base_commit": "2c2fa363a5ae29b51f2eee94eb8afe83ff5d1a95",
+    "invocation": "gemm_a16w16(a, w, out=c)",
+    "config": {
+      "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=2048-K=4096-TN.json",
+      "sha256": "c9f38caac33b339df4b00a363760b177e8364acd532d15d48e5dc2f7cc14046c",
+      "bucket": "M_EQ_6656"
+    },
+    "kernel_us": 196.233765,
+    "original_limit_us": 198.59774935000002,
+    "aggregation": "one cold full-grid measurement, no execution warmup",
+    "launched_TGs": 96,
+    "full_output_elements": 13631488,
+    "stats_sha256": "375fa18d9d2bea3fdbd9d830ba955570ade558f37f8eb3893301c5c8090811c1",
+    "executable_sections": {
+      ".rodata": "8f2bb74b3d75e7de7e7e06a23ee59c8bbaa7d99d8da0b5596b7a3d6582d0092e",
+      ".text": "0992c61a867679db0739f0a9d54066651e3f161faddda63e5df1a40c6a40ce0b"
+    },
+    "resources": {
+      "VGPR": 168,
+      "spills": 0,
+      "LDS_bytes": 131072
+    },
+    "runtime": {
+      "torch": "2.6.0+d8c4c7c",
+      "triton": "3.6.0",
+      "compiler": {
+        "libtriton": "4e550055134cd71f6de0347e137de748277ecb6b3d065eef65a8548f2111a306",
+        "clang": "0562527d79a626fa0067a8bfc6293fc03026ea199dee9cf17d70a5d58ba9e8fe"
+      }
+    },
+    "benchmark_sha256": "4914c0c3b552d86c10742218e3610772d17a410f1e6913912f83da554bb294cd",
+    "report_location": "node60:/tmp/pr45-recovery.SboHZl/tn-public/r024/2die/tn/replay/result.json",
+    "report_sha256": "2e4c69f00cb2cf2b0fbc662ccb2169b8c57f3a2c1c35ddcf6328540f490aee25"
   }
 }

@@ -12,6 +12,8 @@ Three correctness cases precede one warmup and two timed repeats. The fastest
 timed repeat on die 0 supplies the PERF so its default XCD0 view contains waves.
 The embedded TT stream is decoded and checked against the simulator counters.
 When the checkout differs, replay uses the frozen BoltOPs source from Git.
+--current-toolchain accepts a sourced local PMD environment and reports whether
+the resulting executable sections match the archived binary.
 --dry-run verifies artifacts without GPU imports.
 """
 import argparse
@@ -41,7 +43,6 @@ PUBLIC = 'boltops/gemm/gemm_a16w16.py'
 DEPENDENCIES = (
     'boltops/gemm/config.py',
     'boltops/utility/arch_info.py',
-    'boltops/gemm/backend_interfaces.py',
     'boltops/gemm/gluon/gemm_a16w16_streamk.py',
 )
 ENVIRONMENT_SCRIPT = '/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh'
@@ -244,6 +245,7 @@ def main():
     parser.add_argument('--single-tg-perf', action='store_true')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--triton-build', type=Path)
+    parser.add_argument('--current-toolchain', action='store_true')
     args = parser.parse_args()
     output = args.output.resolve()
     if output.exists():
@@ -271,7 +273,7 @@ def main():
                 execution_warmups=1 if args.single_tg_perf else 0,
                 full_output_validation=not args.single_tg_perf,
                 single_tg_scope='Original dependency-free TG work relocated to TG0; original MNK/strides/instructions',
-                replay_git_commit=replay_commit, output=str(output))
+                replay_git_commit=replay_commit, current_toolchain=args.current_toolchain, output=str(output))
     if args.dry_run:
         print(json.dumps(plan, ensure_ascii=False, indent=2))
         return
@@ -280,11 +282,17 @@ def main():
         env = dict(os.environ)
         for key in list(env):
             if key.startswith(('GPU_', 'HIP_', 'HSA_', 'ROCR_', 'SOC_', 'DCU_', 'RPY_', 'RBPY_')) or key in (
-                    'BOLTOPS_GEMM_CONFIG_DIR', 'TRITON_OFFLINE_BUILD', 'TRITON_BUFFER_CACHE_SWIZZLE',
+                    'BOLTOPS_GEMM_CONFIG_DIR', 'TRITON_BUFFER_CACHE_SWIZZLE',
                     'TRITON_MLS_B_INTERLEAVE', 'TRITON_HCU_MATRIX_STORE_INSN', 'LD_PRELOAD'):
                 env.pop(key, None)
-        assert env.get('PMD_PATH') == '/opt/rocm/pmd', 'Source the specified path.sh first.'
-        assert env.get('TRITON_HIP_CLANG_PATH') == '/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang'
+        if args.current_toolchain:
+            for key in ('PMD_PATH', 'TRITON_HIP_CLANG_PATH'):
+                if not env.get(key) or not Path(env[key]).exists():
+                    parser.error(f'--current-toolchain requires an existing {key} from the PMD environment')
+        else:
+            env.pop('TRITON_OFFLINE_BUILD', None)
+            assert env.get('PMD_PATH') == '/opt/rocm/pmd', 'Source the specified path.sh first.'
+            assert env.get('TRITON_HIP_CLANG_PATH') == '/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang'
         if args.triton_build:
             env['PYTHONPATH'] = str(args.triton_build.resolve())
         env.update(GPU_CHIP='sbx2', GPU_OUT='g', GPU_DFLAGS="['StatLog','TT0','Perf']",
@@ -309,6 +317,8 @@ def main():
         return original_open(file, *positional, **kwargs)
     builtins.open = private_open
     source_root = restore_boltops(output, replay_commit)
+    dependencies = [item['path'] for item in archived['source_dependencies']] if archived else DEPENDENCIES
+    source_dependencies = [dict(path=path, sha256=digest(source_root / path)) for path in dependencies]
     sys.path.insert(0, str(source_root))
     import torch
     import triton
@@ -514,7 +524,12 @@ def main():
     total_cycles = selected['dispatch_cycles'] + flag_reset_cycles
     total_us = selected['kernel_us'] + flag_reset_us
     operations = 2 * m * n * k if not args.single_tg_perf else 2 * 256 * 128 * sum(task[2] for task in selected_tasks)
+    sections = executable_sections(handle.asm['hsaco'])
+    expected = archived['assembly']['allocated_hsaco_sections_sha256'] if archived else None
+    environment_script = None if args.current_toolchain else ENVIRONMENT_SCRIPT
     result = dict(requirement=requirement, status='PASS', shape=[m, n, k], single_tg=args.single_tg_perf,
+        executable_sections=sections,
+        matches_measured_executable=(sections == {name: expected[name] for name in sections} if expected else None),
         performance=dict(kernel_cycles=total_cycles, kernel_us=total_us,
             kernel_tops=operations / (total_us * 1e6),
             gemm_kernel_cycles=selected['dispatch_cycles'], gemm_kernel_us=selected['kernel_us'],
@@ -528,11 +543,12 @@ def main():
         perf_sha256=digest(output / 'single_tg.perf'), stats_sha256=selected['stats_sha256'],
         source_sha256=digest(source_root / SOURCE), config_sha256=digest(source_root / config_path),
         public_api_sha256=digest(source_root / PUBLIC),
-        source_dependencies=[dict(path=path, sha256=digest(source_root / path)) for path in DEPENDENCIES],
+        source_dependencies=source_dependencies,
         runtime=dict(host=socket.gethostname(), torch=torch.__version__, triton=triton.__version__,
             triton_file=triton.__file__, libtriton_sha256=digest(lib.__file__),
-            clang_sha256=digest(os.environ['TRITON_HIP_CLANG_PATH']), environment_script=ENVIRONMENT_SCRIPT,
-            environment_script_sha256=digest(ENVIRONMENT_SCRIPT), environment_variables=environment))
+            clang_sha256=digest(os.environ['TRITON_HIP_CLANG_PATH']), environment_script=environment_script,
+            environment_script_sha256=digest(environment_script) if environment_script else None,
+            environment_variables=environment))
     save(output / 'result.json', result)
     print(json.dumps(dict(status='PASS', requirement=requirement, performance=result['performance'])), flush=True)
 

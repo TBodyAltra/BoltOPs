@@ -72,12 +72,14 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--single-tg-perf', action='store_true')
     parser.add_argument('--compile-only', action='store_true')
+    parser.add_argument('--current-toolchain', action='store_true',
+                        help='compare local compilation and full-grid performance with the archive')
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
     record_path = args.record.resolve()
     record = json.loads(record_path.read_text())
-    if args.single_tg_perf and args.compile_only:
-        parser.error('--single-tg-perf and --compile-only are mutually exclusive')
+    if args.single_tg_perf and (args.compile_only or args.current_toolchain):
+        parser.error('--single-tg-perf requires the archived executable and a launch')
     measured_source(record, None)
     config = record['config']
     recorded_options = json.loads((REPO / config['path']).read_text())['profiles'][config['profile']][config['bucket']]
@@ -115,7 +117,7 @@ def main():
                 kernel=symbol, options=params, grid=[grid], protocol=protocol, repeats=repeats,
                 correctness_dispatches=0 if protocol == 'cold' else 3,
                 launch='public boltops.gemm.gemm_a16w16, backend=auto, no explicit config',
-                config_path=config['path'], compile_only=args.compile_only)
+                config_path=config['path'], compile_only=args.compile_only, current_toolchain=args.current_toolchain)
     plan.update(single_tg=args.single_tg_perf, full_grid=[full_grid],
                 selected_tile_ids=tile_ids if args.single_tg_perf else None)
     if args.single_tg_perf:
@@ -236,18 +238,23 @@ def main():
     assert handle.n_spills == 0
     (output / 'kernel.amdgcn').write_text(handle.asm['amdgcn'])
     (output / 'kernel.hsaco').write_bytes(handle.asm['hsaco'])
-    assert executable_sections(handle.asm['hsaco']) == record['assembly']['executable_sections'], 'compiled kernel differs from measured binary'
-    assert dict(VGPR=handle.n_regs, spills=handle.n_spills, LDS_bytes=handle.metadata.shared) == record['resources'], 'launch resources differ'
+    sections = executable_sections(handle.asm['hsaco'])
+    resources = dict(VGPR=handle.n_regs, spills=handle.n_spills, LDS_bytes=handle.metadata.shared)
+    comparison = dict(executable_sections=sections, resources=resources,
+                      matches_measured_executable=sections == record['assembly']['executable_sections'],
+                      matches_measured_resources=resources == record['resources'])
+    if not args.current_toolchain:
+        assert comparison['matches_measured_executable'], 'compiled kernel differs from measured binary'
+        assert comparison['matches_measured_resources'], 'launch resources differ'
     public_entry = dict(name='boltops.gemm.gemm_a16w16', backend='auto', explicit_config=False,
                         source_sha256=record['public_entry']['sha256'],
                         config_path=config['path'], config_sha256=config['sha256'],
                         requested_grid=[full_grid], calls=public_calls)
     if args.compile_only:
         save(output / 'compile.json', dict(status='PASS', public_entry=public_entry,
-             options=params, executable_sections=executable_sections(handle.asm['hsaco']),
-             resources=record['resources'], hsaco_sha256=digest(output / 'kernel.hsaco'),
-             benchmark_sha256=digest(__file__)))
-        print('PASS: public auto dispatch, config, executable sections and resources match', flush=True)
+             options=params, hsaco_sha256=digest(output / 'kernel.hsaco'),
+             benchmark_sha256=digest(__file__), **comparison))
+        print(json.dumps(dict(status='PASS', **comparison)), flush=True)
         return
 
     def prepare(seed, kind):
@@ -396,14 +403,14 @@ def main():
                   cu_count=96 if args.chip == 'sbx2' else 48,
                   reported_device_cu_count=reported_cus, grid=[grid], launch_options=params,
                   performance=performance, validation=validation, samples=samples,
+                  timing_input=dict(seed=seed, input_kind="normal_random"),
                   baseline_record=str(record_path), baseline_record_sha256=digest(record_path),
                   source_sha256=digest(source_root / record['source']['path']), config_sha256=record['config']['sha256'],
                   assembly_sha256=digest(output / 'kernel.amdgcn'), hsaco_sha256=digest(output / 'kernel.hsaco'),
                   assembly_matches_archived=digest(output / 'kernel.amdgcn') == record['assembly']['sha256'],
-                  benchmark_sha256=digest(__file__), resources=dict(VGPR=handle.n_regs, spills=handle.n_spills,
-                      LDS_bytes=handle.metadata.shared),
+                  benchmark_sha256=digest(__file__),
                   runtime=dict(torch=torch.__version__, triton=triton.__version__, triton_path=triton.__file__,
-                      libtriton_sha256=digest(lib.__file__)), public_entry=public_entry)
+                      libtriton_sha256=digest(lib.__file__)), public_entry=public_entry, **comparison)
     save(output / 'result.json', result)
     print(json.dumps(dict(requirement=record['requirement'], status='PASS', performance=performance)), flush=True)
 

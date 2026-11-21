@@ -503,7 +503,7 @@ def test_narrow_tt_public_dispatch(monkeypatch, m):
 
 
 @pytest.mark.parametrize("unaligned", ["x", "w", "out"])
-def test_dual_die_narrow_tt_alignment(monkeypatch, unaligned):
+def test_dual_die_narrow_tt_dispatch_with_storage_offset(monkeypatch, unaligned):
     calls = install_captures(monkeypatch, cu_count=96)
     gluon = import_module("boltops.gemm.gluon.gemm_a16w16")
     monkeypatch.setattr(gluon, NARROW_TT_KERNEL, Capture("narrow_tt", calls))
@@ -517,9 +517,8 @@ def test_dual_die_narrow_tt_alignment(monkeypatch, unaligned):
     w = tensor("w", (2048, 64)).T
     out = tensor("out", (2048, 64))
     assert gemm_a16w16(x, w, out=out) is out
-    assert [call[0] for call in calls] == ["triton"]
-    with pytest.raises(ValueError, match="16-byte-aligned tensor pointers"):
-        gemm_a16w16(x, w, out=out, backend="gluon")
+    assert gemm_a16w16(x, w, out=out, backend="gluon") is out
+    assert [call[0] for call in calls] == ["narrow_tt", "narrow_tt"]
 
 
 @pytest.mark.parametrize("case", ["tail", "layout", "dtype", "output"])

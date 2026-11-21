@@ -102,7 +102,7 @@ def measure(output, record, variant, repeats, perf, repo, automatic=False):
                     return run
 
             if family == 'gluon':
-                kernels = [('boltops.gemm.gluon.gemm_a16w16', '_gemm_a16w16_tt_kernel', 'kernel')]
+                kernels = [('boltops.gemm.gluon.gemm_a16w16', '_gemm_a16w16_kernel', 'kernel')]
             else:
                 kernels = [('boltops.gemm.triton.gemm_a16w16', '_gemm_a16_w16_kernel', 'kernel')]
                 if family == 'split':
@@ -258,6 +258,8 @@ def main():
     output = args.output.resolve()
     record = json.loads(args.input.read_text())
     variant = record['variants'][args.variant]
+    if variant.get('module') == 'boltops.gemm.gluon.gemm_a16w16_tt':
+        variant = dict(variant, module='boltops.gemm.gluon.gemm_a16w16', symbol='_gemm_a16w16_kernel')
     if args.seed is not None:
         record['seed'] = args.seed
     if args.auto and args.perf:
