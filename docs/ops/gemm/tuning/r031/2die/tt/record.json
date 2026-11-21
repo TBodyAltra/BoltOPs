@@ -21,39 +21,37 @@
   "layout": "TT",
   "full_grid_TGs": 96,
   "performance": {
-    "kernel_cycles": 1903655.0,
-    "kernel_us": 866.1631029546794,
-    "kernel_tops": 735.7341479568241,
+    "kernel_cycles": 1870805,
+    "kernel_us": 851.216275,
+    "kernel_tops": 748.6531816417631,
     "launched_TGs": 96,
+    "total_TGs_per_sample": 96,
+    "dispatches_per_sample": 1,
     "samples": 1,
-    "aggregation": "one cold full-grid dispatch; no minimum or median; no execution warmup",
-    "time_domain": "system.gcSimCycles/(gcFrequency_GHz*1000); complete dispatch"
+    "aggregation": "one cold full-grid sample",
+    "time_domain": "sum(all full-grid dispatch system.gcSimCycles) * 455 / 1e6, microseconds"
   },
   "baseline_record": {
-    "path": "../../1die/tt/record.json",
-    "sha256": "9a76943e9540248802fb6a112b526effc0af925ced04829afda789e9bdf67fe5",
-    "kernel_us": 1642.0582927852465,
-    "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/docs/ops/gemm/tuning/r031/1die/tt/record.json",
-    "note": "The comparison uses this immutable archived baseline; subsequent checkout tuning can change the current 1die record."
+    "path": "../../../../../../../tmp/optALL/R031/baseline/result.json",
+    "sha256": "84424116c03abf91022d6e59f8308c431d19031576b6d27a38cc07b25ad85a3b",
+    "kernel_us": 872.16493,
+    "note": "Matched local optALL baseline with the same measurement protocol; previous published record is embedded in original_published_record."
   },
   "comparison": {
-    "speedup": 1.8957841625714742,
-    "latency_change_percent": -47.251379152593884,
-    "note": "Comparison to the published 1die record; R001 published baseline used an older compiler environment."
+    "speedup": 1.0246102613580785,
+    "latency_change_percent": -2.4019143947922816
   },
   "source": {
-    "path": "boltops/gemm/gluon/gemm_a16w16.py",
+    "path": "docs/ops/gemm/tuning/r031/2die/tt/kernel.py",
     "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
-    "sha256": "711f312aaaa064083e5cf822119248f24141c82631d3fe9a32895faaf305b847",
-    "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py"
+    "sha256": "4a542e2c0ea2cbfd12fd0c6b3218b62507acb79420e858ceda21d74ac3a5b68c",
+    "language": "Gluon",
+    "historical_source_path": "tmp/optALL/R031/pmd-native-valid-panels/candidate.snapshot.py",
+    "historical_source_sha256": "168c984a26a144bcda1f9f9c0afc875d16d4c692a008de8605ff252225fdacf1",
+    "kernel_function_ast_equal_to_historical_source": true,
+    "post_compile_assembly_patch": false
   },
   "config": {
-    "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=151936-K=4096-TT.json",
-    "sha256": "cf5b4512991873f066d2fbfaf159239e95fff222cefc2a1128f22e76091a86d3",
-    "profile": "DTYPE=bfloat16-OUT=bfloat16",
-    "bucket": "M_EQ_512",
     "parameters": {
       "BLOCK_SIZE_M": 256,
       "BLOCK_SIZE_N": 256,
@@ -74,10 +72,8 @@
       "wasp_wdra": true,
       "enable_v_mmac_cluster": 2,
       "hcu_use_gfx946_sched_model_v2": true,
-      "mmac_layout_force": 2,
-      "kernel": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel"
-    },
-    "runtime_overrides": {}
+      "mmac_layout_force": 2
+    }
   },
   "launch": {
     "grid": [
@@ -103,30 +99,44 @@
       "wasp_wdra": true,
       "enable_v_mmac_cluster": 2,
       "hcu_use_gfx946_sched_model_v2": true,
-      "mmac_layout_force": 2,
-      "M": 512,
-      "N": 151936,
-      "K": 4096,
-      "B_K_CONTIGUOUS": false,
-      "FORCE_MASKED_STORE": false
+      "mmac_layout_force": 2
     },
-    "method": "Direct repository JIT; original tile/warp/stage options and kernel source; device CU count sets persistent NUM_SMS/grid."
+    "method": "Direct JIT of local kernel.py with historical launch parameters and all dispatches timed"
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "18d749b325c50747a903fafa8d9cbe4cdaeddf49cec83fe81c1d723c30fb65fe",
-    "hsaco_sha256": "daf71a1cbe84e481b7245f84de89e298a6f0688fe46e612c9e71fa65ba0e32fb",
-    "matches_1die_assembly": false,
+    "sha256": "b76bbeef98074bf9ac394a5d9dfa24ae461cd27a5e2b17e9769b079e1be4d72f",
+    "hsaco_sha256": "f2fd53c5264458d19583a73c3c8af4e997e07459d72e8a56a550b86805a24b66",
     "executable_sections": {
       ".rodata": {
         "size": 64,
         "sha256": "8f2bb74b3d75e7de7e7e06a23ee59c8bbaa7d99d8da0b5596b7a3d6582d0092e"
       },
       ".text": {
-        "size": 13280,
-        "sha256": "e7dd13d073e4f250ae7c20bd7d01c1e3dc95e266bf6aedf95ec5a588722d5bad"
+        "size": 12520,
+        "sha256": "73167810aad71e0e4b4a8c964aab44290caecbdf3d7f0fd936f264c6ab311349"
       }
-    }
+    },
+    "compilation_units": [
+      {
+        "stage": "gemm",
+        "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+        "offset_bytes": 0,
+        "size_bytes": 187278,
+        "sha256": "b76bbeef98074bf9ac394a5d9dfa24ae461cd27a5e2b17e9769b079e1be4d72f",
+        "hsaco_sha256": "f2fd53c5264458d19583a73c3c8af4e997e07459d72e8a56a550b86805a24b66",
+        "executable_sections": {
+          ".rodata": {
+            "size": 64,
+            "sha256": "8f2bb74b3d75e7de7e7e06a23ee59c8bbaa7d99d8da0b5596b7a3d6582d0092e"
+          },
+          ".text": {
+            "size": 12520,
+            "sha256": "73167810aad71e0e4b4a8c964aab44290caecbdf3d7f0fd936f264c6ab311349"
+          }
+        }
+      }
+    ]
   },
   "environment": {
     "type": "PMD",
@@ -142,249 +152,486 @@
     },
     "environment_script": "/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh",
     "environment_variables": {
-      "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang",
+      "GPU_CHIP": "sbx2",
+      "GPU_ARGS": "['--abs-max-tick=10000000000']",
+      "GPU_DFLAGS": "['StatLog']",
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
       "PMD_PATH": "/opt/rocm/pmd",
       "PYTHONPATH": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10:",
-      "GPU_CHIP": "sbx2",
       "LD_LIBRARY_PATH": "/opt/rocm/lib",
-      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
-      "GPU_ARGS": "['--abs-max-tick=10000000000']",
-      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
-      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang",
+      "GPU_OUT": "/tmp/optall-compute-4clolya0/g",
+      "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R031/pmd-native-valid-panels/cache",
+      "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R031/pmd-native-valid-panels/triton-home",
+      "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R031/pmd-native-valid-panels/history.log",
       "OMP_NUM_THREADS": "1",
       "MKL_NUM_THREADS": "1",
       "OPENBLAS_NUM_THREADS": "1",
-      "GPU_OUT": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r031/measurement/g",
-      "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r031/measurement/cache",
-      "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r031/measurement/triton-home",
-      "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r031/measurement/history.log",
-      "RPY_HISTORY_SIZE": "1024"
+      "OPTALL_PMD_LEASE": "ff92a14f99fa4c698cc889d0aab0c64b",
+      "OPTALL_PREFLIGHT": "1"
     },
-    "runtime": {
+    "toolchain": {
       "torch": "2.6.0+d1e87ac",
       "triton": "3.6.0",
-      "triton_path": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10/triton/__init__.py",
-      "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3"
-    },
-    "gpu_configuration": {
-      "type": "Configuration",
-      "harvestmode": "0",
-      "numtccpipprocreturnbuf": "1",
-      "numtccpipesendwriteback": "1",
-      "sbcxcdcsselbit": "-1",
-      "tcchashrandom": "false",
-      "tcpforcemiss": "false",
-      "tcaarbgonum": "2",
-      "tcahashoutnum": "5",
-      "tcaholearbage": "false",
-      "tcaholefifoflopfifonum": "4",
-      "tcaholefifonum": "4",
-      "tcaholefifosize": "136",
-      "tcanumperdie": "2",
-      "tcardwrdatabusreuse": "false",
-      "tcausehashmod": "false",
-      "tccarbrecvrdreqfifodepth": "4",
-      "tccarbrecvwrreqfifodepth": "8",
-      "tccnotexencatowithlru": "true",
-      "tccpacksrtn": "true",
-      "tccsendreqtoeafifodepth": "1",
-      "tccsubbanknum": "3",
-      "tcctagwrthroughfifodepth": "24",
-      "tccvirtualfifominnum": "2",
-      "as_tcp": "false",
-      "co_issue_version": "2",
-      "device_id": "26295",
-      "dp4x_status": "false",
-      "dpm": "4",
-      "ds_encoding_version": "3",
-      "dual_issue_en": "false",
-      "early_ta_done_en": "true",
-      "early_vgpr_free_en": "false",
-      "ecc_off": "false",
-      "eco_info": "0",
-      "encoding_version": "3",
-      "eventq_index": "0",
-      "flat_addr_with_dp4x": "true",
-      "flat_lds_pingpong": "true",
-      "gpu_clock": "455",
-      "gpu_sys_id": "0",
-      "hack_utcl1": "false",
-      "has_m1": "true",
-      "hybrid_pte": "true",
-      "ibuf_size": "24",
-      "ipc_conn": "false",
-      "ipc_shm": "None",
-      "kfd_ioctl_minor_version": "9",
-      "lds_oa2sche_credit": "false",
-      "lds_addr_dis_autoalign": "false",
-      "lds_b64_dwx2": "false",
-      "lds_bank_num": "64",
-      "lds_bypass": "false",
-      "lds_cmdfifo_depth": "16",
-      "lds_input_num": "4",
-      "lds_min_alloc": "512",
-      "lds_no_bkc": "false",
-      "lds_out_dwx2": "true",
-      "lds_output_num": "2",
-      "lds_outputbuffer_depth": "16",
-      "lds_schepipe_depth": "5",
-      "lds_size": "131072",
-      "lds_spfifo_depth": "4",
-      "lds_spbuffer_depth": "64",
-      "lds_spf_cycle": "4",
-      "lsooo": "false",
-      "mem_size": "68719476736",
-      "mls_encoding_version": "3",
-      "mmop_clause": "false",
-      "mmop_co_trans_full_rate": "false",
-      "mmop_f16_i8_f8": "8",
-      "mmop_f32": "32",
-      "mmop_f64": "256",
-      "mmop_hi_prio_en": "false",
-      "mmop_i4": "16",
-      "mmop_x8f32": "64",
-      "mmu_base_paddr": "0",
-      "mmu_page_size": "2097152",
-      "mmu_partition_mode": "false",
-      "mvf_bypass": "false",
-      "no_bwc": "true",
-      "no_ebwc": "true",
-      "num_chip": "2",
-      "num_cu": "48",
-      "num_gpu": "1",
-      "num_se": "4",
-      "num_tcc": "32",
-      "page_size": "12",
-      "parallel": "false",
-      "scale_min_alloc": "256",
-      "scale_size": "8192",
-      "simds_per_cu": "4",
-      "skip_cal": "false",
-      "skip_kernel_exec": "false",
-      "soc_model": "false",
-      "soc_script": "configs/gpuShm.py",
-      "sp_num": "2",
-      "sp_to_gm_addr_bus_width": "64",
-      "sp_to_gm_data_bus_width": "64",
-      "split_vgpr_group": "false",
-      "sqtacmd_version": "1",
-      "sreg_file_size": "800",
-      "stride_cache_swizzle": "true",
-      "suspend_time_en": "false",
-      "sys_clock": "1000",
-      "ta_addr_fifo_size": "48",
-      "ta_channels_per_phase": "4",
-      "ta_cmd_fifo_size": "48",
-      "ta_data_fifo_size": "128",
-      "ta_dwords_per_phase": "16",
-      "tatd_bps_credit": "256",
-      "tatd_cmd_credit": "128",
-      "tatd_cycle_credit": "512",
-      "tcp_rand_latfifo": "false",
-      "transx": "2",
-      "tt_time_delta": "false",
-      "ttrace_version": "3",
-      "umc_clock": "2276",
-      "use_ds_m0": "false",
-      "use_ds_m1": "false",
-      "use_mmu": "false",
-      "utcl1_bigk": "true",
-      "utcl2": "simple",
-      "vgpr_min_alloc": "4",
-      "vreg_file_size": "512",
-      "wf_size": "64",
-      "work_with_cu_tester": "false",
-      "wrap_offset_version": "3",
-      "xcd_id_in_device": "0"
-    },
-    "model_configuration": {
-      "path": "pmd-config.json.gz",
-      "sha256": "b6bf1970fd39e8374271b4b77f76d9d99c073a0e5df6f28a419e27c8f64d727a"
+      "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3",
+      "clang_sha256": "4ff0c43a892b7e2e7ce8a96739852abc395916747c02db7fb055fc31182facbc"
     }
   },
   "benchmark": {
-    "script": "benchmark.py",
-    "sha256": "ba927f71d2e76ca1369a8d04de19672ffb129b8d45184b74dcba7289aa7e9eee",
+    "path": "benchmark.py",
+    "sha256": "344a636f6382ec152555ce4785a8f482ca5476d9a97f3c8bae8437b9e247bbc2",
     "seed": 21,
+    "timed_seed": 21,
     "repeats": 1,
-    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r031/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r031/2die/tt/record.json --output /tmp/r031-sbx2-full-new",
-    "measured_script_sha256": "767bae92ff03bcadf6e1b1717838f6ed1a625e5d7722a8cc830e9522131a6c87",
-    "publication_changes": "Embed frozen launch options; recover measured source from Git when needed; add optional independent single-TG PERF capture. Default full-grid protocol and published full-grid performance are preserved. Single-TG dry-run plan labels clarified after capture; executable measurement logic unchanged.",
-    "single_tg_measured_script_sha256": "e434fb3bf8d4ec28bf7ccb89094d3b860090f0f7c29b55d3396b62ea4e94232e"
+    "execution_warmups": 0,
+    "historical_runner_path": "tmp/optALL/R031/pmd-native-valid-panels/runner.snapshot.py",
+    "historical_runner_sha256": "cef80e2c6b0d864875bc48fb2a4999f750f228c4a062e177964ebc6664a05ff6",
+    "modifications": "Relocate source/job/import paths; add dry-run. R028 retains original two direct launches in benchmark, with no host interface in kernel.py.",
+    "job": {
+      "requirement": "R031",
+      "name": "pmd-native-valid-panels",
+      "shape": [
+        512,
+        151936,
+        4096
+      ],
+      "family": "persistent",
+      "source": "kernel.py",
+      "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+      "options": {
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 64,
+        "num_warps": 4,
+        "num_stages": 2,
+        "NUM_SMS": 96,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          16,
+          244,
+          244
+        ],
+        "wasp_wdra": true,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "mmac_layout_force": 2
+      },
+      "dispatches": 1,
+      "seed": 21,
+      "compiler_environment": {
+        "TRITON_BUFFER_CACHE_SWIZZLE": null,
+        "TRITON_MLS_B_INTERLEAVE": null
+      },
+      "baseline_dir": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R031/baseline"
+    },
+    "command": "python docs/ops/gemm/tuning/r031/2die/tt/benchmark.py --out /tmp/r031-replay",
+    "regenerate_command": "python docs/ops/gemm/tuning/r031/2die/tt/benchmark.py --regenerate /tmp/r031-artifacts",
+    "artifact_policy": "Only record.artifacts are published; raw measurement files live in TemporaryDirectory."
   },
   "resources": {
     "VGPR": 168,
     "spills": 0,
     "LDS_bytes": 131072
   },
-  "validation": [],
-  "samples": [
+  "validation": [
     {
       "index": 0,
-      "phase": "cold",
       "status": "PASS",
-      "kernel_cycles": 1903655.0,
-      "kernel_us": 866.1631029546794,
-      "completed_TGs": 96,
-      "completed_TGs_per_die": {
-        "system.shaders0": 48,
-        "system.shaders1": 48
-      },
-      "active_CUs_per_die": {
-        "system.shaders0": 48,
-        "system.shaders1": 48
-      },
-      "mmop_instructions": 77856768,
-      "gc_frequency_ghz": 2.197802,
-      "stats_path": "stats.txt.gz",
-      "stats_sha256": "13f9f3ae6203aec589c8a500ac52c3048c1cfbd97f7c49509fc383fa9f40d6b1",
       "accuracy": {
         "elements": 77791232,
         "outside_tolerance": 0,
         "nonfinite": 0,
         "max_abs": 0.25,
-        "canary_ok": true,
+        "canary": true,
         "inputs_byte_identical": true,
         "atol": 0.001,
         "rtol": 0.01,
-        "mean_abs_vs_fp32": 0.017987564574523274,
-        "rounding_floor": 0.017987561641214084
+        "mean_abs_vs_fp32": 0.017987564532793165,
+        "rounding_floor": 0.01798756159929319
       },
-      "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r031/measurement/g/0/0/stats.txt",
-      "stats_section": 0
+      "baseline_comparison": {
+        "elements": 77791232,
+        "bitwise_differences": 0,
+        "outside_tolerance": 0,
+        "max_abs": 0.0,
+        "baseline_sha256": "af5a27684e58dd810a07e4f756007fe0f68e0ad3b80e464101f85392c272420f",
+        "output_sha256": "af5a27684e58dd810a07e4f756007fe0f68e0ad3b80e464101f85392c272420f",
+        "atol": 0.001,
+        "rtol": 0.01
+      }
     }
   ],
-  "measurement_result_path": "tmp/1117/bf16_sbx2_20261117/r031/measurement/result.json",
-  "measurement_result_sha256": "061b118d47e8409c011e207a41107503a138c6cf62ae9495d51972b3f14bafc9",
-  "measured_at": "2026-11-18T01:35:23.614685+00:00",
+  "samples": [
+    {
+      "index": 0,
+      "phase": "cold",
+      "seed": 21,
+      "us": 851.216275,
+      "stages": [
+        {
+          "stats": "stats.txt.gz",
+          "stats_sha256": "1c750c808594978472e57efaa1de692b5685122d0551fb7ee05a6b6db16b8258",
+          "cycles": 1870805,
+          "us": 851.216275,
+          "tgs": 96,
+          "active_cus": 96,
+          "per_die": {
+            "system.shaders0": 48,
+            "system.shaders1": 48
+          },
+          "mmops": 77856768,
+          "raw_stats_path": "tmp/optALL/R031/pmd-native-valid-panels/g/0/0/stats.txt",
+          "stats_path": "stats.txt.gz",
+          "stats_section": 0
+        }
+      ],
+      "simulation_wall_seconds": 17964.10573201091,
+      "baseline_comparison": {
+        "elements": 77791232,
+        "bitwise_differences": 0,
+        "outside_tolerance": 0,
+        "max_abs": 0.0,
+        "baseline_sha256": "af5a27684e58dd810a07e4f756007fe0f68e0ad3b80e464101f85392c272420f",
+        "output_sha256": "af5a27684e58dd810a07e4f756007fe0f68e0ad3b80e464101f85392c272420f",
+        "atol": 0.001,
+        "rtol": 0.01
+      },
+      "accuracy": {
+        "elements": 77791232,
+        "outside_tolerance": 0,
+        "nonfinite": 0,
+        "max_abs": 0.25,
+        "canary": true,
+        "inputs_byte_identical": true,
+        "atol": 0.001,
+        "rtol": 0.01,
+        "mean_abs_vs_fp32": 0.017987564532793165,
+        "rounding_floor": 0.01798756159929319
+      },
+      "status": "PASS",
+      "kernel_us": 851.216275,
+      "kernel_cycles": 1870805,
+      "completed_TGs": 96,
+      "stats_path": "stats.txt.gz",
+      "stats_section": 0,
+      "stats_sha256": "1c750c808594978472e57efaa1de692b5685122d0551fb7ee05a6b6db16b8258",
+      "completed_TGs_per_die": {
+        "system.shaders0": 48,
+        "system.shaders1": 48
+      },
+      "mmop_instructions": 77856768
+    }
+  ],
+  "measurement_result_path": "tmp/optALL/R031/pmd-native-valid-panels/result.json",
+  "measurement_result_sha256": "15723d167fedb7b6290e0ab35a73cc492c0113b9337f083ba2828512d57f9e58",
+  "archived_measurement": {
+    "data": {
+      "status": "PASS",
+      "kernel_us": 851.216275,
+      "job": {
+        "requirement": "R031",
+        "name": "pmd-native-valid-panels",
+        "shape": [
+          512,
+          151936,
+          4096
+        ],
+        "family": "persistent",
+        "source": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R031/baseline-independent-review/native-panel-proposal/native-valid-panels.py",
+        "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+        "options": {
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "num_warps": 4,
+          "num_stages": 2,
+          "NUM_SMS": 96,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "wasp_wdra": true,
+          "enable_v_mmac_cluster": 2,
+          "hcu_use_gfx946_sched_model_v2": true,
+          "mmac_layout_force": 2
+        },
+        "dispatches": 1,
+        "seed": 21,
+        "compiler_environment": {
+          "TRITON_BUFFER_CACHE_SWIZZLE": null,
+          "TRITON_MLS_B_INTERLEAVE": null
+        },
+        "baseline_dir": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R031/baseline"
+      },
+      "samples": [
+        {
+          "index": 0,
+          "phase": "cold",
+          "seed": 21,
+          "us": 851.216275,
+          "stages": [
+            {
+              "stats": "g/0/0/stats.txt",
+              "stats_sha256": "1c750c808594978472e57efaa1de692b5685122d0551fb7ee05a6b6db16b8258",
+              "cycles": 1870805,
+              "us": 851.216275,
+              "tgs": 96,
+              "active_cus": 96,
+              "per_die": {
+                "system.shaders0": 48,
+                "system.shaders1": 48
+              },
+              "mmops": 77856768
+            }
+          ],
+          "simulation_wall_seconds": 17964.10573201091,
+          "baseline_comparison": {
+            "elements": 77791232,
+            "bitwise_differences": 0,
+            "outside_tolerance": 0,
+            "max_abs": 0.0,
+            "baseline_sha256": "af5a27684e58dd810a07e4f756007fe0f68e0ad3b80e464101f85392c272420f",
+            "output_sha256": "af5a27684e58dd810a07e4f756007fe0f68e0ad3b80e464101f85392c272420f",
+            "atol": 0.001,
+            "rtol": 0.01
+          },
+          "validation": {
+            "elements": 77791232,
+            "outside_tolerance": 0,
+            "nonfinite": 0,
+            "max_abs": 0.25,
+            "canary": true,
+            "inputs_byte_identical": true,
+            "atol": 0.001,
+            "rtol": 0.01,
+            "mean_abs_vs_fp32": 0.017987564532793165,
+            "rounding_floor": 0.01798756159929319
+          }
+        }
+      ],
+      "compiled": [
+        {
+          "name": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+          "shared": 131072,
+          "hsaco_sha256": "f2fd53c5264458d19583a73c3c8af4e997e07459d72e8a56a550b86805a24b66"
+        }
+      ],
+      "runner_sha256": "cef80e2c6b0d864875bc48fb2a4999f750f228c4a062e177964ebc6664a05ff6"
+    },
+    "original_sha256": "15723d167fedb7b6290e0ab35a73cc492c0113b9337f083ba2828512d57f9e58"
+  },
   "evidence": {
     "stats": {
       "path": "stats.txt.gz",
-      "sha256": "96aaef33e156390701074855fba304685b565ce6099069db9f625350bb416eeb",
+      "sha256": "f20914e59d1cfee440978d21871a1354a52568b36ad8f70e0b9683a56845f18d",
       "dispatches": 1,
-      "format": "Complete raw PMD statistics concatenated in validation-then-samples order; stats_section is a zero-based block index. Individual raw hashes remain in each sample."
+      "format": "Concatenated complete raw PMD stats in sample/stage order; stats_section is zero based; each stage retains its uncompressed raw hash."
     },
     "model_config": {
       "path": "pmd-config.json.gz",
-      "sha256": "b6bf1970fd39e8374271b4b77f76d9d99c073a0e5df6f28a419e27c8f64d727a"
+      "sha256": "877bf81613b0a84dd850cec8e32215dd5bada4cb07adbe9d4154b7a8dbd563e4",
+      "raw_sha256": "2f64ba27f449035b9c9c24ba9b5a8ced708a524c1d061b2ef291e2bf968d5088"
     },
-    "layout_reference": {
-      "branch": "origin/gemm",
-      "commit": "2ef6411e7c7f729d879e1a739c1d57082362d38d",
-      "path": "docs/ops/gemm/tuning/r011/2die/tn"
+    "single_tg_stats": {
+      "path": "perf_stats.txt.gz",
+      "sha256": "daf0eebf1d97f7bde3e66531f4d71e2b42f469489c6a18dcf74abaf755068563",
+      "dispatches": 1,
+      "stage_order": [
+        "gemm"
+      ]
     }
   },
   "single_tg_perf": {
+    "path": "single_tg.perf",
+    "sha256": "3b5fa6698d1604520992c22fcd5090b634550c871cb4aa3b913f89eb7567efd5",
+    "stage": "gemm",
+    "grid": [
+      1
+    ],
+    "scope": "Independent single TG capture; original MNK, strides and compile options are preserved. Full-grid performance is recorded separately.",
+    "repeat": 0,
+    "selection": "sole validated first capture; no warmup or minimum selection",
+    "kernel_cycles": 1808118,
+    "kernel_us": 822.69369,
+    "validation": {
+      "elements": 851968,
+      "outside_tolerance": 0,
+      "nonfinite": 0,
+      "max_abs": 0.25,
+      "unselected_output_nan": true,
+      "canary_ok": true,
+      "inputs_byte_identical": true,
+      "atol": 0.001,
+      "rtol": 0.01,
+      "mean_abs_vs_fp32": 0.017988344696172696,
+      "rounding_floor": 0.017988341727022298
+    },
+    "samples_validated": 1,
+    "samples": [
+      {
+        "repeat": 0,
+        "index": 0,
+        "phase": "capture",
+        "cycles": 1808118,
+        "us": 822.69369,
+        "stats_path": "perf_stats.txt.gz",
+        "stats_sha256": "5a4bdb79995d8dac7dfc3a41f62c900eb60ba394b4bf0b0ec6680086c48308c8",
+        "perf_path": "single_tg.perf",
+        "perf_sha256": "3b5fa6698d1604520992c22fcd5090b634550c871cb4aa3b913f89eb7567efd5",
+        "validation": {
+          "elements": 851968,
+          "outside_tolerance": 0,
+          "nonfinite": 0,
+          "max_abs": 0.25,
+          "unselected_output_nan": true,
+          "canary_ok": true,
+          "inputs_byte_identical": true,
+          "atol": 0.001,
+          "rtol": 0.01,
+          "mean_abs_vs_fp32": 0.017988344696172696,
+          "rounding_floor": 0.017988341727022298
+        },
+        "completed_TGs": 1,
+        "completed_TGs_per_die": {
+          "system.shaders0": 1,
+          "system.shaders1": 0
+        },
+        "mmop_instructions": 851968,
+        "embedded_hsaco_sha256": "f557f5b2ae45bbc507510e142400fe7223a75249d1fb297534ad5e59a658ac4f",
+        "embedded_hsaco_verified": true,
+        "traces": {
+          "1": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "0": {
+            "bytes": 10913190,
+            "sha256": "f176652287de7f8b430d03dde9416b8df82230be06f0771d32f27e08dec71158"
+          }
+        },
+        "simulation_wall_seconds": 883.9584829551168,
+        "original_runner_phase_label": "warmup",
+        "stats_section": 0,
+        "stats_offset_bytes": 0,
+        "stats_size_bytes": 6511771,
+        "raw_stats_path": "tmp/optALL-publication/compact-capture/R031/gemm/g/0/0/stats.txt",
+        "kernel_cycles": 1808118,
+        "kernel_us": 822.69369,
+        "status": "PASS",
+        "raw_perf_path": "tmp/optALL-publication/compact-capture/R031/gemm/g/0/0/834620_python3.10.perf"
+      }
+    ],
+    "full_and_single_text_rodata_equal": true,
+    "embedded_hsaco_verified": true,
+    "executable_sections": {
+      ".rodata": {
+        "size": 64,
+        "sha256": "8f2bb74b3d75e7de7e7e06a23ee59c8bbaa7d99d8da0b5596b7a3d6582d0092e"
+      },
+      ".text": {
+        "size": 12520,
+        "sha256": "73167810aad71e0e4b4a8c964aab44290caecbdf3d7f0fd936f264c6ab311349"
+      }
+    },
+    "capture_result_path": "tmp/optALL-publication/compact-capture/R031/gemm/result.json",
+    "capture_result_sha256": "abdffb0da4f660efa2492b108a97cf635861d72d3626bfc90dda13b645b8640e",
+    "seed": 59,
     "environment_overrides": {
       "GPU_DFLAGS": "['StatLog','TT0','Perf']",
       "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
     },
-    "path": "single_tg.perf",
-    "sha256": "f0e3ba8cc7db5980cda561fcc67e5043a29e700dfe549936e9238e841166305a",
-    "grid": [
-      1
+    "selected_regions": [
+      [
+        0,
+        0,
+        256,
+        256
+      ],
+      [
+        0,
+        24576,
+        256,
+        256
+      ],
+      [
+        0,
+        49152,
+        256,
+        256
+      ],
+      [
+        0,
+        73728,
+        256,
+        256
+      ],
+      [
+        0,
+        98304,
+        256,
+        256
+      ],
+      [
+        0,
+        122880,
+        256,
+        256
+      ],
+      [
+        0,
+        147456,
+        256,
+        256
+      ],
+      [
+        256,
+        19968,
+        256,
+        256
+      ],
+      [
+        256,
+        44544,
+        256,
+        256
+      ],
+      [
+        256,
+        69120,
+        256,
+        256
+      ],
+      [
+        256,
+        93696,
+        256,
+        256
+      ],
+      [
+        256,
+        118272,
+        256,
+        256
+      ],
+      [
+        256,
+        142848,
+        256,
+        256
+      ]
     ],
-    "scope": "Independent TG0 dispatch on the sbx2 device (2 dies / 96 CUs); original MNK, strides and compile options including NUM_SMS=96 when persistent. This PMD rotates the starting die between launches; each sample records the actual die/CU. Full-grid performance is independent of this capture.",
     "tile_ids": [
       0,
       96,
@@ -400,150 +647,794 @@
       1056,
       1152
     ],
-    "tiles_per_TG": 13,
-    "repeat": 2,
-    "selection": "minimum system.gcSimCycles of repeats 1 and 2; repeat 0 excluded",
-    "kernel_cycles": 1838205.0,
-    "kernel_us": 836.3833502745016,
-    "validation": {
-      "elements": 851968,
-      "unselected_output_nan": true,
-      "outside_tolerance": 0,
-      "nonfinite": 0,
-      "max_abs": 0.25,
-      "canary_ok": true,
-      "inputs_byte_identical": true,
-      "atol": 0.001,
-      "rtol": 0.01,
-      "mean_abs_vs_fp32": 0.01801245513100779,
-      "rounding_floor": 0.018012452143912363
-    },
-    "completed_TGs_per_die": {
-      "system.shaders0": 1,
-      "system.shaders1": 0
-    },
-    "active_CUs_per_die": {
-      "system.shaders0": 1,
-      "system.shaders1": 0
-    },
-    "samples_validated": 3,
-    "samples": [
-      {
-        "index": 0,
-        "phase": "warmup",
-        "status": "PASS",
-        "kernel_cycles": 1851130.0,
-        "kernel_us": 842.2642258037804,
-        "completed_TGs": 1,
-        "completed_TGs_per_die": {
-          "system.shaders0": 1,
-          "system.shaders1": 0
-        },
-        "active_CUs_per_die": {
-          "system.shaders0": 1,
-          "system.shaders1": 0
-        },
-        "mmop_instructions": 851968,
-        "gc_frequency_ghz": 2.197802,
-        "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/g/0/0/stats.txt",
-        "stats_sha256": "cd361b3fa9a917e0435322f0f1051d3b6be9dfc3b98a633547a96f2fba919d10",
-        "accuracy": {
-          "elements": 851968,
-          "unselected_output_nan": true,
-          "outside_tolerance": 0,
-          "nonfinite": 0,
-          "max_abs": 0.25,
-          "canary_ok": true,
-          "inputs_byte_identical": true,
-          "atol": 0.001,
-          "rtol": 0.01,
-          "mean_abs_vs_fp32": 0.01801245513100779,
-          "rounding_floor": 0.018012452143912363
-        },
-        "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/g/0/0/937764_python3.10.perf",
-        "repeat": 0
-      },
-      {
-        "index": 1,
-        "phase": "timed",
-        "status": "PASS",
-        "kernel_cycles": 1859343.0,
-        "kernel_us": 846.0011411401028,
-        "completed_TGs": 1,
-        "completed_TGs_per_die": {
-          "system.shaders0": 0,
-          "system.shaders1": 1
-        },
-        "active_CUs_per_die": {
-          "system.shaders0": 0,
-          "system.shaders1": 1
-        },
-        "mmop_instructions": 851968,
-        "gc_frequency_ghz": 2.197802,
-        "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/g/0/1/stats.txt",
-        "stats_sha256": "0210644155a0e341f1aac0f90af0b78f14f8fcba5660f336ca502637f9a893b3",
-        "accuracy": {
-          "elements": 851968,
-          "unselected_output_nan": true,
-          "outside_tolerance": 0,
-          "nonfinite": 0,
-          "max_abs": 0.25,
-          "canary_ok": true,
-          "inputs_byte_identical": true,
-          "atol": 0.001,
-          "rtol": 0.01,
-          "mean_abs_vs_fp32": 0.01801245513100779,
-          "rounding_floor": 0.018012452143912363
-        },
-        "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/g/0/1/937764_python3.10.perf",
-        "repeat": 1
-      },
-      {
-        "index": 2,
-        "phase": "timed",
-        "status": "PASS",
-        "kernel_cycles": 1838205.0,
-        "kernel_us": 836.3833502745016,
-        "completed_TGs": 1,
-        "completed_TGs_per_die": {
-          "system.shaders0": 1,
-          "system.shaders1": 0
-        },
-        "active_CUs_per_die": {
-          "system.shaders0": 1,
-          "system.shaders1": 0
-        },
-        "mmop_instructions": 851968,
-        "gc_frequency_ghz": 2.197802,
-        "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/g/0/2/stats.txt",
-        "stats_sha256": "be4845c8c972f286a92d735873c83534f30d4315be296c2d3a5830f03eee3bce",
-        "accuracy": {
-          "elements": 851968,
-          "unselected_output_nan": true,
-          "outside_tolerance": 0,
-          "nonfinite": 0,
-          "max_abs": 0.25,
-          "canary_ok": true,
-          "inputs_byte_identical": true,
-          "atol": 0.001,
-          "rtol": 0.01,
-          "mean_abs_vs_fp32": 0.01801245513100779,
-          "rounding_floor": 0.018012452143912363
-        },
-        "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/g/0/2/937764_python3.10.perf",
-        "repeat": 2
-      }
-    ],
-    "full_and_single_text_rodata_equal": true,
-    "launch_resources_equal": true,
-    "embedded_hsaco_verified": true,
-    "hsaco_sha256": "254197ded15eaf7641e83a508a991de80351009ae04db29eb030752c3af5aeed",
     "stats": {
       "path": "perf_stats.txt.gz",
-      "sha256": "34d19f3d5a478dbe97ffb6833a6b9f1a602c4584e0c3c681a3d1a820e8ab166a"
+      "sha256": "daf0eebf1d97f7bde3e66531f4d71e2b42f469489c6a18dcf74abaf755068563"
+    }
+  },
+  "history_reused": true,
+  "measurement_environment": {
+    "data": {
+      "job": {
+        "requirement": "R031",
+        "name": "pmd-native-valid-panels",
+        "shape": [
+          512,
+          151936,
+          4096
+        ],
+        "family": "persistent",
+        "source": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R031/baseline-independent-review/native-panel-proposal/native-valid-panels.py",
+        "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+        "options": {
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "num_warps": 4,
+          "num_stages": 2,
+          "NUM_SMS": 96,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "wasp_wdra": true,
+          "enable_v_mmac_cluster": 2,
+          "hcu_use_gfx946_sched_model_v2": true,
+          "mmac_layout_force": 2
+        },
+        "dispatches": 1,
+        "seed": 21,
+        "compiler_environment": {
+          "TRITON_BUFFER_CACHE_SWIZZLE": null,
+          "TRITON_MLS_B_INTERLEAVE": null
+        },
+        "baseline_dir": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R031/baseline"
+      },
+      "source_sha256": "168c984a26a144bcda1f9f9c0afc875d16d4c692a008de8605ff252225fdacf1",
+      "torch": "2.6.0+d1e87ac",
+      "triton": "3.6.0",
+      "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3",
+      "clang_sha256": "4ff0c43a892b7e2e7ce8a96739852abc395916747c02db7fb055fc31182facbc",
+      "environment": {
+        "GPU_CHIP": "sbx2",
+        "GPU_ARGS": "['--abs-max-tick=10000000000']",
+        "GPU_DFLAGS": "['StatLog']",
+        "AMDGCN_USE_BUFFER_OPS": "1",
+        "TRITON_BUFFER_CACHE_SWIZZLE": null,
+        "TRITON_MLS_B_INTERLEAVE": null,
+        "PMD_PATH": "/opt/rocm/pmd",
+        "PYTHONPATH": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10:",
+        "LD_LIBRARY_PATH": "/opt/rocm/lib",
+        "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang",
+        "GPU_OUT": "/tmp/optall-compute-4clolya0/g",
+        "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R031/pmd-native-valid-panels/cache",
+        "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R031/pmd-native-valid-panels/triton-home",
+        "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R031/pmd-native-valid-panels/history.log",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "OPTALL_PMD_LEASE": "ff92a14f99fa4c698cc889d0aab0c64b",
+        "OPTALL_PREFLIGHT": "1"
+      }
     },
-    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r031/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r031/2die/tt/record.json --output /tmp/r031-sbx2-single-tg-new --single-tg-perf",
-    "raw_result_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/result.json",
-    "raw_result_sha256": "979954246a8ae18b84b1737b5e8427a27b6666df82f2cbd00326afdabda29b2b"
+    "original_sha256": "b9fefd1b09a900f088374112dada3af35a2cdd65dfff90ea9884eeaa76419a0d"
+  },
+  "selection": {
+    "data": {
+      "requirement": "R031",
+      "status": "COMPLETE",
+      "shape": [
+        512,
+        151936,
+        4096
+      ],
+      "bound_us": 826.13,
+      "baseline": {
+        "us": 872.16493,
+        "run": "R031/baseline"
+      },
+      "best": {
+        "name": "pmd-native-valid-panels",
+        "us": 851.216275,
+        "run": "R031/pmd-native-valid-panels"
+      },
+      "trials": [
+        {
+          "name": "baseline",
+          "run": "R031/baseline",
+          "status": "PASS",
+          "job": "R031/baseline.job.json",
+          "us": 872.16493,
+          "baseline_compared": true,
+          "pmd_analysis": "R031/baseline/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 84.54777622545926,
+            "non_mmac_dispatch_us": 0,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 786432,
+                "mmop_max": 851968,
+                "work_balance": 0.9519230769230769
+              }
+            ]
+          },
+          "reason": "完整算子未提速；PMD逻辑MMAC利用率 84.55%（基线84.55%），非MMAC dispatch 0.000µs；计算CU/工作分布见pmd_summary。"
+        },
+        {
+          "name": "suggested-streamk",
+          "run": "R031/suggested-streamk",
+          "status": "PASS",
+          "job": "R031/suggested-streamk.job.json",
+          "us": 1078.88417,
+          "baseline_compared": true,
+          "pmd_analysis": "R031/suggested-streamk/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 68.3480278826719,
+            "non_mmac_dispatch_us": 4.64282,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 809984,
+                "mmop_max": 810496,
+                "work_balance": 0.9997894293535481
+              }
+            ]
+          },
+          "reason": "完整算子未提速；PMD逻辑MMAC利用率 68.35%（基线84.55%），非MMAC dispatch 4.643µs；计算CU/工作分布见pmd_summary。"
+        },
+        {
+          "name": "pmd-targeted",
+          "run": "R031/pmd-targeted",
+          "status": "PASS",
+          "job": "R031/pmd-targeted.job.json",
+          "us": 868.084035,
+          "baseline_compared": true,
+          "pmd_analysis": "R031/pmd-targeted/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 84.945238433435,
+            "non_mmac_dispatch_us": 0,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 786432,
+                "mmop_max": 851968,
+                "work_balance": 0.9519230769230769
+              }
+            ]
+          },
+          "reason": "正确且有提升，但完整算子耗时高于最终保留方案。"
+        },
+        {
+          "name": "pmd-native-valid-panels",
+          "run": "R031/pmd-native-valid-panels",
+          "status": "PASS",
+          "job": "R031/pmd-native-valid-panels.job.json",
+          "us": 851.216275,
+          "baseline_compared": true,
+          "pmd_analysis": "R031/pmd-native-valid-panels/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 86.62851909561213,
+            "non_mmac_dispatch_us": 0,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 786432,
+                "mmop_max": 851968,
+                "work_balance": 0.9519230769230769
+              }
+            ]
+          }
+        }
+      ],
+      "notes": "",
+      "protocol": {
+        "precision": "BF16",
+        "layout": "TT",
+        "chip": "sbx2",
+        "cu_count": 96,
+        "gc_period_ps": 455,
+        "dispatches": 1,
+        "warmups": 0,
+        "timed_repeats": 1,
+        "aggregation": "cold",
+        "timing": "sum(system.gcSimCycles)*455/1e6 µs across all native GPU dispatches; CPU reference and input/output copies excluded"
+      },
+      "gap_before_percent": 5.278236766525346,
+      "gap_after_percent": 2.9471094170514966,
+      "completion_evidence": {
+        "ready": true,
+        "pending": [],
+        "invalid_passes": [],
+        "unresolved_failures": [],
+        "failure_reviews": {},
+        "policy": "Only complete passing measurements, evidenced correctness/resource rejections, or identical passing recoveries can close a required compute trial."
+      }
+    },
+    "original_sha256": "8bcff48407eb2aedf8b1643894088bed47941b8dd01b6aba8fd6f250dea84c21"
+  },
+  "original_published_record": {
+    "data": {
+      "requirement": "R031",
+      "record_key": {
+        "requirement": "R031",
+        "dies": 2,
+        "layout": "TT"
+      },
+      "status": "PASS",
+      "shape": [
+        512,
+        151936,
+        4096
+      ],
+      "dtype": {
+        "A": "BF16",
+        "W": "BF16",
+        "output": "BF16",
+        "scale": null,
+        "accumulator": "FP32"
+      },
+      "layout": "TT",
+      "full_grid_TGs": 96,
+      "performance": {
+        "kernel_cycles": 1903655.0,
+        "kernel_us": 866.1631029546794,
+        "kernel_tops": 735.7341479568241,
+        "launched_TGs": 96,
+        "samples": 1,
+        "aggregation": "one cold full-grid dispatch; no minimum or median; no execution warmup",
+        "time_domain": "system.gcSimCycles/(gcFrequency_GHz*1000); complete dispatch"
+      },
+      "baseline_record": {
+        "path": "../../1die/tt/record.json",
+        "sha256": "9a76943e9540248802fb6a112b526effc0af925ced04829afda789e9bdf67fe5",
+        "kernel_us": 1642.0582927852465,
+        "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
+        "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/docs/ops/gemm/tuning/r031/1die/tt/record.json",
+        "note": "The comparison uses this immutable archived baseline; subsequent checkout tuning can change the current 1die record."
+      },
+      "comparison": {
+        "speedup": 1.8957841625714742,
+        "latency_change_percent": -47.251379152593884,
+        "note": "Comparison to the published 1die record; R001 published baseline used an older compiler environment."
+      },
+      "source": {
+        "path": "boltops/gemm/gluon/gemm_a16w16.py",
+        "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+        "sha256": "711f312aaaa064083e5cf822119248f24141c82631d3fe9a32895faaf305b847",
+        "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
+        "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py"
+      },
+      "config": {
+        "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=151936-K=4096-TT.json",
+        "sha256": "cf5b4512991873f066d2fbfaf159239e95fff222cefc2a1128f22e76091a86d3",
+        "profile": "DTYPE=bfloat16-OUT=bfloat16",
+        "bucket": "M_EQ_512",
+        "parameters": {
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "num_warps": 4,
+          "num_stages": 2,
+          "NUM_SMS": 96,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "wasp_wdra": true,
+          "enable_v_mmac_cluster": 2,
+          "hcu_use_gfx946_sched_model_v2": true,
+          "mmac_layout_force": 2,
+          "kernel": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel"
+        },
+        "runtime_overrides": {}
+      },
+      "launch": {
+        "grid": [
+          96
+        ],
+        "options": {
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "num_warps": 4,
+          "num_stages": 2,
+          "NUM_SMS": 96,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "wasp_wdra": true,
+          "enable_v_mmac_cluster": 2,
+          "hcu_use_gfx946_sched_model_v2": true,
+          "mmac_layout_force": 2,
+          "M": 512,
+          "N": 151936,
+          "K": 4096,
+          "B_K_CONTIGUOUS": false,
+          "FORCE_MASKED_STORE": false
+        },
+        "method": "Direct repository JIT; original tile/warp/stage options and kernel source; device CU count sets persistent NUM_SMS/grid."
+      },
+      "assembly": {
+        "path": "kernel.amdgcn",
+        "sha256": "18d749b325c50747a903fafa8d9cbe4cdaeddf49cec83fe81c1d723c30fb65fe",
+        "hsaco_sha256": "daf71a1cbe84e481b7245f84de89e298a6f0688fe46e612c9e71fa65ba0e32fb",
+        "matches_1die_assembly": false,
+        "executable_sections": {
+          ".rodata": {
+            "size": 64,
+            "sha256": "8f2bb74b3d75e7de7e7e06a23ee59c8bbaa7d99d8da0b5596b7a3d6582d0092e"
+          },
+          ".text": {
+            "size": 13280,
+            "sha256": "e7dd13d073e4f250ae7c20bd7d01c1e3dc95e266bf6aedf95ec5a588722d5bad"
+          }
+        }
+      },
+      "environment": {
+        "type": "PMD",
+        "chip": "sbx2",
+        "arch": "gfx946",
+        "dies": 2,
+        "cu_count": 96,
+        "cu_count_per_die": 48,
+        "reported_device_cu_count": 96,
+        "clock_period_ps": {
+          "gc": 455,
+          "shader": 455
+        },
+        "environment_script": "/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh",
+        "environment_variables": {
+          "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang",
+          "PMD_PATH": "/opt/rocm/pmd",
+          "PYTHONPATH": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10:",
+          "GPU_CHIP": "sbx2",
+          "LD_LIBRARY_PATH": "/opt/rocm/lib",
+          "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+          "GPU_ARGS": "['--abs-max-tick=10000000000']",
+          "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
+          "AMDGCN_USE_BUFFER_OPS": "1",
+          "OMP_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "GPU_OUT": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r031/measurement/g",
+          "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r031/measurement/cache",
+          "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r031/measurement/triton-home",
+          "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r031/measurement/history.log",
+          "RPY_HISTORY_SIZE": "1024"
+        },
+        "runtime": {
+          "torch": "2.6.0+d1e87ac",
+          "triton": "3.6.0",
+          "triton_path": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10/triton/__init__.py",
+          "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3"
+        },
+        "gpu_configuration": {
+          "type": "Configuration",
+          "harvestmode": "0",
+          "numtccpipprocreturnbuf": "1",
+          "numtccpipesendwriteback": "1",
+          "sbcxcdcsselbit": "-1",
+          "tcchashrandom": "false",
+          "tcpforcemiss": "false",
+          "tcaarbgonum": "2",
+          "tcahashoutnum": "5",
+          "tcaholearbage": "false",
+          "tcaholefifoflopfifonum": "4",
+          "tcaholefifonum": "4",
+          "tcaholefifosize": "136",
+          "tcanumperdie": "2",
+          "tcardwrdatabusreuse": "false",
+          "tcausehashmod": "false",
+          "tccarbrecvrdreqfifodepth": "4",
+          "tccarbrecvwrreqfifodepth": "8",
+          "tccnotexencatowithlru": "true",
+          "tccpacksrtn": "true",
+          "tccsendreqtoeafifodepth": "1",
+          "tccsubbanknum": "3",
+          "tcctagwrthroughfifodepth": "24",
+          "tccvirtualfifominnum": "2",
+          "as_tcp": "false",
+          "co_issue_version": "2",
+          "device_id": "26295",
+          "dp4x_status": "false",
+          "dpm": "4",
+          "ds_encoding_version": "3",
+          "dual_issue_en": "false",
+          "early_ta_done_en": "true",
+          "early_vgpr_free_en": "false",
+          "ecc_off": "false",
+          "eco_info": "0",
+          "encoding_version": "3",
+          "eventq_index": "0",
+          "flat_addr_with_dp4x": "true",
+          "flat_lds_pingpong": "true",
+          "gpu_clock": "455",
+          "gpu_sys_id": "0",
+          "hack_utcl1": "false",
+          "has_m1": "true",
+          "hybrid_pte": "true",
+          "ibuf_size": "24",
+          "ipc_conn": "false",
+          "ipc_shm": "None",
+          "kfd_ioctl_minor_version": "9",
+          "lds_oa2sche_credit": "false",
+          "lds_addr_dis_autoalign": "false",
+          "lds_b64_dwx2": "false",
+          "lds_bank_num": "64",
+          "lds_bypass": "false",
+          "lds_cmdfifo_depth": "16",
+          "lds_input_num": "4",
+          "lds_min_alloc": "512",
+          "lds_no_bkc": "false",
+          "lds_out_dwx2": "true",
+          "lds_output_num": "2",
+          "lds_outputbuffer_depth": "16",
+          "lds_schepipe_depth": "5",
+          "lds_size": "131072",
+          "lds_spfifo_depth": "4",
+          "lds_spbuffer_depth": "64",
+          "lds_spf_cycle": "4",
+          "lsooo": "false",
+          "mem_size": "68719476736",
+          "mls_encoding_version": "3",
+          "mmop_clause": "false",
+          "mmop_co_trans_full_rate": "false",
+          "mmop_f16_i8_f8": "8",
+          "mmop_f32": "32",
+          "mmop_f64": "256",
+          "mmop_hi_prio_en": "false",
+          "mmop_i4": "16",
+          "mmop_x8f32": "64",
+          "mmu_base_paddr": "0",
+          "mmu_page_size": "2097152",
+          "mmu_partition_mode": "false",
+          "mvf_bypass": "false",
+          "no_bwc": "true",
+          "no_ebwc": "true",
+          "num_chip": "2",
+          "num_cu": "48",
+          "num_gpu": "1",
+          "num_se": "4",
+          "num_tcc": "32",
+          "page_size": "12",
+          "parallel": "false",
+          "scale_min_alloc": "256",
+          "scale_size": "8192",
+          "simds_per_cu": "4",
+          "skip_cal": "false",
+          "skip_kernel_exec": "false",
+          "soc_model": "false",
+          "soc_script": "configs/gpuShm.py",
+          "sp_num": "2",
+          "sp_to_gm_addr_bus_width": "64",
+          "sp_to_gm_data_bus_width": "64",
+          "split_vgpr_group": "false",
+          "sqtacmd_version": "1",
+          "sreg_file_size": "800",
+          "stride_cache_swizzle": "true",
+          "suspend_time_en": "false",
+          "sys_clock": "1000",
+          "ta_addr_fifo_size": "48",
+          "ta_channels_per_phase": "4",
+          "ta_cmd_fifo_size": "48",
+          "ta_data_fifo_size": "128",
+          "ta_dwords_per_phase": "16",
+          "tatd_bps_credit": "256",
+          "tatd_cmd_credit": "128",
+          "tatd_cycle_credit": "512",
+          "tcp_rand_latfifo": "false",
+          "transx": "2",
+          "tt_time_delta": "false",
+          "ttrace_version": "3",
+          "umc_clock": "2276",
+          "use_ds_m0": "false",
+          "use_ds_m1": "false",
+          "use_mmu": "false",
+          "utcl1_bigk": "true",
+          "utcl2": "simple",
+          "vgpr_min_alloc": "4",
+          "vreg_file_size": "512",
+          "wf_size": "64",
+          "work_with_cu_tester": "false",
+          "wrap_offset_version": "3",
+          "xcd_id_in_device": "0"
+        },
+        "model_configuration": {
+          "path": "pmd-config.json.gz",
+          "sha256": "b6bf1970fd39e8374271b4b77f76d9d99c073a0e5df6f28a419e27c8f64d727a"
+        }
+      },
+      "benchmark": {
+        "script": "benchmark.py",
+        "sha256": "ba927f71d2e76ca1369a8d04de19672ffb129b8d45184b74dcba7289aa7e9eee",
+        "seed": 21,
+        "repeats": 1,
+        "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r031/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r031/2die/tt/record.json --output /tmp/r031-sbx2-full-new",
+        "measured_script_sha256": "767bae92ff03bcadf6e1b1717838f6ed1a625e5d7722a8cc830e9522131a6c87",
+        "publication_changes": "Embed frozen launch options; recover measured source from Git when needed; add optional independent single-TG PERF capture. Default full-grid protocol and published full-grid performance are preserved. Single-TG dry-run plan labels clarified after capture; executable measurement logic unchanged.",
+        "single_tg_measured_script_sha256": "e434fb3bf8d4ec28bf7ccb89094d3b860090f0f7c29b55d3396b62ea4e94232e"
+      },
+      "resources": {
+        "VGPR": 168,
+        "spills": 0,
+        "LDS_bytes": 131072
+      },
+      "validation": [],
+      "samples": [
+        {
+          "index": 0,
+          "phase": "cold",
+          "status": "PASS",
+          "kernel_cycles": 1903655.0,
+          "kernel_us": 866.1631029546794,
+          "completed_TGs": 96,
+          "completed_TGs_per_die": {
+            "system.shaders0": 48,
+            "system.shaders1": 48
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 48,
+            "system.shaders1": 48
+          },
+          "mmop_instructions": 77856768,
+          "gc_frequency_ghz": 2.197802,
+          "stats_path": "stats.txt.gz",
+          "stats_sha256": "13f9f3ae6203aec589c8a500ac52c3048c1cfbd97f7c49509fc383fa9f40d6b1",
+          "accuracy": {
+            "elements": 77791232,
+            "outside_tolerance": 0,
+            "nonfinite": 0,
+            "max_abs": 0.25,
+            "canary_ok": true,
+            "inputs_byte_identical": true,
+            "atol": 0.001,
+            "rtol": 0.01,
+            "mean_abs_vs_fp32": 0.017987564574523274,
+            "rounding_floor": 0.017987561641214084
+          },
+          "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r031/measurement/g/0/0/stats.txt",
+          "stats_section": 0
+        }
+      ],
+      "measurement_result_path": "tmp/1117/bf16_sbx2_20261117/r031/measurement/result.json",
+      "measurement_result_sha256": "061b118d47e8409c011e207a41107503a138c6cf62ae9495d51972b3f14bafc9",
+      "measured_at": "2026-11-18T01:35:23.614685+00:00",
+      "evidence": {
+        "stats": {
+          "path": "stats.txt.gz",
+          "sha256": "96aaef33e156390701074855fba304685b565ce6099069db9f625350bb416eeb",
+          "dispatches": 1,
+          "format": "Complete raw PMD statistics concatenated in validation-then-samples order; stats_section is a zero-based block index. Individual raw hashes remain in each sample."
+        },
+        "model_config": {
+          "path": "pmd-config.json.gz",
+          "sha256": "b6bf1970fd39e8374271b4b77f76d9d99c073a0e5df6f28a419e27c8f64d727a"
+        },
+        "layout_reference": {
+          "branch": "origin/gemm",
+          "commit": "2ef6411e7c7f729d879e1a739c1d57082362d38d",
+          "path": "docs/ops/gemm/tuning/r011/2die/tn"
+        }
+      },
+      "single_tg_perf": {
+        "environment_overrides": {
+          "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+          "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+        },
+        "path": "single_tg.perf",
+        "sha256": "f0e3ba8cc7db5980cda561fcc67e5043a29e700dfe549936e9238e841166305a",
+        "grid": [
+          1
+        ],
+        "scope": "Independent TG0 dispatch on the sbx2 device (2 dies / 96 CUs); original MNK, strides and compile options including NUM_SMS=96 when persistent. This PMD rotates the starting die between launches; each sample records the actual die/CU. Full-grid performance is independent of this capture.",
+        "tile_ids": [
+          0,
+          96,
+          192,
+          288,
+          384,
+          480,
+          576,
+          672,
+          768,
+          864,
+          960,
+          1056,
+          1152
+        ],
+        "tiles_per_TG": 13,
+        "repeat": 2,
+        "selection": "minimum system.gcSimCycles of repeats 1 and 2; repeat 0 excluded",
+        "kernel_cycles": 1838205.0,
+        "kernel_us": 836.3833502745016,
+        "validation": {
+          "elements": 851968,
+          "unselected_output_nan": true,
+          "outside_tolerance": 0,
+          "nonfinite": 0,
+          "max_abs": 0.25,
+          "canary_ok": true,
+          "inputs_byte_identical": true,
+          "atol": 0.001,
+          "rtol": 0.01,
+          "mean_abs_vs_fp32": 0.01801245513100779,
+          "rounding_floor": 0.018012452143912363
+        },
+        "completed_TGs_per_die": {
+          "system.shaders0": 1,
+          "system.shaders1": 0
+        },
+        "active_CUs_per_die": {
+          "system.shaders0": 1,
+          "system.shaders1": 0
+        },
+        "samples_validated": 3,
+        "samples": [
+          {
+            "index": 0,
+            "phase": "warmup",
+            "status": "PASS",
+            "kernel_cycles": 1851130.0,
+            "kernel_us": 842.2642258037804,
+            "completed_TGs": 1,
+            "completed_TGs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "active_CUs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "mmop_instructions": 851968,
+            "gc_frequency_ghz": 2.197802,
+            "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/g/0/0/stats.txt",
+            "stats_sha256": "cd361b3fa9a917e0435322f0f1051d3b6be9dfc3b98a633547a96f2fba919d10",
+            "accuracy": {
+              "elements": 851968,
+              "unselected_output_nan": true,
+              "outside_tolerance": 0,
+              "nonfinite": 0,
+              "max_abs": 0.25,
+              "canary_ok": true,
+              "inputs_byte_identical": true,
+              "atol": 0.001,
+              "rtol": 0.01,
+              "mean_abs_vs_fp32": 0.01801245513100779,
+              "rounding_floor": 0.018012452143912363
+            },
+            "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/g/0/0/937764_python3.10.perf",
+            "repeat": 0
+          },
+          {
+            "index": 1,
+            "phase": "timed",
+            "status": "PASS",
+            "kernel_cycles": 1859343.0,
+            "kernel_us": 846.0011411401028,
+            "completed_TGs": 1,
+            "completed_TGs_per_die": {
+              "system.shaders0": 0,
+              "system.shaders1": 1
+            },
+            "active_CUs_per_die": {
+              "system.shaders0": 0,
+              "system.shaders1": 1
+            },
+            "mmop_instructions": 851968,
+            "gc_frequency_ghz": 2.197802,
+            "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/g/0/1/stats.txt",
+            "stats_sha256": "0210644155a0e341f1aac0f90af0b78f14f8fcba5660f336ca502637f9a893b3",
+            "accuracy": {
+              "elements": 851968,
+              "unselected_output_nan": true,
+              "outside_tolerance": 0,
+              "nonfinite": 0,
+              "max_abs": 0.25,
+              "canary_ok": true,
+              "inputs_byte_identical": true,
+              "atol": 0.001,
+              "rtol": 0.01,
+              "mean_abs_vs_fp32": 0.01801245513100779,
+              "rounding_floor": 0.018012452143912363
+            },
+            "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/g/0/1/937764_python3.10.perf",
+            "repeat": 1
+          },
+          {
+            "index": 2,
+            "phase": "timed",
+            "status": "PASS",
+            "kernel_cycles": 1838205.0,
+            "kernel_us": 836.3833502745016,
+            "completed_TGs": 1,
+            "completed_TGs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "active_CUs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "mmop_instructions": 851968,
+            "gc_frequency_ghz": 2.197802,
+            "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/g/0/2/stats.txt",
+            "stats_sha256": "be4845c8c972f286a92d735873c83534f30d4315be296c2d3a5830f03eee3bce",
+            "accuracy": {
+              "elements": 851968,
+              "unselected_output_nan": true,
+              "outside_tolerance": 0,
+              "nonfinite": 0,
+              "max_abs": 0.25,
+              "canary_ok": true,
+              "inputs_byte_identical": true,
+              "atol": 0.001,
+              "rtol": 0.01,
+              "mean_abs_vs_fp32": 0.01801245513100779,
+              "rounding_floor": 0.018012452143912363
+            },
+            "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/g/0/2/937764_python3.10.perf",
+            "repeat": 2
+          }
+        ],
+        "full_and_single_text_rodata_equal": true,
+        "launch_resources_equal": true,
+        "embedded_hsaco_verified": true,
+        "hsaco_sha256": "254197ded15eaf7641e83a508a991de80351009ae04db29eb030752c3af5aeed",
+        "stats": {
+          "path": "perf_stats.txt.gz",
+          "sha256": "34d19f3d5a478dbe97ffb6833a6b9f1a602c4584e0c3c681a3d1a820e8ab166a"
+        },
+        "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r031/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r031/2die/tt/record.json --output /tmp/r031-sbx2-single-tg-new --single-tg-perf",
+        "raw_result_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r031/result.json",
+        "raw_result_sha256": "979954246a8ae18b84b1737b5e8427a27b6666df82f2cbd00326afdabda29b2b"
+      }
+    },
+    "original_sha256": "47605bff1b07cb1c9c186ab66e10760f8ce35dbc30564f83db68686aab300915",
+    "note": "Previous published record, embedded for provenance only."
+  },
+  "artifacts": [
+    "benchmark.py",
+    "kernel.amdgcn",
+    "perf_stats.txt.gz",
+    "pmd-config.json.gz",
+    "record.json",
+    "single_tg.perf",
+    "stats.txt.gz",
+    "kernel.py"
+  ],
+  "artifact_policy": {
+    "exact": true,
+    "kernel_source": "kernel.py",
+    "working_files": "Temporary workspace outside the output directory; automatically removed.",
+    "regeneration": "benchmark.py --regenerate OUTPUT copies and verifies only this artifact list."
+  },
+  "artifact_sha256": {
+    "benchmark.py": "344a636f6382ec152555ce4785a8f482ca5476d9a97f3c8bae8437b9e247bbc2",
+    "kernel.amdgcn": "b76bbeef98074bf9ac394a5d9dfa24ae461cd27a5e2b17e9769b079e1be4d72f",
+    "perf_stats.txt.gz": "daf0eebf1d97f7bde3e66531f4d71e2b42f469489c6a18dcf74abaf755068563",
+    "pmd-config.json.gz": "877bf81613b0a84dd850cec8e32215dd5bada4cb07adbe9d4154b7a8dbd563e4",
+    "single_tg.perf": "3b5fa6698d1604520992c22fcd5090b634550c871cb4aa3b913f89eb7567efd5",
+    "stats.txt.gz": "f20914e59d1cfee440978d21871a1354a52568b36ad8f70e0b9683a56845f18d",
+    "kernel.py": "4a542e2c0ea2cbfd12fd0c6b3218b62507acb79420e858ceda21d74ac3a5b68c"
   }
 }

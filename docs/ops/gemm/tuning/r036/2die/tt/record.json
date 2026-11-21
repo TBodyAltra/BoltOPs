@@ -21,39 +21,37 @@
   "layout": "TT",
   "full_grid_TGs": 96,
   "performance": {
-    "kernel_cycles": 666939.0,
-    "kernel_us": 303.45727231115455,
-    "kernel_tops": 707.0643382175851,
+    "kernel_cycles": 652571,
+    "kernel_us": 296.919805,
+    "kernel_tops": 722.6322118324172,
     "launched_TGs": 96,
+    "total_TGs_per_sample": 96,
+    "dispatches_per_sample": 1,
     "samples": 1,
-    "aggregation": "one cold full-grid dispatch; no minimum or median; no execution warmup",
-    "time_domain": "system.gcSimCycles/(gcFrequency_GHz*1000); complete dispatch"
+    "aggregation": "one cold full-grid sample",
+    "time_domain": "sum(all full-grid dispatch system.gcSimCycles) * 455 / 1e6, microseconds"
   },
   "baseline_record": {
-    "path": "../../1die/tt/record.json",
-    "sha256": "29817fc76815f43d91aa3921e95d6a788b82907b8886d7dce8bfb7880589fb5c",
-    "kernel_us": 586.8090028128104,
-    "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/docs/ops/gemm/tuning/r036/1die/tt/record.json",
-    "note": "The comparison uses this immutable archived baseline; subsequent checkout tuning can change the current 1die record."
+    "path": "../../../../../../../tmp/optALL/R036/baseline/result.json",
+    "sha256": "5c9900b68e2e8355704b69a6fcb173a54bf434cd36aa1d82e5685d27386ac83f",
+    "kernel_us": 303.212455,
+    "note": "Matched local optALL baseline with the same measurement protocol; previous published record is embedded in original_published_record."
   },
   "comparison": {
-    "speedup": 1.93374506514089,
-    "latency_change_percent": -48.28687514053765,
-    "note": "Comparison to the published 1die record; R001 published baseline used an older compiler environment."
+    "speedup": 1.0211930962301419,
+    "latency_change_percent": -2.0753270178165972
   },
   "source": {
-    "path": "boltops/gemm/gluon/gemm_a16w16.py",
+    "path": "docs/ops/gemm/tuning/r036/2die/tt/kernel.py",
     "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
-    "sha256": "711f312aaaa064083e5cf822119248f24141c82631d3fe9a32895faaf305b847",
-    "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py"
+    "sha256": "e5af374d3ab2d6b561a87acef3ba799f39611d2f5c8f873e4c3112ed3c03199e",
+    "language": "Gluon",
+    "historical_source_path": "tmp/optALL/R036/pmd-tail-store/candidate.snapshot.py",
+    "historical_source_sha256": "832912a573be674e13cd3934c1f41741c03de85713c833f38c2dde9a572745bb",
+    "kernel_function_ast_equal_to_historical_source": true,
+    "post_compile_assembly_patch": false
   },
   "config": {
-    "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=4608-TT.json",
-    "sha256": "0ac234bc26b83fc248d0f82f25104aa6320557862a1ff75758711d86988a71aa",
-    "profile": "DTYPE=bfloat16-OUT=bfloat16",
-    "bucket": "M_EQ_5684",
     "parameters": {
       "BLOCK_SIZE_M": 256,
       "BLOCK_SIZE_N": 256,
@@ -74,10 +72,8 @@
       "wasp_wdra": true,
       "enable_v_mmac_cluster": 2,
       "hcu_use_gfx946_sched_model_v2": true,
-      "mmac_layout_force": 2,
-      "kernel": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel"
-    },
-    "runtime_overrides": {}
+      "mmac_layout_force": 2
+    }
   },
   "launch": {
     "grid": [
@@ -103,30 +99,44 @@
       "wasp_wdra": true,
       "enable_v_mmac_cluster": 2,
       "hcu_use_gfx946_sched_model_v2": true,
-      "mmac_layout_force": 2,
-      "M": 5684,
-      "N": 4096,
-      "K": 4608,
-      "B_K_CONTIGUOUS": false,
-      "FORCE_MASKED_STORE": false
+      "mmac_layout_force": 2
     },
-    "method": "Direct repository JIT; original tile/warp/stage options and kernel source; device CU count sets persistent NUM_SMS/grid."
+    "method": "Direct JIT of local kernel.py with historical launch parameters and all dispatches timed"
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "964747b1ef4c4fb3395017fb09e6ac30e11235df54ffde97db38883a2939392b",
-    "hsaco_sha256": "50b98fe9358b73472a66f89c7eb86827a9de8750127bf0d4848721c41c4aed84",
-    "matches_1die_assembly": false,
+    "sha256": "85338811eaf6d042beaec927dcb7541975bc0de7665ffed5f7dbe16f1bb312d2",
+    "hsaco_sha256": "d8308c8d8d631e68e1cebb27726d8d74b075d92345670c87779b2873fa8287d6",
     "executable_sections": {
       ".rodata": {
         "size": 64,
         "sha256": "9eea979b9bdeae08ea710c5b6561c502461918253fb90826450199149ce68d8a"
       },
       ".text": {
-        "size": 17684,
-        "sha256": "582907081a65421dd5e84d0aa2fd35ae69af7104fa072ab0a97c8fc02ad25f39"
+        "size": 19208,
+        "sha256": "8e3d041be4894afd015de418d64e57ed60d2059403bf3d0af0c75f27decb5637"
       }
-    }
+    },
+    "compilation_units": [
+      {
+        "stage": "gemm",
+        "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+        "offset_bytes": 0,
+        "size_bytes": 321879,
+        "sha256": "85338811eaf6d042beaec927dcb7541975bc0de7665ffed5f7dbe16f1bb312d2",
+        "hsaco_sha256": "d8308c8d8d631e68e1cebb27726d8d74b075d92345670c87779b2873fa8287d6",
+        "executable_sections": {
+          ".rodata": {
+            "size": 64,
+            "sha256": "9eea979b9bdeae08ea710c5b6561c502461918253fb90826450199149ce68d8a"
+          },
+          ".text": {
+            "size": 19208,
+            "sha256": "8e3d041be4894afd015de418d64e57ed60d2059403bf3d0af0c75f27decb5637"
+          }
+        }
+      }
+    ]
   },
   "environment": {
     "type": "PMD",
@@ -142,399 +152,2757 @@
     },
     "environment_script": "/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh",
     "environment_variables": {
-      "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang",
+      "GPU_CHIP": "sbx2",
+      "GPU_ARGS": "['--abs-max-tick=10000000000']",
+      "GPU_DFLAGS": "['StatLog']",
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
       "PMD_PATH": "/opt/rocm/pmd",
       "PYTHONPATH": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10:",
-      "GPU_CHIP": "sbx2",
       "LD_LIBRARY_PATH": "/opt/rocm/lib",
-      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
-      "GPU_ARGS": "['--abs-max-tick=10000000000']",
-      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
-      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang",
+      "GPU_OUT": "/tmp/optall-compute-9t4un8qo/g",
+      "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/pmd-tail-store/cache",
+      "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/pmd-tail-store/triton-home",
+      "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/pmd-tail-store/history.log",
       "OMP_NUM_THREADS": "1",
       "MKL_NUM_THREADS": "1",
       "OPENBLAS_NUM_THREADS": "1",
-      "GPU_OUT": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r036/measurement/g",
-      "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r036/measurement/cache",
-      "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r036/measurement/triton-home",
-      "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r036/measurement/history.log",
-      "RPY_HISTORY_SIZE": "1024"
+      "OPTALL_PMD_LEASE": "20ce08d8d51d4f2490269f752a67fe52",
+      "OPTALL_PREFLIGHT": "1"
     },
-    "runtime": {
+    "toolchain": {
       "torch": "2.6.0+d1e87ac",
       "triton": "3.6.0",
-      "triton_path": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10/triton/__init__.py",
-      "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3"
-    },
-    "gpu_configuration": {
-      "type": "Configuration",
-      "harvestmode": "0",
-      "numtccpipprocreturnbuf": "1",
-      "numtccpipesendwriteback": "1",
-      "sbcxcdcsselbit": "-1",
-      "tcchashrandom": "false",
-      "tcpforcemiss": "false",
-      "tcaarbgonum": "2",
-      "tcahashoutnum": "5",
-      "tcaholearbage": "false",
-      "tcaholefifoflopfifonum": "4",
-      "tcaholefifonum": "4",
-      "tcaholefifosize": "136",
-      "tcanumperdie": "2",
-      "tcardwrdatabusreuse": "false",
-      "tcausehashmod": "false",
-      "tccarbrecvrdreqfifodepth": "4",
-      "tccarbrecvwrreqfifodepth": "8",
-      "tccnotexencatowithlru": "true",
-      "tccpacksrtn": "true",
-      "tccsendreqtoeafifodepth": "1",
-      "tccsubbanknum": "3",
-      "tcctagwrthroughfifodepth": "24",
-      "tccvirtualfifominnum": "2",
-      "as_tcp": "false",
-      "co_issue_version": "2",
-      "device_id": "26295",
-      "dp4x_status": "false",
-      "dpm": "4",
-      "ds_encoding_version": "3",
-      "dual_issue_en": "false",
-      "early_ta_done_en": "true",
-      "early_vgpr_free_en": "false",
-      "ecc_off": "false",
-      "eco_info": "0",
-      "encoding_version": "3",
-      "eventq_index": "0",
-      "flat_addr_with_dp4x": "true",
-      "flat_lds_pingpong": "true",
-      "gpu_clock": "455",
-      "gpu_sys_id": "0",
-      "hack_utcl1": "false",
-      "has_m1": "true",
-      "hybrid_pte": "true",
-      "ibuf_size": "24",
-      "ipc_conn": "false",
-      "ipc_shm": "None",
-      "kfd_ioctl_minor_version": "9",
-      "lds_oa2sche_credit": "false",
-      "lds_addr_dis_autoalign": "false",
-      "lds_b64_dwx2": "false",
-      "lds_bank_num": "64",
-      "lds_bypass": "false",
-      "lds_cmdfifo_depth": "16",
-      "lds_input_num": "4",
-      "lds_min_alloc": "512",
-      "lds_no_bkc": "false",
-      "lds_out_dwx2": "true",
-      "lds_output_num": "2",
-      "lds_outputbuffer_depth": "16",
-      "lds_schepipe_depth": "5",
-      "lds_size": "131072",
-      "lds_spfifo_depth": "4",
-      "lds_spbuffer_depth": "64",
-      "lds_spf_cycle": "4",
-      "lsooo": "false",
-      "mem_size": "68719476736",
-      "mls_encoding_version": "3",
-      "mmop_clause": "false",
-      "mmop_co_trans_full_rate": "false",
-      "mmop_f16_i8_f8": "8",
-      "mmop_f32": "32",
-      "mmop_f64": "256",
-      "mmop_hi_prio_en": "false",
-      "mmop_i4": "16",
-      "mmop_x8f32": "64",
-      "mmu_base_paddr": "0",
-      "mmu_page_size": "2097152",
-      "mmu_partition_mode": "false",
-      "mvf_bypass": "false",
-      "no_bwc": "true",
-      "no_ebwc": "true",
-      "num_chip": "2",
-      "num_cu": "48",
-      "num_gpu": "1",
-      "num_se": "4",
-      "num_tcc": "32",
-      "page_size": "12",
-      "parallel": "false",
-      "scale_min_alloc": "256",
-      "scale_size": "8192",
-      "simds_per_cu": "4",
-      "skip_cal": "false",
-      "skip_kernel_exec": "false",
-      "soc_model": "false",
-      "soc_script": "configs/gpuShm.py",
-      "sp_num": "2",
-      "sp_to_gm_addr_bus_width": "64",
-      "sp_to_gm_data_bus_width": "64",
-      "split_vgpr_group": "false",
-      "sqtacmd_version": "1",
-      "sreg_file_size": "800",
-      "stride_cache_swizzle": "true",
-      "suspend_time_en": "false",
-      "sys_clock": "1000",
-      "ta_addr_fifo_size": "48",
-      "ta_channels_per_phase": "4",
-      "ta_cmd_fifo_size": "48",
-      "ta_data_fifo_size": "128",
-      "ta_dwords_per_phase": "16",
-      "tatd_bps_credit": "256",
-      "tatd_cmd_credit": "128",
-      "tatd_cycle_credit": "512",
-      "tcp_rand_latfifo": "false",
-      "transx": "2",
-      "tt_time_delta": "false",
-      "ttrace_version": "3",
-      "umc_clock": "2276",
-      "use_ds_m0": "false",
-      "use_ds_m1": "false",
-      "use_mmu": "false",
-      "utcl1_bigk": "true",
-      "utcl2": "simple",
-      "vgpr_min_alloc": "4",
-      "vreg_file_size": "512",
-      "wf_size": "64",
-      "work_with_cu_tester": "false",
-      "wrap_offset_version": "3",
-      "xcd_id_in_device": "0"
-    },
-    "model_configuration": {
-      "path": "pmd-config.json.gz",
-      "sha256": "d949c32858652b576db73dd6cec069a4405d6b67135a23601c94bcaf0a87a438"
+      "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3",
+      "clang_sha256": "4ff0c43a892b7e2e7ce8a96739852abc395916747c02db7fb055fc31182facbc"
     }
   },
   "benchmark": {
-    "script": "benchmark.py",
-    "sha256": "ba927f71d2e76ca1369a8d04de19672ffb129b8d45184b74dcba7289aa7e9eee",
+    "path": "benchmark.py",
+    "sha256": "c27b1583a622a83e6ee0a6d69f1cfaadfcea1dcc318374b9f5fe91bc641ae627",
     "seed": 21,
+    "timed_seed": 21,
     "repeats": 1,
-    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r036/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r036/2die/tt/record.json --output /tmp/r036-sbx2-full-new",
-    "measured_script_sha256": "767bae92ff03bcadf6e1b1717838f6ed1a625e5d7722a8cc830e9522131a6c87",
-    "publication_changes": "Embed frozen launch options; recover measured source from Git when needed; add optional independent single-TG PERF capture. Default full-grid protocol and published full-grid performance are preserved. Single-TG dry-run plan labels clarified after capture; executable measurement logic unchanged.",
-    "single_tg_measured_script_sha256": "e434fb3bf8d4ec28bf7ccb89094d3b860090f0f7c29b55d3396b62ea4e94232e"
+    "execution_warmups": 0,
+    "historical_runner_path": "tmp/optALL/R036/pmd-tail-store/runner.snapshot.py",
+    "historical_runner_sha256": "17811104e9eb956192e7501c0822a136b874610e6f531fd6750af93e08cb870a",
+    "modifications": "Relocate source/job/import paths; add dry-run. R028 retains original two direct launches in benchmark, with no host interface in kernel.py.",
+    "job": {
+      "requirement": "R036",
+      "name": "pmd-tail-store",
+      "shape": [
+        5684,
+        4096,
+        4608
+      ],
+      "family": "persistent",
+      "source": "kernel.py",
+      "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+      "options": {
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 64,
+        "num_warps": 4,
+        "num_stages": 2,
+        "NUM_SMS": 96,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          16,
+          244,
+          244
+        ],
+        "wasp_wdra": true,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "mmac_layout_force": 2
+      },
+      "dispatches": 1,
+      "seed": 21,
+      "compiler_environment": {
+        "TRITON_BUFFER_CACHE_SWIZZLE": null,
+        "TRITON_MLS_B_INTERLEAVE": null
+      },
+      "baseline_dir": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/baseline"
+    },
+    "command": "python docs/ops/gemm/tuning/r036/2die/tt/benchmark.py --out /tmp/r036-replay",
+    "regenerate_command": "python docs/ops/gemm/tuning/r036/2die/tt/benchmark.py --regenerate /tmp/r036-artifacts",
+    "artifact_policy": "Only record.artifacts are published; raw measurement files live in TemporaryDirectory."
   },
   "resources": {
     "VGPR": 168,
     "spills": 0,
     "LDS_bytes": 131072
   },
-  "validation": [],
-  "samples": [
+  "validation": [
     {
       "index": 0,
-      "phase": "cold",
       "status": "PASS",
-      "kernel_cycles": 666939.0,
-      "kernel_us": 303.45727231115455,
-      "completed_TGs": 96,
-      "completed_TGs_per_die": {
-        "system.shaders0": 48,
-        "system.shaders1": 48
-      },
-      "active_CUs_per_die": {
-        "system.shaders0": 48,
-        "system.shaders1": 48
-      },
-      "mmop_instructions": 27131904,
-      "gc_frequency_ghz": 2.197802,
-      "stats_path": "stats.txt.gz",
-      "stats_sha256": "5e0dd4ecbdde006edf6623626806cffbea0e62b5700521d92f3358525a5f9e21",
       "accuracy": {
         "elements": 23281664,
         "outside_tolerance": 0,
         "nonfinite": 0,
         "max_abs": 0.25,
-        "canary_ok": true,
+        "canary": true,
         "inputs_byte_identical": true,
         "atol": 0.001,
         "rtol": 0.01,
-        "mean_abs_vs_fp32": 0.0190847857203036,
-        "rounding_floor": 0.01908478220225969
+        "mean_abs_vs_fp32": 0.01908478556582295,
+        "rounding_floor": 0.019084782055226526
       },
-      "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r036/measurement/g/0/0/stats.txt",
-      "stats_section": 0
+      "baseline_comparison": {
+        "elements": 23281664,
+        "bitwise_differences": 0,
+        "outside_tolerance": 0,
+        "max_abs": 0.0,
+        "baseline_sha256": "a193ccb86889f6d22e633c5fef6a31bd8b8f8eded4d64a8f113037b56a295e8e",
+        "output_sha256": "a193ccb86889f6d22e633c5fef6a31bd8b8f8eded4d64a8f113037b56a295e8e",
+        "atol": 0.001,
+        "rtol": 0.01
+      }
     }
   ],
-  "measurement_result_path": "tmp/1117/bf16_sbx2_20261117/r036/measurement/result.json",
-  "measurement_result_sha256": "79788c48900f77b55d0211e892cafac33b3805256e7f4d95043d9b7f564362f1",
-  "measured_at": "2026-11-17T11:18:33.918073+00:00",
+  "samples": [
+    {
+      "index": 0,
+      "phase": "cold",
+      "seed": 21,
+      "us": 296.919805,
+      "stages": [
+        {
+          "stats": "stats.txt.gz",
+          "stats_sha256": "8530b583b19578cd66a27837a18b5c700bde9ef1168c8de798b0ad8177f0340a",
+          "cycles": 652571,
+          "us": 296.919805,
+          "tgs": 96,
+          "active_cus": 96,
+          "per_die": {
+            "system.shaders0": 48,
+            "system.shaders1": 48
+          },
+          "mmops": 27131904,
+          "raw_stats_path": "tmp/optALL/R036/pmd-tail-store/g/0/0/stats.txt",
+          "stats_path": "stats.txt.gz",
+          "stats_section": 0
+        }
+      ],
+      "simulation_wall_seconds": 5880.49929767102,
+      "baseline_comparison": {
+        "elements": 23281664,
+        "bitwise_differences": 0,
+        "outside_tolerance": 0,
+        "max_abs": 0.0,
+        "baseline_sha256": "a193ccb86889f6d22e633c5fef6a31bd8b8f8eded4d64a8f113037b56a295e8e",
+        "output_sha256": "a193ccb86889f6d22e633c5fef6a31bd8b8f8eded4d64a8f113037b56a295e8e",
+        "atol": 0.001,
+        "rtol": 0.01
+      },
+      "accuracy": {
+        "elements": 23281664,
+        "outside_tolerance": 0,
+        "nonfinite": 0,
+        "max_abs": 0.25,
+        "canary": true,
+        "inputs_byte_identical": true,
+        "atol": 0.001,
+        "rtol": 0.01,
+        "mean_abs_vs_fp32": 0.01908478556582295,
+        "rounding_floor": 0.019084782055226526
+      },
+      "status": "PASS",
+      "kernel_us": 296.919805,
+      "kernel_cycles": 652571,
+      "completed_TGs": 96,
+      "stats_path": "stats.txt.gz",
+      "stats_section": 0,
+      "stats_sha256": "8530b583b19578cd66a27837a18b5c700bde9ef1168c8de798b0ad8177f0340a",
+      "completed_TGs_per_die": {
+        "system.shaders0": 48,
+        "system.shaders1": 48
+      },
+      "mmop_instructions": 27131904
+    }
+  ],
+  "measurement_result_path": "tmp/optALL/R036/pmd-tail-store/result.json",
+  "measurement_result_sha256": "e1f1deff71ec8b9c706dd8e8768c577ee130f3e91d32f9f3251b9d7981d45c5e",
+  "archived_measurement": {
+    "data": {
+      "status": "PASS",
+      "kernel_us": 296.919805,
+      "job": {
+        "requirement": "R036",
+        "name": "pmd-tail-store",
+        "shape": [
+          5684,
+          4096,
+          4608
+        ],
+        "family": "persistent",
+        "source": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/sources/persistent_tail_store.py",
+        "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+        "options": {
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "num_warps": 4,
+          "num_stages": 2,
+          "NUM_SMS": 96,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "wasp_wdra": true,
+          "enable_v_mmac_cluster": 2,
+          "hcu_use_gfx946_sched_model_v2": true,
+          "mmac_layout_force": 2
+        },
+        "dispatches": 1,
+        "seed": 21,
+        "compiler_environment": {
+          "TRITON_BUFFER_CACHE_SWIZZLE": null,
+          "TRITON_MLS_B_INTERLEAVE": null
+        },
+        "baseline_dir": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/baseline"
+      },
+      "samples": [
+        {
+          "index": 0,
+          "phase": "cold",
+          "seed": 21,
+          "us": 296.919805,
+          "stages": [
+            {
+              "stats": "g/0/0/stats.txt",
+              "stats_sha256": "8530b583b19578cd66a27837a18b5c700bde9ef1168c8de798b0ad8177f0340a",
+              "cycles": 652571,
+              "us": 296.919805,
+              "tgs": 96,
+              "active_cus": 96,
+              "per_die": {
+                "system.shaders0": 48,
+                "system.shaders1": 48
+              },
+              "mmops": 27131904
+            }
+          ],
+          "simulation_wall_seconds": 5880.49929767102,
+          "baseline_comparison": {
+            "elements": 23281664,
+            "bitwise_differences": 0,
+            "outside_tolerance": 0,
+            "max_abs": 0.0,
+            "baseline_sha256": "a193ccb86889f6d22e633c5fef6a31bd8b8f8eded4d64a8f113037b56a295e8e",
+            "output_sha256": "a193ccb86889f6d22e633c5fef6a31bd8b8f8eded4d64a8f113037b56a295e8e",
+            "atol": 0.001,
+            "rtol": 0.01
+          },
+          "validation": {
+            "elements": 23281664,
+            "outside_tolerance": 0,
+            "nonfinite": 0,
+            "max_abs": 0.25,
+            "canary": true,
+            "inputs_byte_identical": true,
+            "atol": 0.001,
+            "rtol": 0.01,
+            "mean_abs_vs_fp32": 0.01908478556582295,
+            "rounding_floor": 0.019084782055226526
+          }
+        }
+      ],
+      "compiled": [
+        {
+          "name": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+          "shared": 131072,
+          "hsaco_sha256": "d8308c8d8d631e68e1cebb27726d8d74b075d92345670c87779b2873fa8287d6"
+        }
+      ],
+      "runner_sha256": "17811104e9eb956192e7501c0822a136b874610e6f531fd6750af93e08cb870a"
+    },
+    "original_sha256": "e1f1deff71ec8b9c706dd8e8768c577ee130f3e91d32f9f3251b9d7981d45c5e"
+  },
   "evidence": {
     "stats": {
       "path": "stats.txt.gz",
-      "sha256": "e6561ed03b37aa85767db228cdbb56cee1275e31c2e4ea4a6eeca14c380bd5de",
+      "sha256": "9d2caef3f2503eb647d051476c05dedda4568f4aa786f513a40e3ba9d2bfb153",
       "dispatches": 1,
-      "format": "Complete raw PMD statistics concatenated in validation-then-samples order; stats_section is a zero-based block index. Individual raw hashes remain in each sample."
+      "format": "Concatenated complete raw PMD stats in sample/stage order; stats_section is zero based; each stage retains its uncompressed raw hash."
     },
     "model_config": {
       "path": "pmd-config.json.gz",
-      "sha256": "d949c32858652b576db73dd6cec069a4405d6b67135a23601c94bcaf0a87a438"
+      "sha256": "05b02acfa3f8141bbce990feb50c13bf0a4d7c356a771e2467d7fee3d522972d",
+      "raw_sha256": "183176e3174097c813041e34256116e0cc712125675479aa84602835837a05ce"
     },
-    "layout_reference": {
-      "branch": "origin/gemm",
-      "commit": "2ef6411e7c7f729d879e1a739c1d57082362d38d",
-      "path": "docs/ops/gemm/tuning/r011/2die/tn"
+    "single_tg_stats": {
+      "path": "perf_stats.txt.gz",
+      "sha256": "0a152f9388fb241d8fa0e98820549086f99e14ea2156a2468ae2f7c97ae3c734",
+      "dispatches": 1,
+      "stage_order": [
+        "gemm"
+      ]
     }
   },
   "single_tg_perf": {
+    "path": "single_tg.perf",
+    "sha256": "c5fa75ccf6c3cc417eafecd2d22d64005e85e350ef1e11eeb167d2d56bbdcbdd",
+    "stage": "gemm",
+    "grid": [
+      1
+    ],
+    "scope": "Independent single TG capture; original MNK, strides and compile options are preserved. Full-grid performance is recorded separately.",
+    "repeat": 0,
+    "selection": "sole validated capture; no warmup or minimum selection",
+    "kernel_cycles": 635968,
+    "kernel_us": 289.36544,
+    "validation": {
+      "elements": 262144,
+      "outside_tolerance": 0,
+      "nonfinite": 0,
+      "max_abs": 0.125,
+      "unselected_output_nan": true,
+      "canary_ok": true,
+      "inputs_byte_identical": true,
+      "atol": 0.001,
+      "rtol": 0.01,
+      "mean_abs_vs_fp32": 0.01910498470095945,
+      "rounding_floor": 0.0191049820488729
+    },
+    "samples_validated": 1,
+    "samples": [
+      {
+        "repeat": 0,
+        "index": 0,
+        "phase": "capture",
+        "cycles": 635968,
+        "us": 289.36544,
+        "stats_path": "perf_stats.txt.gz",
+        "stats_sha256": "16da77cf43308d2d9dc7e647757c87cc0c90c856c96499f9b96363065377850c",
+        "perf_path": "single_tg.perf",
+        "perf_sha256": "c5fa75ccf6c3cc417eafecd2d22d64005e85e350ef1e11eeb167d2d56bbdcbdd",
+        "validation": {
+          "elements": 262144,
+          "outside_tolerance": 0,
+          "nonfinite": 0,
+          "max_abs": 0.125,
+          "unselected_output_nan": true,
+          "canary_ok": true,
+          "inputs_byte_identical": true,
+          "atol": 0.001,
+          "rtol": 0.01,
+          "mean_abs_vs_fp32": 0.01910498470095945,
+          "rounding_floor": 0.0191049820488729
+        },
+        "completed_TGs": 1,
+        "completed_TGs_per_die": {
+          "system.shaders0": 1,
+          "system.shaders1": 0
+        },
+        "mmop_instructions": 294912,
+        "embedded_hsaco_sha256": "d26b044d2d8129ee58f171443478efa9644555f77c64e3a96e9335badbbac080",
+        "embedded_hsaco_verified": true,
+        "traces": {
+          "1": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "0": {
+            "bytes": 3799996,
+            "sha256": "d462d39925bb8189246f5a6cf5fd4c22b21660c4b38c0dc7bd6f6c5fcbc30982"
+          }
+        },
+        "simulation_wall_seconds": 230.32477786694653,
+        "stats_section": 0,
+        "stats_offset_bytes": 0,
+        "stats_size_bytes": 6511771,
+        "raw_stats_path": "tmp/optALL-publication/compact-capture/R036/gemm/g/0/0/stats.txt",
+        "kernel_cycles": 635968,
+        "kernel_us": 289.36544,
+        "status": "PASS",
+        "raw_perf_path": "tmp/optALL-publication/compact-capture/R036/gemm/g/0/0/849241_python3.10.perf"
+      }
+    ],
+    "full_and_single_text_rodata_equal": true,
+    "embedded_hsaco_verified": true,
+    "executable_sections": {
+      ".rodata": {
+        "size": 64,
+        "sha256": "9eea979b9bdeae08ea710c5b6561c502461918253fb90826450199149ce68d8a"
+      },
+      ".text": {
+        "size": 19208,
+        "sha256": "8e3d041be4894afd015de418d64e57ed60d2059403bf3d0af0c75f27decb5637"
+      }
+    },
+    "capture_result_path": "tmp/optALL-publication/compact-capture/R036/gemm/result.json",
+    "capture_result_sha256": "3c1f470ef37ab0461b1697b5242f6c9b91bcb1a7ceef1181a9dd145897421b97",
+    "seed": 59,
     "environment_overrides": {
       "GPU_DFLAGS": "['StatLog','TT0','Perf']",
       "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
     },
-    "path": "single_tg.perf",
-    "sha256": "045d5b9a1984f0fa53d29bf0ff7921c67c9448f4aea09c1f34abf08c83be456a",
-    "grid": [
-      1
+    "selected_regions": [
+      [
+        0,
+        0,
+        256,
+        256
+      ],
+      [
+        1536,
+        0,
+        256,
+        256
+      ],
+      [
+        3072,
+        0,
+        256,
+        256
+      ],
+      [
+        4608,
+        0,
+        256,
+        256
+      ]
     ],
-    "scope": "Independent TG0 dispatch on the sbx2 device (2 dies / 96 CUs); original MNK, strides and compile options including NUM_SMS=96 when persistent. This PMD rotates the starting die between launches; each sample records the actual die/CU. Full-grid performance is independent of this capture.",
     "tile_ids": [
       0,
       96,
       192,
       288
     ],
-    "tiles_per_TG": 4,
-    "repeat": 2,
-    "selection": "minimum system.gcSimCycles of repeats 1 and 2; repeat 0 excluded",
-    "kernel_cycles": 644569.0,
-    "kernel_us": 293.27892139510294,
-    "validation": {
-      "elements": 262144,
-      "unselected_output_nan": true,
-      "outside_tolerance": 0,
-      "nonfinite": 0,
-      "max_abs": 0.125,
-      "canary_ok": true,
-      "inputs_byte_identical": true,
-      "atol": 0.001,
-      "rtol": 0.01,
-      "mean_abs_vs_fp32": 0.019109795981734123,
-      "rounding_floor": 0.019109793085902993
-    },
-    "completed_TGs_per_die": {
-      "system.shaders0": 1,
-      "system.shaders1": 0
-    },
-    "active_CUs_per_die": {
-      "system.shaders0": 1,
-      "system.shaders1": 0
-    },
-    "samples_validated": 3,
-    "samples": [
-      {
-        "index": 0,
-        "phase": "warmup",
-        "status": "PASS",
-        "kernel_cycles": 662209.0,
-        "kernel_us": 301.30512211746105,
-        "completed_TGs": 1,
-        "completed_TGs_per_die": {
-          "system.shaders0": 1,
-          "system.shaders1": 0
-        },
-        "active_CUs_per_die": {
-          "system.shaders0": 1,
-          "system.shaders1": 0
-        },
-        "mmop_instructions": 294912,
-        "gc_frequency_ghz": 2.197802,
-        "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/g/0/0/stats.txt",
-        "stats_sha256": "06a5b181d87b3106059b3da73dd82b7de967a56358220844177077ab91a71095",
-        "accuracy": {
-          "elements": 262144,
-          "unselected_output_nan": true,
-          "outside_tolerance": 0,
-          "nonfinite": 0,
-          "max_abs": 0.125,
-          "canary_ok": true,
-          "inputs_byte_identical": true,
-          "atol": 0.001,
-          "rtol": 0.01,
-          "mean_abs_vs_fp32": 0.019109795981734123,
-          "rounding_floor": 0.019109793085902993
-        },
-        "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/g/0/0/939345_python3.10.perf",
-        "repeat": 0
-      },
-      {
-        "index": 1,
-        "phase": "timed",
-        "status": "PASS",
-        "kernel_cycles": 666865.0,
-        "kernel_us": 303.42360230812426,
-        "completed_TGs": 1,
-        "completed_TGs_per_die": {
-          "system.shaders0": 0,
-          "system.shaders1": 1
-        },
-        "active_CUs_per_die": {
-          "system.shaders0": 0,
-          "system.shaders1": 1
-        },
-        "mmop_instructions": 294912,
-        "gc_frequency_ghz": 2.197802,
-        "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/g/0/1/stats.txt",
-        "stats_sha256": "74c37325b3fbb10bb77ed83ea1216fe15d58ada4c98f39bd34f8f1d023c25b18",
-        "accuracy": {
-          "elements": 262144,
-          "unselected_output_nan": true,
-          "outside_tolerance": 0,
-          "nonfinite": 0,
-          "max_abs": 0.125,
-          "canary_ok": true,
-          "inputs_byte_identical": true,
-          "atol": 0.001,
-          "rtol": 0.01,
-          "mean_abs_vs_fp32": 0.019109795981734123,
-          "rounding_floor": 0.019109793085902993
-        },
-        "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/g/0/1/939345_python3.10.perf",
-        "repeat": 1
-      },
-      {
-        "index": 2,
-        "phase": "timed",
-        "status": "PASS",
-        "kernel_cycles": 644569.0,
-        "kernel_us": 293.27892139510294,
-        "completed_TGs": 1,
-        "completed_TGs_per_die": {
-          "system.shaders0": 1,
-          "system.shaders1": 0
-        },
-        "active_CUs_per_die": {
-          "system.shaders0": 1,
-          "system.shaders1": 0
-        },
-        "mmop_instructions": 294912,
-        "gc_frequency_ghz": 2.197802,
-        "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/g/0/2/stats.txt",
-        "stats_sha256": "9a7e660bab1ce4e5f4e154a4aa6c3a8ac359fb023323a4d3dba730eaa21b1cc3",
-        "accuracy": {
-          "elements": 262144,
-          "unselected_output_nan": true,
-          "outside_tolerance": 0,
-          "nonfinite": 0,
-          "max_abs": 0.125,
-          "canary_ok": true,
-          "inputs_byte_identical": true,
-          "atol": 0.001,
-          "rtol": 0.01,
-          "mean_abs_vs_fp32": 0.019109795981734123,
-          "rounding_floor": 0.019109793085902993
-        },
-        "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/g/0/2/939345_python3.10.perf",
-        "repeat": 2
-      }
-    ],
-    "full_and_single_text_rodata_equal": true,
-    "launch_resources_equal": true,
-    "embedded_hsaco_verified": true,
-    "hsaco_sha256": "17663cb317eb2223998c4330efec2b6a08eabffb2bffb1bc6cd361284b7bb5f5",
     "stats": {
       "path": "perf_stats.txt.gz",
-      "sha256": "3e15addc71bfc5ee8dd145d7d71971ec53c65e796cac8082ef9702dcad25efed"
+      "sha256": "0a152f9388fb241d8fa0e98820549086f99e14ea2156a2468ae2f7c97ae3c734"
+    }
+  },
+  "history_reused": true,
+  "measurement_environment": {
+    "data": {
+      "job": {
+        "requirement": "R036",
+        "name": "pmd-tail-store",
+        "shape": [
+          5684,
+          4096,
+          4608
+        ],
+        "family": "persistent",
+        "source": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/sources/persistent_tail_store.py",
+        "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+        "options": {
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "num_warps": 4,
+          "num_stages": 2,
+          "NUM_SMS": 96,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "wasp_wdra": true,
+          "enable_v_mmac_cluster": 2,
+          "hcu_use_gfx946_sched_model_v2": true,
+          "mmac_layout_force": 2
+        },
+        "dispatches": 1,
+        "seed": 21,
+        "compiler_environment": {
+          "TRITON_BUFFER_CACHE_SWIZZLE": null,
+          "TRITON_MLS_B_INTERLEAVE": null
+        },
+        "baseline_dir": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/baseline"
+      },
+      "source_sha256": "832912a573be674e13cd3934c1f41741c03de85713c833f38c2dde9a572745bb",
+      "torch": "2.6.0+d1e87ac",
+      "triton": "3.6.0",
+      "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3",
+      "clang_sha256": "4ff0c43a892b7e2e7ce8a96739852abc395916747c02db7fb055fc31182facbc",
+      "environment": {
+        "GPU_CHIP": "sbx2",
+        "GPU_ARGS": "['--abs-max-tick=10000000000']",
+        "GPU_DFLAGS": "['StatLog']",
+        "AMDGCN_USE_BUFFER_OPS": "1",
+        "TRITON_BUFFER_CACHE_SWIZZLE": null,
+        "TRITON_MLS_B_INTERLEAVE": null,
+        "PMD_PATH": "/opt/rocm/pmd",
+        "PYTHONPATH": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10:",
+        "LD_LIBRARY_PATH": "/opt/rocm/lib",
+        "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang",
+        "GPU_OUT": "/tmp/optall-compute-9t4un8qo/g",
+        "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/pmd-tail-store/cache",
+        "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/pmd-tail-store/triton-home",
+        "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/pmd-tail-store/history.log",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "OPTALL_PMD_LEASE": "20ce08d8d51d4f2490269f752a67fe52",
+        "OPTALL_PREFLIGHT": "1"
+      }
     },
-    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r036/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r036/2die/tt/record.json --output /tmp/r036-sbx2-single-tg-new --single-tg-perf",
-    "raw_result_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/result.json",
-    "raw_result_sha256": "0d250454f54a7d2d369fd1823dfb02c35aa4b058241ca5ad0cc8ee11264df343"
+    "original_sha256": "23ec703c3163ac68b908b4c38371b35f09312e06f0dc94e9178f842c4b852d99"
+  },
+  "selection": {
+    "data": {
+      "requirement": "R036",
+      "status": "COMPLETE",
+      "shape": [
+        5684,
+        4096,
+        4608
+      ],
+      "bound_us": 290.23,
+      "baseline": {
+        "us": 303.212455,
+        "run": "R036/baseline"
+      },
+      "best": {
+        "name": "pmd-tail-store",
+        "us": 296.919805,
+        "run": "R036/pmd-tail-store"
+      },
+      "trials": [
+        {
+          "name": "baseline",
+          "run": "R036/baseline",
+          "status": "PASS",
+          "job": "R036/baseline.job.json",
+          "us": 303.212455,
+          "baseline_compared": true,
+          "pmd_analysis": "R036/baseline/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 81.88223006868238,
+            "non_mmac_dispatch_us": 0,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 221184,
+                "mmop_max": 294912,
+                "work_balance": 0.9583333333333334
+              }
+            ]
+          },
+          "reason": "完整算子未提速；PMD逻辑MMAC利用率 81.88%（基线81.88%），非MMAC dispatch 0.000µs；计算CU/工作分布见pmd_summary。",
+          "acceptance": "acceptance.json",
+          "performance_eligible": true
+        },
+        {
+          "name": "suggested-streamk",
+          "run": "R036/suggested-streamk",
+          "status": "PASS",
+          "job": "R036/suggested-streamk.job.json",
+          "us": 656.421675,
+          "baseline_compared": true,
+          "pmd_analysis": "R036/suggested-streamk/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 37.82280955302093,
+            "non_mmac_dispatch_us": 12.148045,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 282624,
+                "mmop_max": 282624,
+                "work_balance": 1.0
+              }
+            ]
+          },
+          "reason": "完整算子未提速；PMD逻辑MMAC利用率 37.82%（基线81.88%），非MMAC dispatch 12.148µs；计算CU/工作分布见pmd_summary。",
+          "acceptance": "acceptance.json",
+          "performance_eligible": true
+        },
+        {
+          "name": "pmd-narrow256x128",
+          "run": "R036/pmd-narrow256x128",
+          "status": "PASS",
+          "job": "R036/pmd-narrow256x128.job.json",
+          "us": 457.37601,
+          "baseline_compared": true,
+          "pmd_analysis": "R036/pmd-narrow256x128/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 54.28293451595767,
+            "non_mmac_dispatch_us": 0,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 258048,
+                "mmop_max": 294912,
+                "work_balance": 0.9583333333333334
+              }
+            ]
+          },
+          "reason": "完整算子未提速；PMD逻辑MMAC利用率 54.28%（基线81.88%），非MMAC dispatch 0.000µs；计算CU/工作分布见pmd_summary。",
+          "acceptance": "acceptance.json",
+          "performance_eligible": true
+        },
+        {
+          "name": "pmd-group4",
+          "run": "R036/pmd-group4",
+          "status": "PASS",
+          "job": "R036/pmd-group4.job.json",
+          "us": 307.476715,
+          "baseline_compared": true,
+          "pmd_analysis": "R036/pmd-group4/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 80.7466412537938,
+            "non_mmac_dispatch_us": 0,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 221184,
+                "mmop_max": 294912,
+                "work_balance": 0.9583333333333334
+              }
+            ]
+          },
+          "reason": "完整算子未提速；PMD逻辑MMAC利用率 80.75%（基线81.88%），非MMAC dispatch 0.000µs；计算CU/工作分布见pmd_summary。",
+          "acceptance": "acceptance.json",
+          "performance_eligible": true
+        },
+        {
+          "name": "pmd-tail-store",
+          "run": "R036/pmd-tail-store",
+          "status": "PASS",
+          "job": "R036/pmd-tail-store.job.json",
+          "us": 296.919805,
+          "baseline_compared": true,
+          "pmd_analysis": "R036/pmd-tail-store/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 83.61756805006658,
+            "non_mmac_dispatch_us": 0,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 221184,
+                "mmop_max": 294912,
+                "work_balance": 0.9583333333333334
+              }
+            ]
+          },
+          "acceptance": "acceptance.json",
+          "performance_eligible": true
+        }
+      ],
+      "notes": "",
+      "protocol": {
+        "precision": "BF16",
+        "layout": "TT",
+        "chip": "sbx2",
+        "cu_count": 96,
+        "gc_period_ps": 455,
+        "dispatches": 1,
+        "warmups": 0,
+        "timed_repeats": 1,
+        "aggregation": "cold",
+        "timing": "sum(system.gcSimCycles)*455/1e6 µs across all native GPU dispatches; CPU reference and input/output copies excluded"
+      },
+      "gap_before_percent": 4.28163645190629,
+      "gap_after_percent": 2.2530679622398297,
+      "completion_evidence": {
+        "ready": true,
+        "pending": [],
+        "invalid_passes": [],
+        "unresolved_failures": [],
+        "failure_reviews": {},
+        "policy": "Only complete passing measurements, evidenced correctness/resource rejections, or identical passing recoveries can close a required compute trial."
+      },
+      "launch": {
+        "status": "GATE_STARTED",
+        "case": "R036",
+        "gate_pid": 4014617,
+        "launcher_pid": 4014428,
+        "command": [
+          "nohup",
+          "/usr/bin/python",
+          "-u",
+          "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/pmd_gate.py",
+          "--case",
+          "R036",
+          "--",
+          "/usr/bin/python",
+          "-u",
+          "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/run.py"
+        ],
+        "cwd": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune",
+        "started_at": 1795171325.7709343,
+        "start_new_session": true,
+        "stdin": "DEVNULL",
+        "stdout": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/gate.log",
+        "wall_timeout": null,
+        "capacity_change": false,
+        "environment_script": "/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh",
+        "prelaunch_live": [],
+        "live": false
+      },
+      "local_environment": "local-environment.json",
+      "source_manifest": "source-manifest.json",
+      "dedicated_runner": "compute_runner.py",
+      "queue": "run.py",
+      "controller_protocol": "cold1 seed21, no wall-clock timeout, no numerical failures eligible for performance selection",
+      "historical_us": 303.45727231115455,
+      "baseline_kind": "Actual local same-environment reproduction; historical latency is reference only",
+      "pmd_decision": {
+        "trigger": "Document Stream-K did not improve the correct local full-operator cold time",
+        "baseline_us": 303.212455,
+        "raw_profiles": {
+          "baseline": [
+            {
+              "stats": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/baseline/g/0/0/stats.txt",
+              "stats_sha256": "13e4ba6225449763e41d4c012d1341bb788079e38f7e0b7572e363b3d3ff6b2a",
+              "cycles": 666401,
+              "us": 303.212455,
+              "completed_tgs": 96,
+              "active_cus": 96,
+              "tgs_per_die": {
+                "system.shaders0": 48,
+                "system.shaders1": 48
+              },
+              "completed_tgs_per_cu": {
+                "system.shaders0.CUs00": 1,
+                "system.shaders0.CUs01": 1,
+                "system.shaders0.CUs02": 1,
+                "system.shaders0.CUs03": 1,
+                "system.shaders0.CUs04": 1,
+                "system.shaders0.CUs05": 1,
+                "system.shaders0.CUs06": 1,
+                "system.shaders0.CUs07": 1,
+                "system.shaders0.CUs08": 1,
+                "system.shaders0.CUs09": 1,
+                "system.shaders0.CUs10": 1,
+                "system.shaders0.CUs11": 1,
+                "system.shaders0.CUs12": 1,
+                "system.shaders0.CUs13": 1,
+                "system.shaders0.CUs14": 1,
+                "system.shaders0.CUs15": 1,
+                "system.shaders0.CUs16": 1,
+                "system.shaders0.CUs17": 1,
+                "system.shaders0.CUs18": 1,
+                "system.shaders0.CUs19": 1,
+                "system.shaders0.CUs20": 1,
+                "system.shaders0.CUs21": 1,
+                "system.shaders0.CUs22": 1,
+                "system.shaders0.CUs23": 1,
+                "system.shaders0.CUs24": 1,
+                "system.shaders0.CUs25": 1,
+                "system.shaders0.CUs26": 1,
+                "system.shaders0.CUs27": 1,
+                "system.shaders0.CUs28": 1,
+                "system.shaders0.CUs29": 1,
+                "system.shaders0.CUs30": 1,
+                "system.shaders0.CUs31": 1,
+                "system.shaders0.CUs32": 1,
+                "system.shaders0.CUs33": 1,
+                "system.shaders0.CUs34": 1,
+                "system.shaders0.CUs35": 1,
+                "system.shaders0.CUs36": 1,
+                "system.shaders0.CUs37": 1,
+                "system.shaders0.CUs38": 1,
+                "system.shaders0.CUs39": 1,
+                "system.shaders0.CUs40": 1,
+                "system.shaders0.CUs41": 1,
+                "system.shaders0.CUs42": 1,
+                "system.shaders0.CUs43": 1,
+                "system.shaders0.CUs44": 1,
+                "system.shaders0.CUs45": 1,
+                "system.shaders0.CUs46": 1,
+                "system.shaders0.CUs47": 1,
+                "system.shaders1.CUs00": 1,
+                "system.shaders1.CUs01": 1,
+                "system.shaders1.CUs02": 1,
+                "system.shaders1.CUs03": 1,
+                "system.shaders1.CUs04": 1,
+                "system.shaders1.CUs05": 1,
+                "system.shaders1.CUs06": 1,
+                "system.shaders1.CUs07": 1,
+                "system.shaders1.CUs08": 1,
+                "system.shaders1.CUs09": 1,
+                "system.shaders1.CUs10": 1,
+                "system.shaders1.CUs11": 1,
+                "system.shaders1.CUs12": 1,
+                "system.shaders1.CUs13": 1,
+                "system.shaders1.CUs14": 1,
+                "system.shaders1.CUs15": 1,
+                "system.shaders1.CUs16": 1,
+                "system.shaders1.CUs17": 1,
+                "system.shaders1.CUs18": 1,
+                "system.shaders1.CUs19": 1,
+                "system.shaders1.CUs20": 1,
+                "system.shaders1.CUs21": 1,
+                "system.shaders1.CUs22": 1,
+                "system.shaders1.CUs23": 1,
+                "system.shaders1.CUs24": 1,
+                "system.shaders1.CUs25": 1,
+                "system.shaders1.CUs26": 1,
+                "system.shaders1.CUs27": 1,
+                "system.shaders1.CUs28": 1,
+                "system.shaders1.CUs29": 1,
+                "system.shaders1.CUs30": 1,
+                "system.shaders1.CUs31": 1,
+                "system.shaders1.CUs32": 1,
+                "system.shaders1.CUs33": 1,
+                "system.shaders1.CUs34": 1,
+                "system.shaders1.CUs35": 1,
+                "system.shaders1.CUs36": 1,
+                "system.shaders1.CUs37": 1,
+                "system.shaders1.CUs38": 1,
+                "system.shaders1.CUs39": 1,
+                "system.shaders1.CUs40": 1,
+                "system.shaders1.CUs41": 1,
+                "system.shaders1.CUs42": 1,
+                "system.shaders1.CUs43": 1,
+                "system.shaders1.CUs44": 1,
+                "system.shaders1.CUs45": 1,
+                "system.shaders1.CUs46": 1,
+                "system.shaders1.CUs47": 1
+              },
+              "mmop_per_cu": {
+                "system.shaders0.CUs00": 294912,
+                "system.shaders0.CUs01": 294912,
+                "system.shaders0.CUs02": 294912,
+                "system.shaders0.CUs03": 294912,
+                "system.shaders0.CUs04": 294912,
+                "system.shaders0.CUs05": 294912,
+                "system.shaders0.CUs06": 294912,
+                "system.shaders0.CUs07": 294912,
+                "system.shaders0.CUs08": 294912,
+                "system.shaders0.CUs09": 294912,
+                "system.shaders0.CUs10": 221184,
+                "system.shaders0.CUs11": 221184,
+                "system.shaders0.CUs12": 294912,
+                "system.shaders0.CUs13": 294912,
+                "system.shaders0.CUs14": 294912,
+                "system.shaders0.CUs15": 294912,
+                "system.shaders0.CUs16": 294912,
+                "system.shaders0.CUs17": 294912,
+                "system.shaders0.CUs18": 294912,
+                "system.shaders0.CUs19": 294912,
+                "system.shaders0.CUs20": 294912,
+                "system.shaders0.CUs21": 294912,
+                "system.shaders0.CUs22": 221184,
+                "system.shaders0.CUs23": 221184,
+                "system.shaders0.CUs24": 294912,
+                "system.shaders0.CUs25": 294912,
+                "system.shaders0.CUs26": 294912,
+                "system.shaders0.CUs27": 294912,
+                "system.shaders0.CUs28": 294912,
+                "system.shaders0.CUs29": 294912,
+                "system.shaders0.CUs30": 294912,
+                "system.shaders0.CUs31": 294912,
+                "system.shaders0.CUs32": 294912,
+                "system.shaders0.CUs33": 294912,
+                "system.shaders0.CUs34": 221184,
+                "system.shaders0.CUs35": 221184,
+                "system.shaders0.CUs36": 294912,
+                "system.shaders0.CUs37": 294912,
+                "system.shaders0.CUs38": 294912,
+                "system.shaders0.CUs39": 294912,
+                "system.shaders0.CUs40": 294912,
+                "system.shaders0.CUs41": 294912,
+                "system.shaders0.CUs42": 294912,
+                "system.shaders0.CUs43": 294912,
+                "system.shaders0.CUs44": 294912,
+                "system.shaders0.CUs45": 294912,
+                "system.shaders0.CUs46": 221184,
+                "system.shaders0.CUs47": 221184,
+                "system.shaders1.CUs00": 294912,
+                "system.shaders1.CUs01": 294912,
+                "system.shaders1.CUs02": 294912,
+                "system.shaders1.CUs03": 294912,
+                "system.shaders1.CUs04": 294912,
+                "system.shaders1.CUs05": 294912,
+                "system.shaders1.CUs06": 294912,
+                "system.shaders1.CUs07": 294912,
+                "system.shaders1.CUs08": 294912,
+                "system.shaders1.CUs09": 294912,
+                "system.shaders1.CUs10": 221184,
+                "system.shaders1.CUs11": 221184,
+                "system.shaders1.CUs12": 294912,
+                "system.shaders1.CUs13": 294912,
+                "system.shaders1.CUs14": 294912,
+                "system.shaders1.CUs15": 294912,
+                "system.shaders1.CUs16": 294912,
+                "system.shaders1.CUs17": 294912,
+                "system.shaders1.CUs18": 294912,
+                "system.shaders1.CUs19": 294912,
+                "system.shaders1.CUs20": 294912,
+                "system.shaders1.CUs21": 294912,
+                "system.shaders1.CUs22": 221184,
+                "system.shaders1.CUs23": 221184,
+                "system.shaders1.CUs24": 294912,
+                "system.shaders1.CUs25": 294912,
+                "system.shaders1.CUs26": 294912,
+                "system.shaders1.CUs27": 294912,
+                "system.shaders1.CUs28": 294912,
+                "system.shaders1.CUs29": 294912,
+                "system.shaders1.CUs30": 294912,
+                "system.shaders1.CUs31": 294912,
+                "system.shaders1.CUs32": 294912,
+                "system.shaders1.CUs33": 294912,
+                "system.shaders1.CUs34": 221184,
+                "system.shaders1.CUs35": 221184,
+                "system.shaders1.CUs36": 294912,
+                "system.shaders1.CUs37": 294912,
+                "system.shaders1.CUs38": 294912,
+                "system.shaders1.CUs39": 294912,
+                "system.shaders1.CUs40": 294912,
+                "system.shaders1.CUs41": 294912,
+                "system.shaders1.CUs42": 294912,
+                "system.shaders1.CUs43": 294912,
+                "system.shaders1.CUs44": 294912,
+                "system.shaders1.CUs45": 294912,
+                "system.shaders1.CUs46": 221184,
+                "system.shaders1.CUs47": 221184
+              },
+              "mmop_instructions": 27131904,
+              "mmop_per_active_cu_min": 221184,
+              "mmop_per_active_cu_max": 294912,
+              "shader_counters": {
+                "system.shaders0.firstWaveStartTick": 3611790.0,
+                "system.shaders0.lastWaveEndTick": 301708225.0,
+                "system.shaders0.averageWaveLifeTime": 285258967.0,
+                "system.shaders0.valuBusy": 0.872611,
+                "system.shaders0.valuBusyFp": 0.851159,
+                "system.shaders0.spTaDataBusy": 0.022745,
+                "system.shaders0.spTaAddrBusy": 0.022745,
+                "system.shaders0.spLdsBusy": 7.2e-05,
+                "system.shaders1.firstWaveStartTick": 3611790.0,
+                "system.shaders1.lastWaveEndTick": 303212455.0,
+                "system.shaders1.averageWaveLifeTime": 287222601.0,
+                "system.shaders1.valuBusy": 0.872611,
+                "system.shaders1.valuBusyFp": 0.851159,
+                "system.shaders1.spTaDataBusy": 0.022745,
+                "system.shaders1.spTaAddrBusy": 0.022745,
+                "system.shaders1.spLdsBusy": 7.2e-05
+              },
+              "cu_counter_sums": {
+                "numCyclesWithNoIssue": 16851296.0,
+                "numCyclesWithInstrTypeStall::0": 246123.0,
+                "numCyclesWithInstrTypeStall::1": 0.0,
+                "numCyclesWithInstrTypeStall::2": 0.0,
+                "numCyclesWithInstrTypeStall::3": 0.0,
+                "numCyclesWithInstrTypeStall::4": 0.0,
+                "numCyclesWithInstrTypeStall::5": 0.0,
+                "numCyclesWithInstrTypeStall::6": 27131904.0,
+                "numCyclesWithNoVALUReady": 58586853.0,
+                "numInstrTypeExecuted::VALU": 1560768.0,
+                "numInstrTypeExecuted::SCA": 9647168.0,
+                "numInstrTypeExecuted::MISC": 662783.0,
+                "numInstrTypeExecuted::VMEM": 847872.0,
+                "numInstrTypeExecuted::FLAT": 363776.0,
+                "numInstrTypeExecuted::LDS": 5089536.0,
+                "numInstrTypeExecuted::MMOP": 27131904.0,
+                "wgBlockedDueBarrierAllocation": 0.0,
+                "numCyclesWaitIFetchAfterBranchTaken": 5118940.0,
+                "waitCyclesPerBranchTaken": 1718.2855879999997,
+                "GlobalMemPipeline.cmdCreditStall": 3624891.0,
+                "GlobalMemPipeline.addrCreditStall": 10198.0,
+                "GlobalMemPipeline.dataCreditStall": 0.0,
+                "LocalMemPipeline.creditStall": 2894746.0,
+                "SIMD_SUM.waitVmCounter": 2441.0,
+                "SIMD_SUM.waitVwCounter": 0.0,
+                "SIMD_SUM.waitVbCounter": 0.0,
+                "SIMD_SUM.waitLgkmCounter": 358147.0039999999,
+                "SIMD_SUM.barrierCounter": 2150774.669,
+                "SIMD_SUM.memInstLdsStallCounter": 14157.326000000008,
+                "SIMD_SUM.memInstFlatStallCounter": 227622.3370000001,
+                "SIMD_SUM.memInstVmemStallCounter": 0.0,
+                "SpPipeline.numCyclesWithVALUStallBySrcC": 26285.0,
+                "SpPipeline.numCyclesWithVALUStallBySrcA": 219838.0,
+                "SpPipeline.numCyclesWithVALUStallBySrcB": 40637.0,
+                "tatd.TATD.taCoalQueFullStall": 0.0,
+                "tatd.TATD.taOutQueFullStall": 0.0,
+                "tatd.TATD.taSendStallBytcp": 173418.0,
+                "tatd.TATD.taSendStallByCredit": 32938.0
+              },
+              "memory_request_counts": {
+                "system.umcs0.numReadRequests": 499636,
+                "system.umcs0.numWriteRequests": 79268,
+                "system.umcs0.numAtomicRequests": 0,
+                "system.umcs1.numReadRequests": 499608,
+                "system.umcs1.numWriteRequests": 78932,
+                "system.umcs1.numAtomicRequests": 0
+              },
+              "logical_mmac_util_percent": 81.88223006868238,
+              "logical_bandwidth_tb_s": 0.45082517471124334,
+              "normalization_scope": "Logical full-GEMM work only; excludes padded work and scratch traffic. Use complete multi-dispatch operator time for final comparisons."
+            }
+          ],
+          "suggested-streamk": [
+            {
+              "stats": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/suggested-streamk/g/0/0/stats.txt",
+              "stats_sha256": "9683c04a323f1fdc656c2e7891ef1254427c4b32fe66da115828ab8410519a21",
+              "cycles": 10392,
+              "us": 4.72836,
+              "completed_tgs": 1,
+              "active_cus": 1,
+              "tgs_per_die": {
+                "system.shaders0": 1,
+                "system.shaders1": 0
+              },
+              "completed_tgs_per_cu": {
+                "system.shaders0.CUs00": 1,
+                "system.shaders0.CUs01": 0,
+                "system.shaders0.CUs02": 0,
+                "system.shaders0.CUs03": 0,
+                "system.shaders0.CUs04": 0,
+                "system.shaders0.CUs05": 0,
+                "system.shaders0.CUs06": 0,
+                "system.shaders0.CUs07": 0,
+                "system.shaders0.CUs08": 0,
+                "system.shaders0.CUs09": 0,
+                "system.shaders0.CUs10": 0,
+                "system.shaders0.CUs11": 0,
+                "system.shaders0.CUs12": 0,
+                "system.shaders0.CUs13": 0,
+                "system.shaders0.CUs14": 0,
+                "system.shaders0.CUs15": 0,
+                "system.shaders0.CUs16": 0,
+                "system.shaders0.CUs17": 0,
+                "system.shaders0.CUs18": 0,
+                "system.shaders0.CUs19": 0,
+                "system.shaders0.CUs20": 0,
+                "system.shaders0.CUs21": 0,
+                "system.shaders0.CUs22": 0,
+                "system.shaders0.CUs23": 0,
+                "system.shaders0.CUs24": 0,
+                "system.shaders0.CUs25": 0,
+                "system.shaders0.CUs26": 0,
+                "system.shaders0.CUs27": 0,
+                "system.shaders0.CUs28": 0,
+                "system.shaders0.CUs29": 0,
+                "system.shaders0.CUs30": 0,
+                "system.shaders0.CUs31": 0,
+                "system.shaders0.CUs32": 0,
+                "system.shaders0.CUs33": 0,
+                "system.shaders0.CUs34": 0,
+                "system.shaders0.CUs35": 0,
+                "system.shaders0.CUs36": 0,
+                "system.shaders0.CUs37": 0,
+                "system.shaders0.CUs38": 0,
+                "system.shaders0.CUs39": 0,
+                "system.shaders0.CUs40": 0,
+                "system.shaders0.CUs41": 0,
+                "system.shaders0.CUs42": 0,
+                "system.shaders0.CUs43": 0,
+                "system.shaders0.CUs44": 0,
+                "system.shaders0.CUs45": 0,
+                "system.shaders0.CUs46": 0,
+                "system.shaders0.CUs47": 0,
+                "system.shaders1.CUs00": 0,
+                "system.shaders1.CUs01": 0,
+                "system.shaders1.CUs02": 0,
+                "system.shaders1.CUs03": 0,
+                "system.shaders1.CUs04": 0,
+                "system.shaders1.CUs05": 0,
+                "system.shaders1.CUs06": 0,
+                "system.shaders1.CUs07": 0,
+                "system.shaders1.CUs08": 0,
+                "system.shaders1.CUs09": 0,
+                "system.shaders1.CUs10": 0,
+                "system.shaders1.CUs11": 0,
+                "system.shaders1.CUs12": 0,
+                "system.shaders1.CUs13": 0,
+                "system.shaders1.CUs14": 0,
+                "system.shaders1.CUs15": 0,
+                "system.shaders1.CUs16": 0,
+                "system.shaders1.CUs17": 0,
+                "system.shaders1.CUs18": 0,
+                "system.shaders1.CUs19": 0,
+                "system.shaders1.CUs20": 0,
+                "system.shaders1.CUs21": 0,
+                "system.shaders1.CUs22": 0,
+                "system.shaders1.CUs23": 0,
+                "system.shaders1.CUs24": 0,
+                "system.shaders1.CUs25": 0,
+                "system.shaders1.CUs26": 0,
+                "system.shaders1.CUs27": 0,
+                "system.shaders1.CUs28": 0,
+                "system.shaders1.CUs29": 0,
+                "system.shaders1.CUs30": 0,
+                "system.shaders1.CUs31": 0,
+                "system.shaders1.CUs32": 0,
+                "system.shaders1.CUs33": 0,
+                "system.shaders1.CUs34": 0,
+                "system.shaders1.CUs35": 0,
+                "system.shaders1.CUs36": 0,
+                "system.shaders1.CUs37": 0,
+                "system.shaders1.CUs38": 0,
+                "system.shaders1.CUs39": 0,
+                "system.shaders1.CUs40": 0,
+                "system.shaders1.CUs41": 0,
+                "system.shaders1.CUs42": 0,
+                "system.shaders1.CUs43": 0,
+                "system.shaders1.CUs44": 0,
+                "system.shaders1.CUs45": 0,
+                "system.shaders1.CUs46": 0,
+                "system.shaders1.CUs47": 0
+              },
+              "mmop_per_cu": {
+                "system.shaders0.CUs00": 0,
+                "system.shaders0.CUs01": 0,
+                "system.shaders0.CUs02": 0,
+                "system.shaders0.CUs03": 0,
+                "system.shaders0.CUs04": 0,
+                "system.shaders0.CUs05": 0,
+                "system.shaders0.CUs06": 0,
+                "system.shaders0.CUs07": 0,
+                "system.shaders0.CUs08": 0,
+                "system.shaders0.CUs09": 0,
+                "system.shaders0.CUs10": 0,
+                "system.shaders0.CUs11": 0,
+                "system.shaders0.CUs12": 0,
+                "system.shaders0.CUs13": 0,
+                "system.shaders0.CUs14": 0,
+                "system.shaders0.CUs15": 0,
+                "system.shaders0.CUs16": 0,
+                "system.shaders0.CUs17": 0,
+                "system.shaders0.CUs18": 0,
+                "system.shaders0.CUs19": 0,
+                "system.shaders0.CUs20": 0,
+                "system.shaders0.CUs21": 0,
+                "system.shaders0.CUs22": 0,
+                "system.shaders0.CUs23": 0,
+                "system.shaders0.CUs24": 0,
+                "system.shaders0.CUs25": 0,
+                "system.shaders0.CUs26": 0,
+                "system.shaders0.CUs27": 0,
+                "system.shaders0.CUs28": 0,
+                "system.shaders0.CUs29": 0,
+                "system.shaders0.CUs30": 0,
+                "system.shaders0.CUs31": 0,
+                "system.shaders0.CUs32": 0,
+                "system.shaders0.CUs33": 0,
+                "system.shaders0.CUs34": 0,
+                "system.shaders0.CUs35": 0,
+                "system.shaders0.CUs36": 0,
+                "system.shaders0.CUs37": 0,
+                "system.shaders0.CUs38": 0,
+                "system.shaders0.CUs39": 0,
+                "system.shaders0.CUs40": 0,
+                "system.shaders0.CUs41": 0,
+                "system.shaders0.CUs42": 0,
+                "system.shaders0.CUs43": 0,
+                "system.shaders0.CUs44": 0,
+                "system.shaders0.CUs45": 0,
+                "system.shaders0.CUs46": 0,
+                "system.shaders0.CUs47": 0,
+                "system.shaders1.CUs00": 0,
+                "system.shaders1.CUs01": 0,
+                "system.shaders1.CUs02": 0,
+                "system.shaders1.CUs03": 0,
+                "system.shaders1.CUs04": 0,
+                "system.shaders1.CUs05": 0,
+                "system.shaders1.CUs06": 0,
+                "system.shaders1.CUs07": 0,
+                "system.shaders1.CUs08": 0,
+                "system.shaders1.CUs09": 0,
+                "system.shaders1.CUs10": 0,
+                "system.shaders1.CUs11": 0,
+                "system.shaders1.CUs12": 0,
+                "system.shaders1.CUs13": 0,
+                "system.shaders1.CUs14": 0,
+                "system.shaders1.CUs15": 0,
+                "system.shaders1.CUs16": 0,
+                "system.shaders1.CUs17": 0,
+                "system.shaders1.CUs18": 0,
+                "system.shaders1.CUs19": 0,
+                "system.shaders1.CUs20": 0,
+                "system.shaders1.CUs21": 0,
+                "system.shaders1.CUs22": 0,
+                "system.shaders1.CUs23": 0,
+                "system.shaders1.CUs24": 0,
+                "system.shaders1.CUs25": 0,
+                "system.shaders1.CUs26": 0,
+                "system.shaders1.CUs27": 0,
+                "system.shaders1.CUs28": 0,
+                "system.shaders1.CUs29": 0,
+                "system.shaders1.CUs30": 0,
+                "system.shaders1.CUs31": 0,
+                "system.shaders1.CUs32": 0,
+                "system.shaders1.CUs33": 0,
+                "system.shaders1.CUs34": 0,
+                "system.shaders1.CUs35": 0,
+                "system.shaders1.CUs36": 0,
+                "system.shaders1.CUs37": 0,
+                "system.shaders1.CUs38": 0,
+                "system.shaders1.CUs39": 0,
+                "system.shaders1.CUs40": 0,
+                "system.shaders1.CUs41": 0,
+                "system.shaders1.CUs42": 0,
+                "system.shaders1.CUs43": 0,
+                "system.shaders1.CUs44": 0,
+                "system.shaders1.CUs45": 0,
+                "system.shaders1.CUs46": 0,
+                "system.shaders1.CUs47": 0
+              },
+              "mmop_instructions": 0,
+              "mmop_per_active_cu_min": 0,
+              "mmop_per_active_cu_max": 0,
+              "shader_counters": {
+                "system.shaders0.firstWaveStartTick": 3611790.0,
+                "system.shaders0.lastWaveEndTick": 4728360.0,
+                "system.shaders0.averageWaveLifeTime": 1107925.0,
+                "system.shaders0.valuBusy": 0.000201,
+                "system.shaders0.valuBusyFp": 0.0,
+                "system.shaders0.spTaDataBusy": 6.4e-05,
+                "system.shaders0.spTaAddrBusy": 6.4e-05,
+                "system.shaders0.spLdsBusy": 0.0,
+                "system.shaders1.firstWaveStartTick": 0.0,
+                "system.shaders1.lastWaveEndTick": 0.0,
+                "system.shaders1.averageWaveLifeTime": 0.0,
+                "system.shaders1.valuBusy": 0.0,
+                "system.shaders1.valuBusyFp": 0.0,
+                "system.shaders1.spTaDataBusy": 0.0,
+                "system.shaders1.spTaAddrBusy": 0.0,
+                "system.shaders1.spLdsBusy": 0.0
+              },
+              "cu_counter_sums": {
+                "numCyclesWithNoIssue": 2170.0,
+                "numCyclesWithInstrTypeStall::0": 0.0,
+                "numCyclesWithInstrTypeStall::1": 0.0,
+                "numCyclesWithInstrTypeStall::2": 0.0,
+                "numCyclesWithInstrTypeStall::3": 0.0,
+                "numCyclesWithInstrTypeStall::4": 0.0,
+                "numCyclesWithInstrTypeStall::5": 0.0,
+                "numCyclesWithInstrTypeStall::6": 0.0,
+                "numCyclesWithNoVALUReady": 2353.0,
+                "numInstrTypeExecuted::VALU": 100.0,
+                "numInstrTypeExecuted::SCA": 148.0,
+                "numInstrTypeExecuted::MISC": 23.0,
+                "numInstrTypeExecuted::VMEM": 0.0,
+                "numInstrTypeExecuted::FLAT": 8.0,
+                "numInstrTypeExecuted::LDS": 0.0,
+                "numInstrTypeExecuted::MMOP": 0.0,
+                "wgBlockedDueBarrierAllocation": 0.0,
+                "numCyclesWaitIFetchAfterBranchTaken": 111.0,
+                "waitCyclesPerBranchTaken": 13.875,
+                "GlobalMemPipeline.cmdCreditStall": 0.0,
+                "GlobalMemPipeline.addrCreditStall": 0.0,
+                "GlobalMemPipeline.dataCreditStall": 0.0,
+                "LocalMemPipeline.creditStall": 0.0,
+                "SIMD_SUM.waitVmCounter": 368.0,
+                "SIMD_SUM.waitVwCounter": 0.0,
+                "SIMD_SUM.waitVbCounter": 0.0,
+                "SIMD_SUM.waitLgkmCounter": 786.0,
+                "SIMD_SUM.barrierCounter": 0.0,
+                "SIMD_SUM.memInstLdsStallCounter": 0.0,
+                "SIMD_SUM.memInstFlatStallCounter": 7.0,
+                "SIMD_SUM.memInstVmemStallCounter": 0.0,
+                "SpPipeline.numCyclesWithVALUStallBySrcC": 0.0,
+                "SpPipeline.numCyclesWithVALUStallBySrcA": 0.0,
+                "SpPipeline.numCyclesWithVALUStallBySrcB": 0.0,
+                "tatd.TATD.taCoalQueFullStall": 0.0,
+                "tatd.TATD.taOutQueFullStall": 0.0,
+                "tatd.TATD.taSendStallBytcp": 0.0,
+                "tatd.TATD.taSendStallByCredit": 0.0
+              },
+              "memory_request_counts": {
+                "system.umcs0.numReadRequests": 6,
+                "system.umcs0.numWriteRequests": 0,
+                "system.umcs0.numAtomicRequests": 0,
+                "system.umcs1.numReadRequests": 0,
+                "system.umcs1.numWriteRequests": 0,
+                "system.umcs1.numAtomicRequests": 0
+              }
+            },
+            {
+              "stats": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/suggested-streamk/g/0/1/stats.txt",
+              "stats_sha256": "3df67a580e90cca841b4b303859d94b216406fdd2057caf437aa113aec25c00c",
+              "cycles": 16307,
+              "us": 7.419685,
+              "completed_tgs": 1152,
+              "active_cus": 96,
+              "tgs_per_die": {
+                "system.shaders0": 576,
+                "system.shaders1": 576
+              },
+              "completed_tgs_per_cu": {
+                "system.shaders0.CUs00": 12,
+                "system.shaders0.CUs01": 12,
+                "system.shaders0.CUs02": 12,
+                "system.shaders0.CUs03": 12,
+                "system.shaders0.CUs04": 12,
+                "system.shaders0.CUs05": 12,
+                "system.shaders0.CUs06": 12,
+                "system.shaders0.CUs07": 12,
+                "system.shaders0.CUs08": 12,
+                "system.shaders0.CUs09": 12,
+                "system.shaders0.CUs10": 12,
+                "system.shaders0.CUs11": 12,
+                "system.shaders0.CUs12": 12,
+                "system.shaders0.CUs13": 12,
+                "system.shaders0.CUs14": 12,
+                "system.shaders0.CUs15": 12,
+                "system.shaders0.CUs16": 12,
+                "system.shaders0.CUs17": 12,
+                "system.shaders0.CUs18": 12,
+                "system.shaders0.CUs19": 12,
+                "system.shaders0.CUs20": 12,
+                "system.shaders0.CUs21": 12,
+                "system.shaders0.CUs22": 12,
+                "system.shaders0.CUs23": 12,
+                "system.shaders0.CUs24": 12,
+                "system.shaders0.CUs25": 12,
+                "system.shaders0.CUs26": 12,
+                "system.shaders0.CUs27": 12,
+                "system.shaders0.CUs28": 12,
+                "system.shaders0.CUs29": 12,
+                "system.shaders0.CUs30": 12,
+                "system.shaders0.CUs31": 12,
+                "system.shaders0.CUs32": 12,
+                "system.shaders0.CUs33": 12,
+                "system.shaders0.CUs34": 12,
+                "system.shaders0.CUs35": 12,
+                "system.shaders0.CUs36": 12,
+                "system.shaders0.CUs37": 12,
+                "system.shaders0.CUs38": 12,
+                "system.shaders0.CUs39": 12,
+                "system.shaders0.CUs40": 12,
+                "system.shaders0.CUs41": 12,
+                "system.shaders0.CUs42": 12,
+                "system.shaders0.CUs43": 12,
+                "system.shaders0.CUs44": 12,
+                "system.shaders0.CUs45": 12,
+                "system.shaders0.CUs46": 12,
+                "system.shaders0.CUs47": 12,
+                "system.shaders1.CUs00": 12,
+                "system.shaders1.CUs01": 12,
+                "system.shaders1.CUs02": 12,
+                "system.shaders1.CUs03": 12,
+                "system.shaders1.CUs04": 12,
+                "system.shaders1.CUs05": 12,
+                "system.shaders1.CUs06": 12,
+                "system.shaders1.CUs07": 12,
+                "system.shaders1.CUs08": 12,
+                "system.shaders1.CUs09": 12,
+                "system.shaders1.CUs10": 12,
+                "system.shaders1.CUs11": 12,
+                "system.shaders1.CUs12": 12,
+                "system.shaders1.CUs13": 12,
+                "system.shaders1.CUs14": 12,
+                "system.shaders1.CUs15": 12,
+                "system.shaders1.CUs16": 12,
+                "system.shaders1.CUs17": 12,
+                "system.shaders1.CUs18": 12,
+                "system.shaders1.CUs19": 12,
+                "system.shaders1.CUs20": 12,
+                "system.shaders1.CUs21": 12,
+                "system.shaders1.CUs22": 12,
+                "system.shaders1.CUs23": 12,
+                "system.shaders1.CUs24": 12,
+                "system.shaders1.CUs25": 12,
+                "system.shaders1.CUs26": 12,
+                "system.shaders1.CUs27": 12,
+                "system.shaders1.CUs28": 12,
+                "system.shaders1.CUs29": 12,
+                "system.shaders1.CUs30": 12,
+                "system.shaders1.CUs31": 12,
+                "system.shaders1.CUs32": 12,
+                "system.shaders1.CUs33": 12,
+                "system.shaders1.CUs34": 12,
+                "system.shaders1.CUs35": 12,
+                "system.shaders1.CUs36": 12,
+                "system.shaders1.CUs37": 12,
+                "system.shaders1.CUs38": 12,
+                "system.shaders1.CUs39": 12,
+                "system.shaders1.CUs40": 12,
+                "system.shaders1.CUs41": 12,
+                "system.shaders1.CUs42": 12,
+                "system.shaders1.CUs43": 12,
+                "system.shaders1.CUs44": 12,
+                "system.shaders1.CUs45": 12,
+                "system.shaders1.CUs46": 12,
+                "system.shaders1.CUs47": 12
+              },
+              "mmop_per_cu": {
+                "system.shaders0.CUs00": 0,
+                "system.shaders0.CUs01": 0,
+                "system.shaders0.CUs02": 0,
+                "system.shaders0.CUs03": 0,
+                "system.shaders0.CUs04": 0,
+                "system.shaders0.CUs05": 0,
+                "system.shaders0.CUs06": 0,
+                "system.shaders0.CUs07": 0,
+                "system.shaders0.CUs08": 0,
+                "system.shaders0.CUs09": 0,
+                "system.shaders0.CUs10": 0,
+                "system.shaders0.CUs11": 0,
+                "system.shaders0.CUs12": 0,
+                "system.shaders0.CUs13": 0,
+                "system.shaders0.CUs14": 0,
+                "system.shaders0.CUs15": 0,
+                "system.shaders0.CUs16": 0,
+                "system.shaders0.CUs17": 0,
+                "system.shaders0.CUs18": 0,
+                "system.shaders0.CUs19": 0,
+                "system.shaders0.CUs20": 0,
+                "system.shaders0.CUs21": 0,
+                "system.shaders0.CUs22": 0,
+                "system.shaders0.CUs23": 0,
+                "system.shaders0.CUs24": 0,
+                "system.shaders0.CUs25": 0,
+                "system.shaders0.CUs26": 0,
+                "system.shaders0.CUs27": 0,
+                "system.shaders0.CUs28": 0,
+                "system.shaders0.CUs29": 0,
+                "system.shaders0.CUs30": 0,
+                "system.shaders0.CUs31": 0,
+                "system.shaders0.CUs32": 0,
+                "system.shaders0.CUs33": 0,
+                "system.shaders0.CUs34": 0,
+                "system.shaders0.CUs35": 0,
+                "system.shaders0.CUs36": 0,
+                "system.shaders0.CUs37": 0,
+                "system.shaders0.CUs38": 0,
+                "system.shaders0.CUs39": 0,
+                "system.shaders0.CUs40": 0,
+                "system.shaders0.CUs41": 0,
+                "system.shaders0.CUs42": 0,
+                "system.shaders0.CUs43": 0,
+                "system.shaders0.CUs44": 0,
+                "system.shaders0.CUs45": 0,
+                "system.shaders0.CUs46": 0,
+                "system.shaders0.CUs47": 0,
+                "system.shaders1.CUs00": 0,
+                "system.shaders1.CUs01": 0,
+                "system.shaders1.CUs02": 0,
+                "system.shaders1.CUs03": 0,
+                "system.shaders1.CUs04": 0,
+                "system.shaders1.CUs05": 0,
+                "system.shaders1.CUs06": 0,
+                "system.shaders1.CUs07": 0,
+                "system.shaders1.CUs08": 0,
+                "system.shaders1.CUs09": 0,
+                "system.shaders1.CUs10": 0,
+                "system.shaders1.CUs11": 0,
+                "system.shaders1.CUs12": 0,
+                "system.shaders1.CUs13": 0,
+                "system.shaders1.CUs14": 0,
+                "system.shaders1.CUs15": 0,
+                "system.shaders1.CUs16": 0,
+                "system.shaders1.CUs17": 0,
+                "system.shaders1.CUs18": 0,
+                "system.shaders1.CUs19": 0,
+                "system.shaders1.CUs20": 0,
+                "system.shaders1.CUs21": 0,
+                "system.shaders1.CUs22": 0,
+                "system.shaders1.CUs23": 0,
+                "system.shaders1.CUs24": 0,
+                "system.shaders1.CUs25": 0,
+                "system.shaders1.CUs26": 0,
+                "system.shaders1.CUs27": 0,
+                "system.shaders1.CUs28": 0,
+                "system.shaders1.CUs29": 0,
+                "system.shaders1.CUs30": 0,
+                "system.shaders1.CUs31": 0,
+                "system.shaders1.CUs32": 0,
+                "system.shaders1.CUs33": 0,
+                "system.shaders1.CUs34": 0,
+                "system.shaders1.CUs35": 0,
+                "system.shaders1.CUs36": 0,
+                "system.shaders1.CUs37": 0,
+                "system.shaders1.CUs38": 0,
+                "system.shaders1.CUs39": 0,
+                "system.shaders1.CUs40": 0,
+                "system.shaders1.CUs41": 0,
+                "system.shaders1.CUs42": 0,
+                "system.shaders1.CUs43": 0,
+                "system.shaders1.CUs44": 0,
+                "system.shaders1.CUs45": 0,
+                "system.shaders1.CUs46": 0,
+                "system.shaders1.CUs47": 0
+              },
+              "mmop_instructions": 0,
+              "mmop_per_active_cu_min": 0,
+              "mmop_per_active_cu_max": 0,
+              "shader_counters": {
+                "system.shaders0.firstWaveStartTick": 8338330.0,
+                "system.shaders0.lastWaveEndTick": 11041030.0,
+                "system.shaders0.averageWaveLifeTime": 1136568.0,
+                "system.shaders0.valuBusy": 0.247316,
+                "system.shaders0.valuBusyFp": 0.0,
+                "system.shaders0.spTaDataBusy": 0.047108,
+                "system.shaders0.spTaAddrBusy": 0.056677,
+                "system.shaders0.spLdsBusy": 0.0,
+                "system.shaders1.firstWaveStartTick": 8340605.0,
+                "system.shaders1.lastWaveEndTick": 12148045.0,
+                "system.shaders1.averageWaveLifeTime": 1922839.0,
+                "system.shaders1.valuBusy": 0.247316,
+                "system.shaders1.valuBusyFp": 0.0,
+                "system.shaders1.spTaDataBusy": 0.047108,
+                "system.shaders1.spTaAddrBusy": 0.056677,
+                "system.shaders1.spLdsBusy": 0.0
+              },
+              "cu_counter_sums": {
+                "numCyclesWithNoIssue": 215226.0,
+                "numCyclesWithInstrTypeStall::0": 0.0,
+                "numCyclesWithInstrTypeStall::1": 0.0,
+                "numCyclesWithInstrTypeStall::2": 0.0,
+                "numCyclesWithInstrTypeStall::3": 0.0,
+                "numCyclesWithInstrTypeStall::4": 0.0,
+                "numCyclesWithInstrTypeStall::5": 0.0,
+                "numCyclesWithInstrTypeStall::6": 0.0,
+                "numCyclesWithNoVALUReady": 280032.0,
+                "numInstrTypeExecuted::VALU": 387072.0,
+                "numInstrTypeExecuted::SCA": 152136.0,
+                "numInstrTypeExecuted::MISC": 36864.0,
+                "numInstrTypeExecuted::VMEM": 0.0,
+                "numInstrTypeExecuted::FLAT": 22176.0,
+                "numInstrTypeExecuted::LDS": 0.0,
+                "numInstrTypeExecuted::MMOP": 0.0,
+                "wgBlockedDueBarrierAllocation": 0.0,
+                "numCyclesWaitIFetchAfterBranchTaken": 1746937.0,
+                "waitCyclesPerBranchTaken": 10127.849563999998,
+                "GlobalMemPipeline.cmdCreditStall": 7828.0,
+                "GlobalMemPipeline.addrCreditStall": 7828.0,
+                "GlobalMemPipeline.dataCreditStall": 0.0,
+                "LocalMemPipeline.creditStall": 0.0,
+                "SIMD_SUM.waitVmCounter": 45466.88599999999,
+                "SIMD_SUM.waitVwCounter": 0.0,
+                "SIMD_SUM.waitVbCounter": 0.0,
+                "SIMD_SUM.waitLgkmCounter": 34777.875,
+                "SIMD_SUM.barrierCounter": 0.0,
+                "SIMD_SUM.memInstLdsStallCounter": 0.0,
+                "SIMD_SUM.memInstFlatStallCounter": 3512.228,
+                "SIMD_SUM.memInstVmemStallCounter": 0.0,
+                "SpPipeline.numCyclesWithVALUStallBySrcC": 159.0,
+                "SpPipeline.numCyclesWithVALUStallBySrcA": 0.0,
+                "SpPipeline.numCyclesWithVALUStallBySrcB": 0.0,
+                "tatd.TATD.taCoalQueFullStall": 0.0,
+                "tatd.TATD.taOutQueFullStall": 0.0,
+                "tatd.TATD.taSendStallBytcp": 37048.0,
+                "tatd.TATD.taSendStallByCredit": 0.0
+              },
+              "memory_request_counts": {
+                "system.umcs0.numReadRequests": 960,
+                "system.umcs0.numWriteRequests": 19,
+                "system.umcs0.numAtomicRequests": 0,
+                "system.umcs1.numReadRequests": 928,
+                "system.umcs1.numWriteRequests": 13,
+                "system.umcs1.numAtomicRequests": 0
+              }
+            },
+            {
+              "stats": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R036/suggested-streamk/g/0/2/stats.txt",
+              "stats_sha256": "12ae9e304c0981f7685466c351b1b101d3ebbdb8acc66e153c7f8a195b180e92",
+              "cycles": 1415986,
+              "us": 644.27363,
+              "completed_tgs": 96,
+              "active_cus": 96,
+              "tgs_per_die": {
+                "system.shaders0": 48,
+                "system.shaders1": 48
+              },
+              "completed_tgs_per_cu": {
+                "system.shaders0.CUs00": 1,
+                "system.shaders0.CUs01": 1,
+                "system.shaders0.CUs02": 1,
+                "system.shaders0.CUs03": 1,
+                "system.shaders0.CUs04": 1,
+                "system.shaders0.CUs05": 1,
+                "system.shaders0.CUs06": 1,
+                "system.shaders0.CUs07": 1,
+                "system.shaders0.CUs08": 1,
+                "system.shaders0.CUs09": 1,
+                "system.shaders0.CUs10": 1,
+                "system.shaders0.CUs11": 1,
+                "system.shaders0.CUs12": 1,
+                "system.shaders0.CUs13": 1,
+                "system.shaders0.CUs14": 1,
+                "system.shaders0.CUs15": 1,
+                "system.shaders0.CUs16": 1,
+                "system.shaders0.CUs17": 1,
+                "system.shaders0.CUs18": 1,
+                "system.shaders0.CUs19": 1,
+                "system.shaders0.CUs20": 1,
+                "system.shaders0.CUs21": 1,
+                "system.shaders0.CUs22": 1,
+                "system.shaders0.CUs23": 1,
+                "system.shaders0.CUs24": 1,
+                "system.shaders0.CUs25": 1,
+                "system.shaders0.CUs26": 1,
+                "system.shaders0.CUs27": 1,
+                "system.shaders0.CUs28": 1,
+                "system.shaders0.CUs29": 1,
+                "system.shaders0.CUs30": 1,
+                "system.shaders0.CUs31": 1,
+                "system.shaders0.CUs32": 1,
+                "system.shaders0.CUs33": 1,
+                "system.shaders0.CUs34": 1,
+                "system.shaders0.CUs35": 1,
+                "system.shaders0.CUs36": 1,
+                "system.shaders0.CUs37": 1,
+                "system.shaders0.CUs38": 1,
+                "system.shaders0.CUs39": 1,
+                "system.shaders0.CUs40": 1,
+                "system.shaders0.CUs41": 1,
+                "system.shaders0.CUs42": 1,
+                "system.shaders0.CUs43": 1,
+                "system.shaders0.CUs44": 1,
+                "system.shaders0.CUs45": 1,
+                "system.shaders0.CUs46": 1,
+                "system.shaders0.CUs47": 1,
+                "system.shaders1.CUs00": 1,
+                "system.shaders1.CUs01": 1,
+                "system.shaders1.CUs02": 1,
+                "system.shaders1.CUs03": 1,
+                "system.shaders1.CUs04": 1,
+                "system.shaders1.CUs05": 1,
+                "system.shaders1.CUs06": 1,
+                "system.shaders1.CUs07": 1,
+                "system.shaders1.CUs08": 1,
+                "system.shaders1.CUs09": 1,
+                "system.shaders1.CUs10": 1,
+                "system.shaders1.CUs11": 1,
+                "system.shaders1.CUs12": 1,
+                "system.shaders1.CUs13": 1,
+                "system.shaders1.CUs14": 1,
+                "system.shaders1.CUs15": 1,
+                "system.shaders1.CUs16": 1,
+                "system.shaders1.CUs17": 1,
+                "system.shaders1.CUs18": 1,
+                "system.shaders1.CUs19": 1,
+                "system.shaders1.CUs20": 1,
+                "system.shaders1.CUs21": 1,
+                "system.shaders1.CUs22": 1,
+                "system.shaders1.CUs23": 1,
+                "system.shaders1.CUs24": 1,
+                "system.shaders1.CUs25": 1,
+                "system.shaders1.CUs26": 1,
+                "system.shaders1.CUs27": 1,
+                "system.shaders1.CUs28": 1,
+                "system.shaders1.CUs29": 1,
+                "system.shaders1.CUs30": 1,
+                "system.shaders1.CUs31": 1,
+                "system.shaders1.CUs32": 1,
+                "system.shaders1.CUs33": 1,
+                "system.shaders1.CUs34": 1,
+                "system.shaders1.CUs35": 1,
+                "system.shaders1.CUs36": 1,
+                "system.shaders1.CUs37": 1,
+                "system.shaders1.CUs38": 1,
+                "system.shaders1.CUs39": 1,
+                "system.shaders1.CUs40": 1,
+                "system.shaders1.CUs41": 1,
+                "system.shaders1.CUs42": 1,
+                "system.shaders1.CUs43": 1,
+                "system.shaders1.CUs44": 1,
+                "system.shaders1.CUs45": 1,
+                "system.shaders1.CUs46": 1,
+                "system.shaders1.CUs47": 1
+              },
+              "mmop_per_cu": {
+                "system.shaders0.CUs00": 282624,
+                "system.shaders0.CUs01": 282624,
+                "system.shaders0.CUs02": 282624,
+                "system.shaders0.CUs03": 282624,
+                "system.shaders0.CUs04": 282624,
+                "system.shaders0.CUs05": 282624,
+                "system.shaders0.CUs06": 282624,
+                "system.shaders0.CUs07": 282624,
+                "system.shaders0.CUs08": 282624,
+                "system.shaders0.CUs09": 282624,
+                "system.shaders0.CUs10": 282624,
+                "system.shaders0.CUs11": 282624,
+                "system.shaders0.CUs12": 282624,
+                "system.shaders0.CUs13": 282624,
+                "system.shaders0.CUs14": 282624,
+                "system.shaders0.CUs15": 282624,
+                "system.shaders0.CUs16": 282624,
+                "system.shaders0.CUs17": 282624,
+                "system.shaders0.CUs18": 282624,
+                "system.shaders0.CUs19": 282624,
+                "system.shaders0.CUs20": 282624,
+                "system.shaders0.CUs21": 282624,
+                "system.shaders0.CUs22": 282624,
+                "system.shaders0.CUs23": 282624,
+                "system.shaders0.CUs24": 282624,
+                "system.shaders0.CUs25": 282624,
+                "system.shaders0.CUs26": 282624,
+                "system.shaders0.CUs27": 282624,
+                "system.shaders0.CUs28": 282624,
+                "system.shaders0.CUs29": 282624,
+                "system.shaders0.CUs30": 282624,
+                "system.shaders0.CUs31": 282624,
+                "system.shaders0.CUs32": 282624,
+                "system.shaders0.CUs33": 282624,
+                "system.shaders0.CUs34": 282624,
+                "system.shaders0.CUs35": 282624,
+                "system.shaders0.CUs36": 282624,
+                "system.shaders0.CUs37": 282624,
+                "system.shaders0.CUs38": 282624,
+                "system.shaders0.CUs39": 282624,
+                "system.shaders0.CUs40": 282624,
+                "system.shaders0.CUs41": 282624,
+                "system.shaders0.CUs42": 282624,
+                "system.shaders0.CUs43": 282624,
+                "system.shaders0.CUs44": 282624,
+                "system.shaders0.CUs45": 282624,
+                "system.shaders0.CUs46": 282624,
+                "system.shaders0.CUs47": 282624,
+                "system.shaders1.CUs00": 282624,
+                "system.shaders1.CUs01": 282624,
+                "system.shaders1.CUs02": 282624,
+                "system.shaders1.CUs03": 282624,
+                "system.shaders1.CUs04": 282624,
+                "system.shaders1.CUs05": 282624,
+                "system.shaders1.CUs06": 282624,
+                "system.shaders1.CUs07": 282624,
+                "system.shaders1.CUs08": 282624,
+                "system.shaders1.CUs09": 282624,
+                "system.shaders1.CUs10": 282624,
+                "system.shaders1.CUs11": 282624,
+                "system.shaders1.CUs12": 282624,
+                "system.shaders1.CUs13": 282624,
+                "system.shaders1.CUs14": 282624,
+                "system.shaders1.CUs15": 282624,
+                "system.shaders1.CUs16": 282624,
+                "system.shaders1.CUs17": 282624,
+                "system.shaders1.CUs18": 282624,
+                "system.shaders1.CUs19": 282624,
+                "system.shaders1.CUs20": 282624,
+                "system.shaders1.CUs21": 282624,
+                "system.shaders1.CUs22": 282624,
+                "system.shaders1.CUs23": 282624,
+                "system.shaders1.CUs24": 282624,
+                "system.shaders1.CUs25": 282624,
+                "system.shaders1.CUs26": 282624,
+                "system.shaders1.CUs27": 282624,
+                "system.shaders1.CUs28": 282624,
+                "system.shaders1.CUs29": 282624,
+                "system.shaders1.CUs30": 282624,
+                "system.shaders1.CUs31": 282624,
+                "system.shaders1.CUs32": 282624,
+                "system.shaders1.CUs33": 282624,
+                "system.shaders1.CUs34": 282624,
+                "system.shaders1.CUs35": 282624,
+                "system.shaders1.CUs36": 282624,
+                "system.shaders1.CUs37": 282624,
+                "system.shaders1.CUs38": 282624,
+                "system.shaders1.CUs39": 282624,
+                "system.shaders1.CUs40": 282624,
+                "system.shaders1.CUs41": 282624,
+                "system.shaders1.CUs42": 282624,
+                "system.shaders1.CUs43": 282624,
+                "system.shaders1.CUs44": 282624,
+                "system.shaders1.CUs45": 282624,
+                "system.shaders1.CUs46": 282624,
+                "system.shaders1.CUs47": 282624
+              },
+              "mmop_instructions": 27131904,
+              "mmop_per_active_cu_min": 282624,
+              "mmop_per_active_cu_max": 282624,
+              "shader_counters": {
+                "system.shaders0.firstWaveStartTick": 15758015.0,
+                "system.shaders0.lastWaveEndTick": 656421675.0,
+                "system.shaders0.averageWaveLifeTime": 633098333.0,
+                "system.shaders0.valuBusy": 0.40424,
+                "system.shaders0.valuBusyFp": 0.400698,
+                "system.shaders0.spTaDataBusy": 0.006524,
+                "system.shaders0.spTaAddrBusy": 0.003284,
+                "system.shaders0.spLdsBusy": 0.0,
+                "system.shaders1.firstWaveStartTick": 15758015.0,
+                "system.shaders1.lastWaveEndTick": 647011365.0,
+                "system.shaders1.averageWaveLifeTime": 622026970.0,
+                "system.shaders1.valuBusy": 0.40424,
+                "system.shaders1.valuBusyFp": 0.400698,
+                "system.shaders1.spTaDataBusy": 0.006524,
+                "system.shaders1.spTaAddrBusy": 0.003284,
+                "system.shaders1.spLdsBusy": 0.0
+              },
+              "cu_counter_sums": {
+                "numCyclesWithNoIssue": 79468673.0,
+                "numCyclesWithInstrTypeStall::0": 87500.0,
+                "numCyclesWithInstrTypeStall::1": 0.0,
+                "numCyclesWithInstrTypeStall::2": 0.0,
+                "numCyclesWithInstrTypeStall::3": 17608.0,
+                "numCyclesWithInstrTypeStall::4": 0.0,
+                "numCyclesWithInstrTypeStall::5": 0.0,
+                "numCyclesWithInstrTypeStall::6": 27131904.0,
+                "numCyclesWithNoVALUReady": 131770620.0,
+                "numInstrTypeExecuted::VALU": 686336.0,
+                "numInstrTypeExecuted::SCA": 14811744.0,
+                "numInstrTypeExecuted::MISC": 695104.0,
+                "numInstrTypeExecuted::VMEM": 1383424.0,
+                "numInstrTypeExecuted::FLAT": 0.0,
+                "numInstrTypeExecuted::LDS": 6782976.0,
+                "numInstrTypeExecuted::MMOP": 27131904.0,
+                "wgBlockedDueBarrierAllocation": 0.0,
+                "numCyclesWaitIFetchAfterBranchTaken": 11879944.0,
+                "waitCyclesPerBranchTaken": 1742.9690760000005,
+                "GlobalMemPipeline.cmdCreditStall": 1783231.0,
+                "GlobalMemPipeline.addrCreditStall": 1285851.0,
+                "GlobalMemPipeline.dataCreditStall": 89339.0,
+                "LocalMemPipeline.creditStall": 999730.0,
+                "SIMD_SUM.waitVmCounter": 453103.32899999985,
+                "SIMD_SUM.waitVwCounter": 0.0,
+                "SIMD_SUM.waitVbCounter": 0.0,
+                "SIMD_SUM.waitLgkmCounter": 5205056.004000001,
+                "SIMD_SUM.barrierCounter": 62963210.99699997,
+                "SIMD_SUM.memInstLdsStallCounter": 333206.32300000003,
+                "SIMD_SUM.memInstFlatStallCounter": 312427.99199999997,
+                "SIMD_SUM.memInstVmemStallCounter": 1659487.9989999998,
+                "SpPipeline.numCyclesWithVALUStallBySrcC": 83723.0,
+                "SpPipeline.numCyclesWithVALUStallBySrcA": 85902.0,
+                "SpPipeline.numCyclesWithVALUStallBySrcB": 74304.0,
+                "tatd.TATD.taCoalQueFullStall": 0.0,
+                "tatd.TATD.taOutQueFullStall": 0.0,
+                "tatd.TATD.taSendStallBytcp": 7912109.0,
+                "tatd.TATD.taSendStallByCredit": 128382.0
+              },
+              "memory_request_counts": {
+                "system.umcs0.numReadRequests": 4267351,
+                "system.umcs0.numWriteRequests": 114119,
+                "system.umcs0.numAtomicRequests": 0,
+                "system.umcs1.numReadRequests": 4267962,
+                "system.umcs1.numWriteRequests": 114256,
+                "system.umcs1.numAtomicRequests": 0
+              },
+              "logical_mmac_util_percent": 38.535974225733874,
+              "logical_bandwidth_tb_s": 0.21217042206119782,
+              "normalization_scope": "Logical full-GEMM work only; excludes padded work and scratch traffic. Use complete multi-dispatch operator time for final comparisons."
+            }
+          ]
+        },
+        "dispatch_summaries": [
+          {
+            "name": "baseline",
+            "us": 303.212455,
+            "active_cus": 96,
+            "tgs_per_die": {
+              "system.shaders0": 48,
+              "system.shaders1": 48
+            },
+            "mmop_min": 221184,
+            "mmop_max": 294912,
+            "work_balance": 0.9583333333333334,
+            "logical_mmac_util_percent": 81.88223006868238,
+            "memory_requests": 1157444,
+            "prominent_stalls": [
+              [
+                "numCyclesWithNoVALUReady",
+                58586853.0
+              ],
+              [
+                "numCyclesWithInstrTypeStall::6",
+                27131904.0
+              ],
+              [
+                "numCyclesWithNoIssue",
+                16851296.0
+              ],
+              [
+                "numCyclesWaitIFetchAfterBranchTaken",
+                5118940.0
+              ],
+              [
+                "GlobalMemPipeline.cmdCreditStall",
+                3624891.0
+              ],
+              [
+                "LocalMemPipeline.creditStall",
+                2894746.0
+              ],
+              [
+                "SIMD_SUM.barrierCounter",
+                2150774.669
+              ],
+              [
+                "SIMD_SUM.waitLgkmCounter",
+                358147.0039999999
+              ],
+              [
+                "numCyclesWithInstrTypeStall::0",
+                246123.0
+              ],
+              [
+                "SIMD_SUM.memInstFlatStallCounter",
+                227622.3370000001
+              ],
+              [
+                "SpPipeline.numCyclesWithVALUStallBySrcA",
+                219838.0
+              ],
+              [
+                "tatd.TATD.taSendStallBytcp",
+                173418.0
+              ],
+              [
+                "SpPipeline.numCyclesWithVALUStallBySrcB",
+                40637.0
+              ],
+              [
+                "tatd.TATD.taSendStallByCredit",
+                32938.0
+              ],
+              [
+                "SpPipeline.numCyclesWithVALUStallBySrcC",
+                26285.0
+              ]
+            ]
+          },
+          {
+            "name": "suggested-streamk",
+            "us": 4.72836,
+            "active_cus": 1,
+            "tgs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "mmop_min": 0,
+            "mmop_max": 0,
+            "work_balance": null,
+            "logical_mmac_util_percent": null,
+            "memory_requests": 6,
+            "prominent_stalls": [
+              [
+                "numCyclesWithNoVALUReady",
+                2353.0
+              ],
+              [
+                "numCyclesWithNoIssue",
+                2170.0
+              ],
+              [
+                "SIMD_SUM.waitLgkmCounter",
+                786.0
+              ],
+              [
+                "SIMD_SUM.waitVmCounter",
+                368.0
+              ],
+              [
+                "numCyclesWaitIFetchAfterBranchTaken",
+                111.0
+              ],
+              [
+                "waitCyclesPerBranchTaken",
+                13.875
+              ],
+              [
+                "SIMD_SUM.memInstFlatStallCounter",
+                7.0
+              ],
+              [
+                "numCyclesWithInstrTypeStall::0",
+                0.0
+              ],
+              [
+                "numCyclesWithInstrTypeStall::1",
+                0.0
+              ],
+              [
+                "numCyclesWithInstrTypeStall::2",
+                0.0
+              ],
+              [
+                "numCyclesWithInstrTypeStall::3",
+                0.0
+              ],
+              [
+                "numCyclesWithInstrTypeStall::4",
+                0.0
+              ],
+              [
+                "numCyclesWithInstrTypeStall::5",
+                0.0
+              ],
+              [
+                "numCyclesWithInstrTypeStall::6",
+                0.0
+              ],
+              [
+                "wgBlockedDueBarrierAllocation",
+                0.0
+              ]
+            ]
+          },
+          {
+            "name": "suggested-streamk",
+            "us": 7.419685,
+            "active_cus": 96,
+            "tgs_per_die": {
+              "system.shaders0": 576,
+              "system.shaders1": 576
+            },
+            "mmop_min": 0,
+            "mmop_max": 0,
+            "work_balance": null,
+            "logical_mmac_util_percent": null,
+            "memory_requests": 1920,
+            "prominent_stalls": [
+              [
+                "numCyclesWaitIFetchAfterBranchTaken",
+                1746937.0
+              ],
+              [
+                "numCyclesWithNoVALUReady",
+                280032.0
+              ],
+              [
+                "numCyclesWithNoIssue",
+                215226.0
+              ],
+              [
+                "SIMD_SUM.waitVmCounter",
+                45466.88599999999
+              ],
+              [
+                "tatd.TATD.taSendStallBytcp",
+                37048.0
+              ],
+              [
+                "SIMD_SUM.waitLgkmCounter",
+                34777.875
+              ],
+              [
+                "waitCyclesPerBranchTaken",
+                10127.849563999998
+              ],
+              [
+                "GlobalMemPipeline.cmdCreditStall",
+                7828.0
+              ],
+              [
+                "GlobalMemPipeline.addrCreditStall",
+                7828.0
+              ],
+              [
+                "SIMD_SUM.memInstFlatStallCounter",
+                3512.228
+              ],
+              [
+                "SpPipeline.numCyclesWithVALUStallBySrcC",
+                159.0
+              ],
+              [
+                "numCyclesWithInstrTypeStall::0",
+                0.0
+              ],
+              [
+                "numCyclesWithInstrTypeStall::1",
+                0.0
+              ],
+              [
+                "numCyclesWithInstrTypeStall::2",
+                0.0
+              ],
+              [
+                "numCyclesWithInstrTypeStall::3",
+                0.0
+              ]
+            ]
+          },
+          {
+            "name": "suggested-streamk",
+            "us": 644.27363,
+            "active_cus": 96,
+            "tgs_per_die": {
+              "system.shaders0": 48,
+              "system.shaders1": 48
+            },
+            "mmop_min": 282624,
+            "mmop_max": 282624,
+            "work_balance": 1.0,
+            "logical_mmac_util_percent": 38.535974225733874,
+            "memory_requests": 8763688,
+            "prominent_stalls": [
+              [
+                "numCyclesWithNoVALUReady",
+                131770620.0
+              ],
+              [
+                "numCyclesWithNoIssue",
+                79468673.0
+              ],
+              [
+                "SIMD_SUM.barrierCounter",
+                62963210.99699997
+              ],
+              [
+                "numCyclesWithInstrTypeStall::6",
+                27131904.0
+              ],
+              [
+                "numCyclesWaitIFetchAfterBranchTaken",
+                11879944.0
+              ],
+              [
+                "tatd.TATD.taSendStallBytcp",
+                7912109.0
+              ],
+              [
+                "SIMD_SUM.waitLgkmCounter",
+                5205056.004000001
+              ],
+              [
+                "GlobalMemPipeline.cmdCreditStall",
+                1783231.0
+              ],
+              [
+                "SIMD_SUM.memInstVmemStallCounter",
+                1659487.9989999998
+              ],
+              [
+                "GlobalMemPipeline.addrCreditStall",
+                1285851.0
+              ],
+              [
+                "LocalMemPipeline.creditStall",
+                999730.0
+              ],
+              [
+                "SIMD_SUM.waitVmCounter",
+                453103.32899999985
+              ],
+              [
+                "SIMD_SUM.memInstLdsStallCounter",
+                333206.32300000003
+              ],
+              [
+                "SIMD_SUM.memInstFlatStallCounter",
+                312427.99199999997
+              ],
+              [
+                "tatd.TATD.taSendStallByCredit",
+                128382.0
+              ]
+            ]
+          }
+        ],
+        "geometry": {
+          "M_tiles_256": 23,
+          "M_tail_rows": 52,
+          "N_tiles_256": 16,
+          "baseline_tiles": 368,
+          "baseline_wave_efficiency": 0.9583333333333334,
+          "narrow_tiles": 736,
+          "narrow_wave_efficiency": 0.9583333333333334
+        },
+        "observation": {
+          "actual_mmac_work_balance": 0.9583333333333334,
+          "actual_wait_issue_barrier_counter_sum": 117712927.62158799,
+          "actual_memory_requests": 1157444,
+          "actual_vector_memory_or_store_instructions": 847872.0
+        },
+        "interpretation": "M=5684 has 23 physical rows of 256 with a 52-row tail; N=4096 and K=4608 are aligned. Baseline 368 tiles assign 3 or 4 per CU; narrow 736 tiles assign 7 or 8. Both geometric wave efficiencies remain 0.95833. Narrow tests actual pipeline/issue costs and finer tile granularity, without assuming an aggregate wave-efficiency gain. Tail-store tests a separate epilogue consequence: baseline uses masked vector stores on every row because M is not divisible by 256; use native matrix stores for complete 128-row consumer panels and retain exact masks for the final partial panel.",
+        "selected_followups": [
+          "pmd-narrow256x128",
+          "pmd-group4",
+          "pmd-tail-store"
+        ],
+        "followups": [
+          {
+            "name": "pmd-narrow256x128",
+            "enabled": true,
+            "hypothesis": "Actual per-CU MMOP imbalance triggers 256x128 whole tiles. Keep cluster2 double-buffered persistent pipeline and remove Stream-K reset/scratch/merge. Both original and narrow geometric efficiencies are 0.95833; measure actual MMOP and issue/barrier changes plus complete latency."
+          },
+          {
+            "name": "pmd-group4",
+            "enabled": true,
+            "hypothesis": "Nonzero actual wait/issue/barrier counters plus UMC requests trigger B-panel reuse by grouping four M tiles. Keep baseline 256x256/cluster2 and exact 23-row coverage including final group of 3; aggregate arithmetic balance is unchanged."
+          },
+          {
+            "name": "pmd-tail-store",
+            "enabled": true,
+            "hypothesis": "Actual vector-memory/store instructions plus the 52-row M tail trigger per-consumer panel store specialization. Full 128-row panels use native matrix_store; the single partial panel retains masked gl.store. Keep baseline tile/order/load/compute pipeline and require full-output oracle and direct baseline validation."
+          }
+        ]
+      },
+      "parallel_expansion": {
+        "reason": "Explicit user concurrency instruction",
+        "audit": "supplement-review/20261120T142123.498745Z/final-output-audit.json",
+        "original_streamk_failure_not_assumed": true,
+        "baseline_original2_and_new3_all_considered": true
+      }
+    },
+    "original_sha256": "c87e35d4c622be86f5be25c7b7ebe9df5b7d261c5a988c27cf71f1af9304407f"
+  },
+  "original_published_record": {
+    "data": {
+      "requirement": "R036",
+      "record_key": {
+        "requirement": "R036",
+        "dies": 2,
+        "layout": "TT"
+      },
+      "status": "PASS",
+      "shape": [
+        5684,
+        4096,
+        4608
+      ],
+      "dtype": {
+        "A": "BF16",
+        "W": "BF16",
+        "output": "BF16",
+        "scale": null,
+        "accumulator": "FP32"
+      },
+      "layout": "TT",
+      "full_grid_TGs": 96,
+      "performance": {
+        "kernel_cycles": 666939.0,
+        "kernel_us": 303.45727231115455,
+        "kernel_tops": 707.0643382175851,
+        "launched_TGs": 96,
+        "samples": 1,
+        "aggregation": "one cold full-grid dispatch; no minimum or median; no execution warmup",
+        "time_domain": "system.gcSimCycles/(gcFrequency_GHz*1000); complete dispatch"
+      },
+      "baseline_record": {
+        "path": "../../1die/tt/record.json",
+        "sha256": "29817fc76815f43d91aa3921e95d6a788b82907b8886d7dce8bfb7880589fb5c",
+        "kernel_us": 586.8090028128104,
+        "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
+        "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/docs/ops/gemm/tuning/r036/1die/tt/record.json",
+        "note": "The comparison uses this immutable archived baseline; subsequent checkout tuning can change the current 1die record."
+      },
+      "comparison": {
+        "speedup": 1.93374506514089,
+        "latency_change_percent": -48.28687514053765,
+        "note": "Comparison to the published 1die record; R001 published baseline used an older compiler environment."
+      },
+      "source": {
+        "path": "boltops/gemm/gluon/gemm_a16w16.py",
+        "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+        "sha256": "711f312aaaa064083e5cf822119248f24141c82631d3fe9a32895faaf305b847",
+        "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
+        "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py"
+      },
+      "config": {
+        "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4096-K=4608-TT.json",
+        "sha256": "0ac234bc26b83fc248d0f82f25104aa6320557862a1ff75758711d86988a71aa",
+        "profile": "DTYPE=bfloat16-OUT=bfloat16",
+        "bucket": "M_EQ_5684",
+        "parameters": {
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "num_warps": 4,
+          "num_stages": 2,
+          "NUM_SMS": 96,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "wasp_wdra": true,
+          "enable_v_mmac_cluster": 2,
+          "hcu_use_gfx946_sched_model_v2": true,
+          "mmac_layout_force": 2,
+          "kernel": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel"
+        },
+        "runtime_overrides": {}
+      },
+      "launch": {
+        "grid": [
+          96
+        ],
+        "options": {
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "num_warps": 4,
+          "num_stages": 2,
+          "NUM_SMS": 96,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "wasp_wdra": true,
+          "enable_v_mmac_cluster": 2,
+          "hcu_use_gfx946_sched_model_v2": true,
+          "mmac_layout_force": 2,
+          "M": 5684,
+          "N": 4096,
+          "K": 4608,
+          "B_K_CONTIGUOUS": false,
+          "FORCE_MASKED_STORE": false
+        },
+        "method": "Direct repository JIT; original tile/warp/stage options and kernel source; device CU count sets persistent NUM_SMS/grid."
+      },
+      "assembly": {
+        "path": "kernel.amdgcn",
+        "sha256": "964747b1ef4c4fb3395017fb09e6ac30e11235df54ffde97db38883a2939392b",
+        "hsaco_sha256": "50b98fe9358b73472a66f89c7eb86827a9de8750127bf0d4848721c41c4aed84",
+        "matches_1die_assembly": false,
+        "executable_sections": {
+          ".rodata": {
+            "size": 64,
+            "sha256": "9eea979b9bdeae08ea710c5b6561c502461918253fb90826450199149ce68d8a"
+          },
+          ".text": {
+            "size": 17684,
+            "sha256": "582907081a65421dd5e84d0aa2fd35ae69af7104fa072ab0a97c8fc02ad25f39"
+          }
+        }
+      },
+      "environment": {
+        "type": "PMD",
+        "chip": "sbx2",
+        "arch": "gfx946",
+        "dies": 2,
+        "cu_count": 96,
+        "cu_count_per_die": 48,
+        "reported_device_cu_count": 96,
+        "clock_period_ps": {
+          "gc": 455,
+          "shader": 455
+        },
+        "environment_script": "/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh",
+        "environment_variables": {
+          "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang",
+          "PMD_PATH": "/opt/rocm/pmd",
+          "PYTHONPATH": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10:",
+          "GPU_CHIP": "sbx2",
+          "LD_LIBRARY_PATH": "/opt/rocm/lib",
+          "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+          "GPU_ARGS": "['--abs-max-tick=10000000000']",
+          "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
+          "AMDGCN_USE_BUFFER_OPS": "1",
+          "OMP_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "GPU_OUT": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r036/measurement/g",
+          "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r036/measurement/cache",
+          "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r036/measurement/triton-home",
+          "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r036/measurement/history.log",
+          "RPY_HISTORY_SIZE": "1024"
+        },
+        "runtime": {
+          "torch": "2.6.0+d1e87ac",
+          "triton": "3.6.0",
+          "triton_path": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10/triton/__init__.py",
+          "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3"
+        },
+        "gpu_configuration": {
+          "type": "Configuration",
+          "harvestmode": "0",
+          "numtccpipprocreturnbuf": "1",
+          "numtccpipesendwriteback": "1",
+          "sbcxcdcsselbit": "-1",
+          "tcchashrandom": "false",
+          "tcpforcemiss": "false",
+          "tcaarbgonum": "2",
+          "tcahashoutnum": "5",
+          "tcaholearbage": "false",
+          "tcaholefifoflopfifonum": "4",
+          "tcaholefifonum": "4",
+          "tcaholefifosize": "136",
+          "tcanumperdie": "2",
+          "tcardwrdatabusreuse": "false",
+          "tcausehashmod": "false",
+          "tccarbrecvrdreqfifodepth": "4",
+          "tccarbrecvwrreqfifodepth": "8",
+          "tccnotexencatowithlru": "true",
+          "tccpacksrtn": "true",
+          "tccsendreqtoeafifodepth": "1",
+          "tccsubbanknum": "3",
+          "tcctagwrthroughfifodepth": "24",
+          "tccvirtualfifominnum": "2",
+          "as_tcp": "false",
+          "co_issue_version": "2",
+          "device_id": "26295",
+          "dp4x_status": "false",
+          "dpm": "4",
+          "ds_encoding_version": "3",
+          "dual_issue_en": "false",
+          "early_ta_done_en": "true",
+          "early_vgpr_free_en": "false",
+          "ecc_off": "false",
+          "eco_info": "0",
+          "encoding_version": "3",
+          "eventq_index": "0",
+          "flat_addr_with_dp4x": "true",
+          "flat_lds_pingpong": "true",
+          "gpu_clock": "455",
+          "gpu_sys_id": "0",
+          "hack_utcl1": "false",
+          "has_m1": "true",
+          "hybrid_pte": "true",
+          "ibuf_size": "24",
+          "ipc_conn": "false",
+          "ipc_shm": "None",
+          "kfd_ioctl_minor_version": "9",
+          "lds_oa2sche_credit": "false",
+          "lds_addr_dis_autoalign": "false",
+          "lds_b64_dwx2": "false",
+          "lds_bank_num": "64",
+          "lds_bypass": "false",
+          "lds_cmdfifo_depth": "16",
+          "lds_input_num": "4",
+          "lds_min_alloc": "512",
+          "lds_no_bkc": "false",
+          "lds_out_dwx2": "true",
+          "lds_output_num": "2",
+          "lds_outputbuffer_depth": "16",
+          "lds_schepipe_depth": "5",
+          "lds_size": "131072",
+          "lds_spfifo_depth": "4",
+          "lds_spbuffer_depth": "64",
+          "lds_spf_cycle": "4",
+          "lsooo": "false",
+          "mem_size": "68719476736",
+          "mls_encoding_version": "3",
+          "mmop_clause": "false",
+          "mmop_co_trans_full_rate": "false",
+          "mmop_f16_i8_f8": "8",
+          "mmop_f32": "32",
+          "mmop_f64": "256",
+          "mmop_hi_prio_en": "false",
+          "mmop_i4": "16",
+          "mmop_x8f32": "64",
+          "mmu_base_paddr": "0",
+          "mmu_page_size": "2097152",
+          "mmu_partition_mode": "false",
+          "mvf_bypass": "false",
+          "no_bwc": "true",
+          "no_ebwc": "true",
+          "num_chip": "2",
+          "num_cu": "48",
+          "num_gpu": "1",
+          "num_se": "4",
+          "num_tcc": "32",
+          "page_size": "12",
+          "parallel": "false",
+          "scale_min_alloc": "256",
+          "scale_size": "8192",
+          "simds_per_cu": "4",
+          "skip_cal": "false",
+          "skip_kernel_exec": "false",
+          "soc_model": "false",
+          "soc_script": "configs/gpuShm.py",
+          "sp_num": "2",
+          "sp_to_gm_addr_bus_width": "64",
+          "sp_to_gm_data_bus_width": "64",
+          "split_vgpr_group": "false",
+          "sqtacmd_version": "1",
+          "sreg_file_size": "800",
+          "stride_cache_swizzle": "true",
+          "suspend_time_en": "false",
+          "sys_clock": "1000",
+          "ta_addr_fifo_size": "48",
+          "ta_channels_per_phase": "4",
+          "ta_cmd_fifo_size": "48",
+          "ta_data_fifo_size": "128",
+          "ta_dwords_per_phase": "16",
+          "tatd_bps_credit": "256",
+          "tatd_cmd_credit": "128",
+          "tatd_cycle_credit": "512",
+          "tcp_rand_latfifo": "false",
+          "transx": "2",
+          "tt_time_delta": "false",
+          "ttrace_version": "3",
+          "umc_clock": "2276",
+          "use_ds_m0": "false",
+          "use_ds_m1": "false",
+          "use_mmu": "false",
+          "utcl1_bigk": "true",
+          "utcl2": "simple",
+          "vgpr_min_alloc": "4",
+          "vreg_file_size": "512",
+          "wf_size": "64",
+          "work_with_cu_tester": "false",
+          "wrap_offset_version": "3",
+          "xcd_id_in_device": "0"
+        },
+        "model_configuration": {
+          "path": "pmd-config.json.gz",
+          "sha256": "d949c32858652b576db73dd6cec069a4405d6b67135a23601c94bcaf0a87a438"
+        }
+      },
+      "benchmark": {
+        "script": "benchmark.py",
+        "sha256": "ba927f71d2e76ca1369a8d04de19672ffb129b8d45184b74dcba7289aa7e9eee",
+        "seed": 21,
+        "repeats": 1,
+        "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r036/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r036/2die/tt/record.json --output /tmp/r036-sbx2-full-new",
+        "measured_script_sha256": "767bae92ff03bcadf6e1b1717838f6ed1a625e5d7722a8cc830e9522131a6c87",
+        "publication_changes": "Embed frozen launch options; recover measured source from Git when needed; add optional independent single-TG PERF capture. Default full-grid protocol and published full-grid performance are preserved. Single-TG dry-run plan labels clarified after capture; executable measurement logic unchanged.",
+        "single_tg_measured_script_sha256": "e434fb3bf8d4ec28bf7ccb89094d3b860090f0f7c29b55d3396b62ea4e94232e"
+      },
+      "resources": {
+        "VGPR": 168,
+        "spills": 0,
+        "LDS_bytes": 131072
+      },
+      "validation": [],
+      "samples": [
+        {
+          "index": 0,
+          "phase": "cold",
+          "status": "PASS",
+          "kernel_cycles": 666939.0,
+          "kernel_us": 303.45727231115455,
+          "completed_TGs": 96,
+          "completed_TGs_per_die": {
+            "system.shaders0": 48,
+            "system.shaders1": 48
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 48,
+            "system.shaders1": 48
+          },
+          "mmop_instructions": 27131904,
+          "gc_frequency_ghz": 2.197802,
+          "stats_path": "stats.txt.gz",
+          "stats_sha256": "5e0dd4ecbdde006edf6623626806cffbea0e62b5700521d92f3358525a5f9e21",
+          "accuracy": {
+            "elements": 23281664,
+            "outside_tolerance": 0,
+            "nonfinite": 0,
+            "max_abs": 0.25,
+            "canary_ok": true,
+            "inputs_byte_identical": true,
+            "atol": 0.001,
+            "rtol": 0.01,
+            "mean_abs_vs_fp32": 0.0190847857203036,
+            "rounding_floor": 0.01908478220225969
+          },
+          "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r036/measurement/g/0/0/stats.txt",
+          "stats_section": 0
+        }
+      ],
+      "measurement_result_path": "tmp/1117/bf16_sbx2_20261117/r036/measurement/result.json",
+      "measurement_result_sha256": "79788c48900f77b55d0211e892cafac33b3805256e7f4d95043d9b7f564362f1",
+      "measured_at": "2026-11-17T11:18:33.918073+00:00",
+      "evidence": {
+        "stats": {
+          "path": "stats.txt.gz",
+          "sha256": "e6561ed03b37aa85767db228cdbb56cee1275e31c2e4ea4a6eeca14c380bd5de",
+          "dispatches": 1,
+          "format": "Complete raw PMD statistics concatenated in validation-then-samples order; stats_section is a zero-based block index. Individual raw hashes remain in each sample."
+        },
+        "model_config": {
+          "path": "pmd-config.json.gz",
+          "sha256": "d949c32858652b576db73dd6cec069a4405d6b67135a23601c94bcaf0a87a438"
+        },
+        "layout_reference": {
+          "branch": "origin/gemm",
+          "commit": "2ef6411e7c7f729d879e1a739c1d57082362d38d",
+          "path": "docs/ops/gemm/tuning/r011/2die/tn"
+        }
+      },
+      "single_tg_perf": {
+        "environment_overrides": {
+          "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+          "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+        },
+        "path": "single_tg.perf",
+        "sha256": "045d5b9a1984f0fa53d29bf0ff7921c67c9448f4aea09c1f34abf08c83be456a",
+        "grid": [
+          1
+        ],
+        "scope": "Independent TG0 dispatch on the sbx2 device (2 dies / 96 CUs); original MNK, strides and compile options including NUM_SMS=96 when persistent. This PMD rotates the starting die between launches; each sample records the actual die/CU. Full-grid performance is independent of this capture.",
+        "tile_ids": [
+          0,
+          96,
+          192,
+          288
+        ],
+        "tiles_per_TG": 4,
+        "repeat": 2,
+        "selection": "minimum system.gcSimCycles of repeats 1 and 2; repeat 0 excluded",
+        "kernel_cycles": 644569.0,
+        "kernel_us": 293.27892139510294,
+        "validation": {
+          "elements": 262144,
+          "unselected_output_nan": true,
+          "outside_tolerance": 0,
+          "nonfinite": 0,
+          "max_abs": 0.125,
+          "canary_ok": true,
+          "inputs_byte_identical": true,
+          "atol": 0.001,
+          "rtol": 0.01,
+          "mean_abs_vs_fp32": 0.019109795981734123,
+          "rounding_floor": 0.019109793085902993
+        },
+        "completed_TGs_per_die": {
+          "system.shaders0": 1,
+          "system.shaders1": 0
+        },
+        "active_CUs_per_die": {
+          "system.shaders0": 1,
+          "system.shaders1": 0
+        },
+        "samples_validated": 3,
+        "samples": [
+          {
+            "index": 0,
+            "phase": "warmup",
+            "status": "PASS",
+            "kernel_cycles": 662209.0,
+            "kernel_us": 301.30512211746105,
+            "completed_TGs": 1,
+            "completed_TGs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "active_CUs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "mmop_instructions": 294912,
+            "gc_frequency_ghz": 2.197802,
+            "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/g/0/0/stats.txt",
+            "stats_sha256": "06a5b181d87b3106059b3da73dd82b7de967a56358220844177077ab91a71095",
+            "accuracy": {
+              "elements": 262144,
+              "unselected_output_nan": true,
+              "outside_tolerance": 0,
+              "nonfinite": 0,
+              "max_abs": 0.125,
+              "canary_ok": true,
+              "inputs_byte_identical": true,
+              "atol": 0.001,
+              "rtol": 0.01,
+              "mean_abs_vs_fp32": 0.019109795981734123,
+              "rounding_floor": 0.019109793085902993
+            },
+            "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/g/0/0/939345_python3.10.perf",
+            "repeat": 0
+          },
+          {
+            "index": 1,
+            "phase": "timed",
+            "status": "PASS",
+            "kernel_cycles": 666865.0,
+            "kernel_us": 303.42360230812426,
+            "completed_TGs": 1,
+            "completed_TGs_per_die": {
+              "system.shaders0": 0,
+              "system.shaders1": 1
+            },
+            "active_CUs_per_die": {
+              "system.shaders0": 0,
+              "system.shaders1": 1
+            },
+            "mmop_instructions": 294912,
+            "gc_frequency_ghz": 2.197802,
+            "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/g/0/1/stats.txt",
+            "stats_sha256": "74c37325b3fbb10bb77ed83ea1216fe15d58ada4c98f39bd34f8f1d023c25b18",
+            "accuracy": {
+              "elements": 262144,
+              "unselected_output_nan": true,
+              "outside_tolerance": 0,
+              "nonfinite": 0,
+              "max_abs": 0.125,
+              "canary_ok": true,
+              "inputs_byte_identical": true,
+              "atol": 0.001,
+              "rtol": 0.01,
+              "mean_abs_vs_fp32": 0.019109795981734123,
+              "rounding_floor": 0.019109793085902993
+            },
+            "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/g/0/1/939345_python3.10.perf",
+            "repeat": 1
+          },
+          {
+            "index": 2,
+            "phase": "timed",
+            "status": "PASS",
+            "kernel_cycles": 644569.0,
+            "kernel_us": 293.27892139510294,
+            "completed_TGs": 1,
+            "completed_TGs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "active_CUs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "mmop_instructions": 294912,
+            "gc_frequency_ghz": 2.197802,
+            "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/g/0/2/stats.txt",
+            "stats_sha256": "9a7e660bab1ce4e5f4e154a4aa6c3a8ac359fb023323a4d3dba730eaa21b1cc3",
+            "accuracy": {
+              "elements": 262144,
+              "unselected_output_nan": true,
+              "outside_tolerance": 0,
+              "nonfinite": 0,
+              "max_abs": 0.125,
+              "canary_ok": true,
+              "inputs_byte_identical": true,
+              "atol": 0.001,
+              "rtol": 0.01,
+              "mean_abs_vs_fp32": 0.019109795981734123,
+              "rounding_floor": 0.019109793085902993
+            },
+            "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/g/0/2/939345_python3.10.perf",
+            "repeat": 2
+          }
+        ],
+        "full_and_single_text_rodata_equal": true,
+        "launch_resources_equal": true,
+        "embedded_hsaco_verified": true,
+        "hsaco_sha256": "17663cb317eb2223998c4330efec2b6a08eabffb2bffb1bc6cd361284b7bb5f5",
+        "stats": {
+          "path": "perf_stats.txt.gz",
+          "sha256": "3e15addc71bfc5ee8dd145d7d71971ec53c65e796cac8082ef9702dcad25efed"
+        },
+        "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r036/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r036/2die/tt/record.json --output /tmp/r036-sbx2-single-tg-new --single-tg-perf",
+        "raw_result_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r036/result.json",
+        "raw_result_sha256": "0d250454f54a7d2d369fd1823dfb02c35aa4b058241ca5ad0cc8ee11264df343"
+      }
+    },
+    "original_sha256": "bf86cfa480e8e93cfd099ec3d451559b73d8a96965d9feb5b25bebe43f744200",
+    "note": "Previous published record, embedded for provenance only."
+  },
+  "artifacts": [
+    "benchmark.py",
+    "kernel.amdgcn",
+    "perf_stats.txt.gz",
+    "pmd-config.json.gz",
+    "record.json",
+    "single_tg.perf",
+    "stats.txt.gz",
+    "kernel.py"
+  ],
+  "artifact_policy": {
+    "exact": true,
+    "kernel_source": "kernel.py",
+    "working_files": "Temporary workspace outside the output directory; automatically removed.",
+    "regeneration": "benchmark.py --regenerate OUTPUT copies and verifies only this artifact list."
+  },
+  "artifact_sha256": {
+    "benchmark.py": "c27b1583a622a83e6ee0a6d69f1cfaadfcea1dcc318374b9f5fe91bc641ae627",
+    "kernel.amdgcn": "85338811eaf6d042beaec927dcb7541975bc0de7665ffed5f7dbe16f1bb312d2",
+    "perf_stats.txt.gz": "0a152f9388fb241d8fa0e98820549086f99e14ea2156a2468ae2f7c97ae3c734",
+    "pmd-config.json.gz": "05b02acfa3f8141bbce990feb50c13bf0a4d7c356a771e2467d7fee3d522972d",
+    "single_tg.perf": "c5fa75ccf6c3cc417eafecd2d22d64005e85e350ef1e11eeb167d2d56bbdcbdd",
+    "stats.txt.gz": "9d2caef3f2503eb647d051476c05dedda4568f4aa786f513a40e3ba9d2bfb153",
+    "kernel.py": "e5af374d3ab2d6b561a87acef3ba799f39611d2f5c8f873e4c3112ed3c03199e"
   }
 }

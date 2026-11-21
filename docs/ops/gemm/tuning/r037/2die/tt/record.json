@@ -21,39 +21,37 @@
   "layout": "TT",
   "full_grid_TGs": 96,
   "performance": {
-    "kernel_cycles": 831973.0,
-    "kernel_us": 378.5477490692975,
-    "kernel_tops": 637.6587707771889,
+    "kernel_cycles": 822872,
+    "kernel_us": 374.40676,
+    "kernel_tops": 644.7113624551009,
     "launched_TGs": 96,
+    "total_TGs_per_sample": 96,
+    "dispatches_per_sample": 1,
     "samples": 1,
-    "aggregation": "one cold full-grid dispatch; no minimum or median; no execution warmup",
-    "time_domain": "system.gcSimCycles/(gcFrequency_GHz*1000); complete dispatch"
+    "aggregation": "one cold full-grid sample",
+    "time_domain": "sum(all full-grid dispatch system.gcSimCycles) * 455 / 1e6, microseconds"
   },
   "baseline_record": {
-    "path": "../../1die/tt/record.json",
-    "sha256": "32469b0d724eb4f2c62cb04cddc0d9c1e67c883a5350c75b66de5f8e306c9116",
-    "kernel_us": 666.0527199447449,
-    "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/docs/ops/gemm/tuning/r037/1die/tt/record.json",
-    "note": "The comparison uses this immutable archived baseline; subsequent checkout tuning can change the current 1die record."
+    "path": "../../../../../../../tmp/optALL/R037/baseline/result.json",
+    "sha256": "f04103897fd10c8bd16eb8e8ec994fdf923684237d061292ced6fcbc8d4b3dee",
+    "kernel_us": 379.98415,
+    "note": "Matched local optALL baseline with the same measurement protocol; previous published record is embedded in original_published_record."
   },
   "comparison": {
-    "speedup": 1.7594945989833806,
-    "latency_change_percent": -43.16549760494913,
-    "note": "Comparison to the published 1die record; R001 published baseline used an older compiler environment."
+    "speedup": 1.014896606033502,
+    "latency_change_percent": -1.4677954330463483
   },
   "source": {
-    "path": "boltops/gemm/gluon/gemm_a16w16.py",
+    "path": "docs/ops/gemm/tuning/r037/2die/tt/kernel.py",
     "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
-    "sha256": "711f312aaaa064083e5cf822119248f24141c82631d3fe9a32895faaf305b847",
-    "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
-    "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py"
+    "sha256": "408f594f590480d995234ffd46bc264287f7d145e6d3de7c25e37a42f7191f2d",
+    "language": "Gluon",
+    "historical_source_path": "tmp/optALL/R037/pmd-hybrid-bulk-tail/candidate.snapshot.py",
+    "historical_source_sha256": "816a2f91087c775ead67418b96f20f2a5061aa500f3e7dd4bf8b476c7a38a939",
+    "kernel_function_ast_equal_to_historical_source": true,
+    "post_compile_assembly_patch": false
   },
   "config": {
-    "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4608-K=4608-TT.json",
-    "sha256": "0ac234bc26b83fc248d0f82f25104aa6320557862a1ff75758711d86988a71aa",
-    "profile": "DTYPE=bfloat16-OUT=bfloat16",
-    "bucket": "M_EQ_5684",
     "parameters": {
       "BLOCK_SIZE_M": 256,
       "BLOCK_SIZE_N": 256,
@@ -75,9 +73,8 @@
       "enable_v_mmac_cluster": 2,
       "hcu_use_gfx946_sched_model_v2": true,
       "mmac_layout_force": 2,
-      "kernel": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel"
-    },
-    "runtime_overrides": {}
+      "DISTRIBUTE_TAIL": true
+    }
   },
   "launch": {
     "grid": [
@@ -104,29 +101,44 @@
       "enable_v_mmac_cluster": 2,
       "hcu_use_gfx946_sched_model_v2": true,
       "mmac_layout_force": 2,
-      "M": 5684,
-      "N": 4608,
-      "K": 4608,
-      "B_K_CONTIGUOUS": false,
-      "FORCE_MASKED_STORE": false
+      "DISTRIBUTE_TAIL": true
     },
-    "method": "Direct repository JIT; original tile/warp/stage options and kernel source; device CU count sets persistent NUM_SMS/grid."
+    "method": "Direct JIT of local kernel.py with historical launch parameters and all dispatches timed"
   },
   "assembly": {
     "path": "kernel.amdgcn",
-    "sha256": "83a453b80a79715acadd56dab625f964a31f3bbc8cee64c4b992c29ed53cab75",
-    "hsaco_sha256": "5123bd73be2bb7e2de4a2a2d2c1115d2348d247c648b28313f2ca318f4345d27",
-    "matches_1die_assembly": false,
+    "sha256": "6eed38fced6af912e0ad87e0c1a1e19e488827bc9437212e4a20071ccf51fef4",
+    "hsaco_sha256": "ad04d38a56eaf7fe0a309311c52ea288f0cc7d8112599b6f4ab50d6dea4141ee",
     "executable_sections": {
       ".rodata": {
         "size": 64,
-        "sha256": "9eea979b9bdeae08ea710c5b6561c502461918253fb90826450199149ce68d8a"
+        "sha256": "4db6eb4d0d6d7540d849f61df46e12a6edd5b3b30eb4e33606504a222b707933"
       },
       ".text": {
-        "size": 17844,
-        "sha256": "c08a903e56f22a8ff914aab96c01be7f172d2a849df9df700c20a54aa48ed3e9"
+        "size": 23368,
+        "sha256": "6cabd9e72b6140e8c6eb2fbe1ac89b7f6720f912cb03d79568c56cde7b6a653d"
       }
-    }
+    },
+    "compilation_units": [
+      {
+        "stage": "gemm",
+        "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+        "offset_bytes": 0,
+        "size_bytes": 401581,
+        "sha256": "6eed38fced6af912e0ad87e0c1a1e19e488827bc9437212e4a20071ccf51fef4",
+        "hsaco_sha256": "ad04d38a56eaf7fe0a309311c52ea288f0cc7d8112599b6f4ab50d6dea4141ee",
+        "executable_sections": {
+          ".rodata": {
+            "size": 64,
+            "sha256": "4db6eb4d0d6d7540d849f61df46e12a6edd5b3b30eb4e33606504a222b707933"
+          },
+          ".text": {
+            "size": 23368,
+            "sha256": "6cabd9e72b6140e8c6eb2fbe1ac89b7f6720f912cb03d79568c56cde7b6a653d"
+          }
+        }
+      }
+    ]
   },
   "environment": {
     "type": "PMD",
@@ -142,400 +154,1436 @@
     },
     "environment_script": "/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh",
     "environment_variables": {
-      "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang",
+      "GPU_CHIP": "sbx2",
+      "GPU_ARGS": "['--abs-max-tick=10000000000']",
+      "GPU_DFLAGS": "['StatLog']",
+      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_BUFFER_CACHE_SWIZZLE": null,
+      "TRITON_MLS_B_INTERLEAVE": null,
       "PMD_PATH": "/opt/rocm/pmd",
       "PYTHONPATH": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10:",
-      "GPU_CHIP": "sbx2",
       "LD_LIBRARY_PATH": "/opt/rocm/lib",
-      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
-      "GPU_ARGS": "['--abs-max-tick=10000000000']",
-      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
-      "AMDGCN_USE_BUFFER_OPS": "1",
+      "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang",
+      "GPU_OUT": "/tmp/optall-compute-uc_gtfdr/g",
+      "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/cache",
+      "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/triton-home",
+      "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/history.log",
       "OMP_NUM_THREADS": "1",
       "MKL_NUM_THREADS": "1",
       "OPENBLAS_NUM_THREADS": "1",
-      "GPU_OUT": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r037/measurement/g",
-      "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r037/measurement/cache",
-      "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r037/measurement/triton-home",
-      "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r037/measurement/history.log",
-      "RPY_HISTORY_SIZE": "1024"
+      "OPTALL_PMD_LEASE": "7d4b0ad150ed43ccaad1d207b57321fb",
+      "OPTALL_PREFLIGHT": "1"
     },
-    "runtime": {
+    "toolchain": {
       "torch": "2.6.0+d1e87ac",
       "triton": "3.6.0",
-      "triton_path": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10/triton/__init__.py",
-      "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3"
-    },
-    "gpu_configuration": {
-      "type": "Configuration",
-      "harvestmode": "0",
-      "numtccpipprocreturnbuf": "1",
-      "numtccpipesendwriteback": "1",
-      "sbcxcdcsselbit": "-1",
-      "tcchashrandom": "false",
-      "tcpforcemiss": "false",
-      "tcaarbgonum": "2",
-      "tcahashoutnum": "5",
-      "tcaholearbage": "false",
-      "tcaholefifoflopfifonum": "4",
-      "tcaholefifonum": "4",
-      "tcaholefifosize": "136",
-      "tcanumperdie": "2",
-      "tcardwrdatabusreuse": "false",
-      "tcausehashmod": "false",
-      "tccarbrecvrdreqfifodepth": "4",
-      "tccarbrecvwrreqfifodepth": "8",
-      "tccnotexencatowithlru": "true",
-      "tccpacksrtn": "true",
-      "tccsendreqtoeafifodepth": "1",
-      "tccsubbanknum": "3",
-      "tcctagwrthroughfifodepth": "24",
-      "tccvirtualfifominnum": "2",
-      "as_tcp": "false",
-      "co_issue_version": "2",
-      "device_id": "26295",
-      "dp4x_status": "false",
-      "dpm": "4",
-      "ds_encoding_version": "3",
-      "dual_issue_en": "false",
-      "early_ta_done_en": "true",
-      "early_vgpr_free_en": "false",
-      "ecc_off": "false",
-      "eco_info": "0",
-      "encoding_version": "3",
-      "eventq_index": "0",
-      "flat_addr_with_dp4x": "true",
-      "flat_lds_pingpong": "true",
-      "gpu_clock": "455",
-      "gpu_sys_id": "0",
-      "hack_utcl1": "false",
-      "has_m1": "true",
-      "hybrid_pte": "true",
-      "ibuf_size": "24",
-      "ipc_conn": "false",
-      "ipc_shm": "None",
-      "kfd_ioctl_minor_version": "9",
-      "lds_oa2sche_credit": "false",
-      "lds_addr_dis_autoalign": "false",
-      "lds_b64_dwx2": "false",
-      "lds_bank_num": "64",
-      "lds_bypass": "false",
-      "lds_cmdfifo_depth": "16",
-      "lds_input_num": "4",
-      "lds_min_alloc": "512",
-      "lds_no_bkc": "false",
-      "lds_out_dwx2": "true",
-      "lds_output_num": "2",
-      "lds_outputbuffer_depth": "16",
-      "lds_schepipe_depth": "5",
-      "lds_size": "131072",
-      "lds_spfifo_depth": "4",
-      "lds_spbuffer_depth": "64",
-      "lds_spf_cycle": "4",
-      "lsooo": "false",
-      "mem_size": "68719476736",
-      "mls_encoding_version": "3",
-      "mmop_clause": "false",
-      "mmop_co_trans_full_rate": "false",
-      "mmop_f16_i8_f8": "8",
-      "mmop_f32": "32",
-      "mmop_f64": "256",
-      "mmop_hi_prio_en": "false",
-      "mmop_i4": "16",
-      "mmop_x8f32": "64",
-      "mmu_base_paddr": "0",
-      "mmu_page_size": "2097152",
-      "mmu_partition_mode": "false",
-      "mvf_bypass": "false",
-      "no_bwc": "true",
-      "no_ebwc": "true",
-      "num_chip": "2",
-      "num_cu": "48",
-      "num_gpu": "1",
-      "num_se": "4",
-      "num_tcc": "32",
-      "page_size": "12",
-      "parallel": "false",
-      "scale_min_alloc": "256",
-      "scale_size": "8192",
-      "simds_per_cu": "4",
-      "skip_cal": "false",
-      "skip_kernel_exec": "false",
-      "soc_model": "false",
-      "soc_script": "configs/gpuShm.py",
-      "sp_num": "2",
-      "sp_to_gm_addr_bus_width": "64",
-      "sp_to_gm_data_bus_width": "64",
-      "split_vgpr_group": "false",
-      "sqtacmd_version": "1",
-      "sreg_file_size": "800",
-      "stride_cache_swizzle": "true",
-      "suspend_time_en": "false",
-      "sys_clock": "1000",
-      "ta_addr_fifo_size": "48",
-      "ta_channels_per_phase": "4",
-      "ta_cmd_fifo_size": "48",
-      "ta_data_fifo_size": "128",
-      "ta_dwords_per_phase": "16",
-      "tatd_bps_credit": "256",
-      "tatd_cmd_credit": "128",
-      "tatd_cycle_credit": "512",
-      "tcp_rand_latfifo": "false",
-      "transx": "2",
-      "tt_time_delta": "false",
-      "ttrace_version": "3",
-      "umc_clock": "2276",
-      "use_ds_m0": "false",
-      "use_ds_m1": "false",
-      "use_mmu": "false",
-      "utcl1_bigk": "true",
-      "utcl2": "simple",
-      "vgpr_min_alloc": "4",
-      "vreg_file_size": "512",
-      "wf_size": "64",
-      "work_with_cu_tester": "false",
-      "wrap_offset_version": "3",
-      "xcd_id_in_device": "0"
-    },
-    "model_configuration": {
-      "path": "pmd-config.json.gz",
-      "sha256": "e4d9778e004a95070b8ec88dc062f8309083dfc2c0e0bc0f2d6f09fb42aec49d"
+      "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3",
+      "clang_sha256": "4ff0c43a892b7e2e7ce8a96739852abc395916747c02db7fb055fc31182facbc"
     }
   },
   "benchmark": {
-    "script": "benchmark.py",
-    "sha256": "ba927f71d2e76ca1369a8d04de19672ffb129b8d45184b74dcba7289aa7e9eee",
+    "path": "benchmark.py",
+    "sha256": "b33e31a18610bfe9c078152d48cbdb494c3aa531945a725b63eff96dbf9fe9d8",
     "seed": 21,
+    "timed_seed": 21,
     "repeats": 1,
-    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r037/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r037/2die/tt/record.json --output /tmp/r037-sbx2-full-new",
-    "measured_script_sha256": "767bae92ff03bcadf6e1b1717838f6ed1a625e5d7722a8cc830e9522131a6c87",
-    "publication_changes": "Embed frozen launch options; recover measured source from Git when needed; add optional independent single-TG PERF capture. Default full-grid protocol and published full-grid performance are preserved. Single-TG dry-run plan labels clarified after capture; executable measurement logic unchanged.",
-    "single_tg_measured_script_sha256": "e434fb3bf8d4ec28bf7ccb89094d3b860090f0f7c29b55d3396b62ea4e94232e"
+    "execution_warmups": 0,
+    "historical_runner_path": "tmp/optALL/R037/pmd-hybrid-bulk-tail/runner.snapshot.py",
+    "historical_runner_sha256": "1e342ea00a987f05beb6980a126ade587a4176cfc0e214c1aefb9cf7c6279e56",
+    "modifications": "Relocate source/job/import paths; add dry-run. R028 retains original two direct launches in benchmark, with no host interface in kernel.py.",
+    "job": {
+      "requirement": "R037",
+      "name": "pmd-hybrid-bulk-tail",
+      "shape": [
+        5684,
+        4608,
+        4608
+      ],
+      "family": "persistent",
+      "source": "kernel.py",
+      "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+      "options": {
+        "BLOCK_SIZE_M": 256,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 64,
+        "num_warps": 4,
+        "num_stages": 2,
+        "NUM_SMS": 96,
+        "wasp_partition_warps": [
+          4,
+          4,
+          4
+        ],
+        "wasp_partition_regs": [
+          16,
+          244,
+          244
+        ],
+        "wasp_wdra": true,
+        "enable_v_mmac_cluster": 2,
+        "hcu_use_gfx946_sched_model_v2": true,
+        "mmac_layout_force": 2,
+        "DISTRIBUTE_TAIL": true
+      },
+      "dispatches": 1,
+      "seed": 21,
+      "compiler_environment": {
+        "TRITON_BUFFER_CACHE_SWIZZLE": null,
+        "TRITON_MLS_B_INTERLEAVE": null
+      },
+      "baseline_dir": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline"
+    },
+    "command": "python docs/ops/gemm/tuning/r037/2die/tt/benchmark.py --out /tmp/r037-replay",
+    "regenerate_command": "python docs/ops/gemm/tuning/r037/2die/tt/benchmark.py --regenerate /tmp/r037-artifacts",
+    "artifact_policy": "Only record.artifacts are published; raw measurement files live in TemporaryDirectory."
   },
   "resources": {
     "VGPR": 168,
     "spills": 0,
     "LDS_bytes": 131072
   },
-  "validation": [],
-  "samples": [
+  "validation": [
     {
       "index": 0,
-      "phase": "cold",
       "status": "PASS",
-      "kernel_cycles": 831973.0,
-      "kernel_us": 378.5477490692975,
-      "completed_TGs": 96,
-      "completed_TGs_per_die": {
-        "system.shaders0": 48,
-        "system.shaders1": 48
-      },
-      "active_CUs_per_die": {
-        "system.shaders0": 48,
-        "system.shaders1": 48
-      },
-      "mmop_instructions": 30523392,
-      "gc_frequency_ghz": 2.197802,
-      "stats_path": "stats.txt.gz",
-      "stats_sha256": "c4f0c31f7200197873ac9316f20185bfa3b84dbaad1019d13c519ea69d3574d5",
       "accuracy": {
         "elements": 26191872,
         "outside_tolerance": 0,
         "nonfinite": 0,
         "max_abs": 0.25,
-        "canary_ok": true,
+        "canary": true,
         "inputs_byte_identical": true,
         "atol": 0.001,
         "rtol": 0.01,
-        "mean_abs_vs_fp32": 0.01908249593547527,
-        "rounding_floor": 0.01908249232039448
+        "mean_abs_vs_fp32": 0.01908249593642452,
+        "rounding_floor": 0.019082492312070282
       },
-      "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r037/measurement/g/0/0/stats.txt",
-      "stats_section": 0
+      "baseline_comparison": {
+        "elements": 26191872,
+        "bitwise_differences": 0,
+        "outside_tolerance": 0,
+        "max_abs": 0.0,
+        "baseline_sha256": "bf6f1eda252fc648bb7ec049eab8c1fdd3220d98b041493c7818f0be1e7a43d4",
+        "output_sha256": "bf6f1eda252fc648bb7ec049eab8c1fdd3220d98b041493c7818f0be1e7a43d4",
+        "atol": 0.001,
+        "rtol": 0.01
+      }
     }
   ],
-  "measurement_result_path": "tmp/1117/bf16_sbx2_20261117/r037/measurement/result.json",
-  "measurement_result_sha256": "79f5d2a548615e0a1943751f2bfc0a2b995341340db104703c43b0b1da0c299f",
-  "measured_at": "2026-11-17T11:47:46.202711+00:00",
+  "samples": [
+    {
+      "index": 0,
+      "phase": "cold",
+      "seed": 21,
+      "us": 374.40676,
+      "stages": [
+        {
+          "stats": "stats.txt.gz",
+          "stats_sha256": "4039d7e5d274bd10ee7b27efffb86dcf17c9af8f6cdbf282c6bd75cc66d4c173",
+          "cycles": 822872,
+          "us": 374.40676,
+          "tgs": 96,
+          "active_cus": 96,
+          "per_die": {
+            "system.shaders0": 48,
+            "system.shaders1": 48
+          },
+          "mmops": 30523392,
+          "raw_stats_path": "tmp/optALL/R037/pmd-hybrid-bulk-tail/g/0/0/stats.txt",
+          "stats_path": "stats.txt.gz",
+          "stats_section": 0
+        }
+      ],
+      "simulation_wall_seconds": 6893.405625485815,
+      "baseline_comparison": {
+        "elements": 26191872,
+        "bitwise_differences": 0,
+        "outside_tolerance": 0,
+        "max_abs": 0.0,
+        "baseline_sha256": "bf6f1eda252fc648bb7ec049eab8c1fdd3220d98b041493c7818f0be1e7a43d4",
+        "output_sha256": "bf6f1eda252fc648bb7ec049eab8c1fdd3220d98b041493c7818f0be1e7a43d4",
+        "atol": 0.001,
+        "rtol": 0.01
+      },
+      "accuracy": {
+        "elements": 26191872,
+        "outside_tolerance": 0,
+        "nonfinite": 0,
+        "max_abs": 0.25,
+        "canary": true,
+        "inputs_byte_identical": true,
+        "atol": 0.001,
+        "rtol": 0.01,
+        "mean_abs_vs_fp32": 0.01908249593642452,
+        "rounding_floor": 0.019082492312070282
+      },
+      "status": "PASS",
+      "kernel_us": 374.40676,
+      "kernel_cycles": 822872,
+      "completed_TGs": 96,
+      "stats_path": "stats.txt.gz",
+      "stats_section": 0,
+      "stats_sha256": "4039d7e5d274bd10ee7b27efffb86dcf17c9af8f6cdbf282c6bd75cc66d4c173",
+      "completed_TGs_per_die": {
+        "system.shaders0": 48,
+        "system.shaders1": 48
+      },
+      "mmop_instructions": 30523392
+    }
+  ],
+  "measurement_result_path": "tmp/optALL/R037/pmd-hybrid-bulk-tail/result.json",
+  "measurement_result_sha256": "97d7f45378b0f84a1c5834fe3dd44fc21edce6658dd00cd46f23a2c7ccbaa654",
+  "archived_measurement": {
+    "data": {
+      "status": "PASS",
+      "kernel_us": 374.40676,
+      "job": {
+        "requirement": "R037",
+        "name": "pmd-hybrid-bulk-tail",
+        "shape": [
+          5684,
+          4608,
+          4608
+        ],
+        "family": "persistent",
+        "source": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/sources/hybrid_bulk_tail.py",
+        "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+        "options": {
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "num_warps": 4,
+          "num_stages": 2,
+          "NUM_SMS": 96,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "wasp_wdra": true,
+          "enable_v_mmac_cluster": 2,
+          "hcu_use_gfx946_sched_model_v2": true,
+          "mmac_layout_force": 2,
+          "DISTRIBUTE_TAIL": true
+        },
+        "dispatches": 1,
+        "seed": 21,
+        "compiler_environment": {
+          "TRITON_BUFFER_CACHE_SWIZZLE": null,
+          "TRITON_MLS_B_INTERLEAVE": null
+        },
+        "baseline_dir": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline"
+      },
+      "samples": [
+        {
+          "index": 0,
+          "phase": "cold",
+          "seed": 21,
+          "us": 374.40676,
+          "stages": [
+            {
+              "stats": "g/0/0/stats.txt",
+              "stats_sha256": "4039d7e5d274bd10ee7b27efffb86dcf17c9af8f6cdbf282c6bd75cc66d4c173",
+              "cycles": 822872,
+              "us": 374.40676,
+              "tgs": 96,
+              "active_cus": 96,
+              "per_die": {
+                "system.shaders0": 48,
+                "system.shaders1": 48
+              },
+              "mmops": 30523392
+            }
+          ],
+          "simulation_wall_seconds": 6893.405625485815,
+          "baseline_comparison": {
+            "elements": 26191872,
+            "bitwise_differences": 0,
+            "outside_tolerance": 0,
+            "max_abs": 0.0,
+            "baseline_sha256": "bf6f1eda252fc648bb7ec049eab8c1fdd3220d98b041493c7818f0be1e7a43d4",
+            "output_sha256": "bf6f1eda252fc648bb7ec049eab8c1fdd3220d98b041493c7818f0be1e7a43d4",
+            "atol": 0.001,
+            "rtol": 0.01
+          },
+          "validation": {
+            "elements": 26191872,
+            "outside_tolerance": 0,
+            "nonfinite": 0,
+            "max_abs": 0.25,
+            "canary": true,
+            "inputs_byte_identical": true,
+            "atol": 0.001,
+            "rtol": 0.01,
+            "mean_abs_vs_fp32": 0.01908249593642452,
+            "rounding_floor": 0.019082492312070282
+          }
+        }
+      ],
+      "compiled": [
+        {
+          "name": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+          "shared": 131072,
+          "hsaco_sha256": "ad04d38a56eaf7fe0a309311c52ea288f0cc7d8112599b6f4ab50d6dea4141ee"
+        }
+      ],
+      "runner_sha256": "1e342ea00a987f05beb6980a126ade587a4176cfc0e214c1aefb9cf7c6279e56"
+    },
+    "original_sha256": "97d7f45378b0f84a1c5834fe3dd44fc21edce6658dd00cd46f23a2c7ccbaa654"
+  },
   "evidence": {
     "stats": {
       "path": "stats.txt.gz",
-      "sha256": "ee86a10593e674004a3b8aef22bc65485cce461bc812755a842ec5d1576aec00",
+      "sha256": "000f9c68c69d9c7635fcc04721e9b05454416bf84920d522d0b5bb2063ae1620",
       "dispatches": 1,
-      "format": "Complete raw PMD statistics concatenated in validation-then-samples order; stats_section is a zero-based block index. Individual raw hashes remain in each sample."
+      "format": "Concatenated complete raw PMD stats in sample/stage order; stats_section is zero based; each stage retains its uncompressed raw hash."
     },
     "model_config": {
       "path": "pmd-config.json.gz",
-      "sha256": "e4d9778e004a95070b8ec88dc062f8309083dfc2c0e0bc0f2d6f09fb42aec49d"
+      "sha256": "bbf6daadc573bf00e0115bb06e3e5eaddf53fdf2194f0923378cec9f493254a5",
+      "raw_sha256": "34392899166f64ec46ab46900b6ed70f2b22506bce574f434c4ac1a645d70b1a"
     },
-    "layout_reference": {
-      "branch": "origin/gemm",
-      "commit": "2ef6411e7c7f729d879e1a739c1d57082362d38d",
-      "path": "docs/ops/gemm/tuning/r011/2die/tn"
+    "single_tg_stats": {
+      "path": "perf_stats.txt.gz",
+      "sha256": "b955e69ff695aec1e8f3ca4a005d3a33dd94efbc026774afd61006e1078c91d8",
+      "dispatches": 1,
+      "stage_order": [
+        "gemm"
+      ]
     }
   },
   "single_tg_perf": {
-    "environment_overrides": {
-      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
-      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
-    },
     "path": "single_tg.perf",
-    "sha256": "e3be4668d0dec36eef9b2b84678cad800a9e5b2b201049288c7facef7201354f",
+    "sha256": "e894d2327a0d5e524b151d1cede1ef24917b216074991eac8eb550babb4cce1d",
+    "stage": "gemm",
     "grid": [
       1
     ],
-    "scope": "Independent TG0 dispatch on the sbx2 device (2 dies / 96 CUs); original MNK, strides and compile options including NUM_SMS=96 when persistent. This PMD rotates the starting die between launches; each sample records the actual die/CU. Full-grid performance is independent of this capture.",
-    "tile_ids": [
-      0,
-      96,
-      192,
-      288,
-      384
-    ],
-    "tiles_per_TG": 5,
-    "repeat": 2,
-    "selection": "minimum system.gcSimCycles of repeats 1 and 2; repeat 0 excluded",
-    "kernel_cycles": 811164.0,
-    "kernel_us": 369.07965321716887,
+    "scope": "Independent single TG capture; original MNK, strides and compile options are preserved. Full-grid performance is recorded separately.",
+    "repeat": 0,
+    "selection": "sole validated capture; no warmup or minimum selection",
+    "kernel_cycles": 833490,
+    "kernel_us": 379.23795,
     "validation": {
-      "elements": 327680,
-      "unselected_output_nan": true,
+      "elements": 285184,
       "outside_tolerance": 0,
       "nonfinite": 0,
       "max_abs": 0.25,
+      "unselected_output_nan": true,
       "canary_ok": true,
       "inputs_byte_identical": true,
       "atol": 0.001,
       "rtol": 0.01,
-      "mean_abs_vs_fp32": 0.019113227945854305,
-      "rounding_floor": 0.019113224024840746
+      "mean_abs_vs_fp32": 0.019122893379508357,
+      "rounding_floor": 0.019122890250297946
     },
-    "completed_TGs_per_die": {
-      "system.shaders0": 1,
-      "system.shaders1": 0
-    },
-    "active_CUs_per_die": {
-      "system.shaders0": 1,
-      "system.shaders1": 0
-    },
-    "samples_validated": 3,
+    "samples_validated": 1,
     "samples": [
       {
+        "repeat": 0,
         "index": 0,
-        "phase": "warmup",
-        "status": "PASS",
-        "kernel_cycles": 831091.0,
-        "kernel_us": 378.14643903317955,
+        "phase": "capture",
+        "cycles": 833490,
+        "us": 379.23795,
+        "stats_path": "perf_stats.txt.gz",
+        "stats_sha256": "5da788f4137cd079d1a454ea4ac7d5a68086aba075f143e7c1cca91e1a245dd7",
+        "perf_path": "single_tg.perf",
+        "perf_sha256": "e894d2327a0d5e524b151d1cede1ef24917b216074991eac8eb550babb4cce1d",
+        "validation": {
+          "elements": 285184,
+          "outside_tolerance": 0,
+          "nonfinite": 0,
+          "max_abs": 0.25,
+          "unselected_output_nan": true,
+          "canary_ok": true,
+          "inputs_byte_identical": true,
+          "atol": 0.001,
+          "rtol": 0.01,
+          "mean_abs_vs_fp32": 0.019122893379508357,
+          "rounding_floor": 0.019122890250297946
+        },
         "completed_TGs": 1,
         "completed_TGs_per_die": {
           "system.shaders0": 1,
           "system.shaders1": 0
         },
-        "active_CUs_per_die": {
-          "system.shaders0": 1,
-          "system.shaders1": 0
+        "mmop_instructions": 331776,
+        "embedded_hsaco_sha256": "08bbc7d3d0c98e57b233da6bf2bec93ec179b9bd3318ccf316b3bea6b25651e3",
+        "embedded_hsaco_verified": true,
+        "traces": {
+          "1": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "0": {
+            "bytes": 4614868,
+            "sha256": "fccc4df3c1c517022c90607519935f86a0a61f8e12c8842c0ad1f88e89f010f6"
+          }
         },
-        "mmop_instructions": 368640,
-        "gc_frequency_ghz": 2.197802,
-        "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/g/0/0/stats.txt",
-        "stats_sha256": "b55d14d8632ceabb7dc18b47ad7a966e1d921feb2bdc1b982d3cf661f2906af3",
-        "accuracy": {
-          "elements": 327680,
-          "unselected_output_nan": true,
-          "outside_tolerance": 0,
-          "nonfinite": 0,
-          "max_abs": 0.25,
-          "canary_ok": true,
-          "inputs_byte_identical": true,
-          "atol": 0.001,
-          "rtol": 0.01,
-          "mean_abs_vs_fp32": 0.019113227945854305,
-          "rounding_floor": 0.019113224024840746
-        },
-        "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/g/0/0/941922_python3.10.perf",
-        "repeat": 0
-      },
-      {
-        "index": 1,
-        "phase": "timed",
+        "simulation_wall_seconds": 138.89715024200268,
+        "stats_section": 0,
+        "stats_offset_bytes": 0,
+        "stats_size_bytes": 6511771,
+        "raw_stats_path": "tmp/optALL-publication/compact-capture/R037/gemm/g/0/0/stats.txt",
+        "kernel_cycles": 833490,
+        "kernel_us": 379.23795,
         "status": "PASS",
-        "kernel_cycles": 830817.0,
-        "kernel_us": 378.02176902195924,
-        "completed_TGs": 1,
-        "completed_TGs_per_die": {
-          "system.shaders0": 0,
-          "system.shaders1": 1
-        },
-        "active_CUs_per_die": {
-          "system.shaders0": 0,
-          "system.shaders1": 1
-        },
-        "mmop_instructions": 368640,
-        "gc_frequency_ghz": 2.197802,
-        "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/g/0/1/stats.txt",
-        "stats_sha256": "4ca2bbab8217db5104659f8c18bc92edd1a980ba852bb48a2ad09b4a2a8a65fc",
-        "accuracy": {
-          "elements": 327680,
-          "unselected_output_nan": true,
-          "outside_tolerance": 0,
-          "nonfinite": 0,
-          "max_abs": 0.25,
-          "canary_ok": true,
-          "inputs_byte_identical": true,
-          "atol": 0.001,
-          "rtol": 0.01,
-          "mean_abs_vs_fp32": 0.019113227945854305,
-          "rounding_floor": 0.019113224024840746
-        },
-        "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/g/0/1/941922_python3.10.perf",
-        "repeat": 1
-      },
-      {
-        "index": 2,
-        "phase": "timed",
-        "status": "PASS",
-        "kernel_cycles": 811164.0,
-        "kernel_us": 369.07965321716887,
-        "completed_TGs": 1,
-        "completed_TGs_per_die": {
-          "system.shaders0": 1,
-          "system.shaders1": 0
-        },
-        "active_CUs_per_die": {
-          "system.shaders0": 1,
-          "system.shaders1": 0
-        },
-        "mmop_instructions": 368640,
-        "gc_frequency_ghz": 2.197802,
-        "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/g/0/2/stats.txt",
-        "stats_sha256": "9dc58b22e26f54f08978892f8bec1d7e962b079976dc822d5030b4d041107448",
-        "accuracy": {
-          "elements": 327680,
-          "unselected_output_nan": true,
-          "outside_tolerance": 0,
-          "nonfinite": 0,
-          "max_abs": 0.25,
-          "canary_ok": true,
-          "inputs_byte_identical": true,
-          "atol": 0.001,
-          "rtol": 0.01,
-          "mean_abs_vs_fp32": 0.019113227945854305,
-          "rounding_floor": 0.019113224024840746
-        },
-        "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/g/0/2/941922_python3.10.perf",
-        "repeat": 2
+        "raw_perf_path": "tmp/optALL-publication/compact-capture/R037/gemm/g/0/0/853749_python3.10.perf"
       }
     ],
     "full_and_single_text_rodata_equal": true,
-    "launch_resources_equal": true,
     "embedded_hsaco_verified": true,
-    "hsaco_sha256": "20f72785901363912dab43f237a47dce49ec4c7d215fbc890e509a43c395ee3e",
+    "executable_sections": {
+      ".rodata": {
+        "size": 64,
+        "sha256": "4db6eb4d0d6d7540d849f61df46e12a6edd5b3b30eb4e33606504a222b707933"
+      },
+      ".text": {
+        "size": 23368,
+        "sha256": "6cabd9e72b6140e8c6eb2fbe1ac89b7f6720f912cb03d79568c56cde7b6a653d"
+      }
+    },
+    "capture_result_path": "tmp/optALL-publication/compact-capture/R037/gemm/result.json",
+    "capture_result_sha256": "bf653781b71325f3400f4f3ca29477e0a2b5eb9296b072bc0c04e81667849486",
+    "seed": 59,
+    "environment_overrides": {
+      "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+      "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+    },
+    "selected_regions": [
+      [
+        0,
+        0,
+        256,
+        256
+      ],
+      [
+        1280,
+        1536,
+        256,
+        256
+      ],
+      [
+        2560,
+        3072,
+        256,
+        256
+      ],
+      [
+        4096,
+        0,
+        256,
+        256
+      ],
+      [
+        5376,
+        1536,
+        128,
+        128
+      ],
+      [
+        5632,
+        3072,
+        52,
+        128
+      ]
+    ],
+    "tile_ids": [
+      0,
+      96,
+      192,
+      288
+    ],
     "stats": {
       "path": "perf_stats.txt.gz",
-      "sha256": "9c64b0f669f3663cc7efe4bdc93225650dbbdbb57a74bb5593b9518f6125687b"
+      "sha256": "b955e69ff695aec1e8f3ca4a005d3a33dd94efbc026774afd61006e1078c91d8"
+    }
+  },
+  "history_reused": true,
+  "measurement_environment": {
+    "data": {
+      "job": {
+        "requirement": "R037",
+        "name": "pmd-hybrid-bulk-tail",
+        "shape": [
+          5684,
+          4608,
+          4608
+        ],
+        "family": "persistent",
+        "source": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/sources/hybrid_bulk_tail.py",
+        "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+        "options": {
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "num_warps": 4,
+          "num_stages": 2,
+          "NUM_SMS": 96,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "wasp_wdra": true,
+          "enable_v_mmac_cluster": 2,
+          "hcu_use_gfx946_sched_model_v2": true,
+          "mmac_layout_force": 2,
+          "DISTRIBUTE_TAIL": true
+        },
+        "dispatches": 1,
+        "seed": 21,
+        "compiler_environment": {
+          "TRITON_BUFFER_CACHE_SWIZZLE": null,
+          "TRITON_MLS_B_INTERLEAVE": null
+        },
+        "baseline_dir": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline"
+      },
+      "source_sha256": "816a2f91087c775ead67418b96f20f2a5061aa500f3e7dd4bf8b476c7a38a939",
+      "torch": "2.6.0+d1e87ac",
+      "triton": "3.6.0",
+      "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3",
+      "clang_sha256": "4ff0c43a892b7e2e7ce8a96739852abc395916747c02db7fb055fc31182facbc",
+      "environment": {
+        "GPU_CHIP": "sbx2",
+        "GPU_ARGS": "['--abs-max-tick=10000000000']",
+        "GPU_DFLAGS": "['StatLog']",
+        "AMDGCN_USE_BUFFER_OPS": "1",
+        "TRITON_BUFFER_CACHE_SWIZZLE": null,
+        "TRITON_MLS_B_INTERLEAVE": null,
+        "PMD_PATH": "/opt/rocm/pmd",
+        "PYTHONPATH": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10:",
+        "LD_LIBRARY_PATH": "/opt/rocm/lib",
+        "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang",
+        "GPU_OUT": "/tmp/optall-compute-uc_gtfdr/g",
+        "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/cache",
+        "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/triton-home",
+        "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/history.log",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "OPTALL_PMD_LEASE": "7d4b0ad150ed43ccaad1d207b57321fb",
+        "OPTALL_PREFLIGHT": "1"
+      }
     },
-    "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r037/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r037/2die/tt/record.json --output /tmp/r037-sbx2-single-tg-new --single-tg-perf",
-    "raw_result_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/result.json",
-    "raw_result_sha256": "9d98d23a33812e01b2064b5dd9712f108c38f600eeca42b0d0eac067a74e03cd"
+    "original_sha256": "c88c1aa226234509c6fcd36eb598f30458f31681266085feea0568bdac54fa22"
+  },
+  "selection": {
+    "data": {
+      "requirement": "R037",
+      "status": "COMPLETE",
+      "shape": [
+        5684,
+        4608,
+        4608
+      ],
+      "bound_us": 326.06,
+      "baseline": {
+        "us": 379.98415,
+        "run": "R037/baseline"
+      },
+      "best": {
+        "name": "pmd-hybrid-bulk-tail",
+        "us": 374.40676,
+        "run": "R037/pmd-hybrid-bulk-tail"
+      },
+      "trials": [
+        {
+          "name": "baseline",
+          "run": "R037/baseline",
+          "status": "PASS",
+          "job": "R037/baseline.job.json",
+          "us": 379.98415,
+          "baseline_compared": true,
+          "pmd_analysis": "R037/baseline/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 73.50616071749309,
+            "non_mmac_dispatch_us": 0,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 294912,
+                "mmop_max": 368640,
+                "work_balance": 0.8625
+              }
+            ]
+          },
+          "reason": "完整算子未提速；PMD逻辑MMAC利用率 73.51%（基线73.51%），非MMAC dispatch 0.000µs；计算CU/工作分布见pmd_summary。"
+        },
+        {
+          "name": "suggested-streamk",
+          "run": "R037/suggested-streamk",
+          "status": "PASS",
+          "job": "R037/suggested-streamk.job.json",
+          "us": 882.37149,
+          "baseline_compared": true,
+          "pmd_analysis": "R037/suggested-streamk/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 31.654667355582852,
+            "non_mmac_dispatch_us": 12.01109,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 317952,
+                "mmop_max": 317952,
+                "work_balance": 1.0
+              }
+            ]
+          },
+          "reason": "完整算子未提速；PMD逻辑MMAC利用率 31.65%（基线73.51%），非MMAC dispatch 12.011µs；计算CU/工作分布见pmd_summary。"
+        },
+        {
+          "name": "pmd-narrow256x128",
+          "run": "R037/pmd-narrow256x128",
+          "status": "PASS",
+          "job": "R037/pmd-narrow256x128.job.json",
+          "us": 508.57352,
+          "baseline_compared": true,
+          "pmd_analysis": "R037/pmd-narrow256x128/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 54.920625832033096,
+            "non_mmac_dispatch_us": 0,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 294912,
+                "mmop_max": 331776,
+                "work_balance": 0.9583333333333334
+              }
+            ]
+          },
+          "reason": "完整算子未提速；PMD逻辑MMAC利用率 54.92%（基线73.51%），非MMAC dispatch 0.000µs；计算CU/工作分布见pmd_summary。"
+        },
+        {
+          "name": "pmd-group4",
+          "run": "R037/pmd-group4",
+          "status": "FAIL",
+          "job": "R037/pmd-group4.job.json",
+          "reason": "This exact source/configuration completed a full dispatch but its independently reread 26191872 C values contain 3627792 NaNs and its actual prefix guard has 512 damaged BF16 values. The subsequent JSON NaN diagnostic exception is not accepted by itself."
+        },
+        {
+          "name": "pmd-hybrid-bulk-tail",
+          "run": "R037/pmd-hybrid-bulk-tail",
+          "status": "PASS",
+          "job": "R037/pmd-hybrid-bulk-tail.job.json",
+          "us": 374.40676,
+          "baseline_compared": true,
+          "pmd_analysis": "R037/pmd-hybrid-bulk-tail/pmd-analysis.json",
+          "pmd_summary": {
+            "logical_mmac_util_percent": 74.60115303473687,
+            "non_mmac_dispatch_us": 0,
+            "compute_stages": [
+              {
+                "active_cus": 96,
+                "mmop_min": 313344,
+                "mmop_max": 331776,
+                "work_balance": 0.9583333333333334
+              }
+            ]
+          }
+        }
+      ],
+      "notes": "",
+      "protocol": {
+        "precision": "BF16",
+        "layout": "TT",
+        "chip": "sbx2",
+        "cu_count": 96,
+        "gc_period_ps": 455,
+        "dispatches": 1,
+        "warmups": 0,
+        "timed_repeats": 1,
+        "aggregation": "cold",
+        "timing": "sum(system.gcSimCycles)*455/1e6 µs across all native GPU dispatches; CPU reference and input/output copies excluded"
+      },
+      "gap_before_percent": 14.191157710130808,
+      "gap_after_percent": 12.912897192347705,
+      "completion_evidence": {
+        "ready": true,
+        "pending": [],
+        "invalid_passes": [],
+        "unresolved_failures": [],
+        "failure_reviews": {
+          "pmd-group4": {
+            "accepted_rejection": true,
+            "kind": "EXACT_CAPTURED_FULL_GRID_NAN_AND_GUARD_FAILURE",
+            "reason": "This exact source/configuration completed a full dispatch but its independently reread 26191872 C values contain 3627792 NaNs and its actual prefix guard has 512 damaged BF16 values. The subsequent JSON NaN diagnostic exception is not accepted by itself.",
+            "performance_eligible": false,
+            "selection_latency_us": null,
+            "artifacts": {
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline-independent-review.json": "537acc9f08682e2320b5db105cb20ce872628b0df85e618f368a4adc8fc2f9d6",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/runner.snapshot.py": "1e342ea00a987f05beb6980a126ade587a4176cfc0e214c1aefb9cf7c6279e56",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/compute_runner.py": "1e342ea00a987f05beb6980a126ade587a4176cfc0e214c1aefb9cf7c6279e56",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/candidate.snapshot.py": "711f312aaaa064083e5cf822119248f24141c82631d3fe9a32895faaf305b847",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/sources/archived_gluon.py": "711f312aaaa064083e5cf822119248f24141c82631d3fe9a32895faaf305b847",
+              "/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh": "6d772d29b98aa031ab0c21791b2fe6b2172e17b5e56480945f1b53ff4b571f87",
+              "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10/triton/_C/libtriton.so": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3",
+              "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang-22": "4ff0c43a892b7e2e7ce8a96739852abc395916747c02db7fb055fc31182facbc",
+              "/opt/rocm-6.3.3/pmd/gem5.opt": "f10ad380a221e64035bcc39b3f310458551e2dd65b833d7319e70f0c7977eeb6",
+              "/opt/rocm-6.3.3/pmd/libgem5_opt.so": "1710c9c33d4948a32db59db233049673e1358fa5ad1c5bfb861081c763beb91f",
+              "/opt/rocm-6.3.3/pmd/configs/base_config.py": "0847d015b8c5f4d16fcff3f1cdb614b1f86d3aa7088351d4b3115bf592c5eb0c",
+              "/opt/rocm-6.3.3/pmd/configs/gpu_old.py": "c4d9f7ecc4b7c4bac0cb9e7ae2b55547f85adb160dc1963bfc0535711d9a2059",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/sources/narrow-256-128.py": "c80d4f4bf58082c2e99099729d5e6be0c9114ee910442a3f1c5d87648ef39dce",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/sources/persistent_group4.py": "2469ee858be0b75d558f649887c5231e1d1d395e7330b0cc4ef6611249682a72",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/sources/stream_underfilled.py": "379b2417438936c64ff37a969638c1e134933b8453883827228bb4cca125db5e",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline.job.json": "8f5fbb6367ee26e659501790dde6cf71d6a2c7fb736324e50241dde85b13517e",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk.job.json": "4e4772af171c52e12dc00290d89ea8293ccc6f59be58d85b303563445c893f9e",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/run.py": "835381805c63d245905ea05d794e5c746cfa11e7345f19fd9a6ad9fb13135798",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/preflight.py": "e8c260f4983f8c29f64f53e775675c764dca4cdf674d0f4fd61371c2ff43e5c9",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.hsaco": "36941fda026b74eafd577d71b7a25097e2a679c3cafaf344e15b0d22c66d9112",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/cache/THRROGQNSGVG3PQY72N3227ZPKWB4O3VV6POWU3YSTNUGJQVDYJA/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.json": "54b8fce0aad87a6008e53291ae7e684f473b52daa82955e2ae02804b29de34fa",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.amdgcn": "c7f19656be3db68c1bf3f2582e534fc8ef30650e126bb06a6e21fdd8a99e689b",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/cache/THRROGQNSGVG3PQY72N3227ZPKWB4O3VV6POWU3YSTNUGJQVDYJA/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.amdgcn": "c7f19656be3db68c1bf3f2582e534fc8ef30650e126bb06a6e21fdd8a99e689b",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/cache/THRROGQNSGVG3PQY72N3227ZPKWB4O3VV6POWU3YSTNUGJQVDYJA/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.hsaco": "36941fda026b74eafd577d71b7a25097e2a679c3cafaf344e15b0d22c66d9112",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/g/0/0/stats.txt": "12d0b88437aed69b32f0922ad6f3969882ce43f9b7e9b1b668317f33cb063579",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/g/config.json": "2cc9dab25458243b9cdab9d996927126ee45ab26b1bdf9b878a8b1eb7daa935b",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/g/config.ini": "5353a31a14ce981423824cd3a9a812d9eabf2b6f680583da57920e5a96d9bba5",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/output-0.pt": "bf6f1eda252fc648bb7ec049eab8c1fdd3220d98b041493c7818f0be1e7a43d4",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/result.json": "f04103897fd10c8bd16eb8e8ec994fdf923684237d061292ced6fcbc8d4b3dee",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/environment.json": "1383340e44c5d36a92d2898ef380d6a7878979f611dd09279f777b5a8a2f53ba",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/input-fingerprints.json": "6e3d4ebb567eb3b4ba8f725d4580b256bc1d1a2a9226d0813c491b3c6cd9424d",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/runner-snapshot.json": "eba877cde406a91b8238c8b10bcc3bb04fef6d225bdeb049f2e09859bcc49bf9",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/source-snapshot.json": "78a1a68151c3be0d1efd8f063a6d3c836f59630d08c97f6a69792f579f837183",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/sample-0.json": "d411133539cbf8f79d264901693213414de7031970ff65db176846d750505898",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/timing-0.json": "1d69cf1e3279862511e77e81377b1edf842ae7728faf2fa2e572433d12a4f4f4",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/job.json": "8f5fbb6367ee26e659501790dde6cf71d6a2c7fb736324e50241dde85b13517e",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/launch-process.json": "29351fb0a1c7d66f338bd650e44ee7739255b64686cecf3120c48fe4557cf624",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/worker-process.json": "9c36301b7bbe3d9b0bc2dfaae3c4080dfbab702732f2d45c2846e885e5c3dfbb",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/ranking-record.json": "9aa4354b7d40e73670aa4b1d7d72d4eb8f41f2f39f008674abae4e8a345e47c1",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/preflight/baseline/preflight.json": "36247d8d0ae4fffb4dee94ac2bc5267176e6fd05c46d1d0d3baeb77a25817c8e",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/preflight/baseline/metadata.json": "53dca6047c8b7d0f22f0e8aec7711c7fb6554071edc9bdf4cb99f0eed859526d",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline.command.json": "bb02249cc02e6f38bce8e9e467c2a166399b9085b7013e0df8f349679ef2f9dc",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline.execution.json": "b2977a7659a2612ea62a3e613f673bcbcf389746f8c6886c2570d2d0f78c67da",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/audit_baseline_cpu.py": "d6238ee6f1a648ac5d9d3324ba83ff5e178b6b0362360e7710c36406ea62d1ab",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/streamk-independent-review/report.json": "68dbf2614c989533710be34b50471a83c061827b10bb03c140daaa96893b6184",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/streamk-independent-review/audit.py": "1d582a65b14f21a765fb5e075e2e64a4f3f9dd831032341af4b3ba40046a2cab",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/result.json": "c59bf671e4e0ef2a0821b676ba3c38ae36dbbbd1ce52a3063bed445940f4bc10",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/environment.json": "8d83c2d9e0501348f20061dc5fb62a732aaec7b8ee5cdff197ce7e56f5e43334",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/sample-0.json": "ee73f6181b148b519ee03dfa686cf3ecc583e08303a22ce0658e5987cb94b04d",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/timing-0.json": "a1412b92c89574f7a3603e9a91d1013c8dfb5170bf3bb5fadd010fc1ccf383e8",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/runner.snapshot.py": "1e342ea00a987f05beb6980a126ade587a4176cfc0e214c1aefb9cf7c6279e56",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/candidate.snapshot.py": "379b2417438936c64ff37a969638c1e134933b8453883827228bb4cca125db5e",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/source-snapshot.json": "b0f1c6c1688da4c5321fb6cb13615200dbdaeac29b9ccc60af8b0edf9c7999c2",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/job.json": "7bac967cdaa32c93fc6ecfb95a9bfab699446f5f05d6c8228ffbd9bf4141e175",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/runner-snapshot.json": "eba877cde406a91b8238c8b10bcc3bb04fef6d225bdeb049f2e09859bcc49bf9",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/g/config.json": "b10f979b3c6f57f099bdeecaef6a6e6b85129e2229dae1e8b36bd1e4a0c56e8a",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/g/config.ini": "489401fd47239934481bbc6f403f1051ee94456239933ee921bd02cf11951887",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel.hsaco": "7cb76416891a292d1fe500535e3c65641aa29e26299d150ed82c5f713e7b582b",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel.amdgcn": "95b3afb6d2db34c2759071645ef9829129e0f1b77e8f8fe1942a4a54819e2fac",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/cache/OVXFQ64HCNB3Y56DYZ4YBD2NZ3KBOURTCM2FCKHDOCGEJOKQ7UWQ/_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel.json": "77988abe24479c9540b07c54231166e23a0a97bc7817ab8086b963e99039dac1",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/cache/OVXFQ64HCNB3Y56DYZ4YBD2NZ3KBOURTCM2FCKHDOCGEJOKQ7UWQ/_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel.llir": "5a55c89393b552860f3980e3553eeeedf6bb40630e123864877f29a3fa7b435a",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/cache/OVXFQ64HCNB3Y56DYZ4YBD2NZ3KBOURTCM2FCKHDOCGEJOKQ7UWQ/_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel.ttgir": "963a1c1df6bf3f1c87ba3e2d2d26d13f755b2119df2c93aead6d95c74cbfcb07",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/cache/OVXFQ64HCNB3Y56DYZ4YBD2NZ3KBOURTCM2FCKHDOCGEJOKQ7UWQ/_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel.source": "e9d46cc55fe8fff56412c340738d33d047ecfd76ec6296e069bfabc1dcf6f4bb",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/cache/OVXFQ64HCNB3Y56DYZ4YBD2NZ3KBOURTCM2FCKHDOCGEJOKQ7UWQ/_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel.amdgcn": "95b3afb6d2db34c2759071645ef9829129e0f1b77e8f8fe1942a4a54819e2fac",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/cache/OVXFQ64HCNB3Y56DYZ4YBD2NZ3KBOURTCM2FCKHDOCGEJOKQ7UWQ/_gemm_a16w16_bf16_tt_bm256_bn128_bk64_persistent_kernel.hsaco": "7cb76416891a292d1fe500535e3c65641aa29e26299d150ed82c5f713e7b582b",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/_gemm_a16w16_bf16_tt_prepare_edges_kernel.hsaco": "90a947447ddea0620af11f0010481943baacbbfef59fecee25918bf6a4ccadeb",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/_gemm_a16w16_bf16_tt_prepare_edges_kernel.amdgcn": "0b0a82f9f670b408e2c4ce9c5340557b320a02c501c12f587e103be4fc09596e",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/cache/W6WKKUU6YOXA65B3EDEX245ZXZIEMWJ5CSILB33SSZWQXVULO2BA/_gemm_a16w16_bf16_tt_prepare_edges_kernel.json": "79de1e57ee3254270a13c58ee60a3f03c25538f65d1ae752c547fc0aefe2e00f",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/cache/W6WKKUU6YOXA65B3EDEX245ZXZIEMWJ5CSILB33SSZWQXVULO2BA/_gemm_a16w16_bf16_tt_prepare_edges_kernel.llir": "e7ff39c93b91deeabef7c7fad672ae45908dd858141435de6238b1ffef12dc84",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/cache/W6WKKUU6YOXA65B3EDEX245ZXZIEMWJ5CSILB33SSZWQXVULO2BA/_gemm_a16w16_bf16_tt_prepare_edges_kernel.ttgir": "9e3a09fa6ec4bfe01d7099e673145f971af17329f3df0274d8da8ae0ce3c6428",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/cache/W6WKKUU6YOXA65B3EDEX245ZXZIEMWJ5CSILB33SSZWQXVULO2BA/_gemm_a16w16_bf16_tt_prepare_edges_kernel.source": "62756002c0c9b2add437916df4d705dfb39ea08992e325866126a41a3dccfd05",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/cache/W6WKKUU6YOXA65B3EDEX245ZXZIEMWJ5CSILB33SSZWQXVULO2BA/_gemm_a16w16_bf16_tt_prepare_edges_kernel.amdgcn": "0b0a82f9f670b408e2c4ce9c5340557b320a02c501c12f587e103be4fc09596e",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/cache/W6WKKUU6YOXA65B3EDEX245ZXZIEMWJ5CSILB33SSZWQXVULO2BA/_gemm_a16w16_bf16_tt_prepare_edges_kernel.hsaco": "90a947447ddea0620af11f0010481943baacbbfef59fecee25918bf6a4ccadeb",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/g/0/0/stats.txt": "e2cc175fc0a988e05a492a7a8904b85021bd48864ee09d85c4486ba963735f41",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/g/0/1/stats.txt": "a0626d8c14cc32bcb860dae18388ccf1a57057225894706afd47c87ec7031ec6",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/g/0/2/stats.txt": "85aed18dd2e0a1fd1fb5d1de4b74841e095cbf9376ab24a4c90f8b49e8179105",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/input-fingerprints.json": "6e3d4ebb567eb3b4ba8f725d4580b256bc1d1a2a9226d0813c491b3c6cd9424d",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/output-0.pt": "1f6ddd931ec4e628a73b611ebfec9f7b4e981cbfcb304a4edf335a7837abbcdf",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/worker.log": "316657570a1962e3406bff1a738950ae49608ab2fc38d291e324045b52a62f0f",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/input-fingerprints.json": "6e3d4ebb567eb3b4ba8f725d4580b256bc1d1a2a9226d0813c491b3c6cd9424d",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/input-fingerprints.json": "6e3d4ebb567eb3b4ba8f725d4580b256bc1d1a2a9226d0813c491b3c6cd9424d",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/input-fingerprints.json": "6e3d4ebb567eb3b4ba8f725d4580b256bc1d1a2a9226d0813c491b3c6cd9424d",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/supplement.py": "92cf0653d380efc2c99b752a8b1d18af962daba110964c32617ff2d4ad38d576",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/pmd_report.py": "9a165cf203466a262f7f17f628e87bd6484e46b295af29344e82e9d561fd246f",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/acceptance.json": "10c142660905c8dceb5c9157ff1ecafa971b7eb95b4636a7a907e60d4fa60666",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/cache/THRROGQNSGVG3PQY72N3227ZPKWB4O3VV6POWU3YSTNUGJQVDYJA/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.llir": "fee44e039d31df346672cb55ff31f359e0885f315a8171237f99c4a9c399be40",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/cache/THRROGQNSGVG3PQY72N3227ZPKWB4O3VV6POWU3YSTNUGJQVDYJA/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.ttgir": "556f61846dfc87bf08cb9658aa52cb4e29d4103a2eb67d4d27e314d05e7ca69e",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/baseline/cache/THRROGQNSGVG3PQY72N3227ZPKWB4O3VV6POWU3YSTNUGJQVDYJA/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.source": "41c08151b08bccaa8ac0007262df76b57ea0c922c3b32f8837c9b3ab999fe8c9",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/parallel-dependencies/audits/fix_signed_cmpk.py": "da55683a4713453fea9bad7302447cb0bc4b1e9d57b7dcaba193327c6ffac336",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/suggested-streamk/acceptance.json": "5fffc3e7b25610f3aef7c7ee610e2255ccced3c3e60fb085eafe03c123275073",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/job.json": "6d2d24027bf9b670bf998601c0b48608319e9cbb3ef0d7cf9da9ed774db63d1e",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128.job.json": "abf40757e6fd94485c6a598cc06a9bb1eca52cb64a3ab68f76b0e44ae243f822",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/environment.json": "f276d2db9c1c2cef7f68840c9047a3aba8595da52e2f705421d10537c4d26add",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/candidate.snapshot.py": "c80d4f4bf58082c2e99099729d5e6be0c9114ee910442a3f1c5d87648ef39dce",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/runner.snapshot.py": "1e342ea00a987f05beb6980a126ade587a4176cfc0e214c1aefb9cf7c6279e56",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/runner-snapshot.json": "eba877cde406a91b8238c8b10bcc3bb04fef6d225bdeb049f2e09859bcc49bf9",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/source-snapshot.json": "67ce11a83b08b385ef55341f314b1ee7bf95c3cc6516e124129238bf6fac13e9",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/g/config.json": "ccd91a2d3b5880db25946fd5d0fa1f4116a3d1aa9208bdd7f39cacbd87ab15f1",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/g/config.ini": "3989fe367a98d9fcb17e99f32161ef9b3f60a678eb5128d0a3bc214eb4fa58b1",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/result.json": "ca7350a3e836fed5b6576aa7faf7be63167fb7a78625aca2b4377af3a492599c",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/sample-0.json": "e07c3a51d38b66a9616b6c88218f3eb4f3d0b7bba22a6e9fc0c29c3bd96d91d9",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/acceptance.json": "d3949e8ce012dec41a06f6f30b520051d9e6bbfb275c0b5f5ecaa0729a936ef6",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/g/0/0/stats.txt": "a62b6c875dad502a94739d30f2769b8462853729dbe61f106c81f3ef2849d0fd",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.hsaco": "945bd32e3a9565069f69a110fd116a59062d270b06902d533d7055a3b21ddbd7",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.amdgcn": "8d352dd029d129b5243c424b849ef0ff5295081c198e9f3e1b365d27453cb2c1",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/cache/MOEJFQXBCVG53LVUXHCXAM5HU6RS7AMNYSYXA4NFPEAN66XPTOHA/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.json": "e9eafafc86b1ca11de88231b10cbf396ec5d19e2ba4e49d8e2cb465b8ad4adcc",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/cache/MOEJFQXBCVG53LVUXHCXAM5HU6RS7AMNYSYXA4NFPEAN66XPTOHA/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.hsaco": "945bd32e3a9565069f69a110fd116a59062d270b06902d533d7055a3b21ddbd7",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/cache/MOEJFQXBCVG53LVUXHCXAM5HU6RS7AMNYSYXA4NFPEAN66XPTOHA/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.amdgcn": "8d352dd029d129b5243c424b849ef0ff5295081c198e9f3e1b365d27453cb2c1",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/cache/MOEJFQXBCVG53LVUXHCXAM5HU6RS7AMNYSYXA4NFPEAN66XPTOHA/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.llir": "6f9f29f6470cf47c4ccf5655a9b5d2196e7fa699c0b44ba012c04419682770e7",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/cache/MOEJFQXBCVG53LVUXHCXAM5HU6RS7AMNYSYXA4NFPEAN66XPTOHA/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.ttgir": "8b2e964847fddb6b9530657366bcec239bdd5d060a3091075c9ffecef9e9487e",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/cache/MOEJFQXBCVG53LVUXHCXAM5HU6RS7AMNYSYXA4NFPEAN66XPTOHA/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.source": "94870d2917ed17b53b6f839111cd054736ae2fa3078d78a0471e2282a4f81717",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-narrow256x128/output-0.pt": "bf6f1eda252fc648bb7ec049eab8c1fdd3220d98b041493c7818f0be1e7a43d4",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/job.json": "196275760f6fa8e2eb4e5d2df724c1eccd3fca489c66419d44003e7f5a6f4293",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4.job.json": "84aae85efeb46af4e16bb747575d2cca37633904f8f1b8f6e25b5dde70cf63c9",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/environment.json": "b9d27f8ef76eb2e600374f5069a7e39bda2fb56ef08c46db1c8a813302905e19",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/candidate.snapshot.py": "2469ee858be0b75d558f649887c5231e1d1d395e7330b0cc4ef6611249682a72",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/runner.snapshot.py": "1e342ea00a987f05beb6980a126ade587a4176cfc0e214c1aefb9cf7c6279e56",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/runner-snapshot.json": "eba877cde406a91b8238c8b10bcc3bb04fef6d225bdeb049f2e09859bcc49bf9",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/source-snapshot.json": "7f1e28534063a08d344e9217ff94f3cf4181cde2787ae370122707e8add1b573",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/g/config.json": "ce726814ce4bf40154a12741a2beed62ff3af971e21779624fa34f4d4eeff429",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/g/config.ini": "b0036109c2b86a2db3133ef4062a4ea19e00f8d96f72560ab25152404abd7c80",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/failure.json": "05ab664556dc3bd89f5e1dcfb12643e69eea828f165aa124edf55e806e7560ba",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/timing-0.json": "30b93162b9ccda6170a15c962e3b850bee262555f8a2b7e32b9df80dfbb17749",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/cache/UKGH7I3RHRBPKYJV46ICZ6OZWP4XZTRUDNSCYXNTLPMLDXP6LMPQ/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.json": "aa3b2c399f7699d44b53a1cee6bd438dbe5fd6568bda46745b68a2a26c855939",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.hsaco": "cd7e8fff358053e318b0306eee1e9de6e18023bd3fb37f8b60cfaeb164758217",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/worker.log": "10dd63d25ab81ab78af5b26ded6eeb27381ad5cdc814db80b3f66f7785b0f8ec",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/g/0/0/stats.txt": "32f8f5923232ab2b5ed6be5cf640055c566d41e3fd858099bc7cf43a02d54687",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.amdgcn": "a6af1c1bbcaa636469b2b6e5c5875a993877a2971eed2e4dde1355cc57623b68",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/cache/UKGH7I3RHRBPKYJV46ICZ6OZWP4XZTRUDNSCYXNTLPMLDXP6LMPQ/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.hsaco": "cd7e8fff358053e318b0306eee1e9de6e18023bd3fb37f8b60cfaeb164758217",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/cache/UKGH7I3RHRBPKYJV46ICZ6OZWP4XZTRUDNSCYXNTLPMLDXP6LMPQ/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.amdgcn": "a6af1c1bbcaa636469b2b6e5c5875a993877a2971eed2e4dde1355cc57623b68",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/cache/UKGH7I3RHRBPKYJV46ICZ6OZWP4XZTRUDNSCYXNTLPMLDXP6LMPQ/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.llir": "4c5b7af6503d162bf97d9d4e28b9e3323e8d7473dca5dd334a1cf124da2c3a0d",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/cache/UKGH7I3RHRBPKYJV46ICZ6OZWP4XZTRUDNSCYXNTLPMLDXP6LMPQ/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.ttgir": "1624e68fd270133dd5a3cb68d135313af8860b86640d339b31e79650c40bd03c",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/cache/UKGH7I3RHRBPKYJV46ICZ6OZWP4XZTRUDNSCYXNTLPMLDXP6LMPQ/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.source": "0d153387b7642d1c1f0df1282650d4ef611a505e52408c519b83dfd283232c4b",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-group4/output-0.pt": "92c171d374ba4b6ce97680af99f7be0412b0c171ab2bbcf3554100900ffae1f2",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/job.json": "c2f96b67840704ee4ddba26c737434973e05992c77e725578ec9e587e59f9bdf",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail.job.json": "ccacbdf740cfc84f2e25111f0ed167f594bebec064e67e67f509eb31e6196e9b",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/environment.json": "c88c1aa226234509c6fcd36eb598f30458f31681266085feea0568bdac54fa22",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/candidate.snapshot.py": "816a2f91087c775ead67418b96f20f2a5061aa500f3e7dd4bf8b476c7a38a939",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/sources/hybrid_bulk_tail.py": "816a2f91087c775ead67418b96f20f2a5061aa500f3e7dd4bf8b476c7a38a939",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/runner.snapshot.py": "1e342ea00a987f05beb6980a126ade587a4176cfc0e214c1aefb9cf7c6279e56",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/runner-snapshot.json": "eba877cde406a91b8238c8b10bcc3bb04fef6d225bdeb049f2e09859bcc49bf9",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/source-snapshot.json": "773dd8903f992b6e30f9d46d48aa1c336e3cf28322cee2c121249a65e2e2771e",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/g/config.json": "34392899166f64ec46ab46900b6ed70f2b22506bce574f434c4ac1a645d70b1a",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/g/config.ini": "caa583532413be64f3a6ee07647c999962f28e42c314c1d67a268fa9ce9af8a6",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/result.json": "97d7f45378b0f84a1c5834fe3dd44fc21edce6658dd00cd46f23a2c7ccbaa654",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/sample-0.json": "cfc09d0849080957f7f2134fd6187df9e29610addd0b3e4d3a6ed0e377cb00f3",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/acceptance.json": "03ed82cc6d3658c52dd10eed38b6315e4232698049d1dfe690d55ad1742d5eb6",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/g/0/0/stats.txt": "4039d7e5d274bd10ee7b27efffb86dcf17c9af8f6cdbf282c6bd75cc66d4c173",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.hsaco": "ad04d38a56eaf7fe0a309311c52ea288f0cc7d8112599b6f4ab50d6dea4141ee",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.amdgcn": "6eed38fced6af912e0ad87e0c1a1e19e488827bc9437212e4a20071ccf51fef4",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/cache/KIFJJSUORBTJDD5QVKV6A4VRMZWFILNU7VE2I3BKXREWCE46FEAQ/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.json": "4738a7059ee20b7a9daa986b8a54de7a5db257c9059d7e3a384447c7b274918b",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/cache/KIFJJSUORBTJDD5QVKV6A4VRMZWFILNU7VE2I3BKXREWCE46FEAQ/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.hsaco": "ad04d38a56eaf7fe0a309311c52ea288f0cc7d8112599b6f4ab50d6dea4141ee",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/cache/KIFJJSUORBTJDD5QVKV6A4VRMZWFILNU7VE2I3BKXREWCE46FEAQ/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.amdgcn": "6eed38fced6af912e0ad87e0c1a1e19e488827bc9437212e4a20071ccf51fef4",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/cache/KIFJJSUORBTJDD5QVKV6A4VRMZWFILNU7VE2I3BKXREWCE46FEAQ/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.llir": "d818e02da1f86d2aac6414fdc843f58c8c288735e1c96c927e097cb44993e051",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/cache/KIFJJSUORBTJDD5QVKV6A4VRMZWFILNU7VE2I3BKXREWCE46FEAQ/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.ttgir": "ad256e8ac74bb8f3f8459016faf3bd4ce138a8c0abf4c848d6cb42b8efc1a67b",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/cache/KIFJJSUORBTJDD5QVKV6A4VRMZWFILNU7VE2I3BKXREWCE46FEAQ/_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel.source": "1ebaf5a3235799ae334203ce1559046b53301b08078a0dcf3c2d2b445ffe2914",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/pmd-hybrid-bulk-tail/output-0.pt": "bf6f1eda252fc648bb7ec049eab8c1fdd3220d98b041493c7818f0be1e7a43d4",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/hybrid-review/20261120T145026.780723Z/request.json": "c008fbef008fad635cd08b199cd51eb33021b47e963752d8d7bcc7818ca2ef26",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/supplement-review/20261120T141702.033790Z/root-launch.json": "91894a6e10010a16499dcd9e766ea3bed78f92889710f910ed2eea31cf850737",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/hybrid-review/20261120T145026.780723Z/root-launch.json": "f49c317a213880dbf226ff46c45322185447cbddf5386bdf4203d2409abb7ece",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/hybrid-review/20261120T145026.780723Z/actual-capacity-audit.json": "bb644394dde9b14d18dc7b10f6549e5b99be82fd4d32b25c9b3932b9f596f2b6",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/hybrid-review/20261120T145026.780723Z/finalizer-state.json": "952c8564dd46d432c42a103c283ae2ab72422ad1d7240073d5a7d1428c542fd9",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/supplement-review/20261120T141702.033790Z/finalizer-state.json": "5618a54d74948ad28fa3c7d341555bcbe6fcbe3fe0b8eca02f54674880ec6371",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/additional-trials-required.json": "db3324d0cdc07e8f453d0d304e292cb58e8aab965f44fca8c401321ffe2fb3ad",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/completed-review/20261120T165508.824988Z/report.json": "c8f0f78f9dd487a18aa58378d7217e23468095aca4a2d2405a716a9ceb00312d",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/completed-review/20261120T165508.824988Z/rejection-audit.json": "1fdd511774ee658d22398c96057e9fa56db2c8172760dba054a4acc7c7d8fb82",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/completed-review/20261120T165508.824988Z/audit.py": "9298c34f8d3e425b3a4e2809506c09b8913b85feeedfbd660096502d1fb3725c",
+              "/public/home/duyubo/bolt/new/github/BoltOPs-gemm-perf-retune/tmp/optALL/R037/completed-review/20261120T165508.824988Z/evidence-manifest.json": "2b29bea1d410d9058cfa01a28133ef670a0b8a323d77e6d9f50085bd4ab39054"
+            }
+          }
+        },
+        "policy": "Only complete passing measurements, evidenced correctness/resource rejections, or identical passing recoveries can close a required compute trial.",
+        "R037_exact_full_grid_rejection": {
+          "required_scope": [
+            "baseline",
+            "pmd-group4",
+            "pmd-hybrid-bulk-tail",
+            "pmd-narrow256x128",
+            "suggested-streamk"
+          ],
+          "helper_sha256": "9df2c067c62ff3ff6009f41b0e40d7bccc314a55734a89b7622d14a9fd0978fa",
+          "failed_original_immutable": true,
+          "bad_candidate_has_no_selectable_latency": true
+        }
+      },
+      "all_five_independent_full_C_review": {
+        "audit": "completed-review/20261120T165508.824988Z/report.json",
+        "audit_sha256": "c8f0f78f9dd487a18aa58378d7217e23468095aca4a2d2405a716a9ceb00312d",
+        "rejection_policy": "completed-review/20261120T165508.824988Z/completion_group4.py",
+        "cold1_single_sample": true,
+        "failed_group4_has_no_admissible_performance": true
+      }
+    },
+    "original_sha256": "9fbf0dd1645c62a88a639a217dee50dae51b9e95fb01bd05ff0b2e93e7d2492d"
+  },
+  "original_published_record": {
+    "data": {
+      "requirement": "R037",
+      "record_key": {
+        "requirement": "R037",
+        "dies": 2,
+        "layout": "TT"
+      },
+      "status": "PASS",
+      "shape": [
+        5684,
+        4608,
+        4608
+      ],
+      "dtype": {
+        "A": "BF16",
+        "W": "BF16",
+        "output": "BF16",
+        "scale": null,
+        "accumulator": "FP32"
+      },
+      "layout": "TT",
+      "full_grid_TGs": 96,
+      "performance": {
+        "kernel_cycles": 831973.0,
+        "kernel_us": 378.5477490692975,
+        "kernel_tops": 637.6587707771889,
+        "launched_TGs": 96,
+        "samples": 1,
+        "aggregation": "one cold full-grid dispatch; no minimum or median; no execution warmup",
+        "time_domain": "system.gcSimCycles/(gcFrequency_GHz*1000); complete dispatch"
+      },
+      "baseline_record": {
+        "path": "../../1die/tt/record.json",
+        "sha256": "32469b0d724eb4f2c62cb04cddc0d9c1e67c883a5350c75b66de5f8e306c9116",
+        "kernel_us": 666.0527199447449,
+        "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
+        "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/docs/ops/gemm/tuning/r037/1die/tt/record.json",
+        "note": "The comparison uses this immutable archived baseline; subsequent checkout tuning can change the current 1die record."
+      },
+      "comparison": {
+        "speedup": 1.7594945989833806,
+        "latency_change_percent": -43.16549760494913,
+        "note": "Comparison to the published 1die record; R001 published baseline used an older compiler environment."
+      },
+      "source": {
+        "path": "boltops/gemm/gluon/gemm_a16w16.py",
+        "symbol": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel",
+        "sha256": "711f312aaaa064083e5cf822119248f24141c82631d3fe9a32895faaf305b847",
+        "commit": "8ba5265618acb645a95ab4aa762c5896f71fc3cd",
+        "permalink": "https://github.com/TBodyAltra/BoltOPs/blob/8ba5265618acb645a95ab4aa762c5896f71fc3cd/boltops/gemm/gluon/gemm_a16w16.py"
+      },
+      "config": {
+        "path": "boltops/gemm/configs/gfx946/96cu/gluon/gemm_a16w16/GEMM-A16W16-N=4608-K=4608-TT.json",
+        "sha256": "0ac234bc26b83fc248d0f82f25104aa6320557862a1ff75758711d86988a71aa",
+        "profile": "DTYPE=bfloat16-OUT=bfloat16",
+        "bucket": "M_EQ_5684",
+        "parameters": {
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "num_warps": 4,
+          "num_stages": 2,
+          "NUM_SMS": 96,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "wasp_wdra": true,
+          "enable_v_mmac_cluster": 2,
+          "hcu_use_gfx946_sched_model_v2": true,
+          "mmac_layout_force": 2,
+          "kernel": "_gemm_a16w16_tn_bm256_bn256_bk64_persistent_kernel"
+        },
+        "runtime_overrides": {}
+      },
+      "launch": {
+        "grid": [
+          96
+        ],
+        "options": {
+          "BLOCK_SIZE_M": 256,
+          "BLOCK_SIZE_N": 256,
+          "BLOCK_SIZE_K": 64,
+          "num_warps": 4,
+          "num_stages": 2,
+          "NUM_SMS": 96,
+          "wasp_partition_warps": [
+            4,
+            4,
+            4
+          ],
+          "wasp_partition_regs": [
+            16,
+            244,
+            244
+          ],
+          "wasp_wdra": true,
+          "enable_v_mmac_cluster": 2,
+          "hcu_use_gfx946_sched_model_v2": true,
+          "mmac_layout_force": 2,
+          "M": 5684,
+          "N": 4608,
+          "K": 4608,
+          "B_K_CONTIGUOUS": false,
+          "FORCE_MASKED_STORE": false
+        },
+        "method": "Direct repository JIT; original tile/warp/stage options and kernel source; device CU count sets persistent NUM_SMS/grid."
+      },
+      "assembly": {
+        "path": "kernel.amdgcn",
+        "sha256": "83a453b80a79715acadd56dab625f964a31f3bbc8cee64c4b992c29ed53cab75",
+        "hsaco_sha256": "5123bd73be2bb7e2de4a2a2d2c1115d2348d247c648b28313f2ca318f4345d27",
+        "matches_1die_assembly": false,
+        "executable_sections": {
+          ".rodata": {
+            "size": 64,
+            "sha256": "9eea979b9bdeae08ea710c5b6561c502461918253fb90826450199149ce68d8a"
+          },
+          ".text": {
+            "size": 17844,
+            "sha256": "c08a903e56f22a8ff914aab96c01be7f172d2a849df9df700c20a54aa48ed3e9"
+          }
+        }
+      },
+      "environment": {
+        "type": "PMD",
+        "chip": "sbx2",
+        "arch": "gfx946",
+        "dies": 2,
+        "cu_count": 96,
+        "cu_count_per_die": 48,
+        "reported_device_cu_count": 96,
+        "clock_period_ps": {
+          "gc": 455,
+          "shader": 455
+        },
+        "environment_script": "/public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh",
+        "environment_variables": {
+          "TRITON_HIP_CLANG_PATH": "/public/home/duyubo/clang/install-dtk-7.2.1/bin/clang",
+          "PMD_PATH": "/opt/rocm/pmd",
+          "PYTHONPATH": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10:",
+          "GPU_CHIP": "sbx2",
+          "LD_LIBRARY_PATH": "/opt/rocm/lib",
+          "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+          "GPU_ARGS": "['--abs-max-tick=10000000000']",
+          "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so",
+          "AMDGCN_USE_BUFFER_OPS": "1",
+          "OMP_NUM_THREADS": "1",
+          "MKL_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "GPU_OUT": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r037/measurement/g",
+          "TRITON_CACHE_DIR": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r037/measurement/cache",
+          "TRITON_HOME": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r037/measurement/triton-home",
+          "RPY_HISTORY_LOG": "/public/home/duyubo/bolt/new/github/BoltOPs/tmp/1117/bf16_sbx2_20261117/r037/measurement/history.log",
+          "RPY_HISTORY_SIZE": "1024"
+        },
+        "runtime": {
+          "torch": "2.6.0+d1e87ac",
+          "triton": "3.6.0",
+          "triton_path": "/public/home/duyubo/triton_all_version/triton_3.6/triton-release36-latest/build/lib.linux-x86_64-3.10/triton/__init__.py",
+          "libtriton_sha256": "2e35d5dc029806ac065f04b1085e9877a4fed21c3826ddcbb9345583daafeea3"
+        },
+        "gpu_configuration": {
+          "type": "Configuration",
+          "harvestmode": "0",
+          "numtccpipprocreturnbuf": "1",
+          "numtccpipesendwriteback": "1",
+          "sbcxcdcsselbit": "-1",
+          "tcchashrandom": "false",
+          "tcpforcemiss": "false",
+          "tcaarbgonum": "2",
+          "tcahashoutnum": "5",
+          "tcaholearbage": "false",
+          "tcaholefifoflopfifonum": "4",
+          "tcaholefifonum": "4",
+          "tcaholefifosize": "136",
+          "tcanumperdie": "2",
+          "tcardwrdatabusreuse": "false",
+          "tcausehashmod": "false",
+          "tccarbrecvrdreqfifodepth": "4",
+          "tccarbrecvwrreqfifodepth": "8",
+          "tccnotexencatowithlru": "true",
+          "tccpacksrtn": "true",
+          "tccsendreqtoeafifodepth": "1",
+          "tccsubbanknum": "3",
+          "tcctagwrthroughfifodepth": "24",
+          "tccvirtualfifominnum": "2",
+          "as_tcp": "false",
+          "co_issue_version": "2",
+          "device_id": "26295",
+          "dp4x_status": "false",
+          "dpm": "4",
+          "ds_encoding_version": "3",
+          "dual_issue_en": "false",
+          "early_ta_done_en": "true",
+          "early_vgpr_free_en": "false",
+          "ecc_off": "false",
+          "eco_info": "0",
+          "encoding_version": "3",
+          "eventq_index": "0",
+          "flat_addr_with_dp4x": "true",
+          "flat_lds_pingpong": "true",
+          "gpu_clock": "455",
+          "gpu_sys_id": "0",
+          "hack_utcl1": "false",
+          "has_m1": "true",
+          "hybrid_pte": "true",
+          "ibuf_size": "24",
+          "ipc_conn": "false",
+          "ipc_shm": "None",
+          "kfd_ioctl_minor_version": "9",
+          "lds_oa2sche_credit": "false",
+          "lds_addr_dis_autoalign": "false",
+          "lds_b64_dwx2": "false",
+          "lds_bank_num": "64",
+          "lds_bypass": "false",
+          "lds_cmdfifo_depth": "16",
+          "lds_input_num": "4",
+          "lds_min_alloc": "512",
+          "lds_no_bkc": "false",
+          "lds_out_dwx2": "true",
+          "lds_output_num": "2",
+          "lds_outputbuffer_depth": "16",
+          "lds_schepipe_depth": "5",
+          "lds_size": "131072",
+          "lds_spfifo_depth": "4",
+          "lds_spbuffer_depth": "64",
+          "lds_spf_cycle": "4",
+          "lsooo": "false",
+          "mem_size": "68719476736",
+          "mls_encoding_version": "3",
+          "mmop_clause": "false",
+          "mmop_co_trans_full_rate": "false",
+          "mmop_f16_i8_f8": "8",
+          "mmop_f32": "32",
+          "mmop_f64": "256",
+          "mmop_hi_prio_en": "false",
+          "mmop_i4": "16",
+          "mmop_x8f32": "64",
+          "mmu_base_paddr": "0",
+          "mmu_page_size": "2097152",
+          "mmu_partition_mode": "false",
+          "mvf_bypass": "false",
+          "no_bwc": "true",
+          "no_ebwc": "true",
+          "num_chip": "2",
+          "num_cu": "48",
+          "num_gpu": "1",
+          "num_se": "4",
+          "num_tcc": "32",
+          "page_size": "12",
+          "parallel": "false",
+          "scale_min_alloc": "256",
+          "scale_size": "8192",
+          "simds_per_cu": "4",
+          "skip_cal": "false",
+          "skip_kernel_exec": "false",
+          "soc_model": "false",
+          "soc_script": "configs/gpuShm.py",
+          "sp_num": "2",
+          "sp_to_gm_addr_bus_width": "64",
+          "sp_to_gm_data_bus_width": "64",
+          "split_vgpr_group": "false",
+          "sqtacmd_version": "1",
+          "sreg_file_size": "800",
+          "stride_cache_swizzle": "true",
+          "suspend_time_en": "false",
+          "sys_clock": "1000",
+          "ta_addr_fifo_size": "48",
+          "ta_channels_per_phase": "4",
+          "ta_cmd_fifo_size": "48",
+          "ta_data_fifo_size": "128",
+          "ta_dwords_per_phase": "16",
+          "tatd_bps_credit": "256",
+          "tatd_cmd_credit": "128",
+          "tatd_cycle_credit": "512",
+          "tcp_rand_latfifo": "false",
+          "transx": "2",
+          "tt_time_delta": "false",
+          "ttrace_version": "3",
+          "umc_clock": "2276",
+          "use_ds_m0": "false",
+          "use_ds_m1": "false",
+          "use_mmu": "false",
+          "utcl1_bigk": "true",
+          "utcl2": "simple",
+          "vgpr_min_alloc": "4",
+          "vreg_file_size": "512",
+          "wf_size": "64",
+          "work_with_cu_tester": "false",
+          "wrap_offset_version": "3",
+          "xcd_id_in_device": "0"
+        },
+        "model_configuration": {
+          "path": "pmd-config.json.gz",
+          "sha256": "e4d9778e004a95070b8ec88dc062f8309083dfc2c0e0bc0f2d6f09fb42aec49d"
+        }
+      },
+      "benchmark": {
+        "script": "benchmark.py",
+        "sha256": "ba927f71d2e76ca1369a8d04de19672ffb129b8d45184b74dcba7289aa7e9eee",
+        "seed": 21,
+        "repeats": 1,
+        "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r037/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r037/2die/tt/record.json --output /tmp/r037-sbx2-full-new",
+        "measured_script_sha256": "767bae92ff03bcadf6e1b1717838f6ed1a625e5d7722a8cc830e9522131a6c87",
+        "publication_changes": "Embed frozen launch options; recover measured source from Git when needed; add optional independent single-TG PERF capture. Default full-grid protocol and published full-grid performance are preserved. Single-TG dry-run plan labels clarified after capture; executable measurement logic unchanged.",
+        "single_tg_measured_script_sha256": "e434fb3bf8d4ec28bf7ccb89094d3b860090f0f7c29b55d3396b62ea4e94232e"
+      },
+      "resources": {
+        "VGPR": 168,
+        "spills": 0,
+        "LDS_bytes": 131072
+      },
+      "validation": [],
+      "samples": [
+        {
+          "index": 0,
+          "phase": "cold",
+          "status": "PASS",
+          "kernel_cycles": 831973.0,
+          "kernel_us": 378.5477490692975,
+          "completed_TGs": 96,
+          "completed_TGs_per_die": {
+            "system.shaders0": 48,
+            "system.shaders1": 48
+          },
+          "active_CUs_per_die": {
+            "system.shaders0": 48,
+            "system.shaders1": 48
+          },
+          "mmop_instructions": 30523392,
+          "gc_frequency_ghz": 2.197802,
+          "stats_path": "stats.txt.gz",
+          "stats_sha256": "c4f0c31f7200197873ac9316f20185bfa3b84dbaad1019d13c519ea69d3574d5",
+          "accuracy": {
+            "elements": 26191872,
+            "outside_tolerance": 0,
+            "nonfinite": 0,
+            "max_abs": 0.25,
+            "canary_ok": true,
+            "inputs_byte_identical": true,
+            "atol": 0.001,
+            "rtol": 0.01,
+            "mean_abs_vs_fp32": 0.01908249593547527,
+            "rounding_floor": 0.01908249232039448
+          },
+          "raw_stats_path": "tmp/1117/bf16_sbx2_20261117/r037/measurement/g/0/0/stats.txt",
+          "stats_section": 0
+        }
+      ],
+      "measurement_result_path": "tmp/1117/bf16_sbx2_20261117/r037/measurement/result.json",
+      "measurement_result_sha256": "79f5d2a548615e0a1943751f2bfc0a2b995341340db104703c43b0b1da0c299f",
+      "measured_at": "2026-11-17T11:47:46.202711+00:00",
+      "evidence": {
+        "stats": {
+          "path": "stats.txt.gz",
+          "sha256": "ee86a10593e674004a3b8aef22bc65485cce461bc812755a842ec5d1576aec00",
+          "dispatches": 1,
+          "format": "Complete raw PMD statistics concatenated in validation-then-samples order; stats_section is a zero-based block index. Individual raw hashes remain in each sample."
+        },
+        "model_config": {
+          "path": "pmd-config.json.gz",
+          "sha256": "e4d9778e004a95070b8ec88dc062f8309083dfc2c0e0bc0f2d6f09fb42aec49d"
+        },
+        "layout_reference": {
+          "branch": "origin/gemm",
+          "commit": "2ef6411e7c7f729d879e1a739c1d57082362d38d",
+          "path": "docs/ops/gemm/tuning/r011/2die/tn"
+        }
+      },
+      "single_tg_perf": {
+        "environment_overrides": {
+          "GPU_DFLAGS": "['StatLog','TT0','Perf']",
+          "HSA_TOOLS_LIB": "/opt/rocm/lib/xprofiler/libperf_gen_helper.so"
+        },
+        "path": "single_tg.perf",
+        "sha256": "e3be4668d0dec36eef9b2b84678cad800a9e5b2b201049288c7facef7201354f",
+        "grid": [
+          1
+        ],
+        "scope": "Independent TG0 dispatch on the sbx2 device (2 dies / 96 CUs); original MNK, strides and compile options including NUM_SMS=96 when persistent. This PMD rotates the starting die between launches; each sample records the actual die/CU. Full-grid performance is independent of this capture.",
+        "tile_ids": [
+          0,
+          96,
+          192,
+          288,
+          384
+        ],
+        "tiles_per_TG": 5,
+        "repeat": 2,
+        "selection": "minimum system.gcSimCycles of repeats 1 and 2; repeat 0 excluded",
+        "kernel_cycles": 811164.0,
+        "kernel_us": 369.07965321716887,
+        "validation": {
+          "elements": 327680,
+          "unselected_output_nan": true,
+          "outside_tolerance": 0,
+          "nonfinite": 0,
+          "max_abs": 0.25,
+          "canary_ok": true,
+          "inputs_byte_identical": true,
+          "atol": 0.001,
+          "rtol": 0.01,
+          "mean_abs_vs_fp32": 0.019113227945854305,
+          "rounding_floor": 0.019113224024840746
+        },
+        "completed_TGs_per_die": {
+          "system.shaders0": 1,
+          "system.shaders1": 0
+        },
+        "active_CUs_per_die": {
+          "system.shaders0": 1,
+          "system.shaders1": 0
+        },
+        "samples_validated": 3,
+        "samples": [
+          {
+            "index": 0,
+            "phase": "warmup",
+            "status": "PASS",
+            "kernel_cycles": 831091.0,
+            "kernel_us": 378.14643903317955,
+            "completed_TGs": 1,
+            "completed_TGs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "active_CUs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "mmop_instructions": 368640,
+            "gc_frequency_ghz": 2.197802,
+            "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/g/0/0/stats.txt",
+            "stats_sha256": "b55d14d8632ceabb7dc18b47ad7a966e1d921feb2bdc1b982d3cf661f2906af3",
+            "accuracy": {
+              "elements": 327680,
+              "unselected_output_nan": true,
+              "outside_tolerance": 0,
+              "nonfinite": 0,
+              "max_abs": 0.25,
+              "canary_ok": true,
+              "inputs_byte_identical": true,
+              "atol": 0.001,
+              "rtol": 0.01,
+              "mean_abs_vs_fp32": 0.019113227945854305,
+              "rounding_floor": 0.019113224024840746
+            },
+            "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/g/0/0/941922_python3.10.perf",
+            "repeat": 0
+          },
+          {
+            "index": 1,
+            "phase": "timed",
+            "status": "PASS",
+            "kernel_cycles": 830817.0,
+            "kernel_us": 378.02176902195924,
+            "completed_TGs": 1,
+            "completed_TGs_per_die": {
+              "system.shaders0": 0,
+              "system.shaders1": 1
+            },
+            "active_CUs_per_die": {
+              "system.shaders0": 0,
+              "system.shaders1": 1
+            },
+            "mmop_instructions": 368640,
+            "gc_frequency_ghz": 2.197802,
+            "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/g/0/1/stats.txt",
+            "stats_sha256": "4ca2bbab8217db5104659f8c18bc92edd1a980ba852bb48a2ad09b4a2a8a65fc",
+            "accuracy": {
+              "elements": 327680,
+              "unselected_output_nan": true,
+              "outside_tolerance": 0,
+              "nonfinite": 0,
+              "max_abs": 0.25,
+              "canary_ok": true,
+              "inputs_byte_identical": true,
+              "atol": 0.001,
+              "rtol": 0.01,
+              "mean_abs_vs_fp32": 0.019113227945854305,
+              "rounding_floor": 0.019113224024840746
+            },
+            "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/g/0/1/941922_python3.10.perf",
+            "repeat": 1
+          },
+          {
+            "index": 2,
+            "phase": "timed",
+            "status": "PASS",
+            "kernel_cycles": 811164.0,
+            "kernel_us": 369.07965321716887,
+            "completed_TGs": 1,
+            "completed_TGs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "active_CUs_per_die": {
+              "system.shaders0": 1,
+              "system.shaders1": 0
+            },
+            "mmop_instructions": 368640,
+            "gc_frequency_ghz": 2.197802,
+            "stats_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/g/0/2/stats.txt",
+            "stats_sha256": "9dc58b22e26f54f08978892f8bec1d7e962b079976dc822d5030b4d041107448",
+            "accuracy": {
+              "elements": 327680,
+              "unselected_output_nan": true,
+              "outside_tolerance": 0,
+              "nonfinite": 0,
+              "max_abs": 0.25,
+              "canary_ok": true,
+              "inputs_byte_identical": true,
+              "atol": 0.001,
+              "rtol": 0.01,
+              "mean_abs_vs_fp32": 0.019113227945854305,
+              "rounding_floor": 0.019113224024840746
+            },
+            "perf_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/g/0/2/941922_python3.10.perf",
+            "repeat": 2
+          }
+        ],
+        "full_and_single_text_rodata_equal": true,
+        "launch_resources_equal": true,
+        "embedded_hsaco_verified": true,
+        "hsaco_sha256": "20f72785901363912dab43f237a47dce49ec4c7d215fbc890e509a43c395ee3e",
+        "stats": {
+          "path": "perf_stats.txt.gz",
+          "sha256": "9c64b0f669f3663cc7efe4bdc93225650dbbdbb57a74bb5593b9518f6125687b"
+        },
+        "command": "source /public/home/duyubo/triton_all_version/triton_3.6/triton/path.sh && python docs/ops/gemm/tuning/r037/2die/tt/benchmark.py --record docs/ops/gemm/tuning/r037/2die/tt/record.json --output /tmp/r037-sbx2-single-tg-new --single-tg-perf",
+        "raw_result_path": "tmp/1118/bf16_sbx2_layout_20261118/captures/r037/result.json",
+        "raw_result_sha256": "9d98d23a33812e01b2064b5dd9712f108c38f600eeca42b0d0eac067a74e03cd"
+      }
+    },
+    "original_sha256": "9aa4354b7d40e73670aa4b1d7d72d4eb8f41f2f39f008674abae4e8a345e47c1",
+    "note": "Previous published record, embedded for provenance only."
+  },
+  "artifacts": [
+    "benchmark.py",
+    "kernel.amdgcn",
+    "perf_stats.txt.gz",
+    "pmd-config.json.gz",
+    "record.json",
+    "single_tg.perf",
+    "stats.txt.gz",
+    "kernel.py"
+  ],
+  "artifact_policy": {
+    "exact": true,
+    "kernel_source": "kernel.py",
+    "working_files": "Temporary workspace outside the output directory; automatically removed.",
+    "regeneration": "benchmark.py --regenerate OUTPUT copies and verifies only this artifact list."
+  },
+  "artifact_sha256": {
+    "benchmark.py": "b33e31a18610bfe9c078152d48cbdb494c3aa531945a725b63eff96dbf9fe9d8",
+    "kernel.amdgcn": "6eed38fced6af912e0ad87e0c1a1e19e488827bc9437212e4a20071ccf51fef4",
+    "perf_stats.txt.gz": "b955e69ff695aec1e8f3ca4a005d3a33dd94efbc026774afd61006e1078c91d8",
+    "pmd-config.json.gz": "bbf6daadc573bf00e0115bb06e3e5eaddf53fdf2194f0923378cec9f493254a5",
+    "single_tg.perf": "e894d2327a0d5e524b151d1cede1ef24917b216074991eac8eb550babb4cce1d",
+    "stats.txt.gz": "000f9c68c69d9c7635fcc04721e9b05454416bf84920d522d0b5bb2063ae1620",
+    "kernel.py": "408f594f590480d995234ffd46bc264287f7d145e6d3de7c25e37a42f7191f2d"
   }
 }
